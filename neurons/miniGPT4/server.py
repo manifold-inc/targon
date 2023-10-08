@@ -1,6 +1,6 @@
-from minigpt4 import MiniGPT4
-from blip_processor import Blip2ImageEvalProcessor
-from conversation import Chat, CONV_VISION
+from min.minigpt4 import MiniGPT4
+from min.blip_processor import Blip2ImageEvalProcessor
+from min.conversation import Chat, CONV_VISION
 
 import torch
 import time
