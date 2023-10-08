@@ -7,12 +7,12 @@ import torch.nn as nn
 
 from transformers import LlamaTokenizer
 
-try:
-    from .blip2 import Blip2Base, disabled_train
-    from .llama import LlamaForCausalLM
-except ImportError:
-    from blip2 import Blip2Base, disabled_train
-    from llama import LlamaForCausalLM
+# try:
+from min.blip2 import Blip2Base, disabled_train
+from min.llama import LlamaForCausalLM
+# except ImportError:
+#     from min.blip2 import Blip2Base, disabled_train
+#     from llama import LlamaForCausalLM
 
 CUDA = torch.cuda.is_available()
 
