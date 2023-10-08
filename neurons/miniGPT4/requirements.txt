@@ -1,0 +1,8 @@
+torch
+torchvision
+transformers
+timm
+sentencepiece
+accelerate
+bitsandbytes
+scipy
