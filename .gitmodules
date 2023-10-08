@@ -1,0 +1,3 @@
+[submodule "models"]
+	path = neurons/minigpt4/models
+	url = https://huggingface.co/catid/minigpt4
