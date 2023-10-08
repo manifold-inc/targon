@@ -14,12 +14,8 @@ import torch.nn.functional as F
 
 from transformers import BertTokenizer
 
-try:
-    from .qformer import BertConfig, BertLMHeadModel
-    from .eva_vit import create_eva_vit_g
-except ImportError:
-    from qformer import BertConfig, BertLMHeadModel
-    from eva_vit import create_eva_vit_g
+from min.qformer import BertConfig, BertLMHeadModel
+from min.eva_vit import create_eva_vit_g
 
 class BaseModel(nn.Module):
     """Base class for models."""
