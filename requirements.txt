@@ -11,3 +11,6 @@ click==8.1.3
 torchmetrics
 sentencepiece
 numpy==1.22.0
+timm
+accelerate
+bitsandbytes

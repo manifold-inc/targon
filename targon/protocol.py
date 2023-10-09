@@ -48,7 +48,7 @@ class Targon( bt.Synapse ):
         description="Completion status of the current Targon object. This attribute is mutable and can be updated.",
     )
 
-    images: list[ bt.Tensor ] = []
+    # images: list[ bt.Tensor ] = []
 
     required_hash_fields: List[str] = pydantic.Field(
         ["messages"],
@@ -81,7 +81,7 @@ class TargonStreaming( bt.StreamingSynapse ):
         description="Completion status of the current Targon object. This attribute is mutable and can be updated.",
     )
 
-    images: list[ bt.Tensor ] = []
+    # images: list[ bt.Tensor ] = []
 
     required_hash_fields: List[str] = pydantic.Field(
         ["messages"],
@@ -189,6 +189,6 @@ class TargonStreaming( bt.StreamingSynapse ):
             "axon": extract_info("bt_header_axon"),
             "roles": self.roles,
             "messages": self.messages,
-            "images": self.images,
+            # "images": self.images,
             "completion": self.completion,
         }
