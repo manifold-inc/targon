@@ -34,8 +34,8 @@ class MiniGPT4Miner( Miner ):
         """
         pass
 
-    def __init__(self, config: "bt.Config"):
-        super().__init__(config)
+    def __init__(self):
+        super().__init__()
         self.model = MiniGPT4(
             vision_model_path="models/eva_vit_g.pth",
             llama_model="models/vicuna13b_v0/",
