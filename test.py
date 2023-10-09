@@ -29,5 +29,7 @@ async def fetch():
 
     return responses
 
+import code; code.interact(local=dict(globals(), **locals()))
+responses = asyncio.run(fetch())
 
-asyncio.run(fetch())
+print(responses)

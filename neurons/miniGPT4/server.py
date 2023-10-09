@@ -49,7 +49,7 @@ class MiniGPT4Miner( Miner ):
 
         # ckpt_path = "models/pretrained_minigpt4.pth"
         ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
-        
+
         print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
         ckpt = torch.load(ckpt_path, map_location="cpu")
         self.model.load_state_dict(ckpt['model'], strict=False)
@@ -85,7 +85,7 @@ class MiniGPT4Miner( Miner ):
 
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
-        print(synapse.images)
+        bt.logging.info('synapse', synapse)
 
         # Simulated function to decode token IDs into strings. In a real-world scenario,
         # this can be replaced with an actual model inference step.
