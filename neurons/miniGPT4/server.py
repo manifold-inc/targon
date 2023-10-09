@@ -47,8 +47,9 @@ class MiniGPT4Miner( Miner ):
             q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
         )
 
-        ckpt_path = "models/pretrained_minigpt4.pth"
-
+        # ckpt_path = "models/pretrained_minigpt4.pth"
+        ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
+        
         print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
         ckpt = torch.load(ckpt_path, map_location="cpu")
         self.model.load_state_dict(ckpt['model'], strict=False)
