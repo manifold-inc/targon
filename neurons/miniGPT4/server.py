@@ -127,7 +127,7 @@ class MiniGPT4Miner( Miner ):
                     )
                     bt.logging.debug(f"Streamed tokens: {joined_buffer}")
                     buffer = []  # Clear the buffer for next batch of tokens
-
+                    time.sleep(0.2)
             # Send any remaining tokens in the buffer
             if buffer:
                 joined_buffer = "".join(buffer)
