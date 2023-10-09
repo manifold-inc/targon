@@ -1,3 +1,4 @@
+import os
 import time
 import torch
 import asyncio
@@ -36,10 +37,14 @@ class MiniGPT4Miner( Miner ):
 
     def __init__(self):
         super().__init__()
+        
+        # get the directory this file is in
+        base_path = os.path.dirname(os.path.realpath(__file__))
+
         self.model = MiniGPT4(
-            vision_model_path="models/eva_vit_g.pth",
-            llama_model="models/vicuna13b_v0/",
-            q_former_model="models/blip2_pretrained_flant5xxl.pth",
+            vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
+            llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
+            q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
         )
 
         ckpt_path = "models/pretrained_minigpt4.pth"
