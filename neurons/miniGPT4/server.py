@@ -92,7 +92,7 @@ class MiniGPT4Miner( Miner ):
         def model(ids):
             return (tokenizer.decode(id) for id in ids)
 
-        async def _query(text: str, send: Send):
+        async def _prompt(text: str, send: Send):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -141,8 +141,7 @@ class MiniGPT4Miner( Miner ):
                 bt.logging.trace(f"Streamed tokens: {joined_buffer}")
 
         message = synapse.messages[0]
-        bt.logging.debug(f"Received message", message)
-        token_streamer = partial(_query, message)
+        token_streamer = partial(_prompt, message)
         return synapse.create_streaming_response(token_streamer)
 
 
