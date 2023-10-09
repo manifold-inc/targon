@@ -41,24 +41,24 @@ class MiniGPT4Miner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        self.model = MiniGPT4(
-            vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
-            llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
-            q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
-        )
+        # self.model = MiniGPT4(
+        #     vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
+        #     llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
+        #     q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
+        # )
 
-        # ckpt_path = "models/pretrained_minigpt4.pth"
-        ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
+        # # ckpt_path = "models/pretrained_minigpt4.pth"
+        # ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
 
-        print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
-        ckpt = torch.load(ckpt_path, map_location="cpu")
-        self.model.load_state_dict(ckpt['model'], strict=False)
+        # print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
+        # ckpt = torch.load(ckpt_path, map_location="cpu")
+        # self.model.load_state_dict(ckpt['model'], strict=False)
 
-        torch.compile(self.model)
+        # torch.compile(self.model)
 
-        self.vis_processor = Blip2ImageEvalProcessor()
+        # self.vis_processor = Blip2ImageEvalProcessor()
 
-        self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
+        # self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
         bt.logging.info('model loaded, ready to go!')
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
