@@ -140,6 +140,33 @@ class MiniGPT4Miner( Miner ):
 
 
 
+if __name__ == "__main__":
+    """
+    Entry point for executing the StreamingTemplateMiner.
+
+    This block initializes the StreamingTemplateMiner and runs it, effectively connecting
+    it to the Bittensor network. Once connected, the miner will continuously listen for
+    incoming requests from the Bittensor network. For every request, it responds with a
+    static message processed as per the logic defined in the 'prompt' method of the
+    StreamingTemplateMiner class.
+
+    The main loop at the end serves to keep the miner running indefinitely. It periodically
+    prints a "running..." message to the console, providing a simple indication that the miner
+    is operational and active.
+
+    Developers looking to extend or customize the miner's behavior can modify the
+    StreamingTemplateMiner class and its methods. However, this block itself usually
+    remains unchanged unless there's a need for specific startup behaviors or configurations.
+
+    To start the miner:
+    Simply execute this script. Ensure all dependencies are properly installed and network
+    configurations are correctly set up.
+    """
+    with MiniGPT4Miner():
+        while True:
+            print("running...", time.time())
+            time.sleep(1)
+
 # def main():
 #     print("Loading models...")
 
