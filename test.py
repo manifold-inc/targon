@@ -7,7 +7,7 @@ metagraph = subtensor.metagraph( netuid = 4 )
 
 # find all hotkeys with an axon ip
 
-
+bt.debug()
 wallet = bt.wallet( name="targon" )
 
 dendrite = bt.dendrite( wallet = wallet )

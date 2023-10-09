@@ -35,8 +35,8 @@ class MiniGPT4Miner( Miner ):
         """
         pass
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super(MiniGPT4Miner, self).__init__(*args, **kwargs)
         
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
@@ -141,6 +141,7 @@ class MiniGPT4Miner( Miner ):
                 bt.logging.trace(f"Streamed tokens: {joined_buffer}")
 
         message = synapse.messages[0]
+        bt.logging.debug(f"Received message", message)
         token_streamer = partial(_prompt, message)
         return synapse.create_streaming_response(token_streamer)
 
@@ -168,6 +169,7 @@ if __name__ == "__main__":
     Simply execute this script. Ensure all dependencies are properly installed and network
     configurations are correctly set up.
     """
+    bt.debug()
     with MiniGPT4Miner():
         while True:
             print("running...", time.time())
