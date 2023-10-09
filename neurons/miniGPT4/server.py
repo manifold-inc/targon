@@ -5,12 +5,13 @@ import asyncio
 import argparse
 import bittensor as bt
 
+from typing import List
 from functools import partial
 from starlette.types import Send
 from min.minigpt4 import MiniGPT4
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
-from targon.protocol import TargonStreaming
+from targon.protocol import Targon
 from min.conversation import Chat, CONV_VISION
 from min.blip_processor import Blip2ImageEvalProcessor
 
@@ -33,7 +34,18 @@ class MiniGPT4Miner( Miner ):
             parser (argparse.ArgumentParser):
                 The command line argument parser to which custom arguments should be added.
         """
-        pass
+        parser.add_argument(
+            "--minigpt4.do_prompt_injection",
+            action="store_true",
+            default=False,
+            help='Whether to use a custom "system" prompt instead of the one sent by bittensor.',
+        )
+        parser.add_argument(
+            "--minigpt4.system_prompt",
+            type=str,
+            help="What prompt to replace the system prompt with",
+            default="A chat between a curious user and an artificial intelligence assistant.\nThe assistant gives helpful, detailed, and polite answers to the user's questions. ",
+        )
 
     def __init__(self, *args, **kwargs):
         super(MiniGPT4Miner, self).__init__(*args, **kwargs)
@@ -41,27 +53,49 @@ class MiniGPT4Miner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        # self.model = MiniGPT4(
-        #     vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
-        #     llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
-        #     q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
-        # )
+        self.model = MiniGPT4(
+            vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
+            llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
+            q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
+        )
 
-        # # ckpt_path = "models/pretrained_minigpt4.pth"
-        # ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
+        # ckpt_path = "models/pretrained_minigpt4.pth"
+        ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
 
-        # print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
-        # ckpt = torch.load(ckpt_path, map_location="cpu")
-        # self.model.load_state_dict(ckpt['model'], strict=False)
+        print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        self.model.load_state_dict(ckpt['model'], strict=False)
 
-        # torch.compile(self.model)
+        torch.compile(self.model)
 
-        # self.vis_processor = Blip2ImageEvalProcessor()
+        self.vis_processor = Blip2ImageEvalProcessor()
 
-        # self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
+        self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
         bt.logging.info('model loaded, ready to go!')
 
-    def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+    def _process_history(self, roles: List[str], messages: List[str]) -> str:
+        """
+        Processes the conversation history for model input.
+
+        This method takes the roles and messages from the incoming request and constructs
+        a conversation history suitable for model input. It also injects a system prompt
+        if the configuration specifies to do so.
+        """
+        processed_history = ""
+        if self.config.minigpt4.do_prompt_injection:
+            processed_history += self.config.btlm.system_prompt
+        for role, message in zip(roles, messages):
+            if role == "system":
+                if not self.config.minigpt4.do_prompt_injection or message != messages[0]:
+                    processed_history += "system: " + message + "\n"
+            if role == "assistant":
+                processed_history += "assistant: " + message + "\n"
+            if role == "user":
+                processed_history += "user: " + message + "\n"
+        return processed_history
+
+
+    def prompt(self, synapse: Targon) -> Targon:
         """
         Generates a streaming response for the provided synapse.
 
@@ -83,66 +117,29 @@ class MiniGPT4Miner( Miner ):
             are generated to suit their specific applications.
         """
 
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        chat_state = CONV_VISION.copy()
+        img_list = []
 
-        bt.logging.info('synapse', synapse)
+        if len(synapse.images) > 0:
+            #TODO: upload image
+            bt.logging.info('images', synapse.images)
 
-        # Simulated function to decode token IDs into strings. In a real-world scenario,
-        # this can be replaced with an actual model inference step.
-        def model(ids):
-            return (tokenizer.decode(id) for id in ids)
+        history = self._process_history(roles=synapse.roles, messages=synapse.messages)
+        history += "assistant: "
+        bt.logging.debug("History: {}".format(history))
 
-        async def _prompt(text: str, send: Send):
-            """
-            Asynchronously processes the input text and sends back tokens as a streaming response.
+        self.chat.ask(synapse.messages[-1], chat_state)
+        
 
-            This function takes an input text, tokenizes it using the GPT-2 tokenizer, and then
-            uses the simulated model to decode token IDs into strings. It then sends each token
-            back to the client as a streaming response, with a delay between tokens to simulate
-            the effect of real-time streaming.
-
-            Args:
-                text (str): The input text message to be processed.
-                send (Send): An asynchronous function that allows sending back the streaming response.
-
-            Usage:
-                This function can be adjusted based on the streaming requirements, speed of
-                response, or the model being used. Developers can also introduce more sophisticated
-                processing steps or modify how tokens are sent back to the client.
-            """
-            input_ids = tokenizer(text, return_tensors="pt").input_ids.squeeze()
-            buffer = []
-            N = 3  # Number of tokens to send back to the client at a time
-            for token in model(input_ids):
-                buffer.append(token)
-                # If buffer has N tokens, send them back to the client.
-                if len(buffer) == N:
-                    joined_buffer = "".join(buffer)
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-                    bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-                    buffer = []  # Clear the buffer for next batch of tokens
-                    time.sleep(0.2)
-            # Send any remaining tokens in the buffer
-            if buffer:
-                joined_buffer = "".join(buffer)
-                await send(
-                    {
-                        "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
-                        "more_body": False,  # No more tokens to send
-                    }
-                )
-                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
-
-        message = synapse.messages[0]
-        token_streamer = partial(_prompt, message)
-        return synapse.create_streaming_response(token_streamer)
+        output, _ = self.chat.answer(
+            conv=chat_state,
+            img_list=img_list,
+            max_new_tokens=1024,
+            max_length=2048,
+            )
+        
+        synapse.completion = output
+        return synapse
 
 
 

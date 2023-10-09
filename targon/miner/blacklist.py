@@ -22,10 +22,10 @@ import wandb
 import hashlib
 import bittensor as bt
 from typing import Union, Tuple, Callable, List
-from targon.protocol import TargonStreaming
+from targon.protocol import Targon
 
 
-async def is_prompt_in_cache(self, synapse: TargonStreaming) -> bool:
+async def is_prompt_in_cache(self, synapse: Targon) -> bool:
     # Hashes prompt
     # Note: Could be improved using a similarity check
     async with self.lock:
@@ -57,7 +57,7 @@ async def is_prompt_in_cache(self, synapse: TargonStreaming) -> bool:
     return should_blacklist
 
 
-def default_blacklist(self, synapse: TargonStreaming) -> Union[Tuple[bool, str], bool]:
+def default_blacklist(self, synapse: Targon) -> Union[Tuple[bool, str], bool]:
     # Check if the key is white listed.
     if synapse.dendrite.hotkey in self.config.miner.blacklist.whitelist:
         return False, "whitelisted hotkey"
@@ -97,7 +97,7 @@ def default_blacklist(self, synapse: TargonStreaming) -> Union[Tuple[bool, str],
 
 
 def blacklist(
-    self, func: Callable, synapse: TargonStreaming
+    self, func: Callable, synapse: Targon
 ) -> Union[Tuple[bool, str], bool]:
     bt.logging.trace("run blacklist function")
 

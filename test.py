@@ -40,7 +40,7 @@ async def fetch():
     responses = await dendrite(
         axons=axons,
         synapse=synapse,
-        timeout=10
+        timeout=60
     )
 
     # r = await synapse.process_streaming_response(responses)
