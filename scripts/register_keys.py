@@ -208,12 +208,12 @@ parser = argparse.ArgumentParser(description='Register wallets on the Substrate 
 parser.add_argument('--instance_n', type=int, default=0, help='Number of wallets to register')
 parser.add_argument('--snipe', action='store_true', help='Snipe the next burn adjustment')
 parser.add_argument('--netuid', type=int, default=1, help='Network UID')
-parser.add_argument('--wallet_name', type=str, default="wallet", help='Wallet name')
+parser.add_argument('--wallet_name', type=str, default="lilith", help='Wallet name')
 parser.add_argument('--watcher', help='Watch for updates, no reg', action='store_true')
 
 config = bt.config( parser )
 
-wallet_register = WalletRegister(n=config.instance_n, snipe=config.snipe, netuid=config.netuid, watching=config.watcher)
+wallet_register = WalletRegister(n=config.instance_n, snipe=config.snipe, wallet_name=config.wallet_name, netuid=config.netuid, watching=config.watcher)
 # wallet_register.testLatency()
 if not config.watcher:
     wallet_register.getExtrinsics()
