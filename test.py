@@ -1,7 +1,7 @@
 import asyncio
 import bittensor as bt
 
-from targon.protocol import Targon
+from targon.protocol import TargonStreaming
 subtensor = bt.subtensor( network = 'finney' )
 metagraph = subtensor.metagraph( netuid = 4 )
 
@@ -32,8 +32,10 @@ prompt = """
 
 # find all hotkeys with an axon ip that is not none
 
+
+
 axons = [axon for axon in metagraph.axons if axon.ip == '184.105.4.10']
-synapse = Targon(roles=['user'], messages=[prompt])
+synapse = TargonStreaming(roles=['user'], messages=[prompt])
 
 
 async def fetch():
