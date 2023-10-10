@@ -127,6 +127,7 @@ class MiniGPT4Miner( Miner ):
                     )
                     bt.logging.debug(f"Streamed tokens: {joined_buffer}")
                     buffer = []  # Clear the buffer for next batch of tokens
+                    await asyncio.sleep(0.08)  # Simulate streaming delay
             
             # Send any remaining tokens in the buffer
             if buffer:

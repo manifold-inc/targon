@@ -1,5 +1,7 @@
 import time
 import torch
+import aiohttp
+import asyncio
 import pydantic
 
 import bittensor as bt
@@ -7,7 +9,9 @@ import bittensor as bt
 from typing import List
 from starlette.responses import StreamingResponse
 
-
+from typing import Dict, Optional, Tuple, Union, List, Callable, Any
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from inspect import signature, Signature, Parameter
 
 class Targon( bt.Synapse ):
 
@@ -116,6 +120,7 @@ class TargonStreaming( bt.StreamingSynapse ):
             It's important to remember that this method is asynchronous. Ensure it's called within an appropriate
             asynchronous context.
         """
+
         if self.completion is None:
             self.completion = ""
         async for chunk in response.content.iter_any():
@@ -123,6 +128,7 @@ class TargonStreaming( bt.StreamingSynapse ):
             for token in tokens:
                 if token:
                     self.completion += token
+                    yield token  # yield token immediately
 
     def deserialize(self) -> str:
         """
@@ -192,3 +198,195 @@ class TargonStreaming( bt.StreamingSynapse ):
             # "images": self.images,
             "completion": self.completion,
         }
+
+class TargonDendrite( bt.dendrite ):
+
+    async def forward(
+        self,
+        axons: Union[
+            List[Union[bt.AxonInfo, bt.axon]],
+            Union[bt.AxonInfo, bt.axon],
+        ],
+        synapse: bt.Synapse = bt.Synapse(),
+        timeout: float = 12,
+        deserialize: bool = True,
+        run_async: bool = True,
+        streaming: bool = False,
+    ) -> bt.Synapse:
+        """
+        Makes asynchronous requests to multiple target Axons and returns the server responses.
+
+        Args:
+            axons (Union[List[Union['bt.AxonInfo', 'bt.axon']], Union['bt.AxonInfo', 'bt.axon']]):
+                The list of target Axon information.
+            synapse (bt.Synapse, optional): The Synapse object. Defaults to bt.Synapse().
+            timeout (float, optional): The request timeout duration in seconds.
+                Defaults to 12.0 seconds.
+
+        Returns:
+            Union[bt.Synapse, List[bt.Synapse]]: If a single target axon is provided,
+                returns the response from that axon. If multiple target axons are provided,
+                returns a list of responses from all target axons.
+        """
+        is_list = True
+        # If a single axon is provided, wrap it in a list for uniform processing
+        if not isinstance(axons, list):
+            is_list = False
+            axons = [axons]
+
+        if streaming:
+            return self.call_stream(
+                target_axon=axons[0],
+                synapse=synapse.copy(),
+                timeout=timeout,
+                deserialize=deserialize,
+            )
+
+        # This asynchronous function is used to send queries to all axons.
+        async def query_all_axons() -> List[bt.Synapse]:
+            # If the 'run_async' flag is not set, the code runs synchronously.
+            if not run_async:
+                # Create an empty list to hold the responses from all axons.
+                all_responses = []
+                # Loop through each axon in the 'axons' list.
+                for target_axon in axons:
+                    # The response from each axon is then appended to the 'all_responses' list.
+                    all_responses.append(
+                        await self.call(
+                            target_axon=target_axon,
+                            synapse=synapse.copy(),
+                            timeout=timeout,
+                            deserialize=deserialize,
+                        )
+                    )
+                # The function then returns a list of responses from all axons.
+                return all_responses
+            else:
+                # Here we build a list of coroutines without awaiting them.
+                coroutines = [
+                    self.call(
+                        target_axon=target_axon,
+                        synapse=synapse.copy(),
+                        timeout=timeout,
+                        deserialize=deserialize,
+                    )
+                    for target_axon in axons
+                ]
+                # 'asyncio.gather' is a method which takes multiple coroutines and runs them in parallel.
+                all_responses = await asyncio.gather(*coroutines)
+                # The function then returns a list of responses from all axons.
+                return all_responses
+
+        # Run all requests concurrently and get the responses
+        responses = await query_all_axons()
+
+        # Return the single response if only one axon was targeted, else return all responses
+        if len(responses) == 1 and not is_list:
+            return responses[0]
+        else:
+            return responses
+
+    async def call_stream(
+        self,
+        target_axon: Union[bt.AxonInfo, bt.axon],
+        synapse: bt.Synapse = bt.Synapse(),
+        timeout: float = 12.0,
+        deserialize: bool = True,
+    ) -> bt.Synapse:
+        """
+        Makes an asynchronous request to the target Axon, processes the server
+        response and returns the updated Synapse.
+
+        Args:
+            target_axon (Union['bt.AxonInfo', 'bt.axon']): The target Axon information.
+            synapse (bt.Synapse, optional): The Synapse object. Defaults to bt.Synapse().
+            timeout (float, optional): The request timeout duration in seconds.
+                Defaults to 12.0 seconds.
+            deserialize (bool, optional): Whether to deserialize the returned Synapse.
+                Defaults to True.
+
+        Returns:
+            bt.Synapse: The updated Synapse object after processing server response.
+        """
+
+        # Record start time
+        start_time = time.time()
+        target_axon = (
+            target_axon.info()
+            if isinstance(target_axon, bt.axon)
+            else target_axon
+        )
+
+        # Build request endpoint from the synapse class
+        request_name = synapse.__class__.__name__
+        endpoint = (
+            f"0.0.0.0:{str(target_axon.port)}"
+            if target_axon.ip == str(self.external_ip)
+            else f"{target_axon.ip}:{str(target_axon.port)}"
+        )
+        url = f"http://{endpoint}/{request_name}"
+
+        # Preprocess synapse for making a request
+        synapse = self.preprocess_synapse_for_request(target_axon, synapse, timeout)
+
+        try:
+            # Log outgoing request
+            bt.logging.debug(
+                f"stream dendrite | --> | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | 0 | Success"
+            )
+
+            # Make the HTTP POST request
+            async with (await self.session).post(
+                url,
+                headers=synapse.to_headers(),
+                json=synapse.dict(),
+                timeout=timeout,
+            ) as response:
+                if (
+                    response.headers.get("Content-Type", "").lower()
+                    == "text/event-stream".lower()
+                ):  # identify streaming response
+                    async for token in synapse.process_streaming_response(response):
+                        yield token  # Yield each token as it's processed
+                    json_response = synapse.extract_response_json(response)
+                else:
+                    json_response = await response.json()
+
+                # Process the server response
+                self.process_server_response(response, json_response, synapse)
+
+            # Set process time and log the response
+            synapse.dendrite.process_time = str(time.time() - start_time)
+            bt.logging.debug(
+                f"dendrite | <-- | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | {synapse.axon.status_code} | {synapse.axon.status_message}"
+            )
+
+        except aiohttp.ClientConnectorError as e:
+            synapse.dendrite.status_code = "503"
+            synapse.dendrite.status_message = f"Service at {synapse.axon.ip}:{str(synapse.axon.port)}/{request_name} unavailable."
+
+        except asyncio.TimeoutError as e:
+            synapse.dendrite.status_code = "408"
+            synapse.dendrite.status_message = f"Timedout after {timeout} seconds."
+
+        except Exception as e:
+            synapse.dendrite.status_code = "422"
+            synapse.dendrite.status_message = (
+                f"Failed to parse response object with error: {str(e)}"
+            )
+
+        finally:
+            bt.logging.debug(
+                f"dendrite | <-- | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | {synapse.dendrite.status_code} | {synapse.dendrite.status_message}"
+            )
+
+            # Log synapse event history
+            self.synapse_history.append(
+                bt.Synapse.from_headers(synapse.to_headers())
+            )
+
+            # Return the updated synapse object after deserializing if requested
+            if deserialize:
+                yield synapse.deserialize()
+            else:
+                yield synapse
