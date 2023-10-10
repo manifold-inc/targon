@@ -31,7 +31,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple, Union
 
 import bittensor as bt
-from targon.protocol import Targon
+from targon.protocol import TargonStreaming
 
 from targon.miner.priority import priority
 from targon.miner.blacklist import blacklist, is_prompt_in_cache
@@ -168,7 +168,7 @@ class Miner(ABC):
         """
         ...
 
-    def _prompt(self, synapse: Targon) -> Targon:
+    def _prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
         A wrapper method around the `prompt` method that will be defined by the subclass.
 
@@ -178,10 +178,10 @@ class Miner(ABC):
         cache, the subclass `prompt` method is called.
 
         Args:
-            synapse (Targon): The incoming request object encapsulating the details of the request.
+            synapse (TargonStreaming): The incoming request object encapsulating the details of the request.
 
         Returns:
-            Targon: The response object to be sent back in reply to the incoming request, essentially
+            TargonStreaming: The response object to be sent back in reply to the incoming request, essentially
             the filled synapse request object.
 
         Raises:
@@ -199,7 +199,7 @@ class Miner(ABC):
         return self.prompt(synapse)
 
     @abstractmethod
-    def prompt(self, synapse: Targon) -> Targon:
+    def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
         Abstract method to handle and respond to incoming requests to the miner.
 
@@ -208,23 +208,23 @@ class Miner(ABC):
         be dependent on the specific implementation provided in the subclass.
 
         Args:
-            synapse (Targon): The incoming request object encapsulating the details
+            synapse (TargonStreaming): The incoming request object encapsulating the details
                 of the request. This must contain `messages` and `roles` as fields.
 
         Returns:
-            Targon: The response object that should be sent back in reply to the
+            TargonStreaming: The response object that should be sent back in reply to the
                 incoming request. This is essentially the filled synapse request object.
 
         Example:
             class CustomMiner(Miner):
-                def prompt(self, synapse: Targon) -> Targon:
+                def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
                     # Custom logic to process and respond to the request.
                     synapse.completion = "The meaning of life is 42."
                     return synapse
         """
         ...
 
-    def blacklist(self, synapse: Targon) -> Tuple[bool, str]:
+    def blacklist(self, synapse: TargonStreaming) -> Tuple[bool, str]:
         """
         Default blacklist logic
 
@@ -242,12 +242,12 @@ class Miner(ABC):
             blacklisted (:obj:`bool`):
         """
 
-        def _blacklist(synapse: "Targon") -> Tuple[bool, str]:
+        def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
             raise NotImplementedError("blacklist not implemented in subclass")
 
         return blacklist(self, _blacklist, synapse)
 
-    def priority(self, synapse: Targon) -> float:
+    def priority(self, synapse: TargonStreaming) -> float:
         """
         Define how miners should prioritize requests.
 
@@ -265,7 +265,7 @@ class Miner(ABC):
             priority (:obj:`float`):
         """
 
-        def _priority(synapse: "Targon") -> bool:
+        def _priority(synapse: "TargonStreaming") -> bool:
             raise NotImplementedError("priority not implemented in subclass")
 
         return priority(self, _priority, synapse)
