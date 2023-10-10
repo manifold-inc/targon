@@ -4,22 +4,16 @@ import torch
 import asyncio
 import argparse
 import bittensor as bt
-import torchvision.transforms as transforms
 
 
 from typing import List
-from functools import partial
-from starlette.types import Send
-from min.minigpt4 import MiniGPT4
+from targon.protocol import Targon
 from targon.miner.miner import Miner 
-from transformers import GPT2Tokenizer
-from targon.protocol import TargonStreaming
-from min.conversation import Chat, CONV_VISION
-from min.blip_processor import Blip2ImageEvalProcessor
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 
-class MiniGPT4Miner( Miner ):
+class QwenMiner( Miner ):
     def config(self) -> "bt.Config":
         parser = argparse.ArgumentParser(description="Streaming Miner Configs")
         self.add_args(parser)
@@ -37,42 +31,25 @@ class MiniGPT4Miner( Miner ):
                 The command line argument parser to which custom arguments should be added.
         """
         parser.add_argument(
-            "--minigpt4.do_prompt_injection",
+            "--qwen.do_prompt_injection",
             action="store_true",
             default=False,
             help='Whether to use a custom "system" prompt instead of the one sent by bittensor.',
         )
         parser.add_argument(
-            "--minigpt4.system_prompt",
+            "--qwen.system_prompt",
             type=str,
             help="What prompt to replace the system prompt with",
             default="A chat between a curious user and an artificial intelligence assistant.\nThe assistant gives helpful, detailed, and polite answers to the user's questions. ",
         )
 
     def __init__(self, *args, **kwargs):
-        super(MiniGPT4Miner, self).__init__(*args, **kwargs)
+        super(QwenMiner, self).__init__(*args, **kwargs)
         
-        # get the directory this file is in
-        base_path = os.path.dirname(os.path.realpath(__file__))
+        self.tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL-Chat", trust_remote_code=True)
+        self.model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL-Chat", device_map="cuda", trust_remote_code=True).eval()
+        
 
-        self.model = MiniGPT4(
-            vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
-            llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
-            q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
-        )
-
-        # ckpt_path = "models/pretrained_minigpt4.pth"
-        ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
-
-        print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
-        ckpt = torch.load(ckpt_path, map_location="cpu")
-        self.model.load_state_dict(ckpt['model'], strict=False)
-
-        torch.compile(self.model)
-
-        self.vis_processor = Blip2ImageEvalProcessor()
-
-        self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
         bt.logging.info('model loaded, ready to go!')
 
     def _process_history(self, roles: List[str], messages: List[str]) -> str:
@@ -84,11 +61,11 @@ class MiniGPT4Miner( Miner ):
         if the configuration specifies to do so.
         """
         processed_history = ""
-        if self.config.minigpt4.do_prompt_injection:
-            processed_history += self.config.minigpt4.system_prompt
+        if self.config.qwen.do_prompt_injection:
+            processed_history += self.config.btlm.system_prompt
         for role, message in zip(roles, messages):
             if role == "system":
-                if not self.config.minigpt4.do_prompt_injection or message != messages[0]:
+                if not self.config.qwen.do_prompt_injection or message != messages[0]:
                     processed_history += "system: " + message + "\n"
             if role == "assistant":
                 processed_history += "assistant: " + message + "\n"
@@ -97,7 +74,7 @@ class MiniGPT4Miner( Miner ):
         return processed_history
 
 
-    def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+    def prompt(self, synapse: Targon) -> Targon:
         """
         Generates a streaming response for the provided synapse.
 
@@ -150,29 +127,8 @@ class MiniGPT4Miner( Miner ):
 
 
 if __name__ == "__main__":
-    """
-    Entry point for executing the StreamingTemplateMiner.
-
-    This block initializes the StreamingTemplateMiner and runs it, effectively connecting
-    it to the Bittensor network. Once connected, the miner will continuously listen for
-    incoming requests from the Bittensor network. For every request, it responds with a
-    static message processed as per the logic defined in the 'prompt' method of the
-    StreamingTemplateMiner class.
-
-    The main loop at the end serves to keep the miner running indefinitely. It periodically
-    prints a "running..." message to the console, providing a simple indication that the miner
-    is operational and active.
-
-    Developers looking to extend or customize the miner's behavior can modify the
-    StreamingTemplateMiner class and its methods. However, this block itself usually
-    remains unchanged unless there's a need for specific startup behaviors or configurations.
-
-    To start the miner:
-    Simply execute this script. Ensure all dependencies are properly installed and network
-    configurations are correctly set up.
-    """
     bt.debug()
-    with MiniGPT4Miner():
+    with QwenMiner():
         while True:
             print("running...", time.time())
             time.sleep(1)

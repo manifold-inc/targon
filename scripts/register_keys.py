@@ -14,7 +14,7 @@ class WalletRegister:
         self.n = n if n is not None else 0
         self.RAOPERTAO = 1e9
         self.U64_MAX = 18_446_744_073_709_551_615
-        self.wallet_name = wallet_name if wallet_name is not None else "lilith"
+        self.wallet_name = wallet_name if wallet_name is not None else "SN4_1"
         self.subtensor = bt.subtensor( network="finney" )
         self.metagraph = self.subtensor.metagraph( netuid=self.netuid )
         self.wallets = {}
