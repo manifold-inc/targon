@@ -52,28 +52,29 @@ class MiniGPT4Miner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        # self.model = MiniGPT4(
-        #     vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
-        #     llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
-        #     q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
-        # )
+        self.model = MiniGPT4(
+            vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
+            llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
+            q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
+        )
 
-        # # ckpt_path = "models/pretrained_minigpt4.pth"
-        # ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
+        # ckpt_path = "models/pretrained_minigpt4.pth"
+        ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
 
-        # print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
-        # ckpt = torch.load(ckpt_path, map_location="cpu")
-        # self.model.load_state_dict(ckpt['model'], strict=False)
+        print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        self.model.load_state_dict(ckpt['model'], strict=False)
 
-        # torch.compile(self.model)
+        torch.compile(self.model)
 
-        # self.vis_processor = Blip2ImageEvalProcessor()
-        # self.stop_words_ids = [torch.tensor([835]).to(self.device),
-        #                   torch.tensor([2277, 29937]).to(self.device)]  # '###' can be encoded in two different ways
+        self.vis_processor = Blip2ImageEvalProcessor()
+        self.stop_words_ids = [torch.tensor([835]).to(self.device),
+                          torch.tensor([2277, 29937]).to(self.device)]  # '###' can be encoded in two different ways
 
-        # self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
-        # self.stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=self.stop_words_ids)])
+        self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
+        self.stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=self.stop_words_ids)])
         bt.logging.info('model loaded, ready to go!')
+
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
@@ -107,100 +108,98 @@ class MiniGPT4Miner( Miner ):
             bt.logging.info('image detected!!!!!!', image_list[0].shape)
 
         
-            # chat_state = CONV_VISION.copy()
+            chat_state = CONV_VISION.copy()
 
     
-            # for image in decoded_tensor_list:
-            #     self.chat.upload_img(image, chat_state, decoded_tensor_list)
+            for image in decoded_tensor_list:
+                self.chat.upload_img(image, chat_state, image_list)
 
-        message = synapse.messages[0]
-        return synapse
-        # async def _prompt(text: str, send: Send):
-        #     """
-        #     Asynchronously processes the input text and sends back tokens as a streaming response.
+        async def _prompt(text: str, send: Send):
+            """
+            Asynchronously processes the input text and sends back tokens as a streaming response.
 
-        #     This function takes an input text, tokenizes it using the GPT-2 tokenizer, and then
-        #     uses the simulated model to decode token IDs into strings. It then sends each token
-        #     back to the client as a streaming response, with a delay between tokens to simulate
-        #     the effect of real-time streaming.
+            This function takes an input text, tokenizes it using the GPT-2 tokenizer, and then
+            uses the simulated model to decode token IDs into strings. It then sends each token
+            back to the client as a streaming response, with a delay between tokens to simulate
+            the effect of real-time streaming.
 
-        #     Args:
-        #         text (str): The input text message to be processed.
-        #         send (Send): An asynchronous function that allows sending back the streaming response.
+            Args:
+                text (str): The input text message to be processed.
+                send (Send): An asynchronous function that allows sending back the streaming response.
 
-        #     Usage:
-        #         This function can be adjusted based on the streaming requirements, speed of
-        #         response, or the model being used. Developers can also introduce more sophisticated
-        #         processing steps or modify how tokens are sent back to the client.
-        #     """
-        #     self.chat.ask(text, chat_state)
+            Usage:
+                This function can be adjusted based on the streaming requirements, speed of
+                response, or the model being used. Developers can also introduce more sophisticated
+                processing steps or modify how tokens are sent back to the client.
+            """
+            self.chat.ask(text, chat_state)
 
 
-        #     chat_state.append_message(chat_state.roles[1], None)
-        #     embs = self.chat.get_context_emb(chat_state, decoded_tensor_list)
+            chat_state.append_message(chat_state.roles[1], None)
+            embs = self.chat.get_context_emb(chat_state, decoded_tensor_list)
 
-        #     current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
-        #     if current_max_len > self.config.minigpt4.max_length:
-        #         print('Warning: The number of tokens in current conversation exceeds the max length. '
-        #             'The model will not see the contexts outside the range.')
-        #     begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
+            current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
+            if current_max_len > self.config.minigpt4.max_length:
+                print('Warning: The number of tokens in current conversation exceeds the max length. '
+                    'The model will not see the contexts outside the range.')
+            begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
 
-        #     embs = embs[:, begin_idx:]
+            embs = embs[:, begin_idx:]
 
-        #     streamer = TextIteratorStreamer(self.model.llama_tokenizer)
+            streamer = TextIteratorStreamer(self.model.llama_tokenizer)
 
-        #     generation_kwargs = dict(streamer=streamer,
-        #         inputs_embeds=embs,
-        #         max_new_tokens=self.config.minigpt4.max_new_tokens,
-        #         stopping_criteria=self.stopping_criteria,
-        #         num_beams=self.config.minigpt4.num_beams,
-        #         do_sample=True,
-        #         min_length=self.config.minigpt4.min_length,
-        #         top_p=self.config.minigpt4.top_p,
-        #         repetition_penalty=self.config.minigpt4.repetition_penalty,
-        #         length_penalty=self.config.minigpt4.length_penalty,
-        #         temperature=self.config.minigpt4.temperature)
+            generation_kwargs = dict(streamer=streamer,
+                inputs_embeds=embs,
+                max_new_tokens=self.config.minigpt4.max_new_tokens,
+                stopping_criteria=self.stopping_criteria,
+                num_beams=self.config.minigpt4.num_beams,
+                do_sample=True,
+                min_length=self.config.minigpt4.min_length,
+                top_p=self.config.minigpt4.top_p,
+                repetition_penalty=self.config.minigpt4.repetition_penalty,
+                length_penalty=self.config.minigpt4.length_penalty,
+                temperature=self.config.minigpt4.temperature)
 
-        #     thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
-        #     thread.start()
+            thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
+            thread.start()
 
-        #     buffer = []
-        #     output_text = ""
-        #     for token in streamer:
-        #         output_text += token
+            buffer = []
+            output_text = ""
+            for token in streamer:
+                output_text += token
 
                 
-        #         N = 3  # Number of tokens to send back to the client at a time
-        #         buffer.append(token)
-        #         # If buffer has N tokens, send them back to the client.
-        #         if len(buffer) == N:
-        #             joined_buffer = "".join(buffer)
-        #             await send(
-        #                 {
-        #                     "type": "http.response.body",
-        #                     "body": joined_buffer.encode("utf-8"),
-        #                     "more_body": True,
-        #                 }
-        #             )
-        #             bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-        #             buffer = []  # Clear the buffer for next batch of tokens
-        #             # await asyncio.sleep(0.08)  # Simulate streaming delay
+                N = 3  # Number of tokens to send back to the client at a time
+                buffer.append(token)
+                # If buffer has N tokens, send them back to the client.
+                if len(buffer) == N:
+                    joined_buffer = "".join(buffer)
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": joined_buffer.encode("utf-8"),
+                            "more_body": True,
+                        }
+                    )
+                    bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+                    buffer = []  # Clear the buffer for next batch of tokens
+                    # await asyncio.sleep(0.08)  # Simulate streaming delay
             
-        #     # Send any remaining tokens in the buffer
-        #     if buffer:
-        #         joined_buffer = "".join(buffer)
-        #         await send(
-        #             {
-        #                 "type": "http.response.body",
-        #                 "body": joined_buffer.encode("utf-8"),
-        #                 "more_body": False,  # No more tokens to send
-        #             }
-        #         )
-        #         bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+            # Send any remaining tokens in the buffer
+            if buffer:
+                joined_buffer = "".join(buffer)
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": joined_buffer.encode("utf-8"),
+                        "more_body": False,  # No more tokens to send
+                    }
+                )
+                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
 
-        # message = synapse.messages[0]
-        # token_streamer = partial(_prompt, message)
-        # return synapse.create_streaming_response(token_streamer)
+        message = synapse.messages[0]
+        token_streamer = partial(_prompt, message)
+        return synapse.create_streaming_response(token_streamer)
 
 
 
