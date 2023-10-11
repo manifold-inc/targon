@@ -1,7 +1,9 @@
 import os
 import time
 import torch
+import shutil
 import asyncio
+import tempfile
 import argparse
 import bittensor as bt
 
@@ -99,20 +101,34 @@ class MiniGPT4Miner( Miner ):
         """
         decoded_tensor_list = []
         if len(synapse.images) > 0:
+            image_list = []
             image_transform = Compose([
-                # ToPILImage(),
+                ToPILImage(),
                 Resize((224, 224))
             ])
-            to_pil_image = ToPILImage()
-            image_list = [image_transform(bt.Tensor.deserialize(image)) for image in synapse.images]
-            bt.logging.info('image detected!!!!!!', image_list[0].shape)
+            # to_pil_image = ToPILImage()
+            # image_list = [image_transform(bt.Tensor.deserialize(image)) for image in synapse.images]
+            # bt.logging.info('image detected!!!!!!', image_list[0].shape)
 
         
             chat_state = CONV_VISION.copy()
 
-    
-            for image in image_list:
-                self.chat.upload_img(image, chat_state, image_list)
+            # Create a temporary directory
+            temp_dir = tempfile.mkdtemp()
+
+
+            file_paths = []  # This will store the paths of the saved images
+
+            # Deserialize the tensors, apply the transformation, and save to the temp directory
+            for idx, image_tensor in enumerate(synapse.images):
+                image = image_transform(bt.Tensor.deserialize(image_tensor))
+                file_path = os.path.join(temp_dir, f"temp_image_{idx}.png")
+                image.save(file_path)
+                file_paths.append(file_path)
+
+            for file in file_path:
+                self.chat.upload_img(file, chat_state, image_list)
+
 
         async def _prompt(text: str, send: Send):
             """
