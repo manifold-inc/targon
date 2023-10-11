@@ -49,7 +49,7 @@ class MiniGPT4Miner( Miner ):
     def __init__(self, *args, **kwargs):
         super(MiniGPT4Miner, self).__init__(*args, **kwargs)
         
-
+        self.config = self.config()
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
