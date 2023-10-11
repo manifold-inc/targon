@@ -99,14 +99,15 @@ class MiniGPT4Miner( Miner ):
         decoded_tensor_list = []
         if len(synapse.images) > 0:
             resizing_transform = Compose([
-                Resize((224, 224))
+                Resize((224, 224)),
+                ToPILImage()
             ])
             to_pil_image = ToPILImage()
             image_list  = [bt.Tensor.deserialize(image) for image in synapse.images]
-            decoded_tensor_list = [to_pil_image(resizing_transform((image * 255).byte())) for image in image_list]
-            bt.logging.info('image detected!!!!!!', decoded_tensor_list[0])
+            decoded_tensor_list = [resizing_transform(image) for image in image_list]
+            bt.logging.info('image detected!!!!!!', decoded_tensor_list)
 
-
+        
             # chat_state = CONV_VISION.copy()
 
     
