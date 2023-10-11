@@ -5,15 +5,18 @@ import asyncio
 import argparse
 import bittensor as bt
 
+from threading import Thread
 from functools import partial
 from starlette.types import Send
 from min.minigpt4 import MiniGPT4
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
 from targon.protocol import TargonStreaming
-from min.conversation import Chat, CONV_VISION
+from transformers import TextIteratorStreamer
+from torchvision.transforms import ToPILImage
+from min.conversation import Chat, CONV_VISION, StoppingCriteriaSub
 from min.blip_processor import Blip2ImageEvalProcessor
-
+from transformers import StoppingCriteria, StoppingCriteriaList
 
 
 class MiniGPT4Miner( Miner ):
@@ -33,32 +36,42 @@ class MiniGPT4Miner( Miner ):
             parser (argparse.ArgumentParser):
                 The command line argument parser to which custom arguments should be added.
         """
-        pass
+        parser.add_argument('minigpt4.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
+        parser.add_argument('minigpt4.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
+        parser.add_argument('minigpt4.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
+        parser.add_argument('minigpt4.top_p', type=float, default=0.9, help='Top p for nucleus sampling.')
+        parser.add_argument('minigpt4.repetition_penalty', type=float, default=1.0, help='Repetition penalty.')
+        parser.add_argument('minigpt4.length_penalty', type=float, default=1.0, help='Length penalty.')
+        parser.add_argument('minigpt4.temperature', type=float, default=1.0, help='Temperature for sampling.')
+        parser.add_argument('minigpt4.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
+        parser.add_argument('minigpt4.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
 
     def __init__(self, *args, **kwargs):
         super(MiniGPT4Miner, self).__init__(*args, **kwargs)
         
+
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        # self.model = MiniGPT4(
-        #     vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
-        #     llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
-        #     q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
-        # )
+        self.model = MiniGPT4(
+            vision_model_path=os.path.join(base_path, "models/eva_vit_g.pth"), #"models/eva_vit_g.pth",
+            llama_model=os.path.join(base_path, "models/vicuna13b_v0/"),
+            q_former_model=os.path.join(base_path, "models/blip2_pretrained_flant5xxl.pth"),
+        )
 
-        # # ckpt_path = "models/pretrained_minigpt4.pth"
-        # ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
+        # ckpt_path = "models/pretrained_minigpt4.pth"
+        ckpt_path = os.path.join(base_path, "models/pretrained_minigpt4.pth")
 
-        # print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
-        # ckpt = torch.load(ckpt_path, map_location="cpu")
-        # self.model.load_state_dict(ckpt['model'], strict=False)
+        print("Load BLIP2-LLM Checkpoint: {}".format(ckpt_path))
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        self.model.load_state_dict(ckpt['model'], strict=False)
 
-        # torch.compile(self.model)
+        torch.compile(self.model)
 
-        # self.vis_processor = Blip2ImageEvalProcessor()
+        self.vis_processor = Blip2ImageEvalProcessor()
 
-        # self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
+        self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
+        self.stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=self.chat.stop_words_ids)])
         bt.logging.info('model loaded, ready to go!')
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
@@ -82,19 +95,20 @@ class MiniGPT4Miner( Miner ):
             miner. Developers can swap out the tokenizer, model, or adjust how streaming responses
             are generated to suit their specific applications.
         """
-
+        decoded_tensor_list = []
         if len(synapse.images) > 0:
+            to_pil_image = ToPILImage()
             image_list  = [bt.Tensor.deserialize(image) for image in synapse.images]
+            decoded_tensor_list = [to_pil_image((image * 255).byte()) for image in image_list]
             bt.logging.info('image detected!!!!!!', image_list)
 
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
-        bt.logging.info('synapse', synapse)
+            chat_state = CONV_VISION.copy()
 
-        # Simulated function to decode token IDs into strings. In a real-world scenario,
-        # this can be replaced with an actual model inference step.
-        def model(ids):
-            return (tokenizer.decode(id) for id in ids)
+    
+            for image in decoded_tensor_list:
+                self.chat.upload_img(image, chat_state, decoded_tensor_list)
+
 
         async def _prompt(text: str, send: Send):
             """
@@ -114,10 +128,44 @@ class MiniGPT4Miner( Miner ):
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
             """
-            input_ids = tokenizer(text, return_tensors="pt").input_ids.squeeze()
+            self.chat.ask(text, chat_state)
+
+
+            chat_state.append_message(chat_state.roles[1], None)
+            embs = self.chat.get_context_emb(chat_state, decoded_tensor_list)
+
+            current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
+            if current_max_len > self.config.minigpt4.max_length:
+                print('Warning: The number of tokens in current conversation exceeds the max length. '
+                    'The model will not see the contexts outside the range.')
+            begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
+
+            embs = embs[:, begin_idx:]
+
+            streamer = TextIteratorStreamer(self.model.llama_tokenizer)
+
+            generation_kwargs = dict(streamer=streamer,
+                inputs_embeds=embs,
+                max_new_tokens=self.config.minigpt4.max_new_tokens,
+                stopping_criteria=self.stopping_criteria,
+                num_beams=self.config.minigpt4.num_beams,
+                do_sample=True,
+                min_length=self.config.minigpt4.min_length,
+                top_p=self.config.minigpt4.top_p,
+                repetition_penalty=self.config.minigpt4.repetition_penalty,
+                length_penalty=self.config.minigpt4.length_penalty,
+                temperature=self.config.minigpt4.temperature)
+
+            thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
+            thread.start()
+
             buffer = []
-            N = 3  # Number of tokens to send back to the client at a time
-            for token in model(input_ids):
+            output_text = ""
+            for token in streamer:
+                output_text += token
+
+                
+                N = 3  # Number of tokens to send back to the client at a time
                 buffer.append(token)
                 # If buffer has N tokens, send them back to the client.
                 if len(buffer) == N:
@@ -131,7 +179,7 @@ class MiniGPT4Miner( Miner ):
                     )
                     bt.logging.debug(f"Streamed tokens: {joined_buffer}")
                     buffer = []  # Clear the buffer for next batch of tokens
-                    await asyncio.sleep(0.08)  # Simulate streaming delay
+                    # await asyncio.sleep(0.08)  # Simulate streaming delay
             
             # Send any remaining tokens in the buffer
             if buffer:

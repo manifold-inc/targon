@@ -33,24 +33,24 @@ Usage:
             """
 
 # find all hotkeys with an axon ip that is not none
+# Open the image
 image_path = "neurons/miniGPT4/icbm_bicycle.png"
 image = Image.open(image_path)
 
+# Convert the image to a tensor, then convert to float and scale to [0, 1]
 tensor_transform = transforms.Compose([
-    transforms.PILToTensor()
-])
-
-image_tensor = tensor_transform(image)
-
-normalized_transform = transforms.Compose([
     transforms.PILToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.Lambda(lambda x: x.float() / 255.0)
 ])
-normalized_image_tensor = normalized_transform(image)
+image_tensor_float = tensor_transform(image)
 
-serialized_tensor = bt.Tensor.serialize(image_tensor)
+# Now normalize
+normalized_transform = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+normalized_image_tensor = normalized_transform(image_tensor_float)
 
-axons = [axon for axon in metagraph.axons if axon.ip == '184.105.4.10']
+serialized_tensor = bt.Tensor.serialize(normalized_image_tensor)
+
+axons = [axon for axon in metagraph.axons if axon.ip == '184.105.87.189']
 
 
 synapse = TargonStreaming(roles=['user'], messages=[prompt], images=[serialized_tensor])
