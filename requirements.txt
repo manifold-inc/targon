@@ -14,3 +14,5 @@ numpy==1.22.0
 timm
 accelerate
 bitsandbytes
+torchvision
+PIL

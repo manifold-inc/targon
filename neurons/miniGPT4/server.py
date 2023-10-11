@@ -83,6 +83,10 @@ class MiniGPT4Miner( Miner ):
             are generated to suit their specific applications.
         """
 
+        if len(synapse.images) > 0:
+            image_list  = [bt.Tensor.deserialize(image) for image in synapse.images]
+            bt.logging.info('image detected!!!!!!', image_list)
+
         tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
         bt.logging.info('synapse', synapse)

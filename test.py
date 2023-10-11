@@ -1,7 +1,9 @@
 import asyncio
 import bittensor as bt
+import torchvision.transforms as transforms
+from PIL import Image
 
-from targon.protocol import TargonStreaming
+from targon.protocol import TargonStreaming, TargonDendrite
 subtensor = bt.subtensor( network = 'finney' )
 metagraph = subtensor.metagraph( netuid = 4 )
 
@@ -10,7 +12,7 @@ metagraph = subtensor.metagraph( netuid = 4 )
 bt.debug()
 wallet = bt.wallet( name="lilith", hotkey="A4" )
 
-dendrite = bt.dendrite( wallet = wallet )
+dendrite = TargonDendrite( wallet = wallet )
 
 prompt = """
 Asynchronously processes the input text and sends back tokens as a streaming response.
@@ -31,21 +33,39 @@ Usage:
             """
 
 # find all hotkeys with an axon ip that is not none
+image_path = "neurons/miniGPT4/icbm_bicycle.png"
+image = Image.open(image_path)
 
+tensor_transform = transforms.Compose([
+    transforms.PILToTensor()
+])
 
+image_tensor = tensor_transform(image)
+
+normalized_transform = transforms.Compose([
+    transforms.PILToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+normalized_image_tensor = normalized_transform(image)
+
+serialized_tensor = bt.Tensor.serialize(image_tensor)
 
 axons = [axon for axon in metagraph.axons if axon.ip == '184.105.4.10']
-synapse = TargonStreaming(roles=['user'], messages=[prompt])
+
+
+synapse = TargonStreaming(roles=['user'], messages=[prompt], images=[serialized_tensor])
 
 
 async def fetch():
     responses = await dendrite(
         axons=axons,
         synapse=synapse,
-        timeout=60
+        timeout=60,
+        streaming=True
     )
-    print(responses)
-    # r = await synapse.process_streaming_response(responses)
+    async for token in responses:
+        print(token, end="", flush=True)  # or handle the token as needed
+
     return responses
 
 
@@ -54,9 +74,10 @@ async def fetch():
 #         print( token )
 
 
+asyncio.run(fetch())
 
 # dendrite(axons=axons, synapse=synapse, timeout=60)
 import code; code.interact(local=dict(globals(), **locals()))
-responses = asyncio.run(fetch())
+# responses = asyncio.run(fetch())
 
-print(responses)
+# print(responses)
