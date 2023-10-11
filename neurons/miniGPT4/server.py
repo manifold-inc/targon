@@ -104,7 +104,7 @@ class MiniGPT4Miner( Miner ):
             ])
             to_pil_image = ToPILImage()
             image_list  = [bt.Tensor.deserialize(image) for image in synapse.images]
-            decoded_tensor_list = [resizing_transform(image) for image in image_list]
+            decoded_tensor_list = [to_pil_image(image) for image in image_list]
             bt.logging.info('image detected!!!!!!', decoded_tensor_list)
 
         
