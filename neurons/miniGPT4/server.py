@@ -48,7 +48,7 @@ class MiniGPT4Miner( Miner ):
 
     def __init__(self, *args, **kwargs):
         super(MiniGPT4Miner, self).__init__(*args, **kwargs)
-        
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -68,9 +68,11 @@ class MiniGPT4Miner( Miner ):
         torch.compile(self.model)
 
         self.vis_processor = Blip2ImageEvalProcessor()
+        self.stop_words_ids = [torch.tensor([835]).to(self.device),
+                          torch.tensor([2277, 29937]).to(self.device)]  # '###' can be encoded in two different ways
 
         self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
-        self.stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=self.chat.stop_words_ids)])
+        self.stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=self.stop_words_ids)])
         bt.logging.info('model loaded, ready to go!')
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
