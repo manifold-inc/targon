@@ -111,7 +111,7 @@ class MiniGPT4Miner( Miner ):
             chat_state = CONV_VISION.copy()
 
     
-            for image in decoded_tensor_list:
+            for image in image_list:
                 self.chat.upload_img(image, chat_state, image_list)
 
         async def _prompt(text: str, send: Send):
