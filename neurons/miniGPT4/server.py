@@ -8,7 +8,7 @@ import bittensor as bt
 from threading import Thread
 from functools import partial
 from starlette.types import Send
-from min.minigpt4 import MiniGPT4
+from min.--minigpt4 import MiniGPT4
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
 from targon.protocol import TargonStreaming
@@ -36,20 +36,19 @@ class MiniGPT4Miner( Miner ):
             parser (argparse.ArgumentParser):
                 The command line argument parser to which custom arguments should be added.
         """
-        parser.add_argument('minigpt4.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
-        parser.add_argument('minigpt4.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
-        parser.add_argument('minigpt4.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
-        parser.add_argument('minigpt4.top_p', type=float, default=0.9, help='Top p for nucleus sampling.')
-        parser.add_argument('minigpt4.repetition_penalty', type=float, default=1.0, help='Repetition penalty.')
-        parser.add_argument('minigpt4.length_penalty', type=float, default=1.0, help='Length penalty.')
-        parser.add_argument('minigpt4.temperature', type=float, default=1.0, help='Temperature for sampling.')
-        parser.add_argument('minigpt4.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
-        parser.add_argument('minigpt4.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
+        parser.add_argument('--minigpt4.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
+        parser.add_argument('--minigpt4.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
+        parser.add_argument('--minigpt4.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
+        parser.add_argument('--minigpt4.top_p', type=float, default=0.9, help='Top p for nucleus sampling.')
+        parser.add_argument('--minigpt4.repetition_penalty', type=float, default=1.0, help='Repetition penalty.')
+        parser.add_argument('--minigpt4.length_penalty', type=float, default=1.0, help='Length penalty.')
+        parser.add_argument('--minigpt4.temperature', type=float, default=1.0, help='Temperature for sampling.')
+        parser.add_argument('--minigpt4.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
+        parser.add_argument('--minigpt4.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
 
     def __init__(self, *args, **kwargs):
         super(MiniGPT4Miner, self).__init__(*args, **kwargs)
         
-        self.config = self.config()
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -134,11 +133,11 @@ class MiniGPT4Miner( Miner ):
             chat_state.append_message(chat_state.roles[1], None)
             embs = self.chat.get_context_emb(chat_state, decoded_tensor_list)
 
-            current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
-            if current_max_len > self.config.minigpt4.max_length:
+            current_max_len = embs.shape[1] + self.config.--minigpt4.max_new_tokens
+            if current_max_len > self.config.--minigpt4.max_length:
                 print('Warning: The number of tokens in current conversation exceeds the max length. '
                     'The model will not see the contexts outside the range.')
-            begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
+            begin_idx = max(0, current_max_len - self.config.--minigpt4.max_length)
 
             embs = embs[:, begin_idx:]
 
@@ -146,15 +145,15 @@ class MiniGPT4Miner( Miner ):
 
             generation_kwargs = dict(streamer=streamer,
                 inputs_embeds=embs,
-                max_new_tokens=self.config.minigpt4.max_new_tokens,
+                max_new_tokens=self.config.--minigpt4.max_new_tokens,
                 stopping_criteria=self.stopping_criteria,
-                num_beams=self.config.minigpt4.num_beams,
+                num_beams=self.config.--minigpt4.num_beams,
                 do_sample=True,
-                min_length=self.config.minigpt4.min_length,
-                top_p=self.config.minigpt4.top_p,
-                repetition_penalty=self.config.minigpt4.repetition_penalty,
-                length_penalty=self.config.minigpt4.length_penalty,
-                temperature=self.config.minigpt4.temperature)
+                min_length=self.config.--minigpt4.min_length,
+                top_p=self.config.--minigpt4.top_p,
+                repetition_penalty=self.config.--minigpt4.repetition_penalty,
+                length_penalty=self.config.--minigpt4.length_penalty,
+                temperature=self.config.--minigpt4.temperature)
 
             thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
             thread.start()
