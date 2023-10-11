@@ -144,11 +144,14 @@ class MiniGPT4Miner( Miner ):
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
             """
-            self.chat.ask(text, chat_state)
-
+            if len(chat_state.messages) > 0 and chat_state.messages[-1][0] == chat_state.roles[0] \
+                    and chat_state.messages[-1][1][-6:] == '</Img>':  # last message is image.
+                chat_state.messages[-1][1] = ' '.join([chat_state.messages[-1][1], text])
+            else:
+                chat_state.append_message(chat_state.roles[0], text)
 
             chat_state.append_message(chat_state.roles[1], None)
-            embs = self.chat.get_context_emb(chat_state, decoded_tensor_list)
+            embs = self.chat.get_context_emb(chat_state, image_list)
 
             current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
             if current_max_len > self.config.minigpt4.max_length:
@@ -296,7 +299,7 @@ if __name__ == "__main__":
 
 #         print("Live output: ", end='', flush=True)
 
-#         output_text = chat.answer_async(conv=chat_state,
+#         output_text = chat.answer_async(chat_state=chat_state,
 #                                     img_list=img_list,
 #                                     num_beams=num_beams,
 #                                     temperature=temperature,
