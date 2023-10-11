@@ -104,7 +104,7 @@ class MiniGPT4Miner( Miner ):
             ])
             to_pil_image = ToPILImage()
             image_list = [image_transform(bt.Tensor.deserialize(image)) for image in synapse.images]
-            bt.logging.info('image detected!!!!!!', image_list)
+            bt.logging.info('image detected!!!!!!', image_list.shape)
 
         
             # chat_state = CONV_VISION.copy()
