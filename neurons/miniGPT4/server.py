@@ -8,7 +8,7 @@ import bittensor as bt
 from threading import Thread
 from functools import partial
 from starlette.types import Send
-from min.--minigpt4 import MiniGPT4
+from min.minigpt4 import MiniGPT4
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
 from targon.protocol import TargonStreaming
@@ -133,11 +133,11 @@ class MiniGPT4Miner( Miner ):
             chat_state.append_message(chat_state.roles[1], None)
             embs = self.chat.get_context_emb(chat_state, decoded_tensor_list)
 
-            current_max_len = embs.shape[1] + self.config.--minigpt4.max_new_tokens
-            if current_max_len > self.config.--minigpt4.max_length:
+            current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
+            if current_max_len > self.config.minigpt4.max_length:
                 print('Warning: The number of tokens in current conversation exceeds the max length. '
                     'The model will not see the contexts outside the range.')
-            begin_idx = max(0, current_max_len - self.config.--minigpt4.max_length)
+            begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
 
             embs = embs[:, begin_idx:]
 
@@ -145,15 +145,15 @@ class MiniGPT4Miner( Miner ):
 
             generation_kwargs = dict(streamer=streamer,
                 inputs_embeds=embs,
-                max_new_tokens=self.config.--minigpt4.max_new_tokens,
+                max_new_tokens=self.config.minigpt4.max_new_tokens,
                 stopping_criteria=self.stopping_criteria,
-                num_beams=self.config.--minigpt4.num_beams,
+                num_beams=self.config.minigpt4.num_beams,
                 do_sample=True,
-                min_length=self.config.--minigpt4.min_length,
-                top_p=self.config.--minigpt4.top_p,
-                repetition_penalty=self.config.--minigpt4.repetition_penalty,
-                length_penalty=self.config.--minigpt4.length_penalty,
-                temperature=self.config.--minigpt4.temperature)
+                min_length=self.config.minigpt4.min_length,
+                top_p=self.config.minigpt4.top_p,
+                repetition_penalty=self.config.minigpt4.repetition_penalty,
+                length_penalty=self.config.minigpt4.length_penalty,
+                temperature=self.config.minigpt4.temperature)
 
             thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
             thread.start()
