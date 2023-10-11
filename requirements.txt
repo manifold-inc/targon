@@ -15,4 +15,3 @@ timm
 accelerate
 bitsandbytes
 torchvision
-PIL
