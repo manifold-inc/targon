@@ -99,7 +99,7 @@ class MiniGPT4Miner( Miner ):
         decoded_tensor_list = []
         if len(synapse.images) > 0:
             image_transform = Compose([
-                ToPILImage(),
+                # ToPILImage(),
                 Resize((224, 224))
             ])
             to_pil_image = ToPILImage()
