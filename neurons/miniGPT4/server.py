@@ -99,6 +99,7 @@ class MiniGPT4Miner( Miner ):
             miner. Developers can swap out the tokenizer, model, or adjust how streaming responses
             are generated to suit their specific applications.
         """
+        images = [bt.Tensor.deserialize(image) for image in synapse.images]
         decoded_tensor_list = []
         if len(synapse.images) > 0:
             image_list = []
@@ -120,14 +121,9 @@ class MiniGPT4Miner( Miner ):
             file_paths = []  # This will store the paths of the saved images
 
             # Deserialize the tensors, apply the transformation, and save to the temp directory
-            for idx, image_tensor in enumerate(synapse.images):
-                image = image_transform(bt.Tensor.deserialize(image_tensor))
-                file_path = os.path.join(temp_dir, f"temp_image_{idx}.png")
-                image.save(file_path)
-                file_paths.append(file_path)
-
-            for file in file_path:
-                self.chat.upload_img(file, chat_state, image_list)
+            for idx, image_tensor in enumerate(images):
+                image = image_transform(image_tensor)
+                self.chat.upload_img(image, chat_state, image_list)
 
 
         async def _prompt(text: str, send: Send):
