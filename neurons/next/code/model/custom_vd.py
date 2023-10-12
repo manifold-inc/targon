@@ -26,9 +26,9 @@ from diffusers.utils import (
     is_accelerate_available,
     is_accelerate_version,
     logging,
-    randn_tensor,
     replace_example_docstring,
 )
+from diffusers.utils.torch_utils import randn_tensor
 from diffusers.pipeline_utils import DiffusionPipeline
 from diffusers.utils import BaseOutput
 

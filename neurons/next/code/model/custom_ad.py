@@ -22,7 +22,8 @@ from transformers import ClapTextModelWithProjection, RobertaTokenizer, RobertaT
 
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.schedulers import KarrasDiffusionSchedulers
-from diffusers.utils import is_accelerate_available, logging, randn_tensor, replace_example_docstring
+from diffusers.utils import is_accelerate_available, logging, replace_example_docstring
+from diffusers.utils.torch_utils import randn_tensor
 from diffusers.pipelines.pipeline_utils import AudioPipelineOutput, DiffusionPipeline
 
 

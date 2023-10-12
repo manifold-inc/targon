@@ -24,8 +24,9 @@ from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 from diffusers.configuration_utils import FrozenDict
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.schedulers import KarrasDiffusionSchedulers
-from diffusers.utils import deprecate, is_accelerate_available, logging, randn_tensor, replace_example_docstring
+from diffusers.utils import deprecate, is_accelerate_available, logging, replace_example_docstring
 from diffusers.pipeline_utils import DiffusionPipeline
+from diffusers.utils.torch_utils import randn_tensor
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 
