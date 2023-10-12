@@ -15,8 +15,7 @@ from .custom_vd import TextToVideoSDPipeline
 from .custom_ad import AudioLDMPipeline
 from .layers import *
 from .common.utils import *
-from threading import Thread
-from transformers import TextIteratorStreamer
+
 
 class StoppingCriteriaSub(StoppingCriteria):
 
@@ -712,7 +711,7 @@ class NextGPTModel(nn.Module):
         inputs_embeds = torch.cat(input_embeds, dim=1)  # bsz x (1+s2) x embed_dim
         return inputs_embeds
 
-    def generate_tokens_embeddings(self, inputs, input_embeds, temperature: float = 0.0, top_p: float = 1.0, streaming: bool = False, callback_fn = None, **model_kwargs):
+    def generate_tokens_embeddings(self, inputs, input_embeds, temperature: float = 0.0, top_p: float = 1.0):
         """
         This function is used to generate the tokens and output embeddings that employed to generate images/videos/audios
         inputs: dict
@@ -725,71 +724,36 @@ class NextGPTModel(nn.Module):
         """
         stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=inputs['stops_id'], encounters=1)])
 
-        if streaming:
+        outputs = self.llama_model.generate(
+            inputs_embeds=input_embeds,
+            max_new_tokens=inputs['max_tgt_len'],
+            top_p=inputs['top_p'],
+            temperature=inputs['temperature'],
+            # repeat_pen,
+            do_sample=True,
+            use_cache=True,
+            stopping_criteria=stopping_criteria,
+            output_hidden_states=True,
+            return_dict_in_generate=True,
+            output_attentions=True
+        )
 
-            streamer = TextIteratorStreamer(self.llama_tokenizer)
+        output_embeddings = []
+        video_output_embedding = []
+        audio_output_embedding = []
+        out = outputs.sequences
+        for _hidden_states in outputs.hidden_states[1:]:
+            for idx in self.args['text_emb_to_img_layers']:
+                output_embeddings.append(_hidden_states[idx])
+            for idx in self.args['text_emb_to_video_layers']:
+                video_output_embedding.append(_hidden_states[idx])
+            for idx in self.args['text_emb_to_audio_layers']:
+                audio_output_embedding.append(_hidden_states[idx])
+        output_embeddings = torch.cat(output_embeddings, dim=1)
+        video_output_embedding = torch.cat(video_output_embedding, dim=1)
+        audio_output_embedding = torch.cat(audio_output_embedding, dim=1)
 
-
-            generation_kwargs = dict(
-                streamer=streamer,
-                inputs_embeds=input_embeds,
-                max_new_tokens=inputs['max_tgt_len'],
-                top_p=inputs['top_p'],
-                temperature=inputs['temperature'],
-                # repeat_pen,
-                do_sample=True,
-                use_cache=True,
-                stopping_criteria=stopping_criteria,
-                output_hidden_states=True,
-                return_dict_in_generate=True,
-                output_attentions=True
-            )
-
-            thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
-            thread.start()
-
-            output_text = ""
-            for new_text in streamer:
-                output_text += new_text
-                if callback_fn is not None:
-                    callback_fn(new_text)
-
-            output_text = output_text.lstrip("<unk>")
-            output_text = output_text.lstrip("<s>")
-            output_text = output_text.split('###')[0]  # remove the stop sign '###'
-            output_text = output_text.split('Assistant:')[-1].strip()
-
-            return output_text
-        else:
-            outputs = self.llama_model.generate(                
-                inputs_embeds=input_embeds,
-                max_new_tokens=inputs['max_tgt_len'],
-                top_p=inputs['top_p'],
-                temperature=inputs['temperature'],
-                # repeat_pen,
-                do_sample=True,
-                use_cache=True,
-                stopping_criteria=stopping_criteria,
-                output_hidden_states=True,
-                return_dict_in_generate=True,
-                output_attentions=True
-            )
-            output_embeddings = []
-            video_output_embedding = []
-            audio_output_embedding = []
-            out = outputs.sequences
-            for _hidden_states in outputs.hidden_states[1:]:
-                for idx in self.args['text_emb_to_img_layers']:
-                    output_embeddings.append(_hidden_states[idx])
-                for idx in self.args['text_emb_to_video_layers']:
-                    video_output_embedding.append(_hidden_states[idx])
-                for idx in self.args['text_emb_to_audio_layers']:
-                    audio_output_embedding.append(_hidden_states[idx])
-            output_embeddings = torch.cat(output_embeddings, dim=1)
-            video_output_embedding = torch.cat(video_output_embedding, dim=1)
-            audio_output_embedding = torch.cat(audio_output_embedding, dim=1)
-
-            return out, output_embeddings, video_output_embedding, audio_output_embedding
+        return out, output_embeddings, video_output_embedding, audio_output_embedding
 
     def generate_images(self, generated_ids, embeddings, all_gen_idx, generation_model=None,
                         guidance_scale=7.5, num_inference_steps=40):
@@ -939,7 +903,7 @@ class NextGPTModel(nn.Module):
             return_outputs.append(audio_outputs)
         return return_outputs
 
-    def generate(self, inputs, callback_fn=None, streaming=False):
+    def generate(self, inputs):
         """
             inputs = {
                 'image_paths': optional,
@@ -987,10 +951,6 @@ class NextGPTModel(nn.Module):
         # init output with image tokens
 
         input_embeds = self.prepare_generation_embedding(inputs)
-        if streaming:
-            output_text = self.generate_tokens_embeddings(inputs, input_embeds, streaming=streaming, callback_fn=callback_fn)
-            return output_text
-        
         generated_ids, generated_image_embeddings, generated_video_embeddings, generated_audio_embeddings = self.generate_tokens_embeddings(
             inputs, input_embeds)
 

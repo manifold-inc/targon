@@ -215,51 +215,32 @@ class NextMiner( Miner ):
 
                 }
 
-            input_embeds = self.model.prepare_generation_embedding(inputs)
-            stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=inputs['stops_id'], encounters=1)])
-
-
-            streamer = TextIteratorStreamer(self.model.llama_tokenizer)
+            outputs = self.model.generate(inputs)
 
             # generation_kwargs = dict(
             #     streamer=streamer,
             #     inputs_embeds=input_embeds,
             #     max_new_tokens=inputs['max_tgt_len'],
+            #     stopping_criteria=stopping_criteria,
+            #     do_sample=True,
+            #     min_length=inputs['min_word_tokens'],
             #     top_p=inputs['top_p'],
             #     temperature=inputs['temperature'],
-            #     # repeat_pen,
-            #     do_sample=True,
+            #     repetition_penalty=1.0,
+            #     length_penalty=1.0,
             #     use_cache=True,
-            #     stopping_criteria=stopping_criteria,
             #     output_hidden_states=True,
             #     return_dict_in_generate=True,
             #     output_attentions=True
             # )
 
-            generation_kwargs = dict(
-                streamer=streamer,
-                inputs_embeds=input_embeds,
-                max_new_tokens=inputs['max_tgt_len'],
-                stopping_criteria=stopping_criteria,
-                do_sample=True,
-                min_length=inputs['min_word_tokens'],
-                top_p=inputs['top_p'],
-                temperature=inputs['temperature'],
-                repetition_penalty=1.0,
-                length_penalty=1.0,
-                use_cache=True,
-                output_hidden_states=True,
-                return_dict_in_generate=True,
-                output_attentions=True
-            )
 
-
-            thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
-            thread.start()
+            # thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
+            # thread.start()
 
             buffer = []
             output_text = ""
-            for token in streamer:
+            for token in outputs[0]:
                 output_text += token
 
                 
@@ -277,7 +258,7 @@ class NextMiner( Miner ):
                     )
                     bt.logging.debug(f"Streamed tokens: {joined_buffer}")
                     buffer = []  # Clear the buffer for next batch of tokens
-                    # await asyncio.sleep(0.08)  # Simulate streaming delay
+                    await asyncio.sleep(0.1)  # Simulate streaming delay
             
             # Send any remaining tokens in the buffer
             if buffer:
