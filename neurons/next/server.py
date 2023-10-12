@@ -18,6 +18,28 @@ from torchvision.transforms import ToPILImage, Resize, Compose
 from code.model.anyToImageVideoAudio import NextGPTModel
 from code.config import load_config
 from transformers import StoppingCriteria, StoppingCriteriaList
+from typing import List, Tuple, Any
+
+
+class StoppingCriteriaSub(StoppingCriteria):
+
+    def __init__(self, stops: List = None, encounters: int = 1):
+        super().__init__()
+        self.stops = stops
+        self.ENCOUNTERS = encounters
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+        stop_count = 0
+        for stop in self.stops:
+            _stop = torch.tensor(stop).to(input_ids[0].device)
+            indices = torch.where(_stop[0] == input_ids)
+            for i in indices:
+                if len(i) > 0:
+                    if torch.all(input_ids[0][i:i + len(_stop)] == _stop):
+                        stop_count += 1
+        if stop_count >= self.ENCOUNTERS:
+            return True
+        return False
 
 
 class NextMiner( Miner ):
@@ -37,15 +59,30 @@ class NextMiner( Miner ):
             parser (argparse.ArgumentParser):
                 The command line argument parser to which custom arguments should be added.
         """
-        parser.add_argument('--next.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
-        parser.add_argument('--next.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
-        parser.add_argument('--next.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
-        parser.add_argument('--next.top_p', type=float, default=0.9, help='Top p for nucleus sampling.')
-        parser.add_argument('--next.repetition_penalty', type=float, default=1.0, help='Repetition penalty.')
-        parser.add_argument('--next.length_penalty', type=float, default=1.0, help='Length penalty.')
-        parser.add_argument('--next.temperature', type=float, default=1.0, help='Temperature for sampling.')
-        parser.add_argument('--next.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
-        parser.add_argument('--next.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
+        parser.add_argument('--next.max_tgt_len', type=int, default=150)
+        parser.add_argument('--next.top_p', type=float, default=1.0)
+        parser.add_argument('--next.temperature', type=float, default=0.4)
+        parser.add_argument('--next.modality_cache', type=str, default=None)
+        parser.add_argument('--next.filter_value', type=float, default=-float('Inf'))
+        parser.add_argument('--next.min_word_tokens', type=int, default=10)
+        parser.add_argument('--next.gen_scale_factor', type=float, default=4.0)
+        parser.add_argument('--next.max_num_imgs', type=int, default=1)
+        parser.add_argument('--next.stops_id', type=list, default=[[835]])
+        parser.add_argument('--next.load_sd', type=bool, default=True)
+        parser.add_argument('--next.guidance_scale_for_img', type=float, default=7.5)
+        parser.add_argument('--next.num_inference_steps_for_img', type=int, default=50)
+        parser.add_argument('--next.guidance_scale_for_vid', type=float, default=7.5)
+        parser.add_argument('--next.num_inference_steps_for_vid', type=int, default=50)
+        parser.add_argument('--next.max_num_vids', type=int, default=1)
+        parser.add_argument('--next.height', type=int, default=320)
+        parser.add_argument('--next.width', type=int, default=576)
+        parser.add_argument('--next.num_frames', type=int, default=24)
+        parser.add_argument('--next.guidance_scale_for_aud', type=float, default=7.5)
+        parser.add_argument('--next.num_inference_steps_for_aud', type=int, default=50)
+        parser.add_argument('--next.max_num_auds', type=int, default=1)
+        parser.add_argument('--next.audio_length_in_s', type=int, default=4)
+        parser.add_argument('--next.ENCOUNTERS', type=int, default=1)
+
 
     def __init__(self, *args, **kwargs):
         super(NextMiner, self).__init__(*args, **kwargs)
@@ -67,6 +104,14 @@ class NextMiner( Miner ):
 
         self.model.load_state_dict(delta_ckpt, strict=False)
         self.model = self.model.eval().half().cuda()
+
+        self.max_tgt_length = 150
+        self.top_p = 1.0
+        self.temperature = 0.4
+        self.modality_cache = None
+
+
+        self.history = []
         bt.logging.success('Loaded nextgpt from: {}'.format(args['nextgpt_ckpt_path']))
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
@@ -111,6 +156,11 @@ class NextMiner( Miner ):
         #         self.chat.upload_img(image, chat_state, image_list)
 
 
+        image_path = None
+        audio_path = None
+        video_path = None
+        thermal_path = None
+
 
         async def _prompt(text: str, send: Send):
             """
@@ -130,81 +180,115 @@ class NextMiner( Miner ):
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
             """
-            # if len(chat_state.messages) > 0 and chat_state.messages[-1][0] == chat_state.roles[0] \
-            #         and chat_state.messages[-1][1][-6:] == '</Img>':  # last message is image.
-            #     chat_state.messages[-1][1] = ' '.join([chat_state.messages[-1][1], text])
-            # else:
-            #     chat_state.append_message(chat_state.roles[0], text)
 
-            # chat_state.append_message(chat_state.roles[1], None)
-            # embs = self.chat.get_context_emb(chat_state, image_list)
 
-            # current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
-            # if current_max_len > self.config.minigpt4.max_length:
-            #     print('Warning: The number of tokens in current conversation exceeds the max length. '
-            #         'The model will not see the contexts outside the range.')
-            # begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
+            inputs = {
+                    'prompt': text,
+                    'image_paths': [image_path] if image_path else [],
+                    'audio_paths': [audio_path] if audio_path else [],
+                    'video_paths': [video_path] if video_path else [],
+                    'thermal_paths': [thermal_path] if thermal_path else [],
+                    'top_p': self.config.next.top_p,
+                    'temperature': self.config.next.temperature,
+                    'max_tgt_len': self.config.next.max_tgt_len,
+                    'modality_embeds': self.config.next.modality_cache,
+                    'filter_value': self.config.next.filter_value, 'min_word_tokens': self.config.next.min_word_tokens,
+                    'gen_scale_factor': self.config.next.gen_scale_factor, 'max_num_imgs': self.config.next.max_num_imgs,
+                    'stops_id': self.config.next.stops_id,
+                    'load_sd': self.config.nextload_sd,
+                    'generator': self.g_cuda,
+                    'guidance_scale_for_img': self.config.next.guidance_scale_for_img,
+                    'num_inference_steps_for_img': self.config.next.num_inference_steps_for_img,
 
-            # embs = embs[:, begin_idx:]
+                    'guidance_scale_for_vid': self.config.next.guidance_scale_for_vid,
+                    'num_inference_steps_for_vid': self.config.next.num_inference_steps_for_vid,
+                    'max_num_vids': self.config.next.max_num_vids,
+                    'height': self.config.next.height,
+                    'width': self.config.next.width,
+                    'num_frames': self.config.next.num_frames,
 
-            # streamer = TextIteratorStreamer(self.model.llama_tokenizer)
+                    'guidance_scale_for_aud': self.config.next.guidance_scale_for_aud,
+                    'num_inference_steps_for_aud': self.config.next.num_inference_steps_for_aud,
+                    'max_num_auds': self.config.next.max_num_auds,
+                    'audio_length_in_s': self.config.next.audio_length_in_s,
+                    'ENCOUNTERS': self.config.next.ENCOUNTERS,
 
-            # generation_kwargs = dict(streamer=streamer,
-            #     inputs_embeds=embs,
-            #     max_new_tokens=self.config.minigpt4.max_new_tokens,
-            #     stopping_criteria=self.stopping_criteria,
-            #     num_beams=self.config.minigpt4.num_beams,
+                }
+
+            input_embeds = self.model.prepare_generation_embedding(inputs)
+            stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=inputs['stops_id'], encounters=1)])
+
+
+            streamer = TextIteratorStreamer(self.model.llama_tokenizer)
+
+            # generation_kwargs = dict(
+            #     streamer=streamer,
+            #     inputs_embeds=input_embeds,
+            #     max_new_tokens=inputs['max_tgt_len'],
+            #     top_p=inputs['top_p'],
+            #     temperature=inputs['temperature'],
+            #     # repeat_pen,
             #     do_sample=True,
-            #     min_length=self.config.minigpt4.min_length,
-            #     top_p=self.config.minigpt4.top_p,
-            #     repetition_penalty=self.config.minigpt4.repetition_penalty,
-            #     length_penalty=self.config.minigpt4.length_penalty,
-            #     temperature=self.config.minigpt4.temperature)
+            #     use_cache=True,
+            #     stopping_criteria=stopping_criteria,
+            #     output_hidden_states=True,
+            #     return_dict_in_generate=True,
+            #     output_attentions=True
+            # )
 
-            # thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
-            # thread.start()
+            generation_kwargs = dict(
+                streamer=streamer,
+                inputs_embeds=input_embeds,
+                max_new_tokens=inputs['max_tgt_len'],
+                stopping_criteria=stopping_criteria,
+                do_sample=True,
+                min_length=inputs['min_word_tokens'],
+                top_p=inputs['top_p'],
+                temperature=inputs['temperature'],
+                use_cache=True,
+                output_hidden_states=True,
+                return_dict_in_generate=True,
+                output_attentions=True
+            )
 
-            # buffer = []
-            # output_text = ""
-            # for token in streamer:
-            #     output_text += token
+
+            thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
+            thread.start()
+
+            buffer = []
+            output_text = ""
+            for token in streamer:
+                output_text += token
 
                 
-            #     N = 3  # Number of tokens to send back to the client at a time
-            #     buffer.append(token)
-            #     # If buffer has N tokens, send them back to the client.
-            #     if len(buffer) == N:
-            #         joined_buffer = "".join(buffer)
-            #         await send(
-            #             {
-            #                 "type": "http.response.body",
-            #                 "body": joined_buffer.encode("utf-8"),
-            #                 "more_body": True,
-            #             }
-            #         )
-            #         bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-            #         buffer = []  # Clear the buffer for next batch of tokens
-            #         # await asyncio.sleep(0.08)  # Simulate streaming delay
+                N = 3  # Number of tokens to send back to the client at a time
+                buffer.append(token)
+                # If buffer has N tokens, send them back to the client.
+                if len(buffer) == N:
+                    joined_buffer = "".join(buffer)
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": joined_buffer.encode("utf-8"),
+                            "more_body": True,
+                        }
+                    )
+                    bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+                    buffer = []  # Clear the buffer for next batch of tokens
+                    # await asyncio.sleep(0.08)  # Simulate streaming delay
             
-            # # Send any remaining tokens in the buffer
-            # if buffer:
-            #     joined_buffer = "".join(buffer)
-            #     await send(
-            #         {
-            #             "type": "http.response.body",
-            #             "body": joined_buffer.encode("utf-8"),
-            #             "more_body": False,  # No more tokens to send
-            #         }
-            #     )
-            #     bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+            # Send any remaining tokens in the buffer
+            if buffer:
+                joined_buffer = "".join(buffer)
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": joined_buffer.encode("utf-8"),
+                        "more_body": False,  # No more tokens to send
+                    }
+                )
+                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
 
-            await send(
-                {
-                    "type": "http.response.body",
-                    "body": text.encode("utf-8"),
-                    "more_body": False,  # No more tokens to send
-                }
-            )
 
         message = synapse.messages[0]
         token_streamer = partial(_prompt, message)

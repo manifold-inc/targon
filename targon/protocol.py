@@ -87,6 +87,10 @@ class TargonStreaming( bt.StreamingSynapse ):
 
     images: list[ bt.Tensor ] = []
 
+    audios: list[ bt.Tensor ] = []
+
+    videos: list[ bt.Tensor ] = []
+
     required_hash_fields: List[str] = pydantic.Field(
         ["messages"],
         title="Required Hash Fields",
