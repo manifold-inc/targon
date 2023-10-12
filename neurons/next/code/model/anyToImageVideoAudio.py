@@ -49,9 +49,16 @@ class NextGPTModel(nn.Module):
         self.device = torch.cuda.current_device()
         self.stage = args['stage']
         print('args max_length', args['max_length'])
+        base_path = os.path.dirname(os.path.realpath(__file__))
 
-        imagebind_ckpt_path = os.path.join(self.args['pretrained_ckpt_path'], 'imagebind_ckpt',
-                                           self.args['imagebind_version'])
+        # step backwards until you get to the 'next' folder
+        while os.path.basename(base_path) != 'next':
+            base_path = os.path.dirname(base_path)
+
+        imagebind_ckpt_path = os.path.join(base_path, 'ckpts', 'imagebind_ckpt',
+
+        # imagebind_ckpt_path = os.path.join(self.args['pretrained_ckpt_path'], 'imagebind_ckpt',
+        #                                    self.args['imagebind_version'])
         print(f'Initializing visual encoder from {imagebind_ckpt_path} ...')
         self.visual_encoder, self.visual_hidden_size = \
             imagebind_model.imagebind_huge(pretrained=True, store_path=imagebind_ckpt_path)
@@ -61,8 +68,9 @@ class NextGPTModel(nn.Module):
         self.visual_encoder.eval()
         print('Visual encoder initialized.')
 
-        self.vicuna_ckpt_path = os.path.join(self.args['pretrained_ckpt_path'], 'vicuna_ckpt',
-                                             self.args['vicuna_version'])
+        # self.vicuna_ckpt_path = os.path.join(self.args['pretrained_ckpt_path'], 'vicuna_ckpt',
+        #                                      self.args['vicuna_version'])
+        self.vicuna_ckpt_path = 'lmsys/vicuna-7b-v1.5'
         print(f'Initializing language decoder from {self.vicuna_ckpt_path} ...')
 
         self.llama_model = LlamaForCausalLM.from_pretrained(self.vicuna_ckpt_path)
@@ -88,7 +96,7 @@ class NextGPTModel(nn.Module):
         print('Language decoder initialized.')
 
         # use the new trained tokenizer
-        tokenizer_path = self.vicuna_ckpt_path
+        tokenizer_path = 'lmsys/vicuna-7b-v1.5'
         print(f'Initializing tokenizer from {tokenizer_path} ...')
         self.llama_tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path, use_fast=False)
         self.llama_tokenizer.pad_token = self.llama_tokenizer.eos_token
