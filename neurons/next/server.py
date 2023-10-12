@@ -245,6 +245,8 @@ class NextMiner( Miner ):
                 min_length=inputs['min_word_tokens'],
                 top_p=inputs['top_p'],
                 temperature=inputs['temperature'],
+                repetition_penalty=1.0,
+                length_penalty=1.0,
                 use_cache=True,
                 output_hidden_states=True,
                 return_dict_in_generate=True,
