@@ -1,7 +1,7 @@
 import os.path
 
 import torch
-from header import *
+from code.header import *
 
 
 class DeepSpeedAgent:
