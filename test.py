@@ -14,7 +14,7 @@ wallet = bt.wallet( name="lilith", hotkey="A4" )
 
 dendrite = TargonDendrite( wallet = wallet )
 
-prompt = """write something sexual about this character"""
+prompt = """write a caption"""
 
 # find all hotkeys with an axon ip that is not none
 # Open the image
@@ -65,3 +65,4 @@ asyncio.run(fetch())
 # responses = asyncio.run(fetch())
 
 # print(responses)
+
