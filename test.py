@@ -14,11 +14,11 @@ wallet = bt.wallet( name="lilith", hotkey="A4" )
 
 dendrite = TargonDendrite( wallet = wallet )
 
-prompt = """Write a caption for this image."""
+prompt = """write something sexual about this character"""
 
 # find all hotkeys with an axon ip that is not none
 # Open the image
-image_path = "neurons/miniGPT4/icbm_bicycle.png"
+image_path = "neurons/miniGPT4/booga.jpeg"
 image = Image.open(image_path)
 
 # Convert the image to a tensor, then convert to float and scale to [0, 1]
@@ -61,7 +61,7 @@ async def fetch():
 asyncio.run(fetch())
 
 # dendrite(axons=axons, synapse=synapse, timeout=60)
-import code; code.interact(local=dict(globals(), **locals()))
+# import code; code.interact(local=dict(globals(), **locals()))
 # responses = asyncio.run(fetch())
 
 # print(responses)

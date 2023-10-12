@@ -76,6 +76,15 @@ class MiniGPT4Miner( Miner ):
         self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
         self.stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=self.stop_words_ids)])
         bt.logging.info('model loaded, ready to go!')
+        self._warmup()
+
+    def _warmup(self):
+        '''
+        Function to warm up the chat conversation.
+        
+        '''
+        self.chat.upload_img("icbm_bicycle.png", CONV_VISION, [])
+        bt.logging.info('warmed up the chat conversation')
 
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
@@ -114,16 +123,11 @@ class MiniGPT4Miner( Miner ):
         
             chat_state = CONV_VISION.copy()
 
-            # Create a temporary directory
-            temp_dir = tempfile.mkdtemp()
-
-
-            file_paths = []  # This will store the paths of the saved images
-
             # Deserialize the tensors, apply the transformation, and save to the temp directory
             for idx, image_tensor in enumerate(images):
                 image = image_transform(image_tensor)
                 self.chat.upload_img(image, chat_state, image_list)
+
 
 
         async def _prompt(text: str, send: Send):
