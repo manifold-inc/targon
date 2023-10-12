@@ -55,7 +55,7 @@ class NextGPTModel(nn.Module):
         while os.path.basename(base_path) != 'next':
             base_path = os.path.dirname(base_path)
 
-        imagebind_ckpt_path = os.path.join(base_path, 'ckpts', 'imagebind_ckpt',
+        imagebind_ckpt_path = os.path.join(base_path, 'ckpts', 'imagebind_ckpt')
 
         # imagebind_ckpt_path = os.path.join(self.args['pretrained_ckpt_path'], 'imagebind_ckpt',
         #                                    self.args['imagebind_version'])
