@@ -52,7 +52,7 @@ class NextMiner( Miner ):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
-        g_cuda = torch.Generator(device='cuda').manual_seed(1337)
+        self.g_cuda = torch.Generator(device='cuda').manual_seed(1337)
         args = {'model': 'nextgpt',
                 'nextgpt_ckpt_path': os.path.join(base_path, 'tiva_v0'),
                 'max_length': 128,
@@ -64,6 +64,10 @@ class NextMiner( Miner ):
 
         self.model = NextGPTModel(**args)
         delta_ckpt = torch.load(os.path.join(args['nextgpt_ckpt_path'], 'pytorch_model.pt'), map_location=torch.device('cuda'))
+
+        self.model.load_state_dict(delta_ckpt, strict=False)
+        self.model = self.model.eval().half().cuda()
+        bt.logging.success('Loaded nextgpt from: {}'.format(args['nextgpt_ckpt_path']))
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
@@ -86,25 +90,25 @@ class NextMiner( Miner ):
             miner. Developers can swap out the tokenizer, model, or adjust how streaming responses
             are generated to suit their specific applications.
         """
-        images = [bt.Tensor.deserialize(image) for image in synapse.images]
-        decoded_tensor_list = []
-        if len(synapse.images) > 0:
-            image_list = []
-            image_transform = Compose([
-                ToPILImage(),
-                Resize((224, 224))
-            ])
-            # to_pil_image = ToPILImage()
-            # image_list = [image_transform(bt.Tensor.deserialize(image)) for image in synapse.images]
-            # bt.logging.info('image detected!!!!!!', image_list[0].shape)
+        # images = [bt.Tensor.deserialize(image) for image in synapse.images]
+        # decoded_tensor_list = []
+        # if len(synapse.images) > 0:
+        #     image_list = []
+        #     image_transform = Compose([
+        #         ToPILImage(),
+        #         Resize((224, 224))
+        #     ])
+        #     # to_pil_image = ToPILImage()
+        #     # image_list = [image_transform(bt.Tensor.deserialize(image)) for image in synapse.images]
+        #     # bt.logging.info('image detected!!!!!!', image_list[0].shape)
 
         
-            chat_state = CONV_VISION.copy()
+        #     chat_state = CONV_VISION.copy()
 
-            # Deserialize the tensors, apply the transformation, and save to the temp directory
-            for idx, image_tensor in enumerate(images):
-                image = image_transform(image_tensor)
-                self.chat.upload_img(image, chat_state, image_list)
+        #     # Deserialize the tensors, apply the transformation, and save to the temp directory
+        #     for idx, image_tensor in enumerate(images):
+        #         image = image_transform(image_tensor)
+        #         self.chat.upload_img(image, chat_state, image_list)
 
 
 
@@ -126,73 +130,81 @@ class NextMiner( Miner ):
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
             """
-            if len(chat_state.messages) > 0 and chat_state.messages[-1][0] == chat_state.roles[0] \
-                    and chat_state.messages[-1][1][-6:] == '</Img>':  # last message is image.
-                chat_state.messages[-1][1] = ' '.join([chat_state.messages[-1][1], text])
-            else:
-                chat_state.append_message(chat_state.roles[0], text)
+            # if len(chat_state.messages) > 0 and chat_state.messages[-1][0] == chat_state.roles[0] \
+            #         and chat_state.messages[-1][1][-6:] == '</Img>':  # last message is image.
+            #     chat_state.messages[-1][1] = ' '.join([chat_state.messages[-1][1], text])
+            # else:
+            #     chat_state.append_message(chat_state.roles[0], text)
 
-            chat_state.append_message(chat_state.roles[1], None)
-            embs = self.chat.get_context_emb(chat_state, image_list)
+            # chat_state.append_message(chat_state.roles[1], None)
+            # embs = self.chat.get_context_emb(chat_state, image_list)
 
-            current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
-            if current_max_len > self.config.minigpt4.max_length:
-                print('Warning: The number of tokens in current conversation exceeds the max length. '
-                    'The model will not see the contexts outside the range.')
-            begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
+            # current_max_len = embs.shape[1] + self.config.minigpt4.max_new_tokens
+            # if current_max_len > self.config.minigpt4.max_length:
+            #     print('Warning: The number of tokens in current conversation exceeds the max length. '
+            #         'The model will not see the contexts outside the range.')
+            # begin_idx = max(0, current_max_len - self.config.minigpt4.max_length)
 
-            embs = embs[:, begin_idx:]
+            # embs = embs[:, begin_idx:]
 
-            streamer = TextIteratorStreamer(self.model.llama_tokenizer)
+            # streamer = TextIteratorStreamer(self.model.llama_tokenizer)
 
-            generation_kwargs = dict(streamer=streamer,
-                inputs_embeds=embs,
-                max_new_tokens=self.config.minigpt4.max_new_tokens,
-                stopping_criteria=self.stopping_criteria,
-                num_beams=self.config.minigpt4.num_beams,
-                do_sample=True,
-                min_length=self.config.minigpt4.min_length,
-                top_p=self.config.minigpt4.top_p,
-                repetition_penalty=self.config.minigpt4.repetition_penalty,
-                length_penalty=self.config.minigpt4.length_penalty,
-                temperature=self.config.minigpt4.temperature)
+            # generation_kwargs = dict(streamer=streamer,
+            #     inputs_embeds=embs,
+            #     max_new_tokens=self.config.minigpt4.max_new_tokens,
+            #     stopping_criteria=self.stopping_criteria,
+            #     num_beams=self.config.minigpt4.num_beams,
+            #     do_sample=True,
+            #     min_length=self.config.minigpt4.min_length,
+            #     top_p=self.config.minigpt4.top_p,
+            #     repetition_penalty=self.config.minigpt4.repetition_penalty,
+            #     length_penalty=self.config.minigpt4.length_penalty,
+            #     temperature=self.config.minigpt4.temperature)
 
-            thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
-            thread.start()
+            # thread = Thread(target=self.model.llama_model.generate, kwargs=generation_kwargs)
+            # thread.start()
 
-            buffer = []
-            output_text = ""
-            for token in streamer:
-                output_text += token
+            # buffer = []
+            # output_text = ""
+            # for token in streamer:
+            #     output_text += token
 
                 
-                N = 3  # Number of tokens to send back to the client at a time
-                buffer.append(token)
-                # If buffer has N tokens, send them back to the client.
-                if len(buffer) == N:
-                    joined_buffer = "".join(buffer)
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-                    bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-                    buffer = []  # Clear the buffer for next batch of tokens
-                    # await asyncio.sleep(0.08)  # Simulate streaming delay
+            #     N = 3  # Number of tokens to send back to the client at a time
+            #     buffer.append(token)
+            #     # If buffer has N tokens, send them back to the client.
+            #     if len(buffer) == N:
+            #         joined_buffer = "".join(buffer)
+            #         await send(
+            #             {
+            #                 "type": "http.response.body",
+            #                 "body": joined_buffer.encode("utf-8"),
+            #                 "more_body": True,
+            #             }
+            #         )
+            #         bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+            #         buffer = []  # Clear the buffer for next batch of tokens
+            #         # await asyncio.sleep(0.08)  # Simulate streaming delay
             
-            # Send any remaining tokens in the buffer
-            if buffer:
-                joined_buffer = "".join(buffer)
-                await send(
-                    {
-                        "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
-                        "more_body": False,  # No more tokens to send
-                    }
-                )
-                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+            # # Send any remaining tokens in the buffer
+            # if buffer:
+            #     joined_buffer = "".join(buffer)
+            #     await send(
+            #         {
+            #             "type": "http.response.body",
+            #             "body": joined_buffer.encode("utf-8"),
+            #             "more_body": False,  # No more tokens to send
+            #         }
+            #     )
+            #     bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": text.encode("utf-8"),
+                    "more_body": False,  # No more tokens to send
+                }
+            )
 
         message = synapse.messages[0]
         token_streamer = partial(_prompt, message)
