@@ -76,14 +76,15 @@ class MiniGPT4Miner( Miner ):
         self.chat = Chat(self.model, self.vis_processor, device='cuda:0')
         self.stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=self.stop_words_ids)])
         bt.logging.info('model loaded, ready to go!')
-        self._warmup()
+        self._warmup(base_path)
 
-    def _warmup(self):
+    def _warmup(self,base_path: str):
         '''
         Function to warm up the chat conversation.
         
         '''
-        self.chat.upload_img("icbm_bicycle.png", CONV_VISION, [])
+        path = os.path.join(base_path, "icbm_bicycle.png")
+        self.chat.upload_img(path, CONV_VISION, [])
         bt.logging.info('warmed up the chat conversation')
 
 
