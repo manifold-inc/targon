@@ -1,4 +1,4 @@
-from header import *
+from code.header import *
 from .samplers import DistributedBatchSampler, DistributedMultiDatasetBatchSampler
 from .catalog import DatasetCatalog
 from .utils import instantiate_from_config
