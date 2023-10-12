@@ -83,9 +83,12 @@ class MiniGPT4Miner( Miner ):
         Function to warm up the chat conversation.
         
         '''
+        warmup_state = CONV_VISION.copy()
+        bt.logging.warning('warming up the chat conversation')
         path = os.path.join(base_path, "icbm_bicycle.png")
-        self.chat.upload_img(path, CONV_VISION, [])
-        bt.logging.info('warmed up the chat conversation')
+        self.chat.upload_img(path, warmup_state, [])
+        self.chat.ask('Tell me what you see on the road.', warmup_state)
+        bt.logging.success('warmed up the chat conversation')
 
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
