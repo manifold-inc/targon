@@ -26,7 +26,7 @@ from omegaconf import OmegaConf
 from copy import deepcopy
 import ipdb
 import argparse
-import .data
+import code.dataset
 from transformers import LlamaTokenizer, LlamaForCausalLM, LlamaConfig
 from torch.nn.utils.rnn import pad_sequence
 from peft import LoraConfig, TaskType, get_peft_model
