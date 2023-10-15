@@ -104,6 +104,7 @@ class LlavaMiner( Miner ):
         prompt = conv.get_prompt()
 
         image_args = {}
+        images = None
         if len(synapse.images) > 0:
             image_list = []
             image_transform = Compose([
@@ -168,7 +169,7 @@ class LlavaMiner( Miner ):
 
                 thread = Thread(target=self.model.generate, kwargs=dict(
                     inputs=input_ids,
-                    images=image_args.get('images', None),
+                    images=images,
                     do_sample=do_sample,
                     temperature=self.config.llava.temperature,
                     top_p=self.config.llava.top_p,
