@@ -14,11 +14,11 @@ wallet = bt.wallet( name="lilith", hotkey="A4" )
 
 dendrite = TargonDendrite( wallet = wallet )
 
-prompt = """describe this character in detail."""
+prompt = """describe this image."""
 
 # find all hotkeys with an axon ip that is not none
 # Open the image
-image_path = "neurons/miniGPT4/booga.jpeg"
+image_path = "neurons/miniGPT4/icbm_bicycle.png"
 image = Image.open(image_path)
 
 # Convert the image to a tensor, then convert to float and scale to [0, 1]

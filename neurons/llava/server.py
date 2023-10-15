@@ -8,6 +8,7 @@ import argparse
 import traceback
 import bittensor as bt
 
+from peft import PeftModel
 from threading import Thread
 from functools import partial
 from starlette.types import Send
@@ -63,12 +64,18 @@ class LlavaMiner( Miner ):
 
     def __init__(self, *args, **kwargs):
         super(LlavaMiner, self).__init__(*args, **kwargs)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model_path = "liuhaotian/llava-v1.5-13b"
+        self.model_path = os.path.join(base_dir, "models", "sft_model")
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(
             self.config.model_path, self.config.model_base, self.config.model_name, self.config.load_8bit, self.config.load_4bit, device=self.device)
 
+        lora_path = os.path.join(base_dir, "models", "rlhf_lora_adapter_model")
 
+        self.model = PeftModel.from_pretrained(
+            self.model,
+            lora_path,
+        )
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
