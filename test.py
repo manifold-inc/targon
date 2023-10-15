@@ -37,8 +37,8 @@ serialized_tensor = bt.Tensor.serialize(normalized_image_tensor)
 axons = [axon for axon in metagraph.axons if axon.ip == '184.105.87.192']
 
 
-synapse = TargonStreaming(roles=['user'], messages=[prompt], images=[serialized_tensor])
-# synapse = TargonStreaming(roles=['user'], messages=[prompt])
+# synapse = TargonStreaming(roles=['user'], messages=[prompt], images=[serialized_tensor])
+synapse = TargonStreaming(roles=['user'], messages=[prompt])
 
 async def fetch():
     responses = await dendrite(

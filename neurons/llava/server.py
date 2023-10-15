@@ -5,6 +5,7 @@ import shutil
 import asyncio
 import tempfile
 import argparse
+import traceback
 import bittensor as bt
 
 from threading import Thread
@@ -143,62 +144,65 @@ class LlavaMiner( Miner ):
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
             """
-            input_ids = tokenizer_image_token(text, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
-            keywords = [None]
-            stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
-            streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=15)
+            try:
+                input_ids = tokenizer_image_token(text, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
+                keywords = [None]
+                stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
+                streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=15)
 
-            max_new_tokens = min(max_new_tokens, max_context_length - input_ids.shape[-1] - num_image_tokens)
-            do_sample = True
-
-
-            thread = Thread(target=self.model.generate, kwargs=dict(
-                inputs=input_ids,
-                do_sample=do_sample,
-                temperature=self.config.llava.temperature,
-                top_p=self.config.llava.top_p,
-                max_new_tokens=max_new_tokens,
-                streamer=streamer,
-                stopping_criteria=[stopping_criteria],
-                use_cache=True,
-                **image_args
-            ))
-            thread.start()
+                max_new_tokens = min(max_new_tokens, max_context_length - input_ids.shape[-1] - num_image_tokens)
+                do_sample = True
 
 
-            buffer = []
-            output_text = ""
-            for token in streamer:
-                output_text += token
+                thread = Thread(target=self.model.generate, kwargs=dict(
+                    inputs=input_ids,
+                    do_sample=do_sample,
+                    temperature=self.config.llava.temperature,
+                    top_p=self.config.llava.top_p,
+                    max_new_tokens=max_new_tokens,
+                    streamer=streamer,
+                    stopping_criteria=[stopping_criteria],
+                    use_cache=True,
+                    **image_args
+                ))
+                thread.start()
 
+
+                buffer = []
+                output_text = ""
+                for token in streamer:
+                    output_text += token
+
+                    
+                    N = 3  # Number of tokens to send back to the client at a time
+                    buffer.append(token)
+                    # If buffer has N tokens, send them back to the client.
+                    if len(buffer) == N:
+                        joined_buffer = "".join(buffer)
+                        await send(
+                            {
+                                "type": "http.response.body",
+                                "body": joined_buffer.encode("utf-8"),
+                                "more_body": True,
+                            }
+                        )
+                        bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+                        buffer = []  # Clear the buffer for next batch of tokens
+                        # await asyncio.sleep(0.08)  # Simulate streaming delay
                 
-                N = 3  # Number of tokens to send back to the client at a time
-                buffer.append(token)
-                # If buffer has N tokens, send them back to the client.
-                if len(buffer) == N:
+                # Send any remaining tokens in the buffer
+                if buffer:
                     joined_buffer = "".join(buffer)
                     await send(
                         {
                             "type": "http.response.body",
                             "body": joined_buffer.encode("utf-8"),
-                            "more_body": True,
+                            "more_body": False,  # No more tokens to send
                         }
                     )
-                    bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-                    buffer = []  # Clear the buffer for next batch of tokens
-                    # await asyncio.sleep(0.08)  # Simulate streaming delay
-            
-            # Send any remaining tokens in the buffer
-            if buffer:
-                joined_buffer = "".join(buffer)
-                await send(
-                    {
-                        "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
-                        "more_body": False,  # No more tokens to send
-                    }
-                )
-                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+            except:
+                traceback.print_exc()
 
         token_streamer = partial(_prompt, message)
         return synapse.create_streaming_response(token_streamer)
