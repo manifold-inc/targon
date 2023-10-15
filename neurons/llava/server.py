@@ -114,10 +114,10 @@ class LlavaMiner( Miner ):
             replace_token = DEFAULT_IMAGE_TOKEN
             if getattr(self.model.config, 'mm_use_im_start_end', False):
                 replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
-            prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
+            message = message.replace(DEFAULT_IMAGE_TOKEN, replace_token)
 
 
-            num_image_tokens = prompt.count(replace_token) * self.model.get_vision_tower().num_patches
+            num_image_tokens = message.count(replace_token) * self.model.get_vision_tower().num_patches
 
             image_args = {"images": images}
 
