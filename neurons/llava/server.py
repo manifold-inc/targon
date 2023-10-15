@@ -119,6 +119,7 @@ class LlavaMiner( Miner ):
                 replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
             message = message.replace(DEFAULT_IMAGE_TOKEN, replace_token)
 
+            bt.logging.debug('new message', message)
 
             num_image_tokens = message.count(replace_token) * self.model.get_vision_tower().num_patches
 

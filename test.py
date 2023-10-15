@@ -14,7 +14,7 @@ wallet = bt.wallet( name="lilith", hotkey="A4" )
 
 dendrite = TargonDendrite( wallet = wallet )
 
-prompt = """What is this?"""
+prompt = """describe this picture."""
 
 # find all hotkeys with an axon ip that is not none
 # Open the image
@@ -37,8 +37,8 @@ serialized_tensor = bt.Tensor.serialize(normalized_image_tensor)
 axons = [axon for axon in metagraph.axons if axon.ip == '184.105.87.192']
 
 
-# synapse = TargonStreaming(roles=['user'], messages=[prompt], images=[serialized_tensor])
-synapse = TargonStreaming(roles=['user'], messages=[prompt])
+synapse = TargonStreaming(roles=['user'], messages=[prompt], images=[serialized_tensor])
+# synapse = TargonStreaming(roles=['user'], messages=[prompt])
 
 async def fetch():
     responses = await dendrite(
