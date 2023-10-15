@@ -98,6 +98,8 @@ class LlavaMiner( Miner ):
         conv = conv_templates[conv_mode].copy()
         roles = conv.roles
 
+
+        message = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + '\n' + message
         conv.append_message(conv.roles[0], message)
         conv.append_message(conv.roles[1], None)
 
@@ -166,7 +168,7 @@ class LlavaMiner( Miner ):
                 max_new_tokens = min(max_new_tokens, max_context_length - input_ids.shape[-1] - num_image_tokens)
                 do_sample = True
 
-
+                bt.logging.info('images object', images)
                 thread = Thread(target=self.model.generate, kwargs=dict(
                     inputs=input_ids,
                     images=images,

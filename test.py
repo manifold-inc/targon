@@ -14,7 +14,7 @@ wallet = bt.wallet( name="lilith", hotkey="A4" )
 
 dendrite = TargonDendrite( wallet = wallet )
 
-prompt = """describe this picture."""
+prompt = """describe this character in detail."""
 
 # find all hotkeys with an axon ip that is not none
 # Open the image
