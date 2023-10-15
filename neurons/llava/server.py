@@ -15,7 +15,7 @@ from targon.miner.miner import Miner
 from transformers import GPT2Tokenizer
 from targon.protocol import TargonStreaming
 from transformers import TextIteratorStreamer
-from llava.conversation import default_conversation
+from llava.conversation import default_conversation, conv_templates, SeparatorStyle
 from llava.model.builder import load_pretrained_model
 from torchvision.transforms import ToPILImage, Resize, Compose
 from transformers import StoppingCriteria, StoppingCriteriaList
@@ -94,6 +94,14 @@ class LlavaMiner( Miner ):
         # images_list = [bt.Tensor.deserialize(image) for image in synapse.images]
         message = synapse.messages[0]
         
+        conv_mode = "llava_v1"
+        conv = conv_templates[conv_mode].copy()
+        roles = conv.roles
+
+        conv.append_message(conv.roles[0], message)
+        conv.append_message(conv.roles[1], None)
+
+        prompt = conv.get_prompt()
 
         image_args = {}
         if len(synapse.images) > 0:
@@ -117,11 +125,11 @@ class LlavaMiner( Miner ):
             replace_token = DEFAULT_IMAGE_TOKEN
             if getattr(self.model.config, 'mm_use_im_start_end', False):
                 replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
-            message = message.replace(DEFAULT_IMAGE_TOKEN, replace_token)
+            prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
 
-            bt.logging.debug('new message', message)
+            bt.logging.debug('new message', prompt)
 
-            num_image_tokens = message.count(replace_token) * self.model.get_vision_tower().num_patches
+            num_image_tokens = prompt.count(replace_token) * self.model.get_vision_tower().num_patches
 
             image_args = {"images": images}
 
@@ -149,7 +157,7 @@ class LlavaMiner( Miner ):
             """
             try:
                 max_new_tokens = self.config.llava.max_new_tokens
-                input_ids = tokenizer_image_token(text, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
+                input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
                 keywords = [None]
                 # stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
                 streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=15)
@@ -160,14 +168,14 @@ class LlavaMiner( Miner ):
 
                 thread = Thread(target=self.model.generate, kwargs=dict(
                     inputs=input_ids,
+                    images=image_args.get('images', None),
                     do_sample=do_sample,
                     temperature=self.config.llava.temperature,
                     top_p=self.config.llava.top_p,
                     max_new_tokens=max_new_tokens,
                     streamer=streamer,
                     # stopping_criteria=[stopping_criteria],
-                    use_cache=True,
-                    **image_args
+                    use_cache=True
                 ))
                 thread.start()
 
