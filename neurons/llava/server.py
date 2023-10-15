@@ -51,7 +51,7 @@ class LlavaMiner( Miner ):
         parser.add_argument('--llava.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
         parser.add_argument("--model_path", type=str, default="facebook/opt-350m")
         parser.add_argument("--model_base", type=str, default=None)
-        parser.add_argument("--model_name", type=str)
+        parser.add_argument("--model_name", type=str, default="liuhaotian/llava-v1.5-13b")
         parser.add_argument("--device", type=str, default="cuda")
         parser.add_argument("--multi_modal", action="store_true", help="Multimodal mode is automatically detected with model name, please make sure `llava` is included in the model path.")
         parser.add_argument("--limit_model_concurrency", type=int, default=5)
