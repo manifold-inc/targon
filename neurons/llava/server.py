@@ -93,6 +93,8 @@ class LlavaMiner( Miner ):
         """
         # images_list = [bt.Tensor.deserialize(image) for image in synapse.images]
         message = synapse.messages[0]
+        
+
         image_args = {}
         if len(synapse.images) > 0:
             image_list = []
@@ -145,6 +147,7 @@ class LlavaMiner( Miner ):
                 processing steps or modify how tokens are sent back to the client.
             """
             try:
+                max_new_tokens = self.config.llava.max_new_tokens
                 input_ids = tokenizer_image_token(text, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
                 keywords = [None]
                 # stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
