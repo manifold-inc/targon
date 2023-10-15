@@ -147,7 +147,7 @@ class LlavaMiner( Miner ):
             try:
                 input_ids = tokenizer_image_token(text, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
                 keywords = [None]
-                stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
+                # stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
                 streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=15)
 
                 max_new_tokens = min(max_new_tokens, max_context_length - input_ids.shape[-1] - num_image_tokens)
@@ -161,7 +161,7 @@ class LlavaMiner( Miner ):
                     top_p=self.config.llava.top_p,
                     max_new_tokens=max_new_tokens,
                     streamer=streamer,
-                    stopping_criteria=[stopping_criteria],
+                    # stopping_criteria=[stopping_criteria],
                     use_cache=True,
                     **image_args
                 ))
