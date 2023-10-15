@@ -49,7 +49,7 @@ class LlavaMiner( Miner ):
         parser.add_argument('--llava.temperature', type=float, default=1.0, help='Temperature for sampling.')
         parser.add_argument('--llava.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
         parser.add_argument('--llava.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
-        parser.add_argument("--model_path", type=str, default="facebook/opt-350m")
+        parser.add_argument("--model_path", type=str, default="liuhaotian/llava-v1.5-13b")
         parser.add_argument("--model_base", type=str, default=None)
         parser.add_argument("--model_name", type=str, default="liuhaotian/llava-v1.5-13b")
         parser.add_argument("--device", type=str, default="cuda")
