@@ -114,6 +114,10 @@ class LlavaMiner( Miner ):
 
         image_args = {}
         images = None
+
+        max_context_length = getattr(self.model.config, 'max_position_embeddings', 2048)
+        num_image_tokens = 0
+        
         if len(synapse.images) > 0:
             image_list = []
             image_transform = Compose([
@@ -144,8 +148,6 @@ class LlavaMiner( Miner ):
             image_args = {"images": images}
 
         
-        max_context_length = getattr(self.model.config, 'max_position_embeddings', 2048)
-        num_image_tokens = 0
 
         async def _prompt(text: str, send: Send):
             """
@@ -167,7 +169,10 @@ class LlavaMiner( Miner ):
             """
             try:
                 max_new_tokens = self.config.llava.max_new_tokens
-                input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
+                if len(synapse.images) > 0:
+                    input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(self.device)
+                else:
+                    input_ids = self.tokenizer(prompt, return_tensors='pt').input_ids.to(self.device)
                 keywords = [None]
                 # stopping_criteria = KeywordsStoppingCriteria(keywords, self.tokenizer, input_ids)
                 streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=15)
