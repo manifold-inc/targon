@@ -117,7 +117,7 @@ class LlavaMiner( Miner ):
 
         max_context_length = getattr(self.model.config, 'max_position_embeddings', 2048)
         num_image_tokens = 0
-        
+
         if len(synapse.images) > 0:
             image_list = []
             image_transform = Compose([
@@ -166,6 +166,7 @@ class LlavaMiner( Miner ):
                 This function can be adjusted based on the streaming requirements, speed of
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
+                
             """
             try:
                 max_new_tokens = self.config.llava.max_new_tokens
