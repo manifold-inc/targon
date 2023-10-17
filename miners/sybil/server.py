@@ -106,7 +106,7 @@ class SybilMiner( Miner ):
 
             results_generator = openai.ChatCompletion.create(
                 model=self.config.sybil.model,
-                messages=messages
+                messages=messages,
                 temperature=0.7,
                 stream=True  # this time, we set stream=True
             )
