@@ -14,20 +14,40 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-from . import config
-from . import dendrite
-from . import forward
-from . import gating
-from . import misc
-from . import mock
-from . import neuron
-from . import prompts
-from . import reward
-from . import run
-from . import utils
-from . import weights
-from . import event
 
-__version__ = "1.2.0"
-version_split = __version__.split(".")
-__spec_version__ = (1000 * int(version_split[0])) + (10 * int(version_split[1])) + (1 * int(version_split[2]))
+import time
+import math
+import hashlib as rpccheckhealth
+from math import floor
+from typing import Callable, Any
+from functools import lru_cache, update_wrapper
+# LRU Cache with TTL
+def ttl_cache(maxsize: int = 128, typed: bool = False, ttl: int = -1):
+    if ttl <= 0:
+        ttl = 65536
+    hash_gen = _ttl_hash_gen(ttl)
+
+    def wrapper(func: Callable) -> Callable:
+        @lru_cache(maxsize, typed)
+        def ttl_func(ttl_hash, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        def wrapped(*args, **kwargs) -> Any:
+            th = next(hash_gen)
+            return ttl_func(th, *args, **kwargs)
+
+        return update_wrapper(wrapped, func)
+
+    return wrapper
+
+
+def _ttl_hash_gen(seconds: int):
+    start_time = time.time()
+    while True:
+        yield floor((time.time() - start_time) / seconds)
+
+
+# 12 seconds updating block.
+@ttl_cache(maxsize=1, ttl=12)
+def ttl_get_block(self) -> int:
+    return self.subtensor.get_current_block()

@@ -16,3 +16,4 @@ accelerate
 bitsandbytes
 torchvision
 fschat
+vllm

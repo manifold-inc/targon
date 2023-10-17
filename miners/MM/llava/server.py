@@ -166,7 +166,7 @@ class LlavaMiner( Miner ):
                 This function can be adjusted based on the streaming requirements, speed of
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
-                
+
             """
             try:
                 max_new_tokens = self.config.llava.max_new_tokens
@@ -202,7 +202,7 @@ class LlavaMiner( Miner ):
                     output_text += token
 
                     
-                    N = 3  # Number of tokens to send back to the client at a time
+                    N = 1  # Number of tokens to send back to the client at a time
                     buffer.append(token)
                     # If buffer has N tokens, send them back to the client.
                     if len(buffer) == N:
