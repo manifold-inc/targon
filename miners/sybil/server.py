@@ -160,6 +160,8 @@ class SybilMiner( Miner ):
                 else:
                     raise ValueError(f"Invalid role: {message['role']}")
 
+            return prompt
+
         async def _prompt(prompt: str, send: Send):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
@@ -193,7 +195,7 @@ class SybilMiner( Miner ):
 
                     buffer = []
                     output_text = ""
-                    for token in self.client.text_generation(inputs=prompt, stream=True, max_new_tokens=512):
+                    for token in self.client.text_generation(prompt, stream=True, max_new_tokens=512):
                         output_text += token
                         bt.logging.info(f"token", token)
                         
