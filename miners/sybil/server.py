@@ -1,6 +1,7 @@
 import os
 import time
 import torch
+import openai
 import shutil
 import asyncio
 import tempfile
@@ -40,6 +41,7 @@ class SybilMiner( Miner ):
             parser (argparse.ArgumentParser):
                 The command line argument parser to which custom arguments should be added.
         """
+        parser.add_argument('--sybil.model', type=str, default="teknium/OpenHermes-2-Mistral-7B", help='Model to use for generation.')
         parser.add_argument('--sybil.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
         parser.add_argument('--sybil.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
@@ -57,10 +59,7 @@ class SybilMiner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-
-        engine_args = AsyncEngineArgs.from_cli_args(self.config)
-        self.engine = AsyncLLMEngine.from_engine_args(engine_args)
-
+        openai.base_url = "http://127.0.0.1:8000"
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
@@ -83,11 +82,10 @@ class SybilMiner( Miner ):
             miner. Developers can swap out the tokenizer, model, or adjust how streaming responses
             are generated to suit their specific applications.
         """
-        request_id = random_uuid()
 
 
 
-        async def _prompt(text: str, send: Send):
+        async def _prompt(messages: str, send: Send):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -106,9 +104,12 @@ class SybilMiner( Miner ):
                 processing steps or modify how tokens are sent back to the client.
             """
 
-            sampling_params = SamplingParams()
-                
-            results_generator = self.engine.generate(text, sampling_params, request_id)
+            results_generator = openai.ChatCompletion.create(
+                model=self.config.sybil.model,
+                messages=messages
+                temperature=0.7,
+                stream=True  # this time, we set stream=True
+            )
 
 
             buffer = []
@@ -145,8 +146,9 @@ class SybilMiner( Miner ):
                 )
                 bt.logging.trace(f"Streamed tokens: {joined_buffer}")
 
-        message = synapse.messages[0]
-        token_streamer = partial(_prompt, message)
+        # message = synapse.messages[0]
+        messages = [{"role": role, "content": message} for role, message in zip(synapse.roles, synapse.messages)]
+        token_streamer = partial(_prompt, messages)
         return synapse.create_streaming_response(token_streamer)
 
 
