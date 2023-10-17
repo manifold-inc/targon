@@ -60,6 +60,10 @@ class SybilMiner( Miner ):
 
         self.client = InferenceClient(self.config.sybil.model)
 
+        # test the model
+        bt.logging.info('client warmup', self.client.text_generation(prompt="Hello world!", max_new_tokens=10))
+
+
     def post_http_request(self,
                         prompt: str,
                         api_url: str,

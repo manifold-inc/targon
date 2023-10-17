@@ -74,6 +74,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     model_name = request.model
     request_id = f"cmpl-{random_uuid()}"
     created_time = int(time.monotonic())
+    streaming = request.stream
 
     async def completion_stream_generator() -> AsyncGenerator[str, None]:
         # Initial setup, sending the role of the assistant for each completion
