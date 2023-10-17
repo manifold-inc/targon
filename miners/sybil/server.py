@@ -75,7 +75,9 @@ class SybilMiner( Miner ):
             "max_tokens": 16,
             "stream": stream,
         }
-        response = requests.post(api_url, headers=headers, json=pload, stream=True)
+
+        url = f"{api_url}/generate"
+        response = requests.post(url, headers=headers, json=pload, stream=True)
         return response
 
 
