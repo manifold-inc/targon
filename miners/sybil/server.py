@@ -193,7 +193,7 @@ class SybilMiner( Miner ):
 
                     buffer = []
                     output_text = ""
-                    for token in self.client.text_generation(prompt, stream=True, max_new_tokens=512):
+                    for token in self.client.text_generation(inputs=prompt, stream=True, max_new_tokens=512):
                         output_text += token
                         bt.logging.info(f"token", token)
                         
@@ -219,7 +219,7 @@ class SybilMiner( Miner ):
                         await send(
                             {
                                 "type": "http.response.body",
-                                "body": joined_buffer.encode("utf-8"),
+                                "body": "",
                                 "more_body": False,  # No more tokens to send
                             }
                         )
