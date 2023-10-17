@@ -179,43 +179,9 @@ class SybilMiner( Miner ):
                 processing steps or modify how tokens are sent back to the client.
             """
 
-
-            if not synapse.stream:
-                joined_buffer = self.client.text_generation(prompt=prompt)
-                await send(
-                    {
-                        "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
-                        "more_body": False,  # No more tokens to send
-                    }
-                )
-            else:
-
-                buffer = []
-                output_text = ""
-                for token in self.client.text_generation(prompt=prompt, stream=True, max_new_tokens=512):
-                    output_text += token
-                    bt.logging.info(f"token", token)
-                    
-                    N = 3  # Number of tokens to send back to the client at a time
-                    buffer.append(token)
-                    # If buffer has N tokens, send them back to the client.
-                    if len(buffer) == N:
-                        joined_buffer = "".join(buffer)
-                        await send(
-                            {
-                                "type": "http.response.body",
-                                "body": joined_buffer.encode("utf-8"),
-                                "more_body": True,
-                            }
-                        )
-                        bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-                        buffer = []  # Clear the buffer for next batch of tokens
-                        # await asyncio.sleep(0.08)  # Simulate streaming delay
-                
-                # Send any remaining tokens in the buffer
-                if buffer:
-                    joined_buffer = "".join(buffer)
+            try:
+                if not synapse.stream:
+                    joined_buffer = self.client.text_generation(prompt=prompt)
                     await send(
                         {
                             "type": "http.response.body",
@@ -223,7 +189,51 @@ class SybilMiner( Miner ):
                             "more_body": False,  # No more tokens to send
                         }
                     )
-                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                else:
+
+                    buffer = []
+                    output_text = ""
+                    for token in self.client.text_generation(prompt=prompt, stream=True, max_new_tokens=512):
+                        output_text += token
+                        bt.logging.info(f"token", token)
+                        
+                        N = 3  # Number of tokens to send back to the client at a time
+                        buffer.append(token)
+                        # If buffer has N tokens, send them back to the client.
+                        if len(buffer) == N:
+                            joined_buffer = "".join(buffer)
+                            await send(
+                                {
+                                    "type": "http.response.body",
+                                    "body": joined_buffer.encode("utf-8"),
+                                    "more_body": True,
+                                }
+                            )
+                            bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+                            buffer = []  # Clear the buffer for next batch of tokens
+                            # await asyncio.sleep(0.08)  # Simulate streaming delay
+                    
+                    # Send any remaining tokens in the buffer
+                    if buffer:
+                        joined_buffer = "".join(buffer)
+                        await send(
+                            {
+                                "type": "http.response.body",
+                                "body": joined_buffer.encode("utf-8"),
+                                "more_body": False,  # No more tokens to send
+                            }
+                        )
+                        bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+            except Exception as e:
+                bt.logging.error(f"Exception: {e}")
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": f"Exception: {e}".encode("utf-8"),
+                        "more_body": False,  # No more tokens to send
+                    }
+                )
+
 
         # message = synapse.messages[0]
         prompt = get_prompt(messages)
