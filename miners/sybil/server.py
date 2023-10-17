@@ -68,15 +68,18 @@ class SybilMiner( Miner ):
                         stream: bool = False) -> requests.Response:
         headers = {"User-Agent": "Test Client"}
         pload = {
-            "prompt": prompt,
-            "n": n,
-            "use_beam_search": False,
-            "temperature": 0.7,
-            "max_tokens": 512,
-            "stream": stream,
+            "inputs": prompt,
+            "parameters": {
+                "n": n,
+                "use_beam_search": False,
+                "temperature": 0.7,
+                "max_tokens": 512,
+                "watermark": False
+            }
+
         }
 
-        url = f"{api_url}/generate"
+        url = f"{api_url}/generate_stream"
         response = requests.post(url, headers=headers, json=pload, stream=True)
         return response
 
@@ -87,7 +90,7 @@ class SybilMiner( Miner ):
                                         delimiter=b"\0"):
             if chunk:
                 data = json.loads(chunk.decode("utf-8"))
-                output = data["text"]
+                output = data["token"]['text']
                 yield output
 
     def get_response(self, response: requests.Response) -> List[str]:
