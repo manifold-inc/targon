@@ -58,7 +58,7 @@ class SybilMiner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        self.client = InferenceClient(self.config.sybil.model)
+        self.client = InferenceClient(self.config.sybil.api_url)
 
         # test the model
         bt.logging.info('client warmup', self.client.text_generation(prompt="Hello world!", max_new_tokens=10))
