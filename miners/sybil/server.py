@@ -55,7 +55,10 @@ class SybilMiner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        openai.base_url = self.config.sybil.api_url
+        openai.api_base = self.config.sybil.api_url
+        openai.api_key = 'asdasd'
+
+
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
