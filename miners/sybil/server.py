@@ -46,7 +46,7 @@ class SybilMiner( Miner ):
         parser.add_argument('--sybil.temperature', type=float, default=1.0, help='Temperature for sampling.')
         parser.add_argument('--sybil.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
-        
+        parser.add_argument('--sybil.api_url', type=str, default="http://184.105.87.189:8000", help='URL for the API server.')
 
     def __init__(self, *args, **kwargs):
         super(SybilMiner, self).__init__(*args, **kwargs)
@@ -54,7 +54,7 @@ class SybilMiner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        openai.base_url = "http://127.0.0.1:8000"
+        openai.base_url = self.config.sybil.api_url
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
