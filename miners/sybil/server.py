@@ -13,6 +13,7 @@ from functools import partial
 from starlette.types import Send
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
+from typing import List, Optional, Union
 from targon.protocol import TargonStreaming
 from transformers import TextIteratorStreamer
 from torchvision.transforms import ToPILImage, Resize, Compose
@@ -80,7 +81,7 @@ class SybilMiner( Miner ):
 
 
 
-        async def _prompt(messages: str, send: Send):
+        async def _prompt(messages: List[str], send: Send):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -144,6 +145,7 @@ class SybilMiner( Miner ):
 
         # message = synapse.messages[0]
         messages = [{"role": role, "content": message} for role, message in zip(synapse.roles, synapse.messages)]
+        bt.logging.info('messages', messages)
         token_streamer = partial(_prompt, messages)
         return synapse.create_streaming_response(token_streamer)
 
