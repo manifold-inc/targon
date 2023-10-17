@@ -16,6 +16,7 @@ from starlette.types import Send
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
 from targon.protocol import TargonStreaming
+from huggingface_hub import InferenceClient
 from transformers import TextIteratorStreamer
 from typing import List, Optional, Union, Iterable
 from torchvision.transforms import ToPILImage, Resize, Compose
@@ -57,9 +58,7 @@ class SybilMiner( Miner ):
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
 
-        openai.api_base = self.config.sybil.api_url
-        openai.api_key = 'asdasd'
-
+        self.client = InferenceClient(self.config.sybil.model)
 
     def post_http_request(self,
                         prompt: str,
@@ -177,10 +176,8 @@ class SybilMiner( Miner ):
             """
 
 
-            response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=True)
-
             if not synapse.stream:
-                joined_buffer = self.get_response(response)
+                joined_buffer = self.client.text_generation(prompt=prompt)
                 await send(
                     {
                         "type": "http.response.body",
@@ -192,7 +189,7 @@ class SybilMiner( Miner ):
 
                 buffer = []
                 output_text = ""
-                for token in self.get_streaming_response(response):
+                for token in self.client.text_generation(prompt=prompt, stream=True, max_new_tokens=512):
                     output_text += token
                     bt.logging.info(f"token", token)
                     
