@@ -193,7 +193,7 @@ class SybilMiner( Miner ):
 
                     buffer = []
                     output_text = ""
-                    for token in self.client.text_generation(prompt=prompt, stream=True, max_new_tokens=512):
+                    for token in self.client.text_generation(prompt, stream=True, max_new_tokens=512):
                         output_text += token
                         bt.logging.info(f"token", token)
                         
