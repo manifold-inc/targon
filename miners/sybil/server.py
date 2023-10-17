@@ -81,7 +81,7 @@ class SybilMiner( Miner ):
 
 
 
-        async def _prompt(messages: List[str], send: Send):
+        async def _prompt(messages: str, send: Send):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -99,6 +99,7 @@ class SybilMiner( Miner ):
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
             """
+            messages = [{"role": role, "content": message} for role, message in zip(synapse.roles, synapse.messages)]
 
             results_generator = openai.ChatCompletion.create(
                 model=self.config.sybil.model,
@@ -106,6 +107,7 @@ class SybilMiner( Miner ):
                 temperature=0.7,
                 stream=True  # this time, we set stream=True
             )
+            
 
             bt.logging.info(f"results generator {results_generator}")
 
@@ -144,9 +146,8 @@ class SybilMiner( Miner ):
                 bt.logging.trace(f"Streamed tokens: {joined_buffer}")
 
         # message = synapse.messages[0]
-        messages = [{"role": role, "content": message} for role, message in zip(synapse.roles, synapse.messages)]
-        bt.logging.info('messages', messages)
-        token_streamer = partial(_prompt, messages)
+        last_text  = synapse.messages[-1]
+        token_streamer = partial(_prompt, last_text)
         return synapse.create_streaming_response(token_streamer)
 
 
