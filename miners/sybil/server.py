@@ -1,9 +1,11 @@
 import os
 import time
+import json
 import torch
 import openai
 import shutil
 import asyncio
+import requests
 import tempfile
 import argparse
 import bittensor as bt
@@ -13,9 +15,9 @@ from functools import partial
 from starlette.types import Send
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
-from typing import List, Optional, Union
 from targon.protocol import TargonStreaming
 from transformers import TextIteratorStreamer
+from typing import List, Optional, Union, Iterable
 from torchvision.transforms import ToPILImage, Resize, Compose
 from transformers import StoppingCriteria, StoppingCriteriaList
 
@@ -59,6 +61,37 @@ class SybilMiner( Miner ):
         openai.api_key = 'asdasd'
 
 
+    def post_http_request(self,
+                        prompt: str,
+                        api_url: str,
+                        n: int = 1,
+                        stream: bool = False) -> requests.Response:
+        headers = {"User-Agent": "Test Client"}
+        pload = {
+            "prompt": prompt,
+            "n": n,
+            "use_beam_search": True,
+            "temperature": 0.0,
+            "max_tokens": 16,
+            "stream": stream,
+        }
+        response = requests.post(api_url, headers=headers, json=pload, stream=True)
+        return response
+
+
+    def get_streaming_response(self, response: requests.Response) -> Iterable[List[str]]:
+        for chunk in response.iter_lines(chunk_size=8192,
+                                        decode_unicode=False,
+                                        delimiter=b"\0"):
+            if chunk:
+                data = json.loads(chunk.decode("utf-8"))
+                output = data["text"]
+                yield output
+
+    def get_response(self, response: requests.Response) -> List[str]:
+        data = json.loads(response.content)
+        output = data["text"]
+        return output
 
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
         """
@@ -82,9 +115,44 @@ class SybilMiner( Miner ):
             are generated to suit their specific applications.
         """
 
+        messages = [{"role": role, "content": message} for role, message in zip(synapse.roles, synapse.messages)]
 
 
-        async def _prompt(messages: str, send: Send):
+        def get_prompt(messages: List[dict]) -> str:
+            """
+            Constructs the prompt for the GPT-2 model.
+
+            This function takes the incoming messages and constructs a prompt for the GPT-2 model.
+            It uses the GPT-2 tokenizer to tokenize the messages and then decodes the token IDs
+            into strings. It then constructs the prompt by concatenating the decoded messages
+            together.
+
+            Args:
+                messages (List[dict]): The incoming messages to be processed.
+
+            Returns:
+                str: The prompt to be used for the GPT-2 model.
+
+            Usage:
+                This function can be adjusted based on the model being used. Developers can also
+                introduce more sophisticated processing steps or modify how the prompt is
+                constructed.
+            """
+            prompt = ""
+            for message in messages:
+                if message["role"] == "system":
+                    prompt += f'''<imstart>system
+{message["content"]}<|im_end|>'''
+                elif message["role"] == "user":
+                    prompt += f'''<imstart>user
+{message["content"]}<|im_end|>'''
+                elif message["role"] == "assistant":
+                    prompt += f'''<imstart>assistant
+{message["content"]}<|im_end|>'''
+                else:
+                    raise ValueError(f"Invalid role: {message['role']}")
+
+        async def _prompt(prompt: str, send: Send):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -102,44 +170,12 @@ class SybilMiner( Miner ):
                 response, or the model being used. Developers can also introduce more sophisticated
                 processing steps or modify how tokens are sent back to the client.
             """
-            messages = [{"role": role, "content": message} for role, message in zip(synapse.roles, synapse.messages)]
 
-            results_generator = openai.ChatCompletion.create(
-                model=self.config.sybil.model,
-                messages=messages,
-                temperature=0.7,
-                stream=True  # this time, we set stream=True
-            )
-            
 
-            bt.logging.info(f"results generator", results_generator)
-            bt.logging.info(f"messages", messages)
+            response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=True)
 
-            buffer = []
-            output_text = ""
-            for token in results_generator:
-                output_text += token
-                bt.logging.info(f"token", token)
-                
-                N = 3  # Number of tokens to send back to the client at a time
-                buffer.append(token)
-                # If buffer has N tokens, send them back to the client.
-                if len(buffer) == N:
-                    joined_buffer = "".join(buffer)
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-                    bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-                    buffer = []  # Clear the buffer for next batch of tokens
-                    # await asyncio.sleep(0.08)  # Simulate streaming delay
-            
-            # Send any remaining tokens in the buffer
-            if buffer:
-                joined_buffer = "".join(buffer)
+            if not synapse.stream:
+                joined_buffer = self.get_response(response)
                 await send(
                     {
                         "type": "http.response.body",
@@ -147,11 +183,45 @@ class SybilMiner( Miner ):
                         "more_body": False,  # No more tokens to send
                     }
                 )
-                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+            else:
+
+                buffer = []
+                output_text = ""
+                for token in self.get_streaming_response(response):
+                    output_text += token
+                    bt.logging.info(f"token", token)
+                    
+                    N = 3  # Number of tokens to send back to the client at a time
+                    buffer.append(token)
+                    # If buffer has N tokens, send them back to the client.
+                    if len(buffer) == N:
+                        joined_buffer = "".join(buffer)
+                        await send(
+                            {
+                                "type": "http.response.body",
+                                "body": joined_buffer.encode("utf-8"),
+                                "more_body": True,
+                            }
+                        )
+                        bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+                        buffer = []  # Clear the buffer for next batch of tokens
+                        # await asyncio.sleep(0.08)  # Simulate streaming delay
+                
+                # Send any remaining tokens in the buffer
+                if buffer:
+                    joined_buffer = "".join(buffer)
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": joined_buffer.encode("utf-8"),
+                            "more_body": False,  # No more tokens to send
+                        }
+                    )
+                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
 
         # message = synapse.messages[0]
-        last_text  = synapse.messages[-1]
-        token_streamer = partial(_prompt, last_text)
+        prompt = get_prompt(messages)
+        token_streamer = partial(_prompt, prompt)
         return synapse.create_streaming_response(token_streamer)
 
 
