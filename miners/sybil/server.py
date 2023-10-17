@@ -119,7 +119,7 @@ class SybilMiner( Miner ):
             output_text = ""
             for token in results_generator:
                 output_text += token
-
+                bt.logging.info(f"token", token)
                 
                 N = 3  # Number of tokens to send back to the client at a time
                 buffer.append(token)
