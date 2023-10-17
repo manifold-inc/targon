@@ -106,6 +106,7 @@ class SybilMiner( Miner ):
                 stream=True  # this time, we set stream=True
             )
 
+            bt.logging.info(f"results generator {results_generator}")
 
             buffer = []
             output_text = ""
