@@ -112,7 +112,8 @@ class SybilMiner( Miner ):
             )
             
 
-            bt.logging.info(f"results generator {results_generator}")
+            bt.logging.info(f"results generator", results_generator)
+            bt.logging.info(f"messages", messages)
 
             buffer = []
             output_text = ""
