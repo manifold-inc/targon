@@ -16,4 +16,6 @@ accelerate
 bitsandbytes
 torchvision
 fschat
-vllm
+
+openai
+bittensor
