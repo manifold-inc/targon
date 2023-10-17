@@ -11,14 +11,10 @@ import bittensor as bt
 from threading import Thread
 from functools import partial
 from starlette.types import Send
-from vllm.utils import random_uuid
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
 from targon.protocol import TargonStreaming
 from transformers import TextIteratorStreamer
-from vllm.sampling_params import SamplingParams
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.engine.async_llm_engine import AsyncLLMEngine
 from torchvision.transforms import ToPILImage, Resize, Compose
 from transformers import StoppingCriteria, StoppingCriteriaList
 
@@ -26,7 +22,6 @@ from transformers import StoppingCriteria, StoppingCriteriaList
 class SybilMiner( Miner ):
     def config(self) -> "bt.Config":
         parser = argparse.ArgumentParser(description="Sybil Configs")
-        parser = AsyncEngineArgs.add_cli_args(parser)
         self.add_args(parser)
         return bt.config(parser)
 
