@@ -31,7 +31,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple, Union
 
 import bittensor as bt
-from targon.protocol import TargonStreaming
+from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonStreaming
 
 from targon.miner.priority import priority
 from targon.miner.blacklist import blacklist, is_prompt_in_cache
@@ -112,11 +112,28 @@ class Miner(ABC):
         self.axon = axon or bt.axon(wallet=self.wallet, port=self.config.axon.port)
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to axon.")
+
+        # TargonQA
         self.axon.attach(
-            forward_fn=self._prompt,
+            forward_fn=self._prompt_qa,
+            blacklist_fn=self.blacklist,
+            priority_fn=self.priority,
+        ).attach(
+            forward_fn=self._prompt_link_prediction,
+            blacklist_fn=self.blacklist,
+            priority_fn=self.priority,
+        ).attach(
+            forward_fn=self._prompt_search_result,
             blacklist_fn=self.blacklist,
             priority_fn=self.priority,
         )
+
+        #TargonLinkPrediction
+
+        #TargonSearchResult
+
+
+
         bt.logging.info(f"Axon created: {self.axon}")
 
         if self.config.wandb.on:
@@ -168,7 +185,7 @@ class Miner(ABC):
         """
         ...
 
-    def _prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+    def _prompt_qa(self, synapse: TargonQA) -> TargonQA:
         """
         A wrapper method around the `prompt` method that will be defined by the subclass.
 
@@ -197,6 +214,13 @@ class Miner(ABC):
                     f"Blacklisted: Prompt sent recently in last {self.config.miner.blacklist.prompt_cache_block_span} blocks."
                 )
         return self.prompt(synapse)
+    
+    def _prompt_link_prediction(self, synapse: TargonLinkPrediction) -> TargonLinkPrediction:
+        return self.prompt(synapse)
+    
+    def _prompt_search_result(self, synapse: TargonSearchResult) -> TargonSearchResult:
+        return self.prompt(synapse)
+    
 
     @abstractmethod
     def prompt(self, synapse: TargonStreaming) -> TargonStreaming:

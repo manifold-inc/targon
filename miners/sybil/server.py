@@ -15,7 +15,7 @@ from functools import partial
 from starlette.types import Send
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
-from targon.protocol import TargonStreaming
+from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult
 from huggingface_hub import InferenceClient
 from transformers import TextIteratorStreamer
 from typing import List, Optional, Union, Iterable
@@ -50,19 +50,13 @@ class SybilMiner( Miner ):
         parser.add_argument('--sybil.temperature', type=float, default=1.0, help='Temperature for sampling.')
         parser.add_argument('--sybil.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
-        parser.add_argument('--sybil.api_url', type=str, default="http://0.0.0.08000", help='URL for the API server.')
+        parser.add_argument('--sybil.api_url', type=str, default="http://0.0.0.0:8000", help='URL for the API server.')
 
     def __init__(self, *args, **kwargs):
         super(SybilMiner, self).__init__(*args, **kwargs)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
-
-        self.client = InferenceClient(self.config.sybil.api_url)
-
-        # test the model
-        bt.logging.info('client warmup', self.client.text_generation(prompt="Hello world!", max_new_tokens=10))
-
 
     def post_http_request(self,
                         prompt: str,
@@ -71,19 +65,14 @@ class SybilMiner( Miner ):
                         stream: bool = False) -> requests.Response:
         headers = {"User-Agent": "Test Client"}
         pload = {
-            "inputs": prompt,
-            "parameters": {
-                "n": n,
-                "use_beam_search": False,
-                "temperature": 0.7,
-                "max_tokens": 512,
-                "watermark": False
-            }
-
+            "prompt": prompt,
+            "n": n,
+            "use_beam_search": True,
+            "temperature": 0.0,
+            "max_tokens": 16,
+            "stream": stream,
         }
-
-        url = f"{api_url}/generate_stream"
-        response = requests.post(url, headers=headers, json=pload, stream=True)
+        response = requests.post(api_url, headers=headers, json=pload, stream=True)
         return response
 
 
@@ -93,15 +82,17 @@ class SybilMiner( Miner ):
                                         delimiter=b"\0"):
             if chunk:
                 data = json.loads(chunk.decode("utf-8"))
-                output = data["token"]['text']
+                output = data["text"]
                 yield output
+
 
     def get_response(self, response: requests.Response) -> List[str]:
         data = json.loads(response.content)
         output = data["text"]
         return output
 
-    def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+
+    def prompt(self, synapse: Union[TargonQA, TargonLinkPrediction, TargonSearchResult]) -> Union[TargonQA, TargonLinkPrediction, TargonSearchResult]:
         """
         Generates a streaming response for the provided synapse.
 
@@ -123,46 +114,56 @@ class SybilMiner( Miner ):
             are generated to suit their specific applications.
         """
 
-        messages = [{"role": role, "content": message} for role, message in zip(synapse.roles, synapse.messages)]
 
+        if type(synapse) == TargonQA:
+            question = synapse.question
+            prompt = f"Q: {question}\nA:"
+        elif type(synapse) == TargonLinkPrediction:
+            query = synapse.query
+            prompt = f"{query}"
+        elif type(synapse) == TargonSearchResult:
+            query = synapse.query
+            sources = synapse.sources
 
-        def get_prompt(messages: List[dict]) -> str:
+            prompt = f"{query}"
+
+        
+        async def _prompt(prompt: str):
             """
-            Constructs the prompt for the GPT-2 model.
+            Asynchronously processes the input text and sends back tokens as a streaming response.
 
-            This function takes the incoming messages and constructs a prompt for the GPT-2 model.
-            It uses the GPT-2 tokenizer to tokenize the messages and then decodes the token IDs
-            into strings. It then constructs the prompt by concatenating the decoded messages
-            together.
+            This function takes an input text, tokenizes it using the GPT-2 tokenizer, and then
+            uses the simulated model to decode token IDs into strings. It then sends each token
+            back to the client as a streaming response, with a delay between tokens to simulate
+            the effect of real-time streaming.
 
             Args:
-                messages (List[dict]): The incoming messages to be processed.
-
-            Returns:
-                str: The prompt to be used for the GPT-2 model.
+                text (str): The input text message to be processed.
+                send (Send): An asynchronous function that allows sending back the streaming response.
 
             Usage:
-                This function can be adjusted based on the model being used. Developers can also
-                introduce more sophisticated processing steps or modify how the prompt is
-                constructed.
+                This function can be adjusted based on the streaming requirements, speed of
+                response, or the model being used. Developers can also introduce more sophisticated
+                processing steps or modify how tokens are sent back to the client.
             """
-            prompt = ""
-            for message in messages:
-                if message["role"] == "system":
-                    prompt += f'''<imstart>system
-{message["content"]}<|im_end|>'''
-                elif message["role"] == "user":
-                    prompt += f'''<imstart>user
-{message["content"]}<|im_end|>'''
-                elif message["role"] == "assistant":
-                    prompt += f'''<imstart>assistant
-{message["content"]}<|im_end|>'''
-                else:
-                    raise ValueError(f"Invalid role: {message['role']}")
 
-            return prompt
+            if type(synapse) == TargonQA:
+                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
+                output = self.get_response(response)
+                synapse.answer = output
+            elif type(synapse) == TargonLinkPrediction:
+                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
+                output = self.get_response(response)
+                synapse.prediction = output
+            elif type(synapse) == TargonSearchResult:
+                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
+                output = self.get_response(response)
+                synapse.results = output
+                
 
-        async def _prompt(prompt: str, send: Send):
+
+
+        async def _streaming_prompt(prompt: str, send: Send):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -182,20 +183,19 @@ class SybilMiner( Miner ):
             """
 
             try:
-                if not synapse.stream:
-                    joined_buffer = self.client.text_generation(prompt=prompt)
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
-                            "more_body": False,  # No more tokens to send
-                        }
-                    )
-                else:
+                
+                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=True)
 
-                    buffer = []
-                    output_text = ""
-                    for token in self.client.text_generation(prompt, stream=True, max_new_tokens=512):
+
+                buffer = []
+                output_text = ""
+                for chunk in response.iter_lines(chunk_size=8192,
+                                        decode_unicode=False,
+                                        delimiter=b"\0"):
+                    
+                    if chunk:
+                        data = json.loads(chunk.decode("utf-8"))
+                        token = data["text"]
                         output_text += token
                         bt.logging.info(f"token", token)
                         
@@ -214,18 +214,18 @@ class SybilMiner( Miner ):
                             bt.logging.debug(f"Streamed tokens: {joined_buffer}")
                             buffer = []  # Clear the buffer for next batch of tokens
                             # await asyncio.sleep(0.08)  # Simulate streaming delay
-                    
-                    # Send any remaining tokens in the buffer
-                    if buffer:
-                        joined_buffer = "".join(buffer)
-                        await send(
-                            {
-                                "type": "http.response.body",
-                                "body": "",
-                                "more_body": False,  # No more tokens to send
-                            }
-                        )
-                        bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                
+                # # Send any remaining tokens in the buffer
+                # if buffer:
+                #     joined_buffer = "".join(buffer)
+                #     await send(
+                #         {
+                #             "type": "http.response.body",
+                #             "body": "",
+                #             "more_body": False,  # No more tokens to send
+                #         }
+                #     )
+                #     bt.logging.trace(f"Streamed tokens: {joined_buffer}")
             except Exception as e:
                 bt.logging.error(f"Exception: {e}")
                 await send(
@@ -238,10 +238,14 @@ class SybilMiner( Miner ):
 
 
         # message = synapse.messages[0]
-        prompt = get_prompt(messages)
-        token_streamer = partial(_prompt, prompt)
-        return synapse.create_streaming_response(token_streamer)
-
+        
+        if type(synapse) != TargonQA or type(synapse) != TargonLinkPrediction:
+            if synapse.stream:
+                token_streamer = partial(_streaming_prompt, prompt)
+                return synapse.create_streaming_response(token_streamer)
+            
+        asyncio.run(_prompt(prompt))
+        return synapse
 
 
 if __name__ == "__main__":
