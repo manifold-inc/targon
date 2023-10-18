@@ -156,7 +156,6 @@ class SybilMiner( Miner ):
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
                 output = self.get_response(response)
                 bt.logging.info("output", output)
-
                 synapse.results = output
             elif type(synapse) == TargonSearchResult:
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
