@@ -65,6 +65,8 @@ def run(self):
     )
     self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     # Start  starts the miner's axon, making it active on the network.
     bt.logging.info(f"Starting axon server on port: {self.config.axon.port}")
     self.axon.start()
