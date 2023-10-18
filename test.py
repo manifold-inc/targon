@@ -3,7 +3,7 @@ import bittensor as bt
 import torchvision.transforms as transforms
 from PIL import Image
 
-from targon.protocol import TargonStreaming, TargonDendrite
+from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonDendrite
 subtensor = bt.subtensor( network = 'finney' )
 metagraph = subtensor.metagraph( netuid = 4 )
 
@@ -16,28 +16,28 @@ dendrite = TargonDendrite( wallet = wallet )
 
 prompt = """describe this image."""
 
-# find all hotkeys with an axon ip that is not none
-# Open the image
-image_path = "neurons/miniGPT4/icbm_bicycle.png"
-image = Image.open(image_path)
+# # find all hotkeys with an axon ip that is not none
+# # Open the image
+# image_path = "neurons/miniGPT4/icbm_bicycle.png"
+# image = Image.open(image_path)
 
-# Convert the image to a tensor, then convert to float and scale to [0, 1]
-tensor_transform = transforms.Compose([
-    transforms.PILToTensor(),
-    transforms.Lambda(lambda x: x.float() / 255.0)
-])
-image_tensor_float = tensor_transform(image)
+# # Convert the image to a tensor, then convert to float and scale to [0, 1]
+# tensor_transform = transforms.Compose([
+#     transforms.PILToTensor(),
+#     transforms.Lambda(lambda x: x.float() / 255.0)
+# ])
+# image_tensor_float = tensor_transform(image)
 
-# Now normalize
-normalized_transform = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-normalized_image_tensor = normalized_transform(image_tensor_float)
+# # Now normalize
+# normalized_transform = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+# normalized_image_tensor = normalized_transform(image_tensor_float)
 
-serialized_tensor = bt.Tensor.serialize(normalized_image_tensor)
+# serialized_tensor = bt.Tensor.serialize(normalized_image_tensor)
 
-axons = [axon for axon in metagraph.axons if axon.ip == '184.105.87.192']
+axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
 
 
-synapse = TargonStreaming(roles=['user'], messages=[prompt], images=[serialized_tensor])
+synapse = TargonQA(question=prompt)
 # synapse = TargonStreaming(roles=['user'], messages=[prompt])
 
 async def fetch():

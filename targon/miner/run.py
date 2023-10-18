@@ -18,6 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 import time
 import wandb
+import asyncio
 import bittensor as bt
 import traceback
 from targon.protocol import TargonStreaming
@@ -49,6 +50,15 @@ def run(self):
         KeyboardInterrupt: If the miner is stopped by a manual interruption.
         Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
     """
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError as e:
+        if str(e).startswith('There is no current event loop in thread'):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        else:
+            assert 'There is no current event loop in thread' in str(e)
     # --- Optionally register the wallet.
     if not self.config.miner.no_register:
         bt.logging.info(
