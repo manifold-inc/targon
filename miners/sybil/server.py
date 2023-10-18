@@ -128,7 +128,7 @@ class SybilMiner( Miner ):
             prompt = f"{query}"
 
         
-        async def _prompt(prompt: str):
+        def _prompt(prompt: str):
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -160,7 +160,7 @@ class SybilMiner( Miner ):
                 output = self.get_response(response)
                 synapse.results = output
                 
-
+            return synapse
 
 
         async def _streaming_prompt(prompt: str, send: Send):
@@ -244,7 +244,7 @@ class SybilMiner( Miner ):
                 token_streamer = partial(_streaming_prompt, prompt)
                 return synapse.create_streaming_response(token_streamer)
             
-        asyncio.run(_prompt(prompt))
+        synapse = _prompt(prompt)
         return synapse
 
 
