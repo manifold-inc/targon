@@ -116,16 +116,16 @@ class Miner(ABC):
         # TargonQA
         self.axon.attach(
             forward_fn=self._prompt_qa,
-            blacklist_fn=self.blacklist,
-            priority_fn=self.priority,
+            blacklist_fn=self.blacklist_qa,
+            priority_fn=self.priority_qa,
         ).attach(
             forward_fn=self._prompt_link_prediction,
-            blacklist_fn=self.blacklist,
-            priority_fn=self.priority,
+            blacklist_fn=self.blacklist_link_prediction,
+            priority_fn=self.priority_link_prediction,
         ).attach(
             forward_fn=self._prompt_search_result,
-            blacklist_fn=self.blacklist,
-            priority_fn=self.priority,
+            blacklist_fn=self.blacklist_search_result,
+            priority_fn=self.priority_search_result,
         )
 
         #TargonLinkPrediction
@@ -248,6 +248,29 @@ class Miner(ABC):
         """
         ...
 
+    def blacklist_qa(self, synapse: TargonQA) -> Tuple[bool, str]:
+
+        def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
+            raise NotImplementedError("blacklist not implemented in subclass")
+
+        return blacklist(self, _blacklist, synapse)
+    
+
+    def blacklist_link_prediction(self, synapse: TargonLinkPrediction) -> Tuple[bool, str]:
+            
+            def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
+                raise NotImplementedError("blacklist not implemented in subclass")
+    
+            return blacklist(self, _blacklist, synapse)
+    
+    def blacklist_search_result(self, synapse: TargonSearchResult) -> Tuple[bool, str]:
+            
+            def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
+                raise NotImplementedError("blacklist not implemented in subclass")
+    
+            return blacklist(self, _blacklist, synapse)
+    
+
     def blacklist(self, synapse: TargonStreaming) -> Tuple[bool, str]:
         """
         Default blacklist logic
@@ -270,6 +293,26 @@ class Miner(ABC):
             raise NotImplementedError("blacklist not implemented in subclass")
 
         return blacklist(self, _blacklist, synapse)
+    
+
+    def priority_qa(self, synapse: TargonQA) -> float:
+        def _priority(synapse: "TargonStreaming") -> bool:
+            raise NotImplementedError("priority not implemented in subclass")
+
+        return priority(self, _priority, synapse)
+    
+    def priority_link_prediction(self, synapse: TargonLinkPrediction) -> float:
+        def _priority(synapse: "TargonStreaming") -> bool:
+            raise NotImplementedError("priority not implemented in subclass")
+
+        return priority(self, _priority, synapse)
+    
+    def priority_search_result(self, synapse: TargonSearchResult) -> float:
+        def _priority(synapse: "TargonStreaming") -> bool:
+            raise NotImplementedError("priority not implemented in subclass")
+
+        return priority(self, _priority, synapse)
+    
 
     def priority(self, synapse: TargonStreaming) -> float:
         """
