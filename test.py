@@ -47,8 +47,9 @@ async def fetch():
         timeout=60,
         # streaming=True
     )
-    async for token in responses:
-        print(token, end="", flush=True)  # or handle the token as needed
+    print(responses)
+    # async for token in responses:
+    #     print(token, end="", flush=True)  # or handle the token as needed
 
     return responses
 

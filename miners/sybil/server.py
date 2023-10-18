@@ -67,7 +67,7 @@ class SybilMiner( Miner ):
         pload = {
             "prompt": prompt,
             "n": n,
-            "use_beam_search": True,
+            # "use_beam_search": True,
             "temperature": 0.0,
             "max_tokens": 16,
             "stream": stream,
