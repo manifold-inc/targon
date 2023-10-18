@@ -37,7 +37,8 @@ prompt = """describe this image."""
 axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
 
 
-synapse = TargonQA(question=prompt)
+# synapse = TargonQA(question=prompt)
+synapse = TargonLinkPrediction( query="who killed dumbledore?" )
 # synapse = TargonStreaming(roles=['user'], messages=[prompt])
 
 async def fetch():
