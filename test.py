@@ -45,7 +45,7 @@ async def fetch():
         axons=axons,
         synapse=synapse,
         timeout=60,
-        streaming=True
+        # streaming=True
     )
     async for token in responses:
         print(token, end="", flush=True)  # or handle the token as needed

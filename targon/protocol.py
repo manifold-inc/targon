@@ -26,6 +26,7 @@ class TargonQA( bt.Synapse ):
         title="Answer",
         description="The answer to the question. Mutable.",
     )
+    stream: bool = False
     required_hash_fields: List[str] = pydantic.Field(
         ["question"],
         title="Required Hash Fields",
@@ -46,6 +47,7 @@ class TargonLinkPrediction( bt.Synapse ):
         title="Results",
         description="The results of the query. Mutable.",
     )
+    stream: bool = False
     required_hash_fields: List[str] = pydantic.Field(
         ["query"],
         title="Required Hash Fields",
