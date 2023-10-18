@@ -22,7 +22,7 @@ class TargonQA( bt.Synapse ):
         allow_mutation=False,
     )
     answer: List[str] = pydantic.Field(
-        "",
+        [],
         title="Answer",
         description="The answer to the question. Mutable.",
     )
@@ -64,7 +64,7 @@ class TargonSearchResult( bt.StreamingSynapse ):
         allow_mutation=False,
     )
     sources: List[str] = pydantic.Field(
-        [],
+        ...,
         title="Sources",
         description="The sources of the query. Mutable.",
     )
