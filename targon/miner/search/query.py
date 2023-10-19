@@ -18,6 +18,6 @@ def query(params):
 
 
     search = GoogleSearch(params)
-    results = search.get_dict()
+    results = search.get_json()
 
     return results
