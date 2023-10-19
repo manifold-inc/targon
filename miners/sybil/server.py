@@ -205,7 +205,7 @@ class SybilMiner( Miner ):
                     output_text += token
                     bt.logging.info(f"token", token)
                     
-                    N = 1  # Number of tokens to send back to the client at a time
+                    N = 3  # Number of tokens to send back to the client at a time
                     buffer.append(token)
                     # If buffer has N tokens, send them back to the client.
                     if len(buffer) == N:
