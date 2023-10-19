@@ -43,6 +43,7 @@ class SybilMiner( Miner ):
         parser.add_argument('--sybil.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
         parser.add_argument('--sybil.api_url', type=str, default="http://0.0.0.0:8000", help='URL for the API server.')
+        parser.add_argument('--sybil.serp_api_key', type=str, help='API key for the SERP API.')
 
     def __init__(self, *args, **kwargs):
         super(SybilMiner, self).__init__(*args, **kwargs)
@@ -152,7 +153,12 @@ class SybilMiner( Miner ):
                 synapse.answer = output
 
             elif type(synapse) == TargonLinkPrediction:
-                output = search({"q": prompt})
+                params = {
+                    "q": prompt,
+                    "api_key": self.config.sybil.serp_api_key
+                }
+
+                output = search(params)
                 bt.logging.info("output", output)
                 synapse.results = output
             elif type(synapse) == TargonSearchResult:

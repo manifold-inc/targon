@@ -9,7 +9,7 @@ class QueryParams(BaseModel):
     hl: str = "Google UI Language",
     gl: str = "Google Country",
     google_domain: str = "google.com",
-    api_key: str = os.environ['SERP_API_KEY'] if os.environ['SERP_API_KEY'] else None
+    api_key: str
 
 
         
