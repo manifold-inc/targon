@@ -150,6 +150,7 @@ class SybilMiner( Miner ):
             if type(synapse) == TargonQA:
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
                 output = self.get_response(response)
+                output = output.replace(f'Q:{prompt}\nA:')
                 bt.logging.info("output", output)
                 synapse.answer = output
             elif type(synapse) == TargonLinkPrediction:
@@ -198,6 +199,7 @@ class SybilMiner( Miner ):
                                         delimiter=b"\0"):
                     
                     if chunk:
+                        print(chunk)
                         data = json.loads(chunk.decode("utf-8"))
                         token = data["text"]
                         output_text += token

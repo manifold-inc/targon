@@ -106,7 +106,7 @@ class TargonSearchResult( bt.StreamingSynapse ):
             It's important to remember that this method is asynchronous. Ensure it's called within an appropriate
             asynchronous context.
         """
-
+        print(response)
         if self.completion is None:
             self.completion = ""
         async for chunk in response.content.iter_any():
@@ -179,8 +179,8 @@ class TargonSearchResult( bt.StreamingSynapse ):
             "header_size": int(headers.get("header_size", 0)),
             "dendrite": extract_info("bt_header_dendrite"),
             "axon": extract_info("bt_header_axon"),
-            "roles": self.roles,
-            "messages": self.messages,
+            "query": self.query,
+            "sources": self.sources,
             # "images": self.images,
             "completion": self.completion,
         }
@@ -539,7 +539,7 @@ class TargonDendrite( bt.dendrite ):
             # Set process time and log the response
             synapse.dendrite.process_time = str(time.time() - start_time)
             bt.logging.debug(
-                f"dendrite | <-- | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | {synapse.axon.status_code} | {synapse.axon.status_message}"
+                f"stream dendrite | <-- | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | {synapse.axon.status_code} | {synapse.axon.status_message}"
             )
 
         except aiohttp.ClientConnectorError as e:
@@ -553,12 +553,12 @@ class TargonDendrite( bt.dendrite ):
         except Exception as e:
             synapse.dendrite.status_code = "422"
             synapse.dendrite.status_message = (
-                f"Failed to parse response object with error: {str(e)}"
+                f"Failed to parse response object with error: {str(e)}",
             )
 
         finally:
             bt.logging.debug(
-                f"dendrite | <-- | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | {synapse.dendrite.status_code} | {synapse.dendrite.status_message}"
+                f"stream dendrite | <-- | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | {synapse.dendrite.status_code} | {synapse.dendrite.status_message}"
             )
 
             # Log synapse event history
