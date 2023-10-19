@@ -68,7 +68,7 @@ sources = sources_response[0].results
 
 search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
 
-responses = asyncio.run(fetch(search_synapse))
+asyncio.run(fetch(search_synapse))
 
 
 # synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
