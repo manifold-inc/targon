@@ -206,7 +206,7 @@ class SybilMiner( Miner ):
                     # if chunk:
                         # print(chunk)
                     data = json.loads(chunk.decode("utf-8"))
-                    token = data["text"][0]
+                    token = data["text"][0].replace(prompt, "")
                     output_text += token
                     bt.logging.info(f"token", token)
                     
