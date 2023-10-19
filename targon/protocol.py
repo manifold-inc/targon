@@ -468,7 +468,6 @@ class TargonDendrite( bt.dendrite ):
             bt.logging.debug(
                 f"stream dendrite | --> | {synapse.get_total_size()} B | {synapse.name} | {synapse.axon.hotkey} | {synapse.axon.ip}:{str(synapse.axon.port)} | 0 | Success"
             )
-
             # Make the HTTP POST request
             async with (await self.session).post(
                 url,
@@ -484,6 +483,8 @@ class TargonDendrite( bt.dendrite ):
                         yield token  # Yield each token as it's processed
                     json_response = synapse.extract_response_json(response)
                 else:
+                    bt.logging.info('stream dendrite | --> | ', response)
+
                     json_response = await response.json()
 
                 # Process the server response
@@ -506,7 +507,7 @@ class TargonDendrite( bt.dendrite ):
         except Exception as e:
             synapse.dendrite.status_code = "422"
             synapse.dendrite.status_message = (
-                f"Failed to parse response object with error: {str(e)}",
+                f"Failed to parse response object with error: {e}"
             )
 
         finally:

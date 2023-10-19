@@ -197,7 +197,7 @@ class SybilMiner( Miner ):
                 for chunk in response.iter_lines(chunk_size=8192,
                                         decode_unicode=False,
                                         delimiter=b"\0"):
-                    
+                    print(chunk)
                     if chunk:
                         print(chunk)
                         data = json.loads(chunk.decode("utf-8"))
