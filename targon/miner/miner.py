@@ -20,7 +20,6 @@ import os
 import copy
 import time
 import wandb
-import dotenv
 import asyncio
 import argparse
 import pydantic
@@ -58,7 +57,6 @@ class Miner(ABC):
             subtensor: Bittensor Subtensor object which manages the blockchain connection.
         """
         # Setup base config from Miner.config() and merge with subclassed config.
-        dotenv.load_dotenv()
 
         base_config = copy.deepcopy(config or get_config())
         self.config = self.config()

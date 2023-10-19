@@ -1,6 +1,7 @@
 from . import protocol
+from dotenv import load_env
 
-
+load_env()
 from .miner.search import query as search
 
 
