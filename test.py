@@ -3,7 +3,7 @@ import bittensor as bt
 import torchvision.transforms as transforms
 from PIL import Image
 
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonDendrite
+from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonDendrite, TargonSearchResultStream
 subtensor = bt.subtensor( network = 'finney' )
 metagraph = subtensor.metagraph( netuid = 4 )
 
@@ -41,7 +41,9 @@ synapse = TargonQA(question=prompt)
 
 
 # synapse = TargonLinkPrediction( query="who killed dumbledore?" )
-synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
+# synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
+synapse = TargonSearchResultStream( query="who killed dumbledore?", sources=["http://"] )
+
 # synapse = TargonSearchResultStream(roles=['user'], messages=[prompt])
 
 async def fetch():

@@ -226,6 +226,7 @@ class Miner(ABC):
         return self.prompt(synapse)
     
     def _prompt_search_result_stream(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
+        bt.logging.info('prompting search result stream', synapse)
         return self.prompt(synapse)
     
 
