@@ -68,7 +68,9 @@ async def _qa_forward(self, question: str, axons: List[bt.axon]):
     qa_synapse = TargonQA(question=question)
     responses = await fetch(self, qa_synapse, axons)
 
-    answers = [response[0].answer for response in responses]
+    bt.logging.info('qa synapse', responses)
+
+    answers = [response.answer for response in responses]
     return answers
 
 
@@ -86,7 +88,7 @@ async def _link_prediction_forward(self, question: str, axons: List[bt.axon]):
     search_synapse = TargonLinkPrediction( query=question )
     responses = await fetch( self, search_synapse, axons )
 
-    sources = [response[0].results for response in responses]
+    sources = [response.results for response in responses]
 
     return sources
 

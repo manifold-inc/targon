@@ -21,7 +21,7 @@ class TargonQA( bt.Synapse ):
         description="The question to be asked. Immutable.",
         allow_mutation=False,
     )
-    answer: List[str] = pydantic.Field(
+    answer: str = pydantic.Field(
         [],
         title="Answer",
         description="The answer to the question. Mutable.",
