@@ -84,10 +84,10 @@ class QwenMiner( Miner ):
         the incoming message, and then sends the response back to the client token by token.
 
         Args:
-            synapse (TargonStreaming): The incoming TargonStreaming instance containing the messages to be processed.
+            synapse (TargonSearchResultStream): The incoming TargonSearchResultStream instance containing the messages to be processed.
 
         Returns:
-            TargonStreaming: The streaming response object which can be used by other functions to
+            TargonSearchResultStream: The streaming response object which can be used by other functions to
                             stream back the response to the client.
 
         Usage:

@@ -13,7 +13,7 @@ from starlette.types import Send
 from min.minigpt4 import MiniGPT4
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
-from targon.protocol import TargonStreaming
+from targon.protocol import TargonSearchResultStream
 from transformers import TextIteratorStreamer
 from torchvision.transforms import ToPILImage, Resize, Compose
 from min.conversation import Chat, CONV_VISION, StoppingCriteriaSub
@@ -91,7 +91,7 @@ class MiniGPT4Miner( Miner ):
         bt.logging.success('warmed up the chat conversation')
 
 
-    def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+    def prompt(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
         """
         Generates a streaming response for the provided synapse.
 
@@ -101,10 +101,10 @@ class MiniGPT4Miner( Miner ):
         the incoming message, and then sends the response back to the client token by token.
 
         Args:
-            synapse (TargonStreaming): The incoming TargonStreaming instance containing the messages to be processed.
+            synapse (TargonSearchResultStream): The incoming TargonSearchResultStream instance containing the messages to be processed.
 
         Returns:
-            TargonStreaming: The streaming response object which can be used by other functions to
+            TargonSearchResultStream: The streaming response object which can be used by other functions to
                             stream back the response to the client.
 
         Usage:

@@ -42,7 +42,7 @@ synapse = TargonQA(question=prompt)
 
 # synapse = TargonLinkPrediction( query="who killed dumbledore?" )
 synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
-# synapse = TargonStreaming(roles=['user'], messages=[prompt])
+# synapse = TargonSearchResultStream(roles=['user'], messages=[prompt])
 
 async def fetch():
     responses = await dendrite(

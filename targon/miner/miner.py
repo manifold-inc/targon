@@ -31,7 +31,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple, Union
 
 import bittensor as bt
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonStreaming
+from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 from targon.miner.priority import priority
 from targon.miner.blacklist import blacklist, is_prompt_in_cache
@@ -126,6 +126,10 @@ class Miner(ABC):
             forward_fn=self._prompt_search_result,
             blacklist_fn=self.blacklist_search_result,
             priority_fn=self.priority_search_result,
+        ).attach(
+            forward_fn=self._prompt_search_result_stream,
+            blacklist_fn=self.blacklist_search_result_stream,
+            priority_fn=self.priority_search_result_stream,
         )
 
         #TargonLinkPrediction
@@ -195,10 +199,10 @@ class Miner(ABC):
         cache, the subclass `prompt` method is called.
 
         Args:
-            synapse (TargonStreaming): The incoming request object encapsulating the details of the request.
+            synapse (TargonSearchResultStream): The incoming request object encapsulating the details of the request.
 
         Returns:
-            TargonStreaming: The response object to be sent back in reply to the incoming request, essentially
+            TargonSearchResultStream: The response object to be sent back in reply to the incoming request, essentially
             the filled synapse request object.
 
         Raises:
@@ -221,9 +225,12 @@ class Miner(ABC):
     def _prompt_search_result(self, synapse: TargonSearchResult) -> TargonSearchResult:
         return self.prompt(synapse)
     
+    def _prompt_search_result_stream(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
+        return self.prompt(synapse)
+    
 
     @abstractmethod
-    def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+    def prompt(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
         """
         Abstract method to handle and respond to incoming requests to the miner.
 
@@ -232,16 +239,16 @@ class Miner(ABC):
         be dependent on the specific implementation provided in the subclass.
 
         Args:
-            synapse (TargonStreaming): The incoming request object encapsulating the details
+            synapse (TargonSearchResultStream): The incoming request object encapsulating the details
                 of the request. This must contain `messages` and `roles` as fields.
 
         Returns:
-            TargonStreaming: The response object that should be sent back in reply to the
+            TargonSearchResultStream: The response object that should be sent back in reply to the
                 incoming request. This is essentially the filled synapse request object.
 
         Example:
             class CustomMiner(Miner):
-                def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+                def prompt(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
                     # Custom logic to process and respond to the request.
                     synapse.completion = "The meaning of life is 42."
                     return synapse
@@ -250,7 +257,7 @@ class Miner(ABC):
 
     def blacklist_qa(self, synapse: TargonQA) -> Tuple[bool, str]:
 
-        def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
+        def _blacklist(synapse: "TargonSearchResultStream") -> Tuple[bool, str]:
             raise NotImplementedError("blacklist not implemented in subclass")
 
         return blacklist(self, _blacklist, synapse)
@@ -258,20 +265,27 @@ class Miner(ABC):
 
     def blacklist_link_prediction(self, synapse: TargonLinkPrediction) -> Tuple[bool, str]:
             
-            def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
+            def _blacklist(synapse: "TargonSearchResultStream") -> Tuple[bool, str]:
                 raise NotImplementedError("blacklist not implemented in subclass")
     
             return blacklist(self, _blacklist, synapse)
     
     def blacklist_search_result(self, synapse: TargonSearchResult) -> Tuple[bool, str]:
             
-            def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
+            def _blacklist(synapse: "TargonSearchResult") -> Tuple[bool, str]:
                 raise NotImplementedError("blacklist not implemented in subclass")
     
             return blacklist(self, _blacklist, synapse)
     
+    def blacklist_search_result_stream(self, synapse: TargonSearchResultStream) -> Tuple[bool, str]:
+                
+                def _blacklist(synapse: "TargonSearchResultStream") -> Tuple[bool, str]:
+                    raise NotImplementedError("blacklist not implemented in subclass")
+        
+                return blacklist(self, _blacklist, synapse)
+    
 
-    def blacklist(self, synapse: TargonStreaming) -> Tuple[bool, str]:
+    def blacklist(self, synapse: TargonSearchResultStream) -> Tuple[bool, str]:
         """
         Default blacklist logic
 
@@ -289,32 +303,38 @@ class Miner(ABC):
             blacklisted (:obj:`bool`):
         """
 
-        def _blacklist(synapse: "TargonStreaming") -> Tuple[bool, str]:
+        def _blacklist(synapse: "TargonSearchResultStream") -> Tuple[bool, str]:
             raise NotImplementedError("blacklist not implemented in subclass")
 
         return blacklist(self, _blacklist, synapse)
     
 
     def priority_qa(self, synapse: TargonQA) -> float:
-        def _priority(synapse: "TargonStreaming") -> bool:
+        def _priority(synapse: "TargonSearchResultStream") -> bool:
             raise NotImplementedError("priority not implemented in subclass")
 
         return priority(self, _priority, synapse)
     
     def priority_link_prediction(self, synapse: TargonLinkPrediction) -> float:
-        def _priority(synapse: "TargonStreaming") -> bool:
+        def _priority(synapse: "TargonSearchResultStream") -> bool:
             raise NotImplementedError("priority not implemented in subclass")
 
         return priority(self, _priority, synapse)
     
     def priority_search_result(self, synapse: TargonSearchResult) -> float:
-        def _priority(synapse: "TargonStreaming") -> bool:
+        def _priority(synapse: "TargonSearchResultStream") -> bool:
+            raise NotImplementedError("priority not implemented in subclass")
+
+        return priority(self, _priority, synapse)
+    
+    def priority_search_result_stream(self, synapse: TargonSearchResultStream) -> float:
+        def _priority(synapse: "TargonSearchResultStream") -> bool:
             raise NotImplementedError("priority not implemented in subclass")
 
         return priority(self, _priority, synapse)
     
 
-    def priority(self, synapse: TargonStreaming) -> float:
+    def priority(self, synapse: TargonSearchResultStream) -> float:
         """
         Define how miners should prioritize requests.
 
@@ -332,7 +352,7 @@ class Miner(ABC):
             priority (:obj:`float`):
         """
 
-        def _priority(synapse: "TargonStreaming") -> bool:
+        def _priority(synapse: "TargonSearchResultStream") -> bool:
             raise NotImplementedError("priority not implemented in subclass")
 
         return priority(self, _priority, synapse)

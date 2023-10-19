@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 import bittensor as bt
-from targon.protocol import TargonStreaming, TargonDendrite
+from targon.protocol import TargonSearchResultStream, TargonDendrite
 from typing import AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 from server_protocol import (
@@ -70,7 +70,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     print(request)
     prompt = await get_gen_prompt(request)  # You might need to adapt this function
 
-    synapse = TargonStreaming(roles=['user'], messages=[prompt])
+    synapse = TargonSearchResultStream(roles=['user'], messages=[prompt])
     model_name = request.model
     request_id = f"cmpl-{random_uuid()}"
     created_time = int(time.monotonic())

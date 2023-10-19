@@ -15,7 +15,7 @@ from functools import partial
 from starlette.types import Send
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult
+from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 from huggingface_hub import InferenceClient
 from transformers import TextIteratorStreamer
 from typing import List, Optional, Union, Iterable
@@ -68,8 +68,8 @@ class SybilMiner( Miner ):
             "prompt": prompt,
             "n": n,
             # "use_beam_search": True,
-            "temperature": 0.0,
-            "max_tokens": 16,
+            "temperature": self.config.sybil.temperature,
+            "max_tokens": self.config.sybil.max_new_tokens,
             "stream": stream,
         }
         response = requests.post(api_url, headers=headers, json=pload, stream=True)
@@ -92,7 +92,7 @@ class SybilMiner( Miner ):
         return output
 
 
-    def prompt(self, synapse: Union[TargonQA, TargonLinkPrediction, TargonSearchResult]) -> Union[TargonQA, TargonLinkPrediction, TargonSearchResult]:
+    def prompt(self, synapse: Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
         """
         Generates a streaming response for the provided synapse.
 
@@ -102,10 +102,10 @@ class SybilMiner( Miner ):
         the incoming message, and then sends the response back to the client token by token.
 
         Args:
-            synapse (TargonStreaming): The incoming TargonStreaming instance containing the messages to be processed.
+            synapse (TargonSearchResultStream): The incoming TargonSearchResultStream instance containing the messages to be processed.
 
         Returns:
-            TargonStreaming: The streaming response object which can be used by other functions to
+            TargonSearchResultStream: The streaming response object which can be used by other functions to
                             stream back the response to the client.
 
         Usage:
@@ -122,6 +122,11 @@ class SybilMiner( Miner ):
             query = synapse.query
             prompt = f"{query}"
         elif type(synapse) == TargonSearchResult:
+            query = synapse.query
+            sources = synapse.sources
+
+            prompt = f"{query}"
+        elif type(synapse) == TargonSearchResultStream:
             query = synapse.query
             sources = synapse.sources
 
@@ -194,18 +199,13 @@ class SybilMiner( Miner ):
 
                 buffer = []
                 output_text = ""
-                for chunk in response.iter_lines(chunk_size=8192,
-                                        decode_unicode=False,
-                                        delimiter=b"\0"):
-                    print(chunk)
+                for token in self.get_streaming_response(response):
                     # if chunk:
                         # print(chunk)
-                    data = json.loads(chunk.decode("utf-8"))
-                    token = data["text"]
                     output_text += token
                     bt.logging.info(f"token", token)
                     
-                    N = 3  # Number of tokens to send back to the client at a time
+                    N = 1  # Number of tokens to send back to the client at a time
                     buffer.append(token)
                     # If buffer has N tokens, send them back to the client.
                     if len(buffer) == N:
@@ -245,7 +245,7 @@ class SybilMiner( Miner ):
 
         # message = synapse.messages[0]
         
-        if type(synapse) != TargonQA or type(synapse) != TargonLinkPrediction:
+        if type(synapse) != TargonQA or type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
             if synapse.stream:
                 bt.logging.info('you found me!', synapse)
                 token_streamer = partial(_streaming_prompt, prompt)

@@ -21,7 +21,7 @@ import wandb
 import asyncio
 import bittensor as bt
 import traceback
-from targon.protocol import TargonStreaming
+from targon.protocol import TargonSearchResultStream
 from .set_weights import set_weights
 
 
@@ -61,7 +61,7 @@ def run(self):
     # Serve passes the axon information to the network + netuid we are hosting on.
     # This will auto-update if the axon port of external ip have changed.
     bt.logging.info(
-        f"Serving axon {TargonStreaming} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+        f"Serving axon {TargonSearchResultStream} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
     )
     self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 

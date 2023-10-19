@@ -14,7 +14,7 @@ from functools import partial
 from starlette.types import Send
 from targon.miner.miner import Miner 
 from transformers import GPT2Tokenizer
-from targon.protocol import TargonStreaming
+from targon.protocol import TargonSearchResultStream
 from transformers import TextIteratorStreamer
 from llava.conversation import default_conversation, conv_templates, SeparatorStyle
 from llava.model.builder import load_pretrained_model
@@ -77,7 +77,7 @@ class LlavaMiner( Miner ):
             lora_path,
         )
 
-    def prompt(self, synapse: TargonStreaming) -> TargonStreaming:
+    def prompt(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
         """
         Generates a streaming response for the provided synapse.
 
@@ -87,10 +87,10 @@ class LlavaMiner( Miner ):
         the incoming message, and then sends the response back to the client token by token.
 
         Args:
-            synapse (TargonStreaming): The incoming TargonStreaming instance containing the messages to be processed.
+            synapse (TargonSearchResultStream): The incoming TargonSearchResultStream instance containing the messages to be processed.
 
         Returns:
-            TargonStreaming: The streaming response object which can be used by other functions to
+            TargonSearchResultStream: The streaming response object which can be used by other functions to
                             stream back the response to the client.
 
         Usage:

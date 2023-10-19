@@ -84,7 +84,7 @@ def get_config() -> "bt.Config":
         default="wss://entrypoint-finney.opentensor.ai:443",
         help="Chain endpoint to connect to.",
     )
-    # Adds override arguments for network and netuid. TargonStreaming is 4.
+    # Adds override arguments for network and netuid. TargonSearchResultStream is 4.
     parser.add_argument("--netuid", type=int, default=4, help="The chain subnet uid.")
 
     parser.add_argument(
