@@ -20,4 +20,4 @@ def query(params):
     search = GoogleSearch(params)
     results = search.get_dict()
 
-    return [results]
+    return results
