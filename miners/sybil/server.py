@@ -199,14 +199,7 @@ class SybilMiner( Miner ):
 
                 buffer = []
                 output_text = ""
-                for chunk in response.iter_lines(chunk_size=8192,
-                                        decode_unicode=False,
-                                        delimiter=b"\0"):
-                    print(chunk)
-                    # if chunk:
-                        # print(chunk)
-                    data = json.loads(chunk.decode("utf-8"))
-                    token = data["text"][0].replace(prompt, "")
+                for token in self.get_streaming_response(response):
                     output_text += token
                     bt.logging.info(f"token", token)
                     
