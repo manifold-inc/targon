@@ -190,7 +190,7 @@ class SybilMiner( Miner ):
             try:
                 
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=True)
-
+                bt.logging.info('response', response)
 
                 buffer = []
                 output_text = ""
@@ -198,27 +198,27 @@ class SybilMiner( Miner ):
                                         decode_unicode=False,
                                         delimiter=b"\0"):
                     print(chunk)
-                    if chunk:
-                        print(chunk)
-                        data = json.loads(chunk.decode("utf-8"))
-                        token = data["text"]
-                        output_text += token
-                        bt.logging.info(f"token", token)
-                        
-                        N = 3  # Number of tokens to send back to the client at a time
-                        buffer.append(token)
-                        # If buffer has N tokens, send them back to the client.
-                        if len(buffer) == N:
-                            joined_buffer = "".join(buffer)
-                            await send(
-                                {
-                                    "type": "http.response.body",
-                                    "body": joined_buffer.encode("utf-8"),
-                                    "more_body": True,
-                                }
-                            )
-                            bt.logging.debug(f"Streamed tokens: {joined_buffer}")
-                            buffer = []  # Clear the buffer for next batch of tokens
+                    # if chunk:
+                        # print(chunk)
+                    data = json.loads(chunk.decode("utf-8"))
+                    token = data["text"]
+                    output_text += token
+                    bt.logging.info(f"token", token)
+                    
+                    N = 3  # Number of tokens to send back to the client at a time
+                    buffer.append(token)
+                    # If buffer has N tokens, send them back to the client.
+                    if len(buffer) == N:
+                        joined_buffer = "".join(buffer)
+                        await send(
+                            {
+                                "type": "http.response.body",
+                                "body": joined_buffer.encode("utf-8"),
+                                "more_body": True,
+                            }
+                        )
+                        bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+                        buffer = []  # Clear the buffer for next batch of tokens
                             # await asyncio.sleep(0.08)  # Simulate streaming delay
                 
                 # # Send any remaining tokens in the buffer
