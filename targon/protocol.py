@@ -22,7 +22,7 @@ class TargonQA( bt.Synapse ):
         allow_mutation=False,
     )
     answer: str = pydantic.Field(
-        [],
+        "",
         title="Answer",
         description="The answer to the question. Mutable.",
     )
