@@ -9,7 +9,7 @@ import bittensor as bt
 from functools import partial
 from starlette.types import Send
 from targon.miner.miner import Miner 
-from targon import search
+from targon import search, QueryParams
 from typing import List, Optional, Union, Iterable
 from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
@@ -153,10 +153,10 @@ class SybilMiner( Miner ):
                 synapse.answer = output
 
             elif type(synapse) == TargonLinkPrediction:
-                params = {
-                    "q": prompt,
-                    "api_key": self.config.sybil.serp_api_key
-                }
+                params = QueryParams(
+                    q=prompt,
+                    api_key=self.config.sybil.serp_api_key
+                )
 
                 output = search(params)
                 bt.logging.info("output", output)

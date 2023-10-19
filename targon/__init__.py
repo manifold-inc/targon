@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from .miner.search import query as search
+from .miner.search import QueryParams
 
 
 __version__ = "0.1.0"
