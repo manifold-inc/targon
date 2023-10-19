@@ -42,7 +42,7 @@ class TargonLinkPrediction( bt.Synapse ):
         description="The query to be asked. Immutable.",
         allow_mutation=False,
     )
-    results: List[str] = pydantic.Field(
+    results: dict = pydantic.Field(
         [],
         title="Results",
         description="The results of the query. Mutable.",
