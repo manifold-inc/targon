@@ -153,10 +153,10 @@ class SybilMiner( Miner ):
                 synapse.answer = output
 
             elif type(synapse) == TargonLinkPrediction:
-                params = QueryParams(
-                    q=prompt,
-                    api_key=self.config.sybil.serp_api_key
-                )
+                params = {
+                    "q": prompt,
+                    "api_key": self.config.sybil.serp_api_key,
+                }
 
                 output = search(params)
                 bt.logging.info("output", output)

@@ -13,7 +13,7 @@ class QueryParams(BaseModel):
 
 
         
-def query(params: QueryParams):
+def query(params):
     assert params.api_key, "SERP_API_KEY not found in .env"
 
 
