@@ -150,8 +150,9 @@ class SybilMiner( Miner ):
                 output = output.replace(f'Q:{prompt}\nA:')
                 bt.logging.info("output", output)
                 synapse.answer = output
+
             elif type(synapse) == TargonLinkPrediction:
-                output = search(prompt)
+                output = search({"q": prompt})
                 bt.logging.info("output", output)
                 synapse.results = output
             elif type(synapse) == TargonSearchResult:

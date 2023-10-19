@@ -41,9 +41,9 @@ synapse = TargonQA(question=prompt)
 
 
 
-# synapse = TargonLinkPrediction( query="who killed dumbledore?" )
+synapse = TargonLinkPrediction( query="who killed dumbledore?" )
 # synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
-synapse = TargonSearchResultStream( query="Q: who killed dumbledore?\nA:", sources=["http://"], stream=True )
+# synapse = TargonSearchResultStream( query="Q: who killed dumbledore?\nA:", sources=["http://"], stream=True )
 
 # synapse = TargonSearchResultStream(roles=['user'], messages=[prompt])
 
