@@ -1,6 +1,6 @@
-# Project Targon - Multi Modality Inference Subnet
+# Project TargonSearchResult - Multi Modality Inference Subnet
 
-Project Targon - offical name TBA - is a subnetwork of the bittensor finney protocol. It is designed to faciliate the inference of multi modality LLMs for high throughput applications.
+Project TargonSearchResult - offical name TBA - is a subnetwork of the bittensor finney protocol. It is designed to faciliate the inference of multi modality LLMs for high throughput applications.
 
 ## Installation
 ```bash

@@ -210,7 +210,7 @@ class TargonStreaming( bt.StreamingSynapse ):
     completion: str = pydantic.Field(
         "",
         title="Completion",
-        description="Completion status of the current Targon object. This attribute is mutable and can be updated.",
+        description="Completion status of the current TargonSearchResult object. This attribute is mutable and can be updated.",
     )
 
     images: list[ bt.Tensor ] = []

@@ -21,10 +21,10 @@ import wandb
 import time
 import bittensor as bt
 from typing import List, Dict, Union, Tuple, Callable
-from targon.protocol import Targon
+from targon.protocol import TargonSearchResult
 
 
-def record_request_timestamps(self, synapse: Targon):
+def record_request_timestamps(self, synapse: TargonSearchResult):
     timestamp_length = self.config.miner.priority.len_request_timestamps
     if synapse.dendrite.hotkey not in self.request_timestamps:
         self.request_timestamps[synapse.dendrite.hotkey] = [0] * timestamp_length
@@ -37,7 +37,7 @@ def record_request_timestamps(self, synapse: Targon):
     return self.request_timestamps
 
 
-def default_priority(self, synapse: Targon) -> float:
+def default_priority(self, synapse: TargonSearchResult) -> float:
     # Check if the key is registered.
     registered = False
     if self.metagraph is not None:
@@ -67,7 +67,7 @@ def default_priority(self, synapse: Targon) -> float:
     return priority
 
 
-def priority(self, func: Callable, synapse: Targon) -> float:
+def priority(self, func: Callable, synapse: TargonSearchResult) -> float:
     # Check to see if the subclass has implemented a priority function.
     priority = None
     try:

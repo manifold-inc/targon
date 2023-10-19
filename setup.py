@@ -50,7 +50,7 @@ with codecs.open(
 setup(
     name="targon",
     version=version_string,
-    description="Targon is a subnet on bittensor for multi modality inference.",
+    description="TargonSearchResult is a subnet on bittensor for multi modality inference.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/manifold-inc/targon",

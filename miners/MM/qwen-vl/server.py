@@ -7,7 +7,7 @@ import bittensor as bt
 
 
 from typing import List
-from targon.protocol import Targon
+from targon.protocol import TargonSearchResult
 from targon.miner.miner import Miner 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -74,7 +74,7 @@ class QwenMiner( Miner ):
         return processed_history
 
 
-    def prompt(self, synapse: Targon) -> Targon:
+    def prompt(self, synapse: TargonSearchResult) -> TargonSearchResult:
         """
         Generates a streaming response for the provided synapse.
 
