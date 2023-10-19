@@ -38,7 +38,8 @@ axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
 
 
 # synapse = TargonQA(question=prompt)
-synapse = TargonLinkPrediction( query="who killed dumbledore?" )
+# synapse = TargonLinkPrediction( query="who killed dumbledore?" )
+synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
 # synapse = TargonStreaming(roles=['user'], messages=[prompt])
 
 async def fetch():
@@ -46,9 +47,14 @@ async def fetch():
         axons=axons,
         synapse=synapse,
         timeout=60,
-        # streaming=True
+        streaming=True if type(synapse) == TargonSearchResult else False
     )
-    print(responses)
+
+    if type(synapse) == TargonSearchResult:
+        async for token in responses:
+            print(token)
+    else:
+        print(responses)
     # async for token in responses:
     #     print(token, end="", flush=True)  # or handle the token as needed
 

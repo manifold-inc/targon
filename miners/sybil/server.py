@@ -162,7 +162,7 @@ class SybilMiner( Miner ):
                 output = self.get_response(response)
                 bt.logging.info("output", output)
 
-                synapse.results = output
+                synapse.completion = output[0]
                 
             return synapse
 
