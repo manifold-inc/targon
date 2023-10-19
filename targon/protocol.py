@@ -94,8 +94,8 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
         description="The sources of the query. Mutable.",
     )
     completion: str = pydantic.Field(
-        [],
-        title="Results",
+        "",
+        title="Completion",
         description="The results of the query. Mutable.",
     )
     stream: bool = False

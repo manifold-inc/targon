@@ -10,6 +10,7 @@ metagraph = subtensor.metagraph( netuid = 4 )
 # find all hotkeys with an axon ip
 
 bt.debug()
+bt.trace()
 wallet = bt.wallet( name="lilith", hotkey="A4" )
 
 dendrite = TargonDendrite( wallet = wallet )
