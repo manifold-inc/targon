@@ -206,7 +206,7 @@ class SybilMiner( Miner ):
                     # if chunk:
                         # print(chunk)
                     data = json.loads(chunk.decode("utf-8"))
-                    token = data["text"]
+                    token = data["text"][0]
                     output_text += token
                     bt.logging.info(f"token", token)
                     
@@ -252,7 +252,6 @@ class SybilMiner( Miner ):
         
         if type(synapse) != TargonQA or type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
             if synapse.stream:
-                bt.logging.info('you found me!', synapse)
                 token_streamer = partial(_streaming_prompt, prompt)
                 return synapse.create_streaming_response(token_streamer)
             
