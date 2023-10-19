@@ -47,8 +47,8 @@ async def fetch(synapse):
     if type(synapse) == TargonSearchResultStream:
         async for token in responses:
             print(token, end="", flush=True)
-    else:
-        print(responses)
+    # else:
+    #     print(responses)
     # async for token in responses:
     #     print(token, end="", flush=True)  # or handle the token as needed
 
@@ -58,11 +58,13 @@ async def fetch(synapse):
 
 axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
 
-question = "who killed dumbledore?"
+question = "what is happening in the sbf trial?"
 
 sources_synapse = TargonLinkPrediction( query=question )
 
-sources = asyncio.run(fetch(sources_synapse))
+sources_response = asyncio.run(fetch(sources_synapse))
+sources = sources_response[0].results
+# import code; code.interact(local=dict(globals(), **locals()))
 
 search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
 
@@ -81,7 +83,7 @@ responses = asyncio.run(fetch(search_synapse))
 #         print( token )
 
 
-asyncio.run(fetch())
+# asyncio.run(fetch())
 
 # dendrite(axons=axons, synapse=synapse, timeout=60)
 # import code; code.interact(local=dict(globals(), **locals()))

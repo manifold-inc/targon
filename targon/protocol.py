@@ -141,14 +141,7 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
                     self.completion += token
                     yield token  # yield token immediately
 
-    def deserialize(self) -> str:
-        """
-        Deserializes the response by returning the completion attribute.
 
-        Returns:
-            str: The completion result.
-        """
-        return self.completion
 
     def extract_response_json(self, response: StreamingResponse) -> dict:
         """
