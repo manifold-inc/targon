@@ -227,16 +227,16 @@ class SybilMiner( Miner ):
                             # await asyncio.sleep(0.08)  # Simulate streaming delay
                 
                 # # Send any remaining tokens in the buffer
-                # if buffer:
-                #     joined_buffer = "".join(buffer)
-                #     await send(
-                #         {
-                #             "type": "http.response.body",
-                #             "body": "",
-                #             "more_body": False,  # No more tokens to send
-                #         }
-                #     )
-                #     bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                if buffer:
+                    joined_buffer = "".join(buffer)
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": "",
+                            "more_body": False,  # No more tokens to send
+                        }
+                    )
+                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
             except Exception as e:
                 bt.logging.error(f"Exception: {e}")
                 await send(
