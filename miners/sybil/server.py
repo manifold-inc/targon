@@ -200,7 +200,8 @@ class SybilMiner( Miner ):
                 buffer = []
                 output_text = ""
                 for token in self.get_streaming_response(response):
-                    print(token)
+                    # print(token)
+                    token = token.replace(prompt, "")
                     output_text += token
                     bt.logging.info(f"token", token)
                     
