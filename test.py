@@ -35,19 +35,7 @@ prompt = """describe this image."""
 
 # serialized_tensor = bt.Tensor.serialize(normalized_image_tensor)
 
-axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
-
-synapse = TargonQA(question=prompt)
-
-
-
-synapse = TargonLinkPrediction( query="who killed dumbledore?" )
-# synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
-# synapse = TargonSearchResultStream( query="Q: who killed dumbledore?\nA:", sources=["http://"], stream=True )
-
-# synapse = TargonSearchResultStream(roles=['user'], messages=[prompt])
-
-async def fetch():
+async def fetch(synapse):
     responses = await dendrite(
         axons=axons,
         synapse=synapse,
@@ -65,6 +53,27 @@ async def fetch():
     #     print(token, end="", flush=True)  # or handle the token as needed
 
     return responses
+
+
+
+axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
+
+question = "who killed dumbledore?"
+
+sources_synapse = TargonLinkPrediction( query=question )
+
+sources = asyncio.run(fetch(sources_synapse))
+
+search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
+
+responses = asyncio.run(fetch(search_synapse))
+
+
+# synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
+# synapse = TargonSearchResultStream( query="Q: who killed dumbledore?\nA:", sources=["http://"], stream=True )
+
+# synapse = TargonSearchResultStream(roles=['user'], messages=[prompt])
+
 
 
 # def model():

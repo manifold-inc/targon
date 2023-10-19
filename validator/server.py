@@ -128,7 +128,7 @@ if __name__ == "__main__":
     dendrite = TargonDendrite(wallet=bt.wallet(name="lilith", hotkey="A4"))
     subtensor = bt.subtensor(network='finney')
     metagraph = subtensor.metagraph(netuid=4)
-    axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
+    axons = [axon for axon in metagraph.axons]
 
     # Run FastAPI server
     uvicorn.run(app, host="0.0.0.0", port=8000)

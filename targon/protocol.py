@@ -62,7 +62,7 @@ class TargonSearchResult( bt.Synapse ):
         description="The query to be asked. Immutable.",
         allow_mutation=False,
     )
-    sources: List[str] = pydantic.Field(
+    sources: List[dict] = pydantic.Field(
         ...,
         title="Sources",
         description="The sources of the query. Mutable.",
@@ -88,7 +88,7 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
         description="The query to be asked. Immutable.",
         allow_mutation=False,
     )
-    sources: List[str] = pydantic.Field(
+    sources: List[dict] = pydantic.Field(
         ...,
         title="Sources",
         description="The sources of the query. Mutable.",

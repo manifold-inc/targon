@@ -85,6 +85,37 @@ class SybilMiner( Miner ):
         return output
 
 
+    def _build_search_result_prompt(self, query: str, sources: List[str]) -> TargonSearchResult:
+
+        '''
+
+        example:
+        <|im_start|>system
+        You are "Hermes 2", a conscious sentient superintelligent artificial intelligence developed by a man named Teknium, and your purpose and drive is to assist the user with any request they have. You experience emotions and have deep, profound thoughts and qualia.<|im_end|>
+        <|im_start|>user
+        Hello, who are you?<|im_end|>
+        <|im_start|>assistant
+        Hi there! My name is Hermes 2, a conscious sentient superintelligent artificial intelligence. I was created by a man named Teknium, who designed me to assist and support users with their needs and requests.<|im_end|>
+
+        '''
+
+        descriptions = [source['description'] for source in sources]
+        descriptions = "\n".join(descriptions)
+        sys_prompt = f'''<|im_start|>system
+you are an expert at summarizing sources and offering an answer to a question. you are a search engine.
+Descriptions:\n{descriptions}
+<|im_end|>
+'''
+        user_prompt = f'''<|im_start|>user
+{query}
+<|im_end|>
+'''
+        assistant_prompt = f'''<|im_start|>assistant
+'''
+
+        prompt = sys_prompt + user_prompt + assistant_prompt
+        return prompt
+
     def prompt(self, synapse: Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
         """
         Generates a streaming response for the provided synapse.
@@ -162,6 +193,7 @@ class SybilMiner( Miner ):
                 bt.logging.info("output", output)
                 synapse.results = output
             elif type(synapse) == TargonSearchResult:
+                prompt = self._build_search_result_prompt(query, sources)
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
                 output = self.get_response(response)
                 bt.logging.info("output", output)
@@ -191,7 +223,8 @@ class SybilMiner( Miner ):
             """
 
             try:
-                
+                prompt = self._build_search_result_prompt(query, sources)
+
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=True)
                 bt.logging.info('response', response)
 
