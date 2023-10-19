@@ -1,7 +1,7 @@
 from . import protocol
 
 
-from miner.search import query as search
+from .miner.search import query as search
 
 
 __version__ = "0.1.0"
