@@ -52,11 +52,11 @@ async def fetch():
         axons=axons,
         synapse=synapse,
         timeout=60,
-        streaming=True if type(synapse) == TargonSearchResult else False
+        streaming=True if type(synapse) == TargonSearchResultStream else False
     )
 
 
-    if type(synapse) == TargonSearchResult:
+    if type(synapse) == TargonSearchResultStream:
         async for token in responses:
             print(token)
     else:
