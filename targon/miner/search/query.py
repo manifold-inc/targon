@@ -20,4 +20,10 @@ def query(params):
     search = GoogleSearch(params)
     results = search.get_json()
 
-    return results
+    # get organic_results from results
+    organic_results = results['organic_results']
+    
+    #create response object
+    response_object = [{"description": result['snippet'], "url": result['link']} for result in organic_results]
+
+    return response_object
