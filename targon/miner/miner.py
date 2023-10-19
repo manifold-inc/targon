@@ -16,11 +16,11 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
 import os
 import copy
 import time
 import wandb
+import dotenv
 import asyncio
 import argparse
 import pydantic
@@ -58,6 +58,8 @@ class Miner(ABC):
             subtensor: Bittensor Subtensor object which manages the blockchain connection.
         """
         # Setup base config from Miner.config() and merge with subclassed config.
+        dotenv.load_dotenv()
+
         base_config = copy.deepcopy(config or get_config())
         self.config = self.config()
         self.config.merge(base_config)

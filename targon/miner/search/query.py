@@ -1,4 +1,4 @@
-import dotenv
+import os
 
 from serpapi import GoogleSearch
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ class QueryParams(BaseModel):
     hl: str
     gl: str
     google_domain: str
-    api_key: str = dotenv.get('SERP_API_KEY') if dotenv.get('SERP_API_KEY') else None
+    api_key: str = os.environ('SERP_API_KEY') if os.environ('SERP_API_KEY') else None
 
 
         

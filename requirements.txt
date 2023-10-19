@@ -16,6 +16,7 @@ accelerate
 bitsandbytes
 torchvision
 fschat
-serpapi
+google-search-results
 openai
+python-dotenv
 bittensor
