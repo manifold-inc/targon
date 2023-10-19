@@ -43,7 +43,7 @@ synapse = TargonQA(question=prompt)
 
 # synapse = TargonLinkPrediction( query="who killed dumbledore?" )
 # synapse = TargonSearchResult( query="who killed dumbledore?", sources=["http://"] )
-synapse = TargonSearchResultStream( query="who killed dumbledore?", sources=["http://"], stream=True )
+synapse = TargonSearchResultStream( query="Q: who killed dumbledore?\nA:", sources=["http://"], stream=True )
 
 # synapse = TargonSearchResultStream(roles=['user'], messages=[prompt])
 
@@ -58,7 +58,7 @@ async def fetch():
 
     if type(synapse) == TargonSearchResultStream:
         async for token in responses:
-            print(token)
+            print(token, end="", flush=True)
     else:
         print(responses)
     # async for token in responses:

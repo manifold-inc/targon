@@ -2,25 +2,17 @@ import os
 import time
 import json
 import torch
-import openai
-import shutil
-import asyncio
 import requests
-import tempfile
 import argparse
 import bittensor as bt
 
-from threading import Thread
 from functools import partial
 from starlette.types import Send
 from targon.miner.miner import Miner 
-from transformers import GPT2Tokenizer
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
-from huggingface_hub import InferenceClient
-from transformers import TextIteratorStreamer
+from targon import search
 from typing import List, Optional, Union, Iterable
-from torchvision.transforms import ToPILImage, Resize, Compose
-from transformers import StoppingCriteria, StoppingCriteriaList
+from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+
 
 
 class SybilMiner( Miner ):
@@ -159,8 +151,7 @@ class SybilMiner( Miner ):
                 bt.logging.info("output", output)
                 synapse.answer = output
             elif type(synapse) == TargonLinkPrediction:
-                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
-                output = self.get_response(response)
+                output = search(prompt)
                 bt.logging.info("output", output)
                 synapse.results = output
             elif type(synapse) == TargonSearchResult:
