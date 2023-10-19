@@ -199,7 +199,7 @@ Descriptions:\n{descriptions}
                 output = self.get_response(response)
                 bt.logging.info("output", output)
 
-                synapse.completion = output[0]
+                synapse.completion = output[0].replace(prompt, "")
                 
             return synapse
 
