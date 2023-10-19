@@ -181,7 +181,7 @@ Descriptions:\n{descriptions}
                 output = self.get_response(response)
                 output[0].replace(f'Q:{prompt}\nA:', "")
                 bt.logging.info("output", output)
-                synapse.answer = output
+                synapse.answer = output[0]
 
             elif type(synapse) == TargonLinkPrediction:
                 params = {
@@ -192,6 +192,7 @@ Descriptions:\n{descriptions}
                 output = search(params)
                 bt.logging.info("output", output)
                 synapse.results = output
+
             elif type(synapse) == TargonSearchResult:
                 prompt = self._build_search_result_prompt(query, sources)
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
