@@ -81,7 +81,7 @@ class SybilMiner( Miner ):
 
     def get_response(self, prompt, response: requests.Response) -> List[str]:
         data = json.loads(response.content)
-        output = data["text"].replace(prompt, "")
+        output = data["text"][0].replace(prompt, "")
         return output
 
 
@@ -180,7 +180,7 @@ Descriptions:\n{descriptions}
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
                 output = self.get_response(prompt, response)
                 bt.logging.info("output", output)
-                synapse.answer = output[0]
+                synapse.answer = output
 
             elif type(synapse) == TargonLinkPrediction:
                 params = {
@@ -198,7 +198,7 @@ Descriptions:\n{descriptions}
                 output = self.get_response(prompt, response)
                 bt.logging.info("output", output)
 
-                synapse.completion = output[0]
+                synapse.completion = output
                 
             return synapse
 
