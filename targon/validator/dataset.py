@@ -7,16 +7,13 @@ class Dataset(Iterator):
     def __init__(self):
         super().__init__()
         seed = random.randint(0,1000)
-        # self.openwebtext = iter( load_dataset("openwebtext", split="train", streaming=True).shuffle(seed=seed, buffer_size=1000000) )
         self.red_pajama = iter( load_dataset("cerebras/SlimPajama-627B", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=100000) )
 
     def __next__(self):         
          while True:
             bt.logging.debug('Retrieving data from dataset...')
-            if random.random() < 0.5:
-                text = next(self.openwebtext)["text"]
-            else:
-                text = next(self.red_pajama)["text"]
+
+            text = next(self.red_pajama)["text"]
 
             # Check if the text is not empty or does not consist only of newline characters
             if text.strip():
