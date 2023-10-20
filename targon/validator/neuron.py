@@ -125,10 +125,12 @@ class neuron:
             RelevanceRewardModel(device=self.device) if not self.config.neuron.relevance_off
             else MockRewardModel(RewardModelType.relevance.value)
         )
-        self.diversity_model = (
-            DiversityRewardModel(device=self.device) if not self.config.neuron.diversity_off
-            else MockRewardModel(RewardModelType.diversity.value)
-        )
+
+        # TODO: Retrain diversity model
+        # self.diversity_model = (
+        #     DiversityRewardModel(device=self.device) if not self.config.neuron.diversity_off
+        #     else MockRewardModel(RewardModelType.diversity.value)
+        # )
         nsfw_model = (
             NSFWRewardModel(device=self.device) if not self.config.neuron.nsfw_off
             else MockRewardModel(RewardModelType.nsfw.value)              

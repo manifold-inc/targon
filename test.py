@@ -56,7 +56,7 @@ async def fetch(synapse):
 
 
 
-axons = [axon for axon in metagraph.axons if axon.ip == '160.202.128.179']
+axons = [axon for axon in metagraph.axons]
 
 question = "what is happening in the sbf trial?"
 

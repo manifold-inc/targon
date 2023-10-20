@@ -57,8 +57,6 @@ def run(self):
             # Run multiple forwards.
             async def run_forward():
                 await forward_fn(self)
-            #     coroutines = [forward(self) for _ in range(self.config.neuron.num_concurrent_forwards)]
-            #     await asyncio.gather(*coroutines)
 
             self.loop.run_until_complete(run_forward())
             
@@ -67,9 +65,9 @@ def run(self):
                 checkpoint(self)
 
             # Set the weights on chain.
-            # if should_set_weights(self):
-            #     set_weights(self)
-            #     save_state(self)
+            if should_set_weights(self):
+                set_weights(self)
+                save_state(self)
 
             # Rollover wandb to a new run.
             if should_reinit_wandb(self):

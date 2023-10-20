@@ -114,7 +114,7 @@ async def forward_fn(self, validation=True, stream=False):
     """
     k = self.config.neuron.followup_sample_size
     if validation:
-            # uids = get_random_uids(self, k=k).to(self.device)
+            uids = get_random_uids(self, k=k).to(self.device)
             data = next(self.dataset)["text"]
 
             random_cutoff = random.randint(15, 30)
@@ -122,17 +122,13 @@ async def forward_fn(self, validation=True, stream=False):
             base_text = ".".join(data.split(".", maxsplit=random_cutoff)[:-1])
             prompt = qa_prompt(base_text)
 
-            # axons = [axon for axon in self.metagraph.axons if axon.ip == "160.202.128.179"]
-            uids = [uid for uid, axon in enumerate(self.metagraph.axons) if axon.ip == "160.202.128.179"]
-
             questions = await _qa_forward(self, prompt, uids)
 
             # TODO: select most relevant question from questions
             top_question = questions[0]
             bt.logging.info('top_question', top_question)
             # sources = await _link_prediction_forward(self, top_question, uids)
-            # bt.logging.info("sources", sources)
-            # no sources for now
+
             sources = []
             completions = await _search_result_forward(self, top_question, sources, uids)
             bt.logging.info("completions", completions)
@@ -159,6 +155,8 @@ async def forward_fn(self, validation=True, stream=False):
             self.moving_averaged_scores: torch.FloatTensor = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(
                 self.device
             )
+
+            bt.logging.info("rewards", rewards.tolist())
 
             
 
