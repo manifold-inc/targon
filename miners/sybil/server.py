@@ -43,7 +43,7 @@ class SybilMiner( Miner ):
         parser.add_argument('--sybil.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
         parser.add_argument('--sybil.api_url', type=str, default="http://0.0.0.0:8000", help='URL for the API server.')
-        parser.add_argument('--sybil.serp_api_key', type=str, help='API key for the SERP API.')
+        parser.add_argument('--sybil.serp_api_key', type=str, help='API key for the SERP API.', default=None)
 
     def __init__(self, *args, **kwargs):
         super(SybilMiner, self).__init__(*args, **kwargs)
@@ -183,6 +183,8 @@ Descriptions:\n{descriptions}
                 synapse.answer = output
 
             elif type(synapse) == TargonLinkPrediction:
+                if self.config.sybil.serp_api_key is None:
+                    raise ValueError("SERP API key not set. Please set it in the config file.")
                 params = {
                     "q": prompt,
                     "api_key": self.config.sybil.serp_api_key,

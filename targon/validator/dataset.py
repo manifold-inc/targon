@@ -7,8 +7,8 @@ class Dataset(Iterator):
     def __init__(self):
         super().__init__()
         seed = random.randint(0,1000)
-        self.openwebtext = iter( load_dataset("openwebtext", split="train", streaming=True).shuffle(seed=seed, buffer_size=10000) )
-        self.red_pajama = iter( load_dataset("cerebras/SlimPajama-627B", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=10000) )
+        self.openwebtext = iter( load_dataset("openwebtext", split="train", streaming=True).shuffle(seed=seed, buffer_size=1) )
+        self.red_pajama = iter( load_dataset("cerebras/SlimPajama-627B", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=1) )
 
     def __next__(self):         
          while True:

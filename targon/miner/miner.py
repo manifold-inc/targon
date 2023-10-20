@@ -132,12 +132,6 @@ class Miner(ABC):
             priority_fn=self.priority_search_result_stream,
         )
 
-        #TargonLinkPrediction
-
-        #TargonSearchResult
-
-
-
         bt.logging.info(f"Axon created: {self.axon}")
 
         if self.config.wandb.on:

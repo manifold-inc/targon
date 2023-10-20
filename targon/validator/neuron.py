@@ -78,7 +78,7 @@ class neuron:
 
 
         bt.logging.debug("loading", "dataset")
-        self.dataset = MockDataset()
+        self.dataset = Dataset()
         bt.logging.debug(str(self.dataset))
 
 
