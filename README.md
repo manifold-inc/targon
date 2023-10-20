@@ -7,6 +7,8 @@ Project Targon - is a subnetwork of the bittensor finney protocol. It is designe
 pip install -e .
 ```
 
+## Experimental
+This project is currently in an experimental state with rapid development occuring. 
 
 ## Running
 
