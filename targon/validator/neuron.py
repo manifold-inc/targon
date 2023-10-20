@@ -6,7 +6,7 @@ from targon.validator import AsyncDendritePool, check_config, add_args, config, 
 from targon.protocol import TargonDendrite
 from targon.validator.reward import (
     NSFWRewardModel,
-    DirectPreferenceRewardModel,
+    SmallRewardModel,
     RelevanceRewardModel,
     DiversityRewardModel,
     MockRewardModel,
@@ -78,7 +78,7 @@ class neuron:
 
 
         bt.logging.debug("loading", "dataset")
-        self.dataset = MockDataset()
+        self.dataset = Dataset()
         bt.logging.debug(str(self.dataset))
 
 
@@ -116,7 +116,7 @@ class neuron:
         ).to(self.device)
 
         self.reward_functions = [
-            DirectPreferenceRewardModel(device=self.device)
+            SmallRewardModel(device=self.device)
             if self.config.reward.dpo_weight > 0
             else MockRewardModel(RewardModelType.dpo.value),
         ]

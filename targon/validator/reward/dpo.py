@@ -23,9 +23,9 @@ from .base import BaseRewardModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
-class DirectPreferenceRewardModel(BaseRewardModel):
+class SmallRewardModel(BaseRewardModel):
 
-    reward_model_name: str = "OpenAssistant/reward-model-deberta-v3-large-v2"
+    reward_model_name: str = "sugam11/gpt2-rlhf-reward"
 
     @property
     def name(self) -> str: return RewardModelType.dpo.value
@@ -34,8 +34,8 @@ class DirectPreferenceRewardModel(BaseRewardModel):
         super().__init__()
         self.device = device
         self.penalty = 1.2 # Same penalty as the original [paper](https://arxiv.org/pdf/1909.05858.pdf).
-        self.tokenizer = AutoTokenizer.from_pretrained(DirectPreferenceRewardModel.reward_model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(DirectPreferenceRewardModel.reward_model_name,
+        self.tokenizer = AutoTokenizer.from_pretrained(SmallRewardModel.reward_model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(SmallRewardModel.reward_model_name,
                                                           torch_dtype=torch.float16).to(self.device)
 
     def reward_single( self, prompt: str, completion: str, name: str ) -> float:
