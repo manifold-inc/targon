@@ -14,7 +14,7 @@ class Dataset(Iterator):
         bt.logging.debug('Retrieving data from dataset...')
 
         text = next(self.red_pajama)["text"]
-
+        bt.logging.debug('Retrieved data from dataset.')
         # Check if the text is not empty or does not consist only of newline characters
         if text.strip():
             return {"text": text}
