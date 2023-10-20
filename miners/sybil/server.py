@@ -79,9 +79,9 @@ class SybilMiner( Miner ):
                 yield output
 
 
-    def get_response(self, response: requests.Response) -> List[str]:
+    def get_response(self, prompt, response: requests.Response) -> List[str]:
         data = json.loads(response.content)
-        output = data["text"]
+        output = data["text"].replace(prompt, "")
         return output
 
 
@@ -141,7 +141,7 @@ Descriptions:\n{descriptions}
 
         if type(synapse) == TargonQA:
             question = synapse.question
-            prompt = f"Q: {question}\nA:"
+            prompt = f"{question}"
         elif type(synapse) == TargonLinkPrediction:
             query = synapse.query
             prompt = f"{query}"
@@ -178,9 +178,9 @@ Descriptions:\n{descriptions}
 
             if type(synapse) == TargonQA:
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
-                output = self.get_response(response)
+                output = self.get_response(prompt, response)
                 bt.logging.info("output", output)
-                synapse.answer = output[0].replace(f'Q:{prompt}\nA:', "")
+                synapse.answer = output[0]
 
             elif type(synapse) == TargonLinkPrediction:
                 params = {
@@ -195,10 +195,10 @@ Descriptions:\n{descriptions}
             elif type(synapse) == TargonSearchResult:
                 prompt = self._build_search_result_prompt(query, sources)
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
-                output = self.get_response(response)
+                output = self.get_response(prompt, response)
                 bt.logging.info("output", output)
 
-                synapse.completion = output[0].replace(prompt, "")
+                synapse.completion = output[0]
                 
             return synapse
 
