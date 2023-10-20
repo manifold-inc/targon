@@ -179,9 +179,8 @@ Descriptions:\n{descriptions}
             if type(synapse) == TargonQA:
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
                 output = self.get_response(response)
-                output[0].replace(f'Q:{prompt}\nA:', "")
                 bt.logging.info("output", output)
-                synapse.answer = output[0]
+                synapse.answer = output[0].replace(f'Q:{prompt}\nA:', "")
 
             elif type(synapse) == TargonLinkPrediction:
                 params = {

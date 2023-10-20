@@ -2,9 +2,8 @@ import copy
 import torch
 import asyncio
 import bittensor as bt
-from targon.validator import check_config, add_args, config, run, MockDataset, Dataset, init_wandb, ttl_get_block
+from targon.validator import AsyncDendritePool, check_config, add_args, config, run, MockDataset, Dataset, init_wandb, ttl_get_block
 from targon.protocol import TargonDendrite
-
 class neuron:
     @classmethod
     def check_config(cls, config: "bt.Config"):
@@ -101,7 +100,8 @@ class neuron:
             bt.logging.debug('axon off, not serving ip to chain.')
 
 
-        self.dendrite = TargonDendrite(wallet=self.wallet)
+        # self.dendrite = TargonDendrite(wallet=self.wallet)
+        self.dendrite_pool = AsyncDendritePool(wallet=self.wallet, metagraph=self.metagraph)
 
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
@@ -114,7 +114,7 @@ class neuron:
         # if self.config.neuron.epoch_length_override:
         #     self.config.neuron.epoch_length = self.config.neuron.epoch_length_override
         # else:
-        #     self.config.neuron.epoch_length = self.subtensor.validator_epoch_length(self.config.netuid)
+        # self.config.neuron.epoch_length = self.subtensor.validator_epoch_length(self.config.netuid)
 
         self.prev_block = ttl_get_block(self)
         self.step = 0

@@ -4,3 +4,4 @@ from .run import *
 from .forward import *
 from .dataset import *
 from .prompts import qa_prompt
+from .dendrite import *

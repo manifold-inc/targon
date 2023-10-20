@@ -38,24 +38,16 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
     return uids
 
 
-async def fetch(self, synapse, axons):
-    responses = await self.dendrite(
-        axons=axons,
-        synapse=synapse,
-        timeout=self.config.neuron.answer_timeout,
-        streaming=synapse.stream
+async def fetch(self, synapse, uids):
+    responses = await self.dendrite_pool.async_forward(
+        uids = uids,
+        synapse = synapse,
+        timeout = 12
     )
-
-
-    # else:
-    #     print(responses)
-    # async for token in responses:
-    #     print(token, end="", flush=True)  # or handle the token as needed
-
     return responses
 
 
-async def _qa_forward(self, question: str, axons: List[bt.axon]):
+async def _qa_forward(self, question: str, uids: List[int]):
     """Queries a list of uids for a question.
     Args:
         question (str): Question to query.
@@ -66,7 +58,7 @@ async def _qa_forward(self, question: str, axons: List[bt.axon]):
     """
     # Check if we have any uids to query.
     qa_synapse = TargonQA(question=question)
-    responses = await fetch(self, qa_synapse, axons)
+    responses = await fetch(self, qa_synapse, uids)
 
     bt.logging.info('qa synapse', responses)
 
@@ -75,7 +67,7 @@ async def _qa_forward(self, question: str, axons: List[bt.axon]):
 
 
 
-async def _link_prediction_forward(self, question: str, axons: List[bt.axon]):
+async def _link_prediction_forward(self, question: str, uids: List[int]):
     """Queries a list of uids for a question.
     Args:
         question (str): Question to query.
@@ -86,14 +78,14 @@ async def _link_prediction_forward(self, question: str, axons: List[bt.axon]):
     """
     # Check if we have any uids to query.
     search_synapse = TargonLinkPrediction( query=question )
-    responses = await fetch( self, search_synapse, axons )
+    responses = await fetch( self, search_synapse, uids )
 
     sources = [response.results for response in responses]
 
     return sources
 
 
-async def _search_result_forward(self, question: str, sources: List[dict], axons: List[bt.axon]):
+async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
     """Queries a list of uids for a question.
     Args:
         question (str): Question to query.
@@ -104,7 +96,7 @@ async def _search_result_forward(self, question: str, sources: List[dict], axons
     """
     # Check if we have any uids to query.
     search_synapse = TargonSearchResult( query=question, sources=sources )
-    responses = await fetch( self, search_synapse, axons )
+    responses = await fetch( self, search_synapse, uids )
 
     completions = [response.completion for response in responses]
 
@@ -130,16 +122,19 @@ async def forward_fn(self, validation=True, stream=False):
             base_text = ".".join(data.split(".", maxsplit=random_cutoff)[:-1])
             prompt = qa_prompt(base_text)
 
-            axons = [axon for axon in self.metagraph.axons if axon.ip == "160.202.128.179"]
+            # axons = [axon for axon in self.metagraph.axons if axon.ip == "160.202.128.179"]
+            uids = [uid for uid, axon in enumerate(self.metagraph.axons) if axon.ip == "160.202.128.179"]
 
-            questions = await _qa_forward(self, prompt, axons)
+            questions = await _qa_forward(self, prompt, uids)
 
             # TODO: select most relevant question from questions
             top_question = questions[0]
             bt.logging.info('top_question', top_question)
-            sources = await _link_prediction_forward(self, top_question, axons)
-            bt.logging.info("sources", sources)
-            completions = await _search_result_forward(self, top_question, sources, axons)
+            # sources = await _link_prediction_forward(self, top_question, uids)
+            # bt.logging.info("sources", sources)
+            # no sources for now
+            sources = []
+            completions = await _search_result_forward(self, top_question, sources, uids)
             bt.logging.info("completions", completions)
 
 
