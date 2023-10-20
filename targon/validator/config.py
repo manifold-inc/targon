@@ -4,6 +4,8 @@ import argparse
 import bittensor as bt
 from loguru import logger
 
+from targon.validator.reward.config import DefaultRewardFrameworkConfig
+
 def check_config(cls, config: "bt.Config"):
     r"""Checks/validates the config namespace object."""
     bt.logging.check_config(config)
@@ -46,6 +48,13 @@ def check_config(cls, config: "bt.Config"):
 def add_args(cls, parser):
     # Netuid Arg
     parser.add_argument("--netuid", type=int, help="Prompting network netuid", default=1)
+
+    parser.add_argument(
+        "--reward.dpo_weight",
+        type=float,
+        help="Weight for the dpo reward model",
+        default=DefaultRewardFrameworkConfig.dpo_model_weight,
+    )
 
     parser.add_argument(
         "--neuron.name",

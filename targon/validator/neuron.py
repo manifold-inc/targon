@@ -4,6 +4,15 @@ import asyncio
 import bittensor as bt
 from targon.validator import AsyncDendritePool, check_config, add_args, config, run, MockDataset, Dataset, init_wandb, ttl_get_block
 from targon.protocol import TargonDendrite
+from targon.validator.reward import (
+    NSFWRewardModel,
+    DirectPreferenceRewardModel,
+    RelevanceRewardModel,
+    DiversityRewardModel,
+    MockRewardModel,
+    RewardModelType,
+)
+
 class neuron:
     @classmethod
     def check_config(cls, config: "bt.Config"):
@@ -99,23 +108,41 @@ class neuron:
         else:
             bt.logging.debug('axon off, not serving ip to chain.')
 
+        self.reward_weights = torch.tensor(
+            [
+                self.config.reward.dpo_weight
+            ],
+            dtype=torch.float32,
+        ).to(self.device)
 
-        # self.dendrite = TargonDendrite(wallet=self.wallet)
+        self.reward_functions = [
+            DirectPreferenceRewardModel(device=self.device)
+            if self.config.reward.dpo_weight > 0
+            else MockRewardModel(RewardModelType.dpo.value),
+        ]
+
+        relevance_model = (
+            RelevanceRewardModel(device=self.device) if not self.config.neuron.relevance_off
+            else MockRewardModel(RewardModelType.relevance.value)
+        )
+        self.diversity_model = (
+            DiversityRewardModel(device=self.device) if not self.config.neuron.diversity_off
+            else MockRewardModel(RewardModelType.diversity.value)
+        )
+        nsfw_model = (
+            NSFWRewardModel(device=self.device) if not self.config.neuron.nsfw_off
+            else MockRewardModel(RewardModelType.nsfw.value)              
+        )
+
+        self.masking_functions = [relevance_model, nsfw_model]
+
+
         self.dendrite_pool = AsyncDendritePool(wallet=self.wallet, metagraph=self.metagraph)
 
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
 
-        # Init wandb.
-        # if not self.config.wandb.off:
-        #     bt.logging.debug("loading", "wandb")
-        #     init_wandb(self)
-
-        # if self.config.neuron.epoch_length_override:
-        #     self.config.neuron.epoch_length = self.config.neuron.epoch_length_override
-        # else:
-        # self.config.neuron.epoch_length = self.subtensor.validator_epoch_length(self.config.netuid)
-
+        self.config.neuron.epoch_length = 300
         self.prev_block = ttl_get_block(self)
         self.step = 0
 
