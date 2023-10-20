@@ -7,7 +7,7 @@ class Dataset(Iterator):
     def __init__(self):
         super().__init__()
         seed = random.randint(0,1000)
-        self.red_pajama = iter( load_dataset("togethercomputer/RedPajama-Data-1T", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=1) )
+        self.red_pajama = iter( load_dataset("togethercomputer/RedPajama-Data-1T", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=1000) )
 
     def __next__(self):         
         #  while True:
