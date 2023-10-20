@@ -41,7 +41,7 @@ class SmallRewardModel(BaseRewardModel):
     def reward_single( self, prompt: str, completion: str, name: str ) -> float:
         with torch.no_grad():
             inputs = self.tokenizer(prompt, completion, return_tensors='pt').to(self.device)
-            return float( self.model( **inputs ).logits[0].cpu().detach() )
+            return float( self.model( **inputs ).logits.cpu().detach() )
             
         
     def get_rewards(self, prompt: str, completions: List[str], name: str) -> torch.FloatTensor:
