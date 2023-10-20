@@ -10,14 +10,14 @@ class Dataset(Iterator):
         self.red_pajama = iter( load_dataset("togethercomputer/RedPajama-Data-1T", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=100000) )
 
     def __next__(self):         
-         while True:
-            bt.logging.debug('Retrieving data from dataset...')
+        #  while True:
+        bt.logging.debug('Retrieving data from dataset...')
 
-            text = next(self.red_pajama)["text"]
+        text = next(self.red_pajama)["text"]
 
-            # Check if the text is not empty or does not consist only of newline characters
-            if text.strip():
-                return {"text": text}
+        # Check if the text is not empty or does not consist only of newline characters
+        if text.strip():
+            return {"text": text}
 
 
 class MockDataset(Iterator):
