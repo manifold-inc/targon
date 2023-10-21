@@ -154,7 +154,7 @@ async def forward_fn(self, validation=True, stream=False):
                 bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
 
             
-            scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(1e-9, uids, rewards).to(self.device)
+            scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
 
             # Update moving_averaged_scores with rewards produced by this step.
             # shape: [ metagraph.n ]
