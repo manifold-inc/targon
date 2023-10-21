@@ -149,7 +149,7 @@ async def forward_fn(self, validation=True, stream=False):
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
 
             for masking_fn_i in self.masking_functions:
-                mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task)
+                mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task, solution)
                 rewards *= mask_i_normalized.to(self.device)  # includes diversity
                 bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
 
