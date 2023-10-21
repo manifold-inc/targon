@@ -62,6 +62,6 @@ def process_math_qa( data ):
     problem = data['Problem'] if data['Problem'] != '' else None
     options = data['options'] if data['options'] != '' else None
     rationale = data['Rationale'] if data['Rationale'] != '' else None
-    correct_option = data['correct_option'] if data['correct_option'] != '' else None
+    correct_option = data['correct'] if data['correct'] != '' else None
 
     return problem, options, rationale, correct_option
