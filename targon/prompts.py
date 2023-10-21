@@ -52,7 +52,7 @@ def process_javascript( data ):
     return code, docstring
 
 def process_open_orca( data ):
-    system_prompt = data['system_prompt'] if data['system_prompt'] != '' else None
+    system_prompt = data['system_prompt'] if data['system_prompt'] != '' or data['system_prompt'] != None else None
     question = data['question'] if data['question'] != '' else None
     response = data['response'] if data['response'] != '' else None
 

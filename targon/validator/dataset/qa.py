@@ -18,12 +18,12 @@ class QADataset(Iterator):
          while True:
             bt.logging.debug('Retrieving data from dataset...')
             if random.random() < 0.2:
-                data = next(self.open_orca)
+                data = next(self.math_qa)
                 problem, options, rationale, correct_option = process_math_qa( data )
                 question = math_qa_prompt.format( problem=problem, options=options )
                 return {"question": question, "task": "math_qa", "solution": rationale}
             else:
-                data = next(self.math_qa)
+                data = next(self.open_orca)
                 system_prompt, question, response = process_open_orca( data )
                 if system_prompt is not None:
                     question = system_prompt + "\n\n" + question
