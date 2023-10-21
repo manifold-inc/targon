@@ -4,7 +4,7 @@ import argparse
 import bittensor as bt
 from loguru import logger
 
-from targon.validator.signals.config import DefaultRewardFrameworkConfig
+from targon.validator.reward.config import DefaultRewardFrameworkConfig
 
 def check_config(cls, config: "bt.Config"):
     r"""Checks/validates the config namespace object."""
@@ -50,12 +50,17 @@ def add_args(cls, parser):
     parser.add_argument("--netuid", type=int, help="Prompting network netuid", default=1)
 
     parser.add_argument(
-        "--reward.dpo_weight",
+        "--reward.accuracy_weight",
         type=float,
-        help="Weight for the dpo reward model",
-        default=DefaultRewardFrameworkConfig.dpo_model_weight,
+        help="Weight for the accuracy reward signal",
+        default=DefaultRewardFrameworkConfig.accuracy_weight,
     )
-
+    parser.add_argument(
+        "--reward.correctness_weight",
+        type=float,
+        help="Weight for the correctness reward signal",
+        default=DefaultRewardFrameworkConfig.correctness_weight,
+    )
     parser.add_argument(
         "--neuron.name",
         type=str,
@@ -74,7 +79,6 @@ def add_args(cls, parser):
         help="Disable all reward logging, suppresses reward functions and their values from being logged to wandb.",
         default=False,
     )
-
     parser.add_argument(
         "--neuron.num_concurrent_forwards",
         type=int,
