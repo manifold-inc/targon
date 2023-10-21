@@ -20,7 +20,7 @@ import bittensor as bt
 from typing import List
 from .config import RewardModelType
 from .base import BaseRewardModel
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
 from targon.prompts import tasks
 
 class AccuracyRewardSignal(BaseRewardModel):
@@ -33,8 +33,8 @@ class AccuracyRewardSignal(BaseRewardModel):
     def __init__(self, device: str):
         super().__init__()
         self.device = device
-        self.tokenizer = AutoTokenizer.from_pretrained(AccuracyRewardSignal.reward_model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(AccuracyRewardSignal.reward_model_name,
+        self.tokenizer = T5Tokenizer.from_pretrained(AccuracyRewardSignal.reward_model_name)
+        self.model = T5ForConditionalGeneration.from_pretrained(AccuracyRewardSignal.reward_model_name,
                                                           torch_dtype=torch.float16).to(self.device)
 
         self.sentiment_fn = pipeline(

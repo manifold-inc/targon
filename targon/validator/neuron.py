@@ -83,8 +83,7 @@ class neuron:
         self.coding_dataset = CodingDataset()
         self.qa_dataset = QADataset()
         self.reasoning_dataset = ReasoningDataset()
-        bt.logging.debug(str(self.dataset))
-
+        bt.logging.debug('loaded', 'datasets')
 
         if not self.config.neuron.axon_off:
             bt.logging.debug('serving ip to chain...')

@@ -4,7 +4,6 @@ import bittensor as bt
 from typing import List
 
 from targon.validator import check_uid_availability
-from ..prompts import qa_prompt
 from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
