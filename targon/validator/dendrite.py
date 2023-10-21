@@ -30,3 +30,7 @@ class AsyncDendritePool:
             return await asyncio.gather(*corutines)
         
         return await query_async()
+    
+    def resync(self, metagraph):
+        self.metagraph = metagraph
+        bt.logging.info('resynced dendrite pool')

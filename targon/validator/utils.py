@@ -136,10 +136,6 @@ def resync_metagraph(self: 'targon.neuron.neuron'):
             new_moving_average[: len(self.hotkeys)] = self.moving_averaged_scores
             self.moving_averaged_scores = new_moving_average
 
-        # Resize the gating model.
-        bt.logging.info("Re-syncing gating model")
-        self.gating_model.resync(previous_metagraph, self.metagraph)
-
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
     
