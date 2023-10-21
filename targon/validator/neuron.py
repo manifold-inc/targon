@@ -120,7 +120,6 @@ class neuron:
 
         self.reward_functions = [
             AccuracyRewardSignal(device=self.device),
-            CorrectnessRewardSignal(device=self.device),
 
         ]
 
