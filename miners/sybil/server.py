@@ -179,7 +179,6 @@ Descriptions:\n{descriptions}
             if type(synapse) == TargonQA:
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
                 output = self.get_response(prompt, response)
-                bt.logging.info("output", output)
                 synapse.answer = output
 
             elif type(synapse) == TargonLinkPrediction:
@@ -191,14 +190,12 @@ Descriptions:\n{descriptions}
                 }
 
                 output = search(params)
-                bt.logging.info("output", output)
                 synapse.results = output
 
             elif type(synapse) == TargonSearchResult:
                 prompt = self._build_search_result_prompt(query, sources)
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
                 output = self.get_response(prompt, response)
-                bt.logging.info("output", output)
 
                 synapse.completion = output
                 
