@@ -4,7 +4,7 @@ import argparse
 import bittensor as bt
 from loguru import logger
 
-from targon.validator.reward.config import DefaultRewardFrameworkConfig
+from targon.validator.signals.config import DefaultRewardFrameworkConfig
 
 def check_config(cls, config: "bt.Config"):
     r"""Checks/validates the config namespace object."""
