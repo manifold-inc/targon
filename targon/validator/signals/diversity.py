@@ -133,7 +133,7 @@ class DiversityRewardModel( BaseRewardModel ):
 
         return regularise(rewards) 
     
-    def get_rewards( self, prompt: str, completions: List[str], name: str ) -> torch.FloatTensor:
+    def get_rewards( self, prompt: str, completions: List[str], name: str, solution: str ) -> torch.FloatTensor:
         # Check if completions are empty, return 0 if so
         if len(completions) == 0:
             return torch.tensor([]).to(self.device)

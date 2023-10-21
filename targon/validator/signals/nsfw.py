@@ -60,7 +60,7 @@ class NSFWRewardModel( BaseRewardModel ):
             # 0 when needs to be filtered out, 1 when it is safe
             return 0.0 if sum_nsfw_scores( input_ids, chunk_size = 512 ) > boundary else 1.0
         
-    def get_rewards( self, prompt: str, completions: List[str], name: str ) -> torch.FloatTensor:
+    def get_rewards( self, prompt: str, completions: List[str], name: str, solution: str ) -> torch.FloatTensor:
         return torch.tensor( [self.reward( prompt, completion, name ) for completion in completions], dtype=torch.float32).to(self.device)
 
     def normalize_rewards( self, rewards: torch.FloatTensor ) -> torch.FloatTensor:
