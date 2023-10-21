@@ -67,7 +67,7 @@ class BaseRewardModel:
 
         return rewards
 
-    def apply( self, prompt: str, responses: List[ str ], name: str) -> torch.FloatTensor:
+    def apply( self, prompt: str, responses: List[ str ], name: str, solution: str) -> torch.FloatTensor:
         """ Applies the reward model across each call. Unsuccessful responses are zeroed.
         """
         # Get indices of correctly responding calls.
@@ -78,7 +78,7 @@ class BaseRewardModel:
         successful_completions: List[str] = [ responses[idx].strip() for idx in successful_completions_indices]
 
         # Reward each completion.
-        successful_rewards = self.get_rewards( prompt, successful_completions, name )
+        successful_rewards = self.get_rewards( prompt, successful_completions, name, solution )
 
         # Softmax rewards across samples.
         successful_rewards_normalized = self.normalize_rewards( successful_rewards )
