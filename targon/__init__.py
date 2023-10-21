@@ -1,4 +1,6 @@
 from . import protocol
+from . import prompts
+
 from dotenv import load_dotenv
 
 load_dotenv()

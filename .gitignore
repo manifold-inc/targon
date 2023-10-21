@@ -33,7 +33,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-targon
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

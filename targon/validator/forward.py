@@ -4,7 +4,7 @@ import bittensor as bt
 from typing import List
 
 from targon.validator import check_uid_availability
-from .prompts import qa_prompt
+from ..prompts import qa_prompt
 from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
@@ -103,6 +103,16 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
     return completions
 
 
+def select_qa(self):
+    '''Returns a question from the different tasks
+    
+    '''
+
+    # randomly select which dataset to use self.coding_dataset, self.qa_dataset, self.reasoning_dataset
+    dataset = random.choice([self.coding_dataset, self.qa_dataset, self.reasoning_dataset])
+    data = next(dataset)
+    return data
+
 async def forward_fn(self, validation=True, stream=False):
     """Queries a list of uids for a question.
     Args:
@@ -115,35 +125,32 @@ async def forward_fn(self, validation=True, stream=False):
     k = self.config.neuron.followup_sample_size
     if validation:
             uids = get_random_uids(self, k=k).to(self.device)
-            data = next(self.dataset)["text"]
+            data = select_qa(self)
 
-            random_cutoff = random.randint(15, 30)
-            # Truncate context to a limited set of sentences.
-            base_text = ".".join(data.split(".", maxsplit=random_cutoff)[:-1])
-            prompt = qa_prompt(base_text)
+            question = data['question']
+            task = data['task']
+            solution = data['solution']
+            
 
-            questions = await _qa_forward(self, prompt, uids)
+            bt.logging.trace('question', question)
+            bt.logging.trace('task', task)
+            bt.logging.trace('solution', solution)
 
-            # TODO: select most relevant question from questions
-            top_question = questions[0]
-            bt.logging.info('top_question', top_question)
-            # sources = await _link_prediction_forward(self, top_question, uids)
-
+            # TODO: add support for sources
             sources = []
-            completions = await _search_result_forward(self, top_question, sources, uids)
+            completions = await _search_result_forward(self, question, sources, uids)
             bt.logging.info("completions", completions)
 
-            name = "search-result"
             # Compute the rewards for the responses given the prompt.
             rewards: torch.FloatTensor = torch.zeros(len(completions), dtype=torch.float32).to(self.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-                reward_i, reward_i_normalized = reward_fn_i.apply(prompt, completions, name)
+                reward_i, reward_i_normalized = reward_fn_i.apply(question, completions, task, solution)
                 rewards += weight_i * reward_i_normalized.to(self.device)
                 bt.logging.trace(str(reward_fn_i.name), reward_i.tolist())
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
 
             for masking_fn_i in self.masking_functions:
-                mask_i, mask_i_normalized = masking_fn_i.apply(prompt, completions, name)
+                mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task)
                 rewards *= mask_i_normalized.to(self.device)  # includes diversity
                 bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
 

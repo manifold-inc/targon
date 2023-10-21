@@ -3,35 +3,38 @@ import bittensor as bt
 from datasets import load_dataset
 from collections.abc import Iterator
 
-class Dataset(Iterator):
+from targon.prompts import process_math_qa, process_open_orca, math_qa_prompt
+
+class QADataset(Iterator):
     def __init__(self):
         super().__init__()
         seed = random.randint(0, 10000)
-        # self.openwebtext = iter( load_dataset("openwebtext", split="train[]", streaming=True).shuffle(seed=seed, buffer_size=1000000) )
-        # self.red_pajama = iter( load_dataset("cerebras/SlimPajama-627B", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=100000) )
-        
+
         ## QA
         self.open_orca = iter( load_dataset("Open-Orca/OpenOrca", split="train", streaming=True) .shuffle(seed=seed, buffer_size=100))
         self.math_qa = iter( load_dataset("math_qa", split="train", streaming=True).shuffle(seed=seed, buffer_size=100))
 
-        ## Coding
-        self.reasoning_python = iter( load_dataset("Nan-Do/reason_code-search-net-python", split="train", streaming=True).shuffle(seed=seed, buffer_size=100))
-
-        ## 
     def __next__(self):         
          while True:
             bt.logging.debug('Retrieving data from dataset...')
-            if random.random() < 0.5:
-                text = next(self.openwebtext)["text"]
+            if random.random() < 0.2:
+                data = next(self.open_orca)
+                problem, options, rationale, correct_option = process_math_qa( data )
+                question = math_qa_prompt.format( problem=problem, options=options )
+                return {"question": question, "task": "math_qa", "solution": rationale}
             else:
-                text = next(self.red_pajama)["text"]
+                data = next(self.math_qa)
+                system_prompt, question, response = process_open_orca( data )
+                if system_prompt is not None:
+                    question = system_prompt + "\n\n" + question
+                return {"question": question, "task": "open_orca", "solution": response}
 
             # Check if the text is not empty or does not consist only of newline characters
-            if text.strip():
-                return {"text": text}
+            # if question.strip():
+            
 
 
-class MockDataset(Iterator):
+class MockQADataset(Iterator):
     def __next__(self):
         return {
             "text": '''Asynchronously processes the input text and sends back tokens as a streaming response.

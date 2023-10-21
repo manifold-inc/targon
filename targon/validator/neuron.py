@@ -2,11 +2,13 @@ import copy
 import torch
 import asyncio
 import bittensor as bt
-from targon.validator import AsyncDendritePool, check_config, add_args, config, run, MockDataset, Dataset, init_wandb, ttl_get_block
+from targon.validator import AsyncDendritePool, check_config, add_args, config, run, init_wandb, ttl_get_block
+from targon.validator.dataset import CodingDataset, QADataset, ReasoningDataset
 from targon.protocol import TargonDendrite
-from targon.validator.reward import (
+from targon.validator.signals import (
     NSFWRewardModel,
-    HHRewardSignal,
+    AccuracyRewardSignal,
+    CorrectnessRewardSignal,
     RelevanceRewardModel,
     DiversityRewardModel,
     MockRewardModel,
@@ -78,7 +80,9 @@ class neuron:
 
 
         bt.logging.debug("loading", "dataset")
-        self.dataset = Dataset()
+        self.coding_dataset = CodingDataset()
+        self.qa_dataset = QADataset()
+        self.reasoning_dataset = ReasoningDataset()
         bt.logging.debug(str(self.dataset))
 
 
@@ -116,9 +120,9 @@ class neuron:
         ).to(self.device)
 
         self.reward_functions = [
-            HHRewardSignal(device=self.device)
-            if self.config.reward.dpo_weight > 0
-            else MockRewardModel(RewardModelType.dpo.value),
+            AccuracyRewardSignal(device=self.device),
+            CorrectnessRewardSignal(device=self.device),
+
         ]
 
         relevance_model = (
