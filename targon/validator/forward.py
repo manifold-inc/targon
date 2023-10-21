@@ -139,6 +139,7 @@ async def forward_fn(self, validation=True, stream=False):
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
                 reward_i, reward_i_normalized = reward_fn_i.apply(prompt, completions, name)
                 rewards += weight_i * reward_i_normalized.to(self.device)
+                bt.logging.trace(str(reward_fn_i.name), reward_i.tolist())
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
 
             for masking_fn_i in self.masking_functions:
