@@ -6,18 +6,29 @@ from collections.abc import Iterator
 class Dataset(Iterator):
     def __init__(self):
         super().__init__()
-        seed = random.randint(0,1000)
-        self.red_pajama = iter( load_dataset("togethercomputer/RedPajama-Data-1T", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=1000) )
+        seed = random.randint(0, 10000)
+        # self.openwebtext = iter( load_dataset("openwebtext", split="train[]", streaming=True).shuffle(seed=seed, buffer_size=1000000) )
+        # self.red_pajama = iter( load_dataset("cerebras/SlimPajama-627B", 'default', split='train', streaming=True).shuffle(seed=seed, buffer_size=100000) )
+        
+        ## QA
+        self.open_orca = iter( load_dataset("Open-Orca/OpenOrca", split="train", streaming=True) .shuffle(seed=seed, buffer_size=100))
+        self.math_qa = iter( load_dataset("math_qa", split="train", streaming=True).shuffle(seed=seed, buffer_size=100))
 
+        ## Coding
+        self.reasoning_python = iter( load_dataset("Nan-Do/reason_code-search-net-python", split="train", streaming=True).shuffle(seed=seed, buffer_size=100))
+
+        ## 
     def __next__(self):         
-        #  while True:
-        bt.logging.debug('Retrieving data from dataset...')
+         while True:
+            bt.logging.debug('Retrieving data from dataset...')
+            if random.random() < 0.5:
+                text = next(self.openwebtext)["text"]
+            else:
+                text = next(self.red_pajama)["text"]
 
-        text = next(self.red_pajama)["text"]
-        bt.logging.debug('Retrieved data from dataset.')
-        # Check if the text is not empty or does not consist only of newline characters
-        if text.strip():
-            return {"text": text}
+            # Check if the text is not empty or does not consist only of newline characters
+            if text.strip():
+                return {"text": text}
 
 
 class MockDataset(Iterator):

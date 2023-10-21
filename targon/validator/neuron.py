@@ -6,7 +6,7 @@ from targon.validator import AsyncDendritePool, check_config, add_args, config, 
 from targon.protocol import TargonDendrite
 from targon.validator.reward import (
     NSFWRewardModel,
-    SmallRewardModel,
+    HHRewardSignal,
     RelevanceRewardModel,
     DiversityRewardModel,
     MockRewardModel,
@@ -116,7 +116,7 @@ class neuron:
         ).to(self.device)
 
         self.reward_functions = [
-            SmallRewardModel(device=self.device)
+            HHRewardSignal(device=self.device)
             if self.config.reward.dpo_weight > 0
             else MockRewardModel(RewardModelType.dpo.value),
         ]
