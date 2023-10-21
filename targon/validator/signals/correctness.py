@@ -81,7 +81,7 @@ class CorrectnessRewardSignal(BaseRewardModel):
             p_yes = torch.exp(outputs.scores[0][:, self.yes_token_id]).cpu().numpy()[0]
             p_no = torch.exp(outputs.scores[0][:, self.no_token_id]).cpu().numpy()[0]
             score = (p_no / (p_yes + p_no) - 0.5) * 10
-            return float( score.cpu().detach() )
+            return float( score )
             
         
     def get_rewards(self, prompt: str, completions: List[str], name: str, solution: str) -> torch.FloatTensor:
