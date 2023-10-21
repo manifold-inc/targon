@@ -17,7 +17,7 @@ tasks = [
 ]
 
 
-math_qa_prompt = '''{problem}
+math_qa_prompt = '''{question}
 Multiple Choice Options:
 {options}
 
