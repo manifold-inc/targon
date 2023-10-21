@@ -59,9 +59,9 @@ def process_open_orca( data ):
     return system_prompt, question, response
 
 def process_math_qa( data ):
-    problem = data['problem'] if data['problem'] != '' else None
+    problem = data['Problem'] if data['Problem'] != '' else None
     options = data['options'] if data['options'] != '' else None
-    rationale = data['rationale'] if data['rationale'] != '' else None
+    rationale = data['Rationale'] if data['Rationale'] != '' else None
     correct_option = data['correct_option'] if data['correct_option'] != '' else None
 
     return problem, options, rationale, correct_option
