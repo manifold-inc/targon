@@ -28,7 +28,7 @@ class AccuracyRewardSignal(BaseRewardModel):
     reward_model_name: str = "google/flan-t5-large"
 
     @property
-    def name(self) -> str: return RewardModelType.dpo.value
+    def name(self) -> str: return RewardModelType.accuracy.value
 
     def __init__(self, device: str):
         super().__init__()

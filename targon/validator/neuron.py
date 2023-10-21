@@ -89,7 +89,7 @@ class neuron:
             bt.logging.debug('serving ip to chain...')
             try:
                 axon = bt.axon( 
-                    wallet=self.wallet, metagraph=self.metagraph, config=self.config 
+                    wallet=self.wallet, config=self.config 
                 )
 
                 try:
@@ -113,14 +113,15 @@ class neuron:
 
         self.reward_weights = torch.tensor(
             [
-                self.config.reward.dpo_weight
+                self.config.reward.accuracy_weight,
+                self.config.reward.correctness_weight,
             ],
             dtype=torch.float32,
         ).to(self.device)
 
         self.reward_functions = [
             AccuracyRewardSignal(device=self.device),
-
+            CorrectnessRewardSignal(device=self.device),
         ]
 
         relevance_model = (

@@ -28,7 +28,7 @@ class CorrectnessRewardSignal(BaseRewardModel):
     reward_model_name: str = "google/flan-t5-large"
 
     @property
-    def name(self) -> str: return "CorrectnessRewardSignal"
+    def name(self) -> str: return RewardModelType.correctness.value
 
     def __init__(self, device: str):
         super().__init__()
