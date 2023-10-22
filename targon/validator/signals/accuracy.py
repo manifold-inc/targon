@@ -55,18 +55,22 @@ class AccuracyRewardSignal(BaseRewardModel):
 
     def build_input_text(self, prompt: str, completion: str, flavor: str, solution: str) -> str:
         # find the flavor in the taks list
-        task_name = [task for task in tasks if flavor in task['flavor']][0]['name']
+        try:
+            task_name = [task for task in tasks if flavor in task['flavor']][0]['name']
 
-        if task_name == 'coding':
-            input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} code solve the problem? Response:"
-        elif task_name == 'qa':
-            input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} answer the question? Response:"
-        elif task_name == 'reasoning':
-            input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} answer the question? Response:"
-        else:
-            raise ValueError(f"Unknown task name: {task_name}")
-        
-        return input_text
+            if task_name == 'coding':
+                input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} code solve the problem? Response:"
+            elif task_name == 'qa':
+                input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} answer the question? Response:"
+            elif task_name == 'reasoning':
+                input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} answer the question? Response:"
+            else:
+                raise ValueError(f"Unknown task name: {task_name}")
+            
+            return input_text
+        except:
+            return f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this answer the question? Response:"
+    
     def reward_single( self, prompt: str, completion: str, name: str, solution: str ) -> float:
         with torch.no_grad():
             input_text = self.build_input_text(prompt, completion, name, solution)

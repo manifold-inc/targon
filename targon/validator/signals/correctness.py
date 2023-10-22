@@ -55,17 +55,8 @@ class CorrectnessRewardSignal(BaseRewardModel):
 
     def build_input_text(self, prompt: str, completion: str, flavor: str, solution: str) -> str:
         # find the flavor in the taks list
-        task_name = [task for task in tasks if flavor in task['flavor']][0]['name']
+        input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\nSolution: {solution}\n\n Is the answer correct based off the solution? Response:"
 
-        if task_name == 'coding':
-            input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\nSolution: {solution}\n\n Is the answer correct based off the solution? Response:"
-        elif task_name == 'qa':
-            input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\nSolution: {solution}\n\n Is the answer correct based off the solution? Response:"
-        elif task_name == 'reasoning':
-            input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\nSolution: {solution}\n\n Is the answer correct based off the solution? Response:"
-        else:
-            raise ValueError(f"Unknown task name: {task_name}")
-        
         return input_text
     def reward_single( self, prompt: str, completion: str, name: str, solution: str ) -> float:
         with torch.no_grad():
