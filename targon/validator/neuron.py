@@ -93,7 +93,7 @@ class neuron:
                 )
 
                 try:
-                    self.axon.serve(
+                    axon.serve(
                         netuid=self.config.netuid, subtensor=self.subtensor
                     )
                 except Exception as e:
