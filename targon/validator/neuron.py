@@ -89,15 +89,12 @@ class neuron:
             bt.logging.debug('serving ip to chain...')
             try:
                 axon = bt.axon( 
-                    wallet=self.wallet, config=self.config 
+                    wallet=self.wallet, port=self.config.axon.port
                 )
 
                 try:
-                    self.subtensor.serve_axon(
-                        netuid=self.config.netuid,
-                        axon=axon,
-                        use_upnpc=False,
-                        wait_for_finalization=True,
+                    self.axon.serve(
+                        netuid=self.config.netuid, subtensor=self.subtensor
                     )
                 except Exception as e:
                     bt.logging.error(f'Failed to serve Axon with exception: {e}')
