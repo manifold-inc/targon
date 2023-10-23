@@ -63,8 +63,8 @@ class SybilMiner( Miner ):
             "prompt": prompt,
             "n": n,
             # "use_beam_search": True,
-            "temperature": synapse.max_new_tokens if synapse is not None else self.config.sybil.max_new_tokens,
-            "max_tokens": synapse.temperature if synapse is not None else self.config.sybil.temperature,
+            "temperature": synapse.temperature if synapse is not None else self.config.sybil.temperature,
+            "max_new_tokens": synapse.max_new_tokens if synapse is not None else self.config.sybil.max_new_tokens,
             "stream": stream,
         }
         response = requests.post(api_url, headers=headers, json=pload, stream=True)
