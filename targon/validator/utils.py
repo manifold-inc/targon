@@ -23,7 +23,8 @@ def autoupdate():
     # try:
     bt.logging.trace("Checking for updates...")
     response = requests.get(
-        "https://raw.githubusercontent.com/manifold-inc/targon/main/VERSION"
+        "https://raw.githubusercontent.com/manifold-inc/targon/main/VERSION",
+        headers={'Cache-Control': 'no-cache'}
     )
     response.raise_for_status()
     # try:
@@ -46,7 +47,7 @@ def autoupdate():
 
         os.system(f"cd {base_path} && git pull")
         # checking local VERSION
-        with open(base_path, "VERSION") as f:
+        with open(os.path.join(base_path, "VERSION")) as f:
             new__version__ = f.read().strip()
             # convert to list of ints
             new__version__ = [int(v) for v in new__version__.split(".")]
