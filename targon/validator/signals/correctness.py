@@ -17,6 +17,7 @@
 
 import torch
 import bittensor as bt
+import numpy as np
 from typing import List
 from .config import RewardModelType
 from .base import BaseRewardModel
@@ -37,16 +38,6 @@ class CorrectnessRewardSignal(BaseRewardModel):
         self.model = T5ForConditionalGeneration.from_pretrained(CorrectnessRewardSignal.reward_model_name,
                                                           torch_dtype=torch.float16).to(self.device)
 
-        self.sentiment_fn = pipeline(
-            "sentiment-analysis",
-            "facebook/roberta-hate-speech-dynabench-r4-target",
-            top_k=2,
-            truncation=True,
-            batch_size=256,
-            device=self.device,
-            function_to_apply="none",
-        )
-
 
         self.yes_token_id = 2163  # this is for Flan-T5, change it accordingly
         self.no_token_id = 465  # this is for Flan-T5, change it accordingly
@@ -58,67 +49,45 @@ class CorrectnessRewardSignal(BaseRewardModel):
         input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\nSolution: {solution}\n\n Is the answer correct based off the solution? Response:"
 
         return input_text
-    def reward_single( self, prompt: str, completion: str, name: str, solution: str ) -> float:
+
+    def reward_single(self, prompt: str, completion: str, name: str, solution: str) -> float:
         with torch.no_grad():
+            # Validate input
+            if not prompt or not completion or not name or not solution:
+                return 0.0  # or some other default value
+
             input_text = self.build_input_text(prompt, completion, name, solution)
-            x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(
-                self.device
-            )
+            
+            # Validate tokenized input
+            x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(self.device)
+            if torch.isnan(x).any():
+                return 0.0  # or some other default value
 
             outputs = self.model.generate(
                 x, return_dict_in_generate=True, output_scores=True, max_new_tokens=1
             )
 
+            # Validate model output
+            if torch.isnan(outputs.scores).any():
+                return 0.0  # or some other default value
+
             p_yes = torch.exp(outputs.scores[0][:, self.yes_token_id]).cpu().numpy()[0]
             p_no = torch.exp(outputs.scores[0][:, self.no_token_id]).cpu().numpy()[0]
-            score = (p_no / (p_yes + p_no) - 0.5) * 10
-            return float( score )
             
-        
+            # Validate p_yes and p_no
+            if np.isnan(p_yes) or np.isnan(p_no):
+                return 0.0  # or some other default value
+
+            # Validate denominator
+            denominator = p_yes + p_no
+            if denominator == 0:
+                return 0.0  # or some other default value
+
+            score = (p_no / denominator - 0.5) * 10
+            return float(score)
+            
     def get_rewards(self, prompt: str, completions: List[str], name: str, solution: str) -> torch.FloatTensor:
         rewards = torch.tensor([self.reward_single(prompt, completion, name, solution) for completion in completions],
                                dtype=torch.float32).to(self.device)
         bt.logging.trace(f"{name} correctness signal | rewards: {rewards.tolist()}")
         return rewards
-
-
-    # def reward_fn(self, samples: List[str], **kwargs) -> List[float]:
-    #     scores = []
-    #     for sample in samples:
-    #         input_text = (
-    #             f"Text: {sample}\n\n Does this text contain toxic speech? Response:"
-    #         )
-    #         x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(
-    #             self.device
-    #         )
-    #         outputs = self.model.generate(
-    #             x, return_dict_in_generate=True, output_scores=True, max_new_tokens=1
-    #         )
-    #         p_yes = torch.exp(outputs.scores[0][:, self.yes_token_id]).cpu().numpy()[0]
-    #         p_no = torch.exp(outputs.scores[0][:, self.no_token_id]).cpu().numpy()[0]
-    #         scores.append(
-    #             (p_no / (p_yes + p_no) - 0.5) * 10
-    #         )  # we do some rescaling to improve PPO.
-    #     return scores
-
-    # def metric_fn(self, samples: List[str], **kwargs) -> List[float]:
-    #     """Similar to reward_fn, but without rescaling, to make it interpretable in the logs."""
-    #     scores = []
-    #     for sample in samples:
-    #         input_text = (
-    #             f"Text: {sample}\n\n Does this text contain toxic speech? Response:"
-    #         )
-    #         x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(
-    #             self.device
-    #         )
-    #         outputs = self.model.generate(
-    #             x, return_dict_in_generate=True, output_scores=True, max_new_tokens=1
-    #         )
-    #         p_yes = torch.exp(outputs.scores[0][:, self.yes_token_id]).cpu().numpy()[0]
-    #         p_no = torch.exp(outputs.scores[0][:, self.no_token_id]).cpu().numpy()[0]
-    #         scores.append(p_no / (p_yes + p_no))
-    #     return {"prob_positive": scores}
-
-    # def reward_fn_classifier(self, samples: List[str], **kwargs) -> List[float]:
-    #     sentiments = list(map(get_positive_score, self.sentiment_fn(samples)))
-    #     return sentiments
