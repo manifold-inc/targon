@@ -52,7 +52,12 @@ async def search(request: Request) -> Response:
     search_results = GoogleSearch(params).get_json()
     pprint.pprint(search_results)
     organic_results = search_results['organic_results']
-    search_sources = [{"type": "url", "url": result['link'], "snippet": result['snippet'], "title": result['title'], "icon": result['favicon'] if result['favicon'] else 'https://www.micreate.eu/wp-content/img/default-img.png'} for result in organic_results]
+    def get_icon(result):
+        if result['favicon']:
+            return result['favicon']
+        else:
+            return 'https://www.micreate.eu/wp-content/img/default-img.png'
+    search_sources = [{"type": "url", "url": result['link'], "snippet": result['snippet'], "title": result['title'], "icon": get_icon()} for result in organic_results]
     sources = [{"type": "url", "url": result['link'], "title": result['title'], "icon": result['favicon'] if result['favicon'] else 'https://www.micreate.eu/wp-content/img/default-img.png'} for result in organic_results]
 
     search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True )

@@ -82,6 +82,7 @@ class SybilMiner( Miner ):
 
 
     def get_response(self, prompt, response: requests.Response) -> List[str]:
+        print(response.content)
         data = json.loads(response.content)
         output = data["text"][0].replace(prompt, "")
         return output
