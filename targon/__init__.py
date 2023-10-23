@@ -1,3 +1,5 @@
+import os 
+
 from . import protocol
 from . import prompts
 
@@ -7,7 +9,12 @@ load_dotenv()
 from .miner.search import query as search
 from .miner.search import QueryParams
 
-raw_version = open("../VERSION").read()
+
+base_path = os.path.dirname(__file__)
+# step backwards to targon/
+base_path = os.path.dirname(base_path)
+print(base_path)
+raw_version = open(os.path.join(base_path, "VERSION")).read().strip()
 
 __version__ = [int(v) for v in raw_version.split(".")]
 version_split = __version__.split(".")
