@@ -1,16 +1,59 @@
 
 # Utils for checkpointing and saving the model.
+import os
+import sys
 import torch
 import wandb
 import copy
 import bittensor as bt
 import targon
+import requests
 import time
 import math
 import hashlib as rpccheckhealth
 from math import floor
 from typing import Callable, Any
 from functools import lru_cache, update_wrapper
+from targon import __version__
+
+def autoupdate():
+    '''
+    Updates the targon codebase if a newer version is available.
+    '''
+    try:
+        bt.logging.trace("Checking for updates...")
+        response = requests.get(
+            "https://raw.githubusercontent.com/manifold-inc/targon/main/VERSION"
+        )
+        response.raise_for_status()
+        try:
+            _json = response.json()
+            latest_version = _json['payload']['blob']['rawLines'][0]
+            latest_version = [int(v) for v in latest_version.split(".")]
+            bt.logging.trace(f"Current version: {__version__}")
+            bt.logging.trace(f"Latest version: {latest_version}")
+            if latest_version > __version__:
+                bt.logging.trace("A newer version of Targon is available. Downloading...")
+                # download latest version with git pull
+                os.system("git pull")
+                # checking local VERSION
+                with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "VERSION")) as f:
+                    new__version__ = f.read().strip()
+                    # convert to list of ints
+                    new__version__ = [int(v) for v in new__version__.split(".")]
+                    if new__version__ == latest_version:
+                        bt.logging.trace("Targon updated successfully.")
+                        bt.logging.trace("Restarting...")
+                        bt.logging.trace(f"Running: {sys.executable} {sys.argv}")
+                        os.execv(sys.executable, [sys.executable] + sys.argv)
+                    else:
+                        bt.logging.error("Targon git pull failed you will need to manually update and restart for latest code.")
+        except Exception as e:
+            bt.logging.error("Failed to convert response to json: {}".format(e))
+            bt.logging.trace("Response: {}".format(response.text))            
+    except Exception as e:
+        bt.logging.error("Failed to check for updates: {}".format(e))
+
 
 # LRU Cache with TTL
 def ttl_cache(maxsize: int = 128, typed: bool = False, ttl: int = -1):
