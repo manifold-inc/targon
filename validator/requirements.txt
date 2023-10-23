@@ -1,0 +1,6 @@
+fastapi[all]
+bittensor==6.1.0
+sse_starlette
+targon @ git+https://github.com/manifold-inc/targon.git
+google-search-results
+uvicorn

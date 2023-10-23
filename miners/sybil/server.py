@@ -55,14 +55,16 @@ class SybilMiner( Miner ):
                         prompt: str,
                         api_url: str,
                         n: int = 1,
-                        stream: bool = False) -> requests.Response:
+                        stream: bool = False,
+                        synapse = None) -> requests.Response:
         headers = {"User-Agent": "Test Client"}
+
         pload = {
             "prompt": prompt,
             "n": n,
             # "use_beam_search": True,
-            "temperature": self.config.sybil.temperature,
-            "max_tokens": self.config.sybil.max_new_tokens,
+            "temperature": synapse.max_new_tokens if synapse is not None else self.config.sybil.temperature,
+            "max_tokens": synapse.temperature if synapse is not None else self.config.sybil.max_new_tokens,
             "stream": stream,
         }
         response = requests.post(api_url, headers=headers, json=pload, stream=True)
@@ -99,12 +101,23 @@ class SybilMiner( Miner ):
 
         '''
 
-        descriptions = [source['description'] for source in sources]
-        descriptions = "\n".join(descriptions)
-        sys_prompt = f'''<|im_start|>system
+        if len(sources) == 0:
+            sys_prompt = f'''<|im_start|>system
 you are an expert at summarizing sources and offering an answer to a question. you are a search engine.
-Descriptions:\n{descriptions}
 <|im_end|>
+'''
+        else:
+            search_results = [f'''{search_result['title']}
+    {search_result['url']}
+    {search_result['snippet']}
+    ''' for search_result in sources]
+
+            search_results = "\n".join(search_results)
+
+            sys_prompt = f'''<|im_start|>system
+    you are an expert at summarizing sources and offering an answer to a question. you are a search engine.
+    Search Results:\n{search_results}
+    <|im_end|>
 '''
         user_prompt = f'''<|im_start|>user
 {query}
@@ -194,7 +207,7 @@ Descriptions:\n{descriptions}
 
             elif type(synapse) == TargonSearchResult:
                 prompt = self._build_search_result_prompt(query, sources)
-                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
+                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
                 output = self.get_response(prompt, response)
 
                 synapse.completion = output

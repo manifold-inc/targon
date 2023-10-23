@@ -111,7 +111,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
             yield f"data: {data}\n\n"
 
         # Indicate end of stream
-        yield "data: [DONE]\n\n"
+        # yield "data: [DONE]\n\n"
 
 
     if request.stream:

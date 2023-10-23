@@ -27,6 +27,9 @@ class TargonQA( bt.Synapse ):
         description="The answer to the question. Mutable.",
     )
     stream: bool = False
+    max_new_tokens: int = 12
+    temperature: float = 0.7
+    top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["question"],
         title="Required Hash Fields",
@@ -73,6 +76,9 @@ class TargonSearchResult( bt.Synapse ):
         description="The results of the query. Mutable.",
     )
     stream: bool = False
+    max_new_tokens: int = 128
+    temperature: float = 0.7
+    top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["query"],
         title="Required Hash Fields",
@@ -99,6 +105,9 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
         description="The results of the query. Mutable.",
     )
     stream: bool = False
+    max_new_tokens: int = 128
+    temperature: float = 0.7
+    top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["query"],
         title="Required Hash Fields",
