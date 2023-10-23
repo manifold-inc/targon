@@ -72,28 +72,20 @@ class AccuracyRewardSignal(BaseRewardModel):
         except:
             return f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this answer the question? Response:"
     
-    def reward_single(self, prompt: str, completion: str, name: str, solution: str) -> float:
+    def reward_single( self, prompt: str, completion: str, name: str, solution: str ) -> float:
         with torch.no_grad():
-            # Validate input
-            if not prompt or not completion or not name or not solution:
-                return 0.0  # or some other default value
-
             input_text = self.build_input_text(prompt, completion, name, solution)
-            
-            # Validate tokenized input
-            x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(self.device)
+            x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(
+                self.device
+            )
 
             outputs = self.model.generate(
                 x, return_dict_in_generate=True, output_scores=True, max_new_tokens=1
             )
 
-            # Validate model output
-            if torch.isnan(outputs.scores).any():
-                return 0.0  # or some other default value
-
             p_yes = torch.exp(outputs.scores[0][:, self.yes_token_id]).cpu().numpy()[0]
             p_no = torch.exp(outputs.scores[0][:, self.no_token_id]).cpu().numpy()[0]
-            
+
             # Validate p_yes and p_no
             if np.isnan(p_yes) or np.isnan(p_no):
                 return 0.0  # or some other default value
@@ -102,9 +94,10 @@ class AccuracyRewardSignal(BaseRewardModel):
             denominator = p_yes + p_no
             if denominator == 0:
                 return 0.0  # or some other default value
-
+    
             score = (p_no / denominator - 0.5) * 10
-            return float(score)
+            return float( score )
+            
         
     def get_rewards(self, prompt: str, completions: List[str], name: str, solution: str) -> torch.FloatTensor:
         rewards = torch.tensor([self.reward_single(prompt, completion, name, solution) for completion in completions],
