@@ -28,6 +28,7 @@ def autoupdate():
     response.raise_for_status()
     # try:
     repo_version = response.content.decode()
+    print(repo_version)
     
     latest_version = [int(v) for v in repo_version.split(".")]
     bt.logging.debug(f"Current version: {__version__}")
