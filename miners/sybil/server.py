@@ -40,7 +40,7 @@ class SybilMiner( Miner ):
         parser.add_argument('--sybil.repetition_penalty', type=float, default=1.0, help='Repetition penalty.')
         parser.add_argument('--sybil.length_penalty', type=float, default=1.0, help='Length penalty.')
         parser.add_argument('--sybil.temperature', type=float, default=1.0, help='Temperature for sampling.')
-        parser.add_argument('--sybil.max_length', type=int, default=2000, help='Maximum number of tokens to generate.')
+        parser.add_argument('--sybil.max_length', type=int, default=4096, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
         parser.add_argument('--sybil.api_url', type=str, default="http://0.0.0.0:8000", help='URL for the API server.')
         parser.add_argument('--sybil.serp_api_key', type=str, help='API key for the SERP API.', default=None)
@@ -63,8 +63,8 @@ class SybilMiner( Miner ):
             "prompt": prompt,
             "n": n,
             # "use_beam_search": True,
-            "temperature": synapse.temperature if synapse is not None else self.config.sybil.temperature,
-            "max_new_tokens": synapse.max_new_tokens if synapse is not None else self.config.sybil.max_new_tokens,
+            "temperature": self.config.sybil.temperature,
+            "max_tokens": self.config.sybil.max_length,
             "stream": stream,
         }
         response = requests.post(api_url, headers=headers, json=pload, stream=True)
