@@ -4,7 +4,7 @@ import asyncio
 import bittensor as bt
 from traceback import print_exception
 
-from targon.validator import should_checkpoint, checkpoint, should_reinit_wandb, reinit_wandb, load_state, save_state, ttl_get_block
+from targon.validator import autoupdate, should_checkpoint, checkpoint, should_reinit_wandb, reinit_wandb, load_state, save_state, ttl_get_block
 from .forward import forward_fn
 # from openvalidators.weights import should_set_weights, set_weights
 
@@ -50,6 +50,7 @@ def run(self):
     bt.logging.info("run()")
     load_state(self)
     checkpoint(self)
+    autoupdate()
     try:
         while True:
             bt.logging.info(f"step({self.step}) block({ttl_get_block( self )})")
@@ -68,6 +69,9 @@ def run(self):
             if should_set_weights(self):
                 set_weights(self)
                 save_state(self)
+            
+            # Check if we should update.
+            autoupdate()
 
             # Rollover wandb to a new run.
             if should_reinit_wandb(self):
