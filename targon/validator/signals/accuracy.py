@@ -82,8 +82,6 @@ class AccuracyRewardSignal(BaseRewardModel):
             
             # Validate tokenized input
             x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(self.device)
-            if torch.isnan(x).any():
-                return 0.0  # or some other default value
 
             outputs = self.model.generate(
                 x, return_dict_in_generate=True, output_scores=True, max_new_tokens=1
