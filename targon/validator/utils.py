@@ -28,19 +28,21 @@ def autoupdate():
     response.raise_for_status()
     # try:
     repo_version = response.content.decode()
-    print(repo_version)
     
     latest_version = [int(v) for v in repo_version.split(".")]
-    bt.logging.debug(f"Current version: {__version__}")
-    bt.logging.debug(f"Latest version: {latest_version}")
-    if latest_version > __version__:
+    local_version = [int(v) for v in __version__.split(".")]
+    bt.logging.debug(f"local version: {__version__}")
+    bt.logging.debug(f"Latest version: {repo_version}")
+    if latest_version > local_version:
         bt.logging.trace("A newer version of Targon is available. Downloading...")
         # download latest version with git pull
 
+        base_path = os.path.abspath(__file__)
         # step backwards in the path until we find targon
         while os.path.basename(base_path) != "targon":
             base_path = os.path.dirname(base_path)
         
+        base_path = os.path.dirname(base_path)
 
         os.system(f"cd {base_path} && git pull")
         # checking local VERSION
