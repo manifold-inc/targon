@@ -50,7 +50,6 @@ def run(self):
     bt.logging.info("run()")
     load_state(self)
     checkpoint(self)
-    autoupdate()
     try:
         while True:
             bt.logging.info(f"step({self.step}) block({ttl_get_block( self )})")

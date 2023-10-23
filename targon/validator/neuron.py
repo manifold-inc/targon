@@ -2,7 +2,7 @@ import copy
 import torch
 import asyncio
 import bittensor as bt
-from targon.validator import AsyncDendritePool, check_config, add_args, config, run, init_wandb, ttl_get_block
+from targon.validator import autoupdate, AsyncDendritePool, check_config, add_args, config, run, init_wandb, ttl_get_block
 from targon.validator.dataset import CodingDataset, QADataset, ReasoningDataset
 from targon.protocol import TargonDendrite
 from targon.validator.signals import (
@@ -44,6 +44,9 @@ class neuron:
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
         print(self.config)
         bt.logging.info("neuron.__init__()")
+
+        # check if needs an update
+        autoupdate()
 
         # Init device.
         bt.logging.debug("loading", "device")
