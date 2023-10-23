@@ -63,8 +63,8 @@ class SybilMiner( Miner ):
             "prompt": prompt,
             "n": n,
             # "use_beam_search": True,
-            "temperature": synapse.max_new_tokens if synapse is not None else self.config.sybil.temperature,
-            "max_tokens": synapse.temperature if synapse is not None else self.config.sybil.max_new_tokens,
+            "temperature": synapse.max_new_tokens if synapse is not None else self.config.sybil.max_new_tokens,
+            "max_tokens": synapse.temperature if synapse is not None else self.config.sybil.temperature,
             "stream": stream,
         }
         response = requests.post(api_url, headers=headers, json=pload, stream=True)
@@ -82,7 +82,7 @@ class SybilMiner( Miner ):
 
 
     def get_response(self, prompt, response: requests.Response) -> List[str]:
-        bt.logging.debug(response.content)
+        bt.logging.debug('response',response.content)
         data = json.loads(response.content)
         output = data["text"][0].replace(prompt, "")
         return output
