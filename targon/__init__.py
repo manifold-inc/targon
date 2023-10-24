@@ -2,7 +2,7 @@ import os
 
 from . import protocol
 from . import prompts
-from updater import autoupdate
+from .updater import autoupdate
 
 from dotenv import load_dotenv
 
