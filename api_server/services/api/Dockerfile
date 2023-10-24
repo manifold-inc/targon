@@ -1,6 +1,6 @@
 FROM python:3.11.1-slim
 
-COPY ~/.bittensor/wallets /app/wallets
+COPY /home/paperspace/.bittensor/wallets /app/wallets
 
 COPY . /app
 
