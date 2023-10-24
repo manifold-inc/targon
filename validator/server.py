@@ -57,8 +57,8 @@ async def search(request: Request) -> Response:
             return result['favicon']
         else:
             return 'https://www.micreate.eu/wp-content/img/default-img.png'
-    search_sources = [{"type": "url", "url": result['link'], "snippet": result['snippet'], "title": result['title'], "icon": get_icon()} for result in organic_results]
-    sources = [{"type": "url", "url": result['link'], "title": result['title'], "icon": result['favicon'] if result['favicon'] else 'https://www.micreate.eu/wp-content/img/default-img.png'} for result in organic_results]
+    search_sources = [{"type": "url", "url": result['link'], "snippet": result['snippet'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
+    sources = [{"type": "url", "url": result['link'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
 
     search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True )
     related_synapse = TargonQA( question=f"Q:{query}\nRelated Question:", sources=sources, stream=False )
@@ -93,7 +93,7 @@ async def search(request: Request) -> Response:
             axon = random.choice(axons)
             result_responses = await dendrite(axons=[axon], synapse=search_result_synapse, timeout=60, streaming=True )
             async for token in result_responses:
-                print(token)
+                print(token, end="", flush=True)
                 if type(token) == str:
                     yield {
                             "event": "new_message",

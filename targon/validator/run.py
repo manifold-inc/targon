@@ -4,7 +4,8 @@ import asyncio
 import bittensor as bt
 from traceback import print_exception
 
-from targon.validator import autoupdate, should_checkpoint, checkpoint, should_reinit_wandb, reinit_wandb, load_state, save_state, ttl_get_block
+from targon import autoupdate
+from targon.validator import should_checkpoint, checkpoint, should_reinit_wandb, reinit_wandb, load_state, save_state, ttl_get_block
 from .forward import forward_fn
 # from openvalidators.weights import should_set_weights, set_weights
 

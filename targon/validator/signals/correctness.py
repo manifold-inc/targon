@@ -31,13 +31,11 @@ class CorrectnessRewardSignal(BaseRewardModel):
     @property
     def name(self) -> str: return RewardModelType.correctness.value
 
-    def __init__(self, device: str):
+    def __init__(self, device: str, tokenizer: T5Tokenizer, model: T5ForConditionalGeneration):
         super().__init__()
         self.device = device
-        self.tokenizer = T5Tokenizer.from_pretrained(CorrectnessRewardSignal.reward_model_name)
-        self.model = T5ForConditionalGeneration.from_pretrained(CorrectnessRewardSignal.reward_model_name,
-                                                          torch_dtype=torch.float16).to(self.device)
-
+        self.tokenizer = tokenizer
+        self.model = model
 
         self.yes_token_id = 2163  # this is for Flan-T5, change it accordingly
         self.no_token_id = 465  # this is for Flan-T5, change it accordingly
@@ -77,6 +75,8 @@ class CorrectnessRewardSignal(BaseRewardModel):
                 return 0.0  # or some other default value
 
             score = (p_no / denominator - 0.5) * 10
+            if np.isnan(score):
+                return 0.0
             return float(score)
             
     def get_rewards(self, prompt: str, completions: List[str], name: str, solution: str) -> torch.FloatTensor:
