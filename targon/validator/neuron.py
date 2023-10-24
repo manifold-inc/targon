@@ -2,18 +2,22 @@ import copy
 import torch
 import asyncio
 import bittensor as bt
-from targon.validator import autoupdate, AsyncDendritePool, check_config, add_args, config, run, init_wandb, ttl_get_block
+from targon.validator import AsyncDendritePool, check_config, add_args, config, run, init_wandb, ttl_get_block
 from targon.validator.dataset import CodingDataset, QADataset, ReasoningDataset
 from targon.protocol import TargonDendrite
+from targon import autoupdate
 from targon.validator.signals import (
     NSFWRewardModel,
     AccuracyRewardSignal,
     CorrectnessRewardSignal,
+    FaithRewardSignal,
     RelevanceRewardModel,
     DiversityRewardModel,
     MockRewardModel,
     RewardModelType,
 )
+from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
+
 
 class neuron:
     @classmethod
@@ -119,9 +123,15 @@ class neuron:
             dtype=torch.float32,
         ).to(self.device)
 
+        # reward model
+        tokenizer = T5Tokenizer.from_pretrained(CorrectnessRewardSignal.reward_model_name)
+        model = T5ForConditionalGeneration.from_pretrained(CorrectnessRewardSignal.reward_model_name,
+                                                            torch_dtype=torch.float16).to(self.device)
+
+
         self.reward_functions = [
-            AccuracyRewardSignal(device=self.device),
-            CorrectnessRewardSignal(device=self.device),
+            AccuracyRewardSignal(device=self.device, tokenizer=tokenizer, model=model),
+            CorrectnessRewardSignal(device=self.device, tokenizer=tokenizer, model=model),
         ]
 
         relevance_model = (
@@ -130,16 +140,16 @@ class neuron:
         )
 
         # TODO: Retrain diversity model
-        # self.diversity_model = (
-        #     DiversityRewardModel(device=self.device) if not self.config.neuron.diversity_off
-        #     else MockRewardModel(RewardModelType.diversity.value)
-        # )
+        self.diversity_model = (
+            DiversityRewardModel(device=self.device) if not self.config.neuron.diversity_off
+            else MockRewardModel(RewardModelType.diversity.value)
+        )
         nsfw_model = (
             NSFWRewardModel(device=self.device) if not self.config.neuron.nsfw_off
             else MockRewardModel(RewardModelType.nsfw.value)              
         )
 
-        self.masking_functions = [relevance_model, nsfw_model]
+        self.masking_functions = [relevance_model, self.diversity_model, nsfw_model]
 
 
         self.dendrite_pool = AsyncDendritePool(wallet=self.wallet, metagraph=self.metagraph)

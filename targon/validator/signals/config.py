@@ -18,9 +18,10 @@ from enum import Enum
 
 
 class RewardModelType(Enum):
-    accuracy = 'accuracy_reward_model'
-    correctness = 'correctness_reward_model'
-    diversity = 'diversity_reward_model'
+    accuracy = 'accuracy_reward_signal'
+    correctness = 'correctness_reward_signal'
+    faith = 'faith_reward_signal'
+    diversity = 'diversity_reward_signal'
     nsfw = 'nsfw_filter'
     relevance = 'relevance_filter'
 

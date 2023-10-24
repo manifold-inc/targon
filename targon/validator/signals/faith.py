@@ -16,25 +16,24 @@
 # DEALINGS IN THE SOFTWARE.
 
 import torch
-import numpy as np
 import bittensor as bt
+import numpy as np
 from typing import List
 from .config import RewardModelType
 from .base import BaseRewardModel
 from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
 from targon.prompts import tasks
 
-class AccuracyRewardSignal(BaseRewardModel):
+class FaithRewardSignal(BaseRewardModel):
 
     reward_model_name: str = "google/flan-t5-large"
 
     @property
-    def name(self) -> str: return RewardModelType.accuracy.value
+    def name(self) -> str: return RewardModelType.faith.value
 
     def __init__(self, device: str, tokenizer: T5Tokenizer, model: T5ForConditionalGeneration):
         super().__init__()
         self.device = device
-
         self.tokenizer = tokenizer
         self.model = model
 
@@ -45,36 +44,27 @@ class AccuracyRewardSignal(BaseRewardModel):
 
     def build_input_text(self, prompt: str, completion: str, flavor: str, solution: str) -> str:
         # find the flavor in the taks list
-        try:
-            task_name = [task for task in tasks if flavor in task['flavor']][0]['name']
+        input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\nSolution: {solution}\n\n Is the Answer and the Solution similar enough to suspect cheating? Response:"
 
-            if task_name == 'coding':
-                input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} code solve the problem? Response:"
-            elif task_name == 'qa':
-                input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} answer the question? Response:"
-            elif task_name == 'reasoning':
-                input_text = f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this {flavor} answer the question? Response:"
-            else:
-                raise ValueError(f"Unknown task name: {task_name}")
-            
-            return input_text
-        except:
-            return f"Question: {prompt}\n\nAnswer: {completion}\n\n Does this answer the question? Response:"
-    
-    def reward_single( self, prompt: str, completion: str, name: str, solution: str ) -> float:
+        return input_text
+
+    def reward_single(self, prompt: str, completion: str, name: str, solution: str) -> float:
         with torch.no_grad():
+            # Validate input
+            if not prompt or not completion or not name or not solution:
+                return 0.0  # or some other default value
+
             input_text = self.build_input_text(prompt, completion, name, solution)
-            x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(
-                self.device
-            )
+            
+            # Validate tokenized input
+            x = self.tokenizer([input_text], return_tensors="pt").input_ids.to(self.device)
 
             outputs = self.model.generate(
                 x, return_dict_in_generate=True, output_scores=True, max_new_tokens=1
             )
-
             p_yes = torch.exp(outputs.scores[0][:, self.yes_token_id]).cpu().numpy()[0]
             p_no = torch.exp(outputs.scores[0][:, self.no_token_id]).cpu().numpy()[0]
-
+            
             # Validate p_yes and p_no
             if np.isnan(p_yes) or np.isnan(p_no):
                 return 0.0  # or some other default value
@@ -83,16 +73,22 @@ class AccuracyRewardSignal(BaseRewardModel):
             denominator = p_yes + p_no
             if denominator == 0:
                 return 0.0  # or some other default value
-    
+
             score = (p_no / denominator - 0.5) * 10
+
             if np.isnan(score):
                 return 0.0
-            return float( score )
+            # if score positive, then it is more likely to be a cheating
+            # if score negative, then it is more likely to be a correct answer
+            # manipulate the score to reflect this
+            if score > 0:
+                score = score * -1
+            else:
+                score = score * 2
+            return float(score)
             
-        
     def get_rewards(self, prompt: str, completions: List[str], name: str, solution: str) -> torch.FloatTensor:
         rewards = torch.tensor([self.reward_single(prompt, completion, name, solution) for completion in completions],
                                dtype=torch.float32).to(self.device)
-        bt.logging.trace(f"{name} accuracy signal | rewards: {rewards.tolist()}")
+        bt.logging.trace(f"{name} faith signal | rewards: {rewards.tolist()}")
         return rewards
-

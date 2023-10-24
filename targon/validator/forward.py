@@ -1,3 +1,4 @@
+import time
 import torch
 import random
 import bittensor as bt
@@ -164,7 +165,9 @@ async def forward_fn(self, validation=True, stream=False):
             )
 
             bt.logging.info("rewards", rewards.tolist())
-
+            for i in range(30):
+                bt.logging.info("sleeping for", i)
+                time.sleep(1)
             
 
 
