@@ -8,7 +8,7 @@ import uvicorn
 
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
-from .sampling_params import SamplingParams
+from vllm.sampling_params import SamplingParams
 from vllm.utils import random_uuid
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
