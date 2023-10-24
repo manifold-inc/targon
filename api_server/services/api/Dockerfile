@@ -1,6 +1,6 @@
-FROM python:3.11.1-slim
+FROM opentensorfdn/bittensor:6.1.0
 
-RUN apt install git build-essientials -y
+
 COPY . /app
 
 WORKDIR /app
