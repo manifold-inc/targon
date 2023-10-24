@@ -4,8 +4,6 @@ services:
   api:
     build: ./services/api/
     restart: always
-    volumes:
-      - ~/.cache/huggingface:/home/.cache/huggingface
     labels:
       - traefik.enable=true
       - traefik.http.routers.app-http.rule=Host(`api.sybil.com`)

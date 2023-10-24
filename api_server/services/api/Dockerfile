@@ -1,6 +1,5 @@
 FROM python:3.11.1-slim
 
-COPY wallets /app/wallets
 
 COPY . /app
 
