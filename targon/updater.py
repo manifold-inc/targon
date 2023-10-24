@@ -2,7 +2,7 @@ import os
 import sys
 import requests
 import bittensor as bt
-from targon import __version__
+import targon
 
 def autoupdate():
     '''
@@ -19,8 +19,8 @@ def autoupdate():
     repo_version = response.content.decode()
     
     latest_version = [int(v) for v in repo_version.split(".")]
-    local_version = [int(v) for v in __version__.split(".")]
-    bt.logging.debug(f"local version: {__version__}")
+    local_version = [int(v) for v in targon.__version__.split(".")]
+    bt.logging.debug(f"local version: {targon.__version__}")
     bt.logging.debug(f"Latest version: {repo_version}")
     if latest_version > local_version:
         bt.logging.trace("A newer version of Targon is available. Downloading...")
