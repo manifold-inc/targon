@@ -1,0 +1,25 @@
+
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: 'python app/server.py'
+    volumes:
+      - .:/app
+    expose:
+      - 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fastapi.rule=Host(`api.sybil.com`)"
+      - "traefik.http.routers.fastapi.tls=true"
+      - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
+
+  traefik:
+    image: traefik:v2.2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "$PWD/services/traefik/traefik.toml:/etc/traefik/traefik.toml"
