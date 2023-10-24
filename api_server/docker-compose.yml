@@ -1,25 +1,28 @@
-
-version: '3.8'
+version: "3"
 
 services:
-  web:
-    build: .
-    command: 'python app/server.py'
+  api:
+    build: ./services/api/
+    restart: always
     volumes:
-      - .:/app
-    expose:
-      - 8000
+      - ~/.cache/huggingface:/home/.cache/huggingface
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.fastapi.rule=Host(`api.sybil.com`)"
-      - "traefik.http.routers.fastapi.tls=true"
-      - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
+      - traefik.enable=true
+      - traefik.http.routers.app-http.rule=Host(`api.sybil.com`)
+      - traefik.http.routers.app-http.tls=true
+      - traefik.http.routers.app-http.tls.certresolver=letsencrypt
 
   traefik:
-    image: traefik:v2.2
+    image: traefik:v2.3
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
+    restart: always
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "$PWD/services/traefik/traefik.toml:/etc/traefik/traefik.toml"
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $PWD/services/traefik/traefik.toml:/etc/traefik/traefik.toml
+      - traefik-public-certificates:/certificates
+
+volumes:
+  traefik-public-certificates:
+  model_storage:

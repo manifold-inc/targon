@@ -7,7 +7,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-
+api_server/services/api/server.prod.py
 # C extensions
 *.so
 

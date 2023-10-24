@@ -127,82 +127,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # TODO: Add bittensor wallet arguments and SERP API key argument
     parser.add_argument("--serp-api-key", type=str, help="SERP API Key")
+    path = None
     bt.wallet.add_args(parser)
     config = bt.config(parser)
     # args = parser.parse_args()
     # serp_api_key = args.serp_api_key  # Set SERP API key from command-line arguments
 
-    dendrite = TargonDendrite(wallet=bt.wallet(name=config.wallet.name, hotkey=config.wallet.hotkey))
+    dendrite = TargonDendrite(wallet=bt.wallet(name=config.wallet.name, hotkey=config.wallet.hotkey), path=path if path is not None else '~/.bittensor/wallets')
     subtensor = bt.subtensor(network='finney')
     metagraph = subtensor.metagraph(netuid=4)
     axons = [axon for axon in metagraph.axons]
     # Run FastAPI server
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-
-
-# import json
-# import uvicorn
-# import fastapi
-# import argparse
-# import random
-# import bittensor as bt
-# from fastapi import Request
-# from fastapi.responses import JSONResponse, StreamingResponse, Response
-
-# from targon.protocol import TargonSearchResult, TargonSearchResultStream, TargonDendrite
-# from typing import AsyncGenerator, Dict, List, Optional, Tuple, Union
-
-
-# app = fastapi.FastAPI()
-
-# @app.post("/v1/threads/search")
-# async def search(request: Request) -> Response:
-#     """Generate completion for the request.
-
-#     The request should be a JSON object with the following fields:
-#     - prompt: the prompt to use for the generation.
-#     - stream: whether to stream the results or not.
-#     - other fields: the sampling parameters (See `SamplingParams` for details).
-#     """
-#     request_dict = await request.json()
-#     query = request_dict.pop("query")
-#     sources = request_dict.pop("sources", [])
-#     stream = request_dict.pop("stream", False)
-
-
-#     if stream:
-#     # Streaming case
-#         synapse = TargonSearchResultStream( query=query, sources=sources, stream=True )
-#         async def stream_results() -> AsyncGenerator[bytes, None]:
-#             axon = random.choice(axons)
-#             responses = await dendrite(axons=[axon], synapse=synapse, timeout=60, streaming=True)
-#             async for token in responses:
-#                 yield token
-
-#         return StreamingResponse(stream_results())
-    
-
-#     # Non-streaming case
-#     synapse = TargonSearchResult( query=query, sources=sources )
-#     axon = random.choice(axons)
-#     responses = await dendrite(axons=[axon], synapse=synapse, timeout=60, streaming=False)
-#     answers = [response.answer for response in responses]
-#     return {"answers": answers}
-
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser()
-#         bt.wallet.add_args(parser)
-
-#     config = bt.config(parser)
-#     print(config)
-#     # This section will need to be modified to initialize bittensor components
-#     # and potentially other setup tasks.
-#     dendrite = TargonDendrite(wallet=bt.wallet(name=config.wallet.name, hotkey=config.wallet.hotkey))
-#     subtensor = bt.subtensor(network='finney')
-#     metagraph = subtensor.metagraph(netuid=4)
-#     axons = [axon for axon in metagraph.axons]
-
-#     # Run FastAPI server
-#     uvicorn.run(app, host="0.0.0.0", port=8000)
