@@ -1,6 +1,6 @@
 FROM python:3.11.1-slim
 
-
+RUN apt install git build-essientials -y
 COPY . /app
 
 WORKDIR /app
