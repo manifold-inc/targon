@@ -95,7 +95,7 @@ class SybilMiner( Miner ):
     def get_response(self, prompt, response: requests.Response) -> List[str]:
         bt.logging.debug('response',response.content)
         data = json.loads(response.content)
-        output = data["generated_text"].replace(prompt, "")
+        output = data[0]["generated_text"].replace(prompt, "")
         return output
 
 
