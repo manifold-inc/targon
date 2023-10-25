@@ -83,13 +83,11 @@ class SybilMiner( Miner ):
 
 
     def get_streaming_response(self, response: requests.Response) -> Iterable[List[str]]:
-        for chunk in response.iter_lines(chunk_size=8192,
-                                        decode_unicode=False,
-                                        delimiter=b"\0"):
-            if chunk:
-                data = json.loads(chunk.decode("utf-8"))
-                output = data["text"]
-                yield output
+        for chunk in response.iter_lines(delimiter=b""):
+            if chunk != b'':
+                token = json.loads(chunk.decode('utf-8').replace('data:', ''))
+                token = token['token']['text']
+                yield token
 
 
     def get_response(self, prompt, response: requests.Response) -> List[str]:

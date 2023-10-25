@@ -122,7 +122,7 @@ async def forward_fn(self, validation=True, stream=False):
     Returns:
         responses (List[TargonQA]): List of responses.
     """
-    k = self.config.neuron.followup_sample_size
+    k = 10
     if validation:
             uids = get_random_uids(self, k=k).to(self.device)
             data = select_qa(self)
