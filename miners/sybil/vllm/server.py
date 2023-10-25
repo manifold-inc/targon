@@ -36,14 +36,13 @@ class SybilMiner( Miner ):
         parser.add_argument('--sybil.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
         parser.add_argument('--sybil.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
-        parser.add_argument('--sybil.top_k', type=float, default=10, help='Top p for nucleus sampling.')
         parser.add_argument('--sybil.top_p', type=float, default=0.9, help='Top p for nucleus sampling.')
         parser.add_argument('--sybil.repetition_penalty', type=float, default=1.0, help='Repetition penalty.')
         parser.add_argument('--sybil.length_penalty', type=float, default=1.0, help='Length penalty.')
         parser.add_argument('--sybil.temperature', type=float, default=1.0, help='Temperature for sampling.')
         parser.add_argument('--sybil.max_length', type=int, default=4096, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.device', type=str, default="cuda" if torch.cuda.is_available() else "cpu", help='Device to run the model on.')
-        parser.add_argument('--sybil.api_url', type=str, default="http://0.0.0.0:8080", help='URL for the API server.')
+        parser.add_argument('--sybil.api_url', type=str, default="http://0.0.0.0:8000", help='URL for the API server.')
         parser.add_argument('--sybil.serp_api_key', type=str, help='API key for the SERP API.', default=None)
 
     def __init__(self, *args, **kwargs):
@@ -61,21 +60,11 @@ class SybilMiner( Miner ):
         headers = {"User-Agent": "Test Client"}
 
         pload = {
-            "inputs": prompt,
+            "prompt": prompt,
             "n": n,
-            "parameters": {
-                "best_of": 1,
-                "max_new_tokens": synapse.max_new_tokens if synapse is not None else self.config.sybil.max_new_tokens,
-                "repetition_penalty": synapse.repetition_penalty if synapse is not None else self.config.sybil.repetition_penalty,
-                "return_full_text": False,
-                "temperature": synapse.temperature if synapse is not None else self.config.sybil.temperature,
-                "top_k": synapse.top_k if synapse is not None else self.config.sybil.top_k,
-                # "top_n_tokens": synapse.top_n_tokens if synapse is not None else self.config.sybil.top_n_tokens,
-                "top_p": synapse.top_p if synapse is not None else self.config.sybil.top_p,
-                # "truncate": null,
-                # "typical_p": 0.95,
-                "watermark": False
-            },
+            # "use_beam_search": True,
+            "temperature": self.config.sybil.temperature,
+            "max_tokens": self.config.sybil.max_length,
             "stream": stream,
         }
         response = requests.post(api_url, headers=headers, json=pload, stream=True)
@@ -88,14 +77,14 @@ class SybilMiner( Miner ):
                                         delimiter=b"\0"):
             if chunk:
                 data = json.loads(chunk.decode("utf-8"))
-                output = data["generated_text"]
+                output = data["text"][0]
                 yield output
 
 
     def get_response(self, prompt, response: requests.Response) -> List[str]:
         bt.logging.debug('response',response.content)
         data = json.loads(response.content)
-        output = data["text"].replace(prompt, "")
+        output = data["text"][0].replace(prompt, "")
         return output
 
 
