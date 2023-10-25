@@ -88,14 +88,14 @@ class SybilMiner( Miner ):
                                         delimiter=b"\0"):
             if chunk:
                 data = json.loads(chunk.decode("utf-8"))
-                output = data["generated_text"]
+                output = data["text"]
                 yield output
 
 
     def get_response(self, prompt, response: requests.Response) -> List[str]:
         bt.logging.debug('response',response.content)
         data = json.loads(response.content)
-        output = data["text"].replace(prompt, "")
+        output = data["generated_text"].replace(prompt, "")
         return output
 
 
