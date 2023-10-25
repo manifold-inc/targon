@@ -37,10 +37,23 @@ class CorrectnessRewardSignal(BaseRewardModel):
         self.tokenizer = tokenizer
         self.model = model
 
+        self.alpha = 1.0  # Weight for the original score
+        self.beta = 0.1   # Weight for the length-based adjustment
+        self.gamma = 0.1  # Weight for the similarity-based adjustment
+
+
         self.yes_token_id = 2163  # this is for Flan-T5, change it accordingly
         self.no_token_id = 465  # this is for Flan-T5, change it accordingly
 
-
+    def length_based_adjustment(self, completion: str) -> float:
+        """
+        Adjusts the reward based on the length of the completion.
+        Longer completions might be penalized to prefer concise answers.
+        """
+        ideal_length = 50  # Set your ideal response length
+        length_penalty = abs(len(completion) - ideal_length) / ideal_length
+        return -self.beta * length_penalty
+    
 
     def build_input_text(self, prompt: str, completion: str, flavor: str, solution: str) -> str:
         # find the flavor in the taks list

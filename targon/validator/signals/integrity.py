@@ -24,7 +24,7 @@ from .base import BaseRewardModel
 from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
 from targon.prompts import tasks
 
-class FaithRewardSignal(BaseRewardModel):
+class IntegrityRewardSignal(BaseRewardModel):
 
     reward_model_name: str = "google/flan-t5-large"
 

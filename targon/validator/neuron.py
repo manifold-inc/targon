@@ -10,7 +10,7 @@ from targon.validator.signals import (
     NSFWRewardModel,
     AccuracyRewardSignal,
     CorrectnessRewardSignal,
-    FaithRewardSignal,
+    IntegrityRewardSignal,
     RelevanceRewardModel,
     DiversityRewardModel,
     MockRewardModel,

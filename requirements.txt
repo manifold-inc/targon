@@ -1,5 +1,5 @@
 bittensor==6.1.0
-torch
+torch==2.1.0 # we can now specify 2.1.0 so sm_90 gpus work
 transformers==4.30.0
 wandb==0.15.10
 datasets==2.14.0
