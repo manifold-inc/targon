@@ -72,11 +72,6 @@ class TargonSearchResult( bt.Synapse ):
         title="Sources",
         description="The sources of the query. Mutable.",
     )
-    messages = List[str] = pydantic.Field(
-        [],
-        title="Messages",
-        description="The messages of the query. Mutable.",
-    )
     completion: str = pydantic.Field(
         "",
         title="Results",
