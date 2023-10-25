@@ -87,6 +87,10 @@ class SybilMiner( Miner ):
             if chunk != b'':
                 token = json.loads(chunk.decode('utf-8').replace('data:', ''))
                 token = token['token']['text']
+                if token == '\\n':
+                    token = '\n'
+                if token == '\\':
+                    token = ''
                 yield token
 
 
