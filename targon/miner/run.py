@@ -22,6 +22,7 @@ import asyncio
 import bittensor as bt
 import traceback
 from targon.protocol import TargonSearchResultStream
+from targon.updater import autoupdate
 from .set_weights import set_weights
 
 
@@ -128,7 +129,7 @@ def run(self):
                     self.config.wandb.on,
                 )
             step += 1
-
+            autoupdate()
     # If someone intentionally stops the miner, it'll safely terminate operations.
     except KeyboardInterrupt:
         self.axon.stop()

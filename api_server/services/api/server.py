@@ -2,6 +2,7 @@
 
 import json
 import uuid
+import torch
 import uvicorn
 import pprint
 import asyncio
@@ -41,8 +42,57 @@ def check_favicon(dict, key):
     else:
         print("Not present")
         return False
-         
 
+
+def select_highest_n_peers(n: int, return_all=False):
+    """
+    Selects the highest incentive peers from the metagraph.
+
+    Parameters:
+        n (int): number of top peers to return.
+
+    Returns:
+        int: uid of the selected peer from unique highest IPs.
+    """
+    # Get the top n indices based on incentive
+    indices = torch.topk(metagraph.incentive, n).indices
+
+    # Get the corresponding uids
+    uids_with_highest_incentives = metagraph.uids[indices].tolist()
+
+
+    if return_all:
+        return uids_with_highest_incentives
+    
+    # get the axon of the uids
+    axons = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
+
+    # get the ip from the axons
+    ips = [axon.ip for axon in axons]
+
+    # get the coldkey from the axons
+    coldkeys = [axon.coldkey for axon in axons]
+
+    # Filter out the uids and ips whose coldkeys are in the blacklist
+    uids_with_highest_incentives, ips = zip(*[(uid, ip) for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)])
+
+    unique_ip_to_uid = {ip: uid for ip, uid in zip(ips, uids_with_highest_incentives)}
+    uids = list(unique_ip_to_uid.values())
+    return uids_with_highest_incentives
+
+async def is_successful(response: AsyncGenerator) -> bool:
+    """Check if the response is successful."""
+    error_0 = "Exception: Expecting value: line 1 column 1 (char 0)"
+    error_1 = "Exception: 'description'"
+    
+    async for chunk in response:
+        if isinstance(chunk, str) and (error_0 in chunk or error_1 in chunk):
+            return False
+        return True
+        
+error_0 = "Exception: Expecting value: line 1 column 1 (char 0)"
+error_1 = "Exception: 'description'"
+    
 @app.post("/v1/threads/search")
 async def search(request: Request) -> Response:
     """Generate completion for the request."""
@@ -70,56 +120,77 @@ async def search(request: Request) -> Response:
     search_sources = [{"type": "url", "url": result['link'], "snippet": result['snippet'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
     sources = [{"type": "url", "url": result['link'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
 
-    search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True )
-    related_synapse = TargonQA( question=f"Q:{query}\nRelated Question:", sources=sources, stream=False )
-    uuid = random_uuid()
+    search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True, max_new_tokens=1024 )
+    related_synapse = TargonQA( question=f"Question:{query}\nWhat is a related question?:", sources=sources, stream=False, max_new_tokens=6 )
+    uuid_str = random_uuid()
     if stream:
-        # Streaming case
-        async def stream_results() -> AsyncGenerator[bytes, None]:
-            # Stream sources
-            
-            # yield json.dumps({"type": "sources", "sources": sources}) + '\n'
-            # yield f"data: {json.dumps({'type': 'sources', 'sources': sources})}"
+        async def stream_results() -> AsyncGenerator[Dict[str, str], None]:
             yield {
-                        "event": "new_message",
-                        "id": uuid,
-                        "retry": RETRY_TIMEOUT,
-                        "data": json.dumps({"type": "sources", "sources": sources})
+                "event": "new_message",
+                "id": uuid_str,
+                "retry": RETRY_TIMEOUT,
+                "data": json.dumps({"type": "sources", "sources": sources})
             }
-            # yield b"\n"
 
-            # get related
-            # axon = random.choice(axons)
-            # related_responses = await dendrite(axons=[axon], synapse=related_synapse, timeout=12, streaming=False )
-            # answers = [response.answer for response in related_responses]
-            # yield {
-            #         "event": "new_message",
-            #         "id": uuid,
-            #         "retry": RETRY_TIMEOUT,
-            #         "data": json.dumps( {"type": "related", "related": answers} )
-            # }
+            k = 192 
+            # Select the top-k axons based on incentive
+            uids = select_highest_n_peers(k)
+            top_k_axons = [metagraph.axons[uid] for uid in uids]
 
-            # Stream answers
-            axon = random.choice(axons)
-            result_responses = await dendrite(axons=[axon], synapse=search_result_synapse, timeout=60, streaming=True )
-            async for token in result_responses:
-                print(token, end="", flush=True)
-                if type(token) == str:
-                    yield {
-                            "event": "new_message",
-                            "id": uuid,
-                            "retry": RETRY_TIMEOUT,
-                            "data": json.dumps( {"type": "answer", "choices": [ {"delta": {"content": token} } ] } )
-                    }
-                
-            # yield json.dumps({"type": "answer", "choices": answers}).encode("utf-8")
-            # yield b"\n"
+            # Create a list to store the results from each axon
+            results = [asyncio.create_task(dendrite(axons=[axon], synapse=search_result_synapse, timeout=60, streaming=True)) for axon in top_k_axons]
+
+            # Set a global timeout (for example, 120 seconds)
+            global_timeout = 120
+
+            try:
+                # Wait for the fastest successful response within the global timeout
+                while True:
+                    done, pending = await asyncio.wait(results, return_when=asyncio.FIRST_COMPLETED, timeout=global_timeout)
+
+                    for task in done:
+                        if task.exception() is not None:
+                            # Handle task exception if necessary
+                            continue
+
+                        fastest_response = task.result()
+
+                        # Here you should implement your logic to check if the response is successful
+                        # if await is_successful(fastest_response):
+                        async for token in fastest_response:
+                            if (error_1 in token):
+                                pass
+                            if isinstance(token, str):
+                                yield {
+                                        "event": "new_message",
+                                        "id": uuid_str,
+                                        "retry": RETRY_TIMEOUT,
+                                        "data": json.dumps({"type": "answer", "choices": [{"delta": {"content": token}}]})
+                                }
+                                print(token, end="", flush=True)
+                        return  # End the stream after a successful response
+                    if not pending:
+                        break  # All tasks are done, exit the loop
+
+            except asyncio.TimeoutError:
+                # Handle global timeout, no successful response received
+                yield {
+                    "event": "error",
+                    "id": uuid_str,
+                    "retry": RETRY_TIMEOUT,
+                    "data": json.dumps({"type": "error", "message": "Request timed out. No successful response received."})
+                }
+            finally:
+                # Cancel all pending tasks
+                for task in pending:
+                    task.cancel()
+
+            # If no successful response received, you can send a default response or handle it as needed
 
             # Stream done
             yield json.dumps({"type": "[DONE]"}).encode("utf-8")
 
         return EventSourceResponse(stream_results(), media_type="text/event-stream")
-
     # Non-streaming case
     # TODO: Implement logic to return non-streaming response if needed
 
@@ -133,7 +204,7 @@ if __name__ == "__main__":
     # args = parser.parse_args()
     # serp_api_key = args.serp_api_key  # Set SERP API key from command-line arguments
 
-    dendrite = TargonDendrite(wallet=bt.wallet(name=config.wallet.name, hotkey=config.wallet.hotkey), path=path if path is not None else '~/.bittensor/wallets')
+    dendrite = TargonDendrite(wallet=bt.wallet(name=config.wallet.name, hotkey=config.wallet.hotkey, path=path if path is not None else '~/.bittensor/wallets'))
     subtensor = bt.subtensor(network='finney')
     metagraph = subtensor.metagraph(netuid=4)
     axons = [axon for axon in metagraph.axons]

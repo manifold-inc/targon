@@ -72,16 +72,12 @@ class TargonSearchResult( bt.Synapse ):
         title="Sources",
         description="The sources of the query. Mutable.",
     )
-    messages = List[str] = pydantic.Field(
-        [],
-        title="Messages",
-        description="The messages of the query. Mutable.",
-    )
     completion: str = pydantic.Field(
         "",
         title="Results",
         description="The results of the query. Mutable.",
     )
+    stream: bool = False
     max_new_tokens: int = 12
     repetition_penalty: float = 1.2
     temperature: float = 0.7
@@ -113,8 +109,10 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
         description="The results of the query. Mutable.",
     )
     stream: bool = False
-    max_new_tokens: int = 128
+    max_new_tokens: int = 12
+    repetition_penalty: float = 1.2
     temperature: float = 0.7
+    top_k: float = 10
     top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["query"],
