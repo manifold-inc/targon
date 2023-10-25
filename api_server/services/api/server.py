@@ -120,7 +120,7 @@ async def search(request: Request) -> Response:
     search_sources = [{"type": "url", "url": result['link'], "snippet": result['snippet'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
     sources = [{"type": "url", "url": result['link'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
 
-    search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True, max_new_tokens=256 )
+    search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True, max_new_tokens=1024 )
     related_synapse = TargonQA( question=f"Question:{query}\nWhat is a related question?:", sources=sources, stream=False, max_new_tokens=6 )
     uuid_str = random_uuid()
     if stream:
@@ -158,7 +158,7 @@ async def search(request: Request) -> Response:
                         # Here you should implement your logic to check if the response is successful
                         # if await is_successful(fastest_response):
                         async for token in fastest_response:
-                            if (error_0 in token or error_1 in token):
+                            if (error_1 in token):
                                 pass
                             if isinstance(token, str):
                                 yield {
@@ -167,6 +167,7 @@ async def search(request: Request) -> Response:
                                         "retry": RETRY_TIMEOUT,
                                         "data": json.dumps({"type": "answer", "choices": [{"delta": {"content": token}}]})
                                 }
+                                print(token, end="", flush=True)
                         return  # End the stream after a successful response
                     if not pending:
                         break  # All tasks are done, exit the loop
