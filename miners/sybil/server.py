@@ -259,14 +259,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
                     token = token.replace(output_text, "") if output_text else token
                     output_text += token
                     bt.logging.info(f"token", token)
-                    if token == "\n" or token == "\\n":
-                        await send(
-                            {
-                                "type": "http.response.body",
-                                "body": "\n".encode("utf-8"),
-                                "more_body": True,
-                            }
-                        )
+
                     N = 1  # Number of tokens to send back to the client at a time
                     buffer.append(token)
                     # If buffer has N tokens, send them back to the client.
@@ -275,11 +268,11 @@ you are an expert at summarizing sources and offering an answer to a question. y
                         await send(
                             {
                                 "type": "http.response.body",
-                                "body": joined_buffer.encode("utf-8"),
+                                "body": token,
                                 "more_body": True,
                             }
                         )
-                        bt.logging.debug(f"Streamed tokens: {joined_buffer}")
+                        bt.logging.debug(f"Streamed tokens: {token}")
                         buffer = []  # Clear the buffer for next batch of tokens
                             # await asyncio.sleep(0.08)  # Simulate streaming delay
                 
@@ -289,7 +282,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": "",
+                            "body": f"{joined_buffer}",
                             "more_body": False,  # No more tokens to send
                         }
                     )
