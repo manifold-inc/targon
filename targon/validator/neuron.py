@@ -140,16 +140,16 @@ class neuron:
         )
 
         # TODO: Retrain diversity model
-        self.diversity_model = (
-            DiversityRewardModel(device=self.device) if not self.config.neuron.diversity_off
-            else MockRewardModel(RewardModelType.diversity.value)
-        )
+        # self.diversity_model = (
+        #     DiversityRewardModel(device=self.device) if not self.config.neuron.diversity_off
+        #     else MockRewardModel(RewardModelType.diversity.value)
+        # )
         nsfw_model = (
             NSFWRewardModel(device=self.device) if not self.config.neuron.nsfw_off
             else MockRewardModel(RewardModelType.nsfw.value)              
         )
 
-        self.masking_functions = [relevance_model, self.diversity_model, nsfw_model]
+        self.masking_functions = [relevance_model, nsfw_model]
 
 
         self.dendrite_pool = AsyncDendritePool(wallet=self.wallet, metagraph=self.metagraph)
