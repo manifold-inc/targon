@@ -219,6 +219,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
             elif type(synapse) == TargonSearchResult:
                 prompt = self._build_search_result_prompt(query, sources)
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
+                bt.logging.info('response', response)
                 output = self.get_response(prompt, response)
 
                 synapse.completion = output
