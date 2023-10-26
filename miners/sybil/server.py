@@ -36,7 +36,7 @@ class SybilMiner( Miner ):
         parser.add_argument('--sybil.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
         parser.add_argument('--sybil.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
-        parser.add_argument('--sybil.top_k', type=float, default=10, help='Top p for nucleus sampling.')
+        parser.add_argument('--sybil.top_k', type=int, default=int(10), help='Top p for nucleus sampling.')
         parser.add_argument('--sybil.top_p', type=float, default=0.9, help='Top p for nucleus sampling.')
         parser.add_argument('--sybil.repetition_penalty', type=float, default=1.0, help='Repetition penalty.')
         parser.add_argument('--sybil.length_penalty', type=float, default=1.0, help='Length penalty.')
