@@ -268,7 +268,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
                         await send(
                             {
                                 "type": "http.response.body",
-                                "body": token,
+                                "body": {'token', token},
                                 "more_body": True,
                             }
                         )
@@ -282,7 +282,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": f"{joined_buffer}",
+                            "body": {'token', token},
                             "more_body": False,  # No more tokens to send
                         }
                     )

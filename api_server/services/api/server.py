@@ -207,7 +207,18 @@ if __name__ == "__main__":
     dendrite = TargonDendrite(wallet=bt.wallet(name=config.wallet.name, hotkey=config.wallet.hotkey, path=path if path is not None else '~/.bittensor/wallets'))
     subtensor = bt.subtensor(network='finney')
     metagraph = subtensor.metagraph(netuid=4)
-    axons = [axon for axon in metagraph.axons]
+    # axons = [axon for axon in metagraph.axons]
+
+    axon = bt.AxonInfo(
+        ip="0.0.0.0",
+        port=8091,
+        hotkey="0x0",
+        coldkey="0x0",
+        protocol=4
+    )
+
+    axons = [axon]
+
     # Run FastAPI server
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
