@@ -11,7 +11,7 @@ from .miner.search import query as search
 from .miner.search import QueryParams
 
 
-__version__ = "0.3.9"
+__version__ = "0.4.0"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
