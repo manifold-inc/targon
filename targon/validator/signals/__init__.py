@@ -5,4 +5,4 @@ from .relevance import *
 from .diversity import *
 from .accuracy import *
 from .correctness import *
-from .faith import *
+from .integrity import *
