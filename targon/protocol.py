@@ -78,7 +78,7 @@ class TargonSearchResult( bt.Synapse ):
         description="The results of the query. Mutable.",
     )
     stream: bool = False
-    max_new_tokens: int = 12
+    max_new_tokens: int = 128
     repetition_penalty: float = 1.2
     temperature: float = 0.7
     top_k: int = 10
