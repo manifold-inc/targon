@@ -78,7 +78,7 @@ class TargonSearchResult( bt.Synapse ):
         description="The results of the query. Mutable.",
     )
     stream: bool = False
-    max_new_tokens: int = 128
+    max_new_tokens: int = 256
     repetition_penalty: float = 1.2
     temperature: float = 0.7
     top_k: int = 10
@@ -146,7 +146,6 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
             It's important to remember that this method is asynchronous. Ensure it's called within an appropriate
             asynchronous context.
         """
-        print(response)
         if self.completion is None:
             self.completion = ""
         async for chunk in response.content.iter_any():

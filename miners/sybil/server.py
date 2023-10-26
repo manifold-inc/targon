@@ -265,6 +265,8 @@ you are an expert at summarizing sources and offering an answer to a question. y
                     # If buffer has N tokens, send them back to the client.
                     if len(buffer) == N:
                         joined_buffer = "".join(buffer)
+                        if '\n' in token:
+                            token = "<newline>"
                         await send(
                             {
                                 "type": "http.response.body",
