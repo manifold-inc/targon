@@ -69,7 +69,7 @@ class SybilMiner( Miner ):
                 "repetition_penalty": synapse.repetition_penalty if synapse is not None else self.config.sybil.repetition_penalty,
                 "return_full_text": False,
                 "temperature": synapse.temperature if synapse is not None else self.config.sybil.temperature,
-                "top_k": synapse.top_k if synapse is not None else self.config.sybil.top_k,
+                "top_k": int(synapse.top_k) if synapse is not None else self.config.sybil.top_k,
                 # "top_n_tokens": synapse.top_n_tokens if synapse is not None else self.config.sybil.top_n_tokens,
                 "top_p": synapse.top_p if synapse is not None else self.config.sybil.top_p,
                 # "truncate": null,
