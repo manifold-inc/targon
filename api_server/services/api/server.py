@@ -134,11 +134,11 @@ async def search(request: Request) -> Response:
 
             k = 192 
             # Select the top-k axons based on incentive
-            uids = select_highest_n_peers(k)
-            top_k_axons = [metagraph.axons[uid] for uid in uids]
+            # uids = select_highest_n_peers(k)
+            # top_k_axons = [metagraph.axons[uid] for uid in uids]
 
             # Create a list to store the results from each axon
-            results = [asyncio.create_task(dendrite(axons=[axon], synapse=search_result_synapse, timeout=60, streaming=True)) for axon in top_k_axons]
+            results = [asyncio.create_task(dendrite(axons=[axon], synapse=search_result_synapse, timeout=60, streaming=True)) for axon in axons]
 
             # Set a global timeout (for example, 120 seconds)
             global_timeout = 120
@@ -211,10 +211,12 @@ if __name__ == "__main__":
 
     axon = bt.AxonInfo(
         ip="0.0.0.0",
-        port=8091,
+        port=8098,
+        ip_type=4,
         hotkey="0x0",
         coldkey="0x0",
-        protocol=4
+        protocol=4,
+        version=1042,
     )
 
     axons = [axon]
