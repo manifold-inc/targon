@@ -149,7 +149,6 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
         if self.completion is None:
             self.completion = ""
         async for chunk in response.content.iter_any():
-            print(chunk)
             tokens = chunk.decode("utf-8").split("\n")
             for token in tokens:
                 if token:

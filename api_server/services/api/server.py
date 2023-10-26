@@ -120,7 +120,7 @@ async def search(request: Request) -> Response:
     search_sources = [{"type": "url", "url": result['link'], "snippet": result['snippet'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
     sources = [{"type": "url", "url": result['link'], "title": result['title'], "icon": get_icon(result)} for result in organic_results]
 
-    search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True, max_new_tokens=1024 )
+    search_result_synapse = TargonSearchResultStream( query=query, sources=search_sources, stream=True, max_new_tokens=2048 )
     related_synapse = TargonQA( question=f"Question:{query}\nWhat is a related question?:", sources=sources, stream=False, max_new_tokens=6 )
     uuid_str = random_uuid()
     if stream:
@@ -134,8 +134,8 @@ async def search(request: Request) -> Response:
 
             k = 192 
             # Select the top-k axons based on incentive
-            # uids = select_highest_n_peers(k)
-            uids = [14]
+            uids = select_highest_n_peers(k)
+            # uids = [14]
             top_k_axons = [metagraph.axons[uid] for uid in uids]
 
             # Create a list to store the results from each axon
@@ -161,15 +161,32 @@ async def search(request: Request) -> Response:
                         async for token in fastest_response:
                             if (error_1 in token):
                                 pass
-                            # print(token)
+                            print('token before',token)
+
                             if isinstance(token, str):
+                                if "<newline>" in token:
+                                    # print('HERERE')
+                                    # token = "\n"
+                                    # get all parts of the token
+                                    parts = token.split("<newline>")
+
+                                    # determine if before or after
+                                    if parts[0] == "":
+                                        # print('before')
+                                        # if before, then add newline to end of token
+                                        token = '\n' + parts[1] 
+
+                                    else:
+                                        token = parts[0] + '\n'
+
+                                print('token after',token)
                                 yield {
                                         "event": "new_message",
                                         "id": uuid_str,
                                         "retry": RETRY_TIMEOUT,
                                         "data": json.dumps({"type": "answer", "choices": [{"delta": {"content": token}}]})
                                 }
-                                print(token, end="", flush=True)
+                                # print(token, end="", flush=True)
                         return  # End the stream after a successful response
                     if not pending:
                         break  # All tasks are done, exit the loop
