@@ -30,7 +30,7 @@ class TargonQA( bt.Synapse ):
     max_new_tokens: int = 12
     repetition_penalty: float = 1.2
     temperature: float = 0.7
-    top_k: float = 10
+    top_k: int = 10
     top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["question"],
@@ -81,7 +81,7 @@ class TargonSearchResult( bt.Synapse ):
     max_new_tokens: int = 12
     repetition_penalty: float = 1.2
     temperature: float = 0.7
-    top_k: float = 10
+    top_k: int = 10
     top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["query"],
@@ -112,7 +112,7 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
     max_new_tokens: int = 12
     repetition_penalty: float = 1.2
     temperature: float = 0.7
-    top_k: float = 10
+    top_k: int = 10
     top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["query"],
