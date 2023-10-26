@@ -135,10 +135,11 @@ async def search(request: Request) -> Response:
             k = 192 
             # Select the top-k axons based on incentive
             # uids = select_highest_n_peers(k)
-            # top_k_axons = [metagraph.axons[uid] for uid in uids]
+            uids = [14]
+            top_k_axons = [metagraph.axons[uid] for uid in uids]
 
             # Create a list to store the results from each axon
-            results = [asyncio.create_task(dendrite(axons=[axon], synapse=search_result_synapse, timeout=60, streaming=True)) for axon in axons]
+            results = [asyncio.create_task(dendrite(axons=[axon], synapse=search_result_synapse, timeout=60, streaming=True)) for axon in top_k_axons]
 
             # Set a global timeout (for example, 120 seconds)
             global_timeout = 120
@@ -160,6 +161,7 @@ async def search(request: Request) -> Response:
                         async for token in fastest_response:
                             if (error_1 in token):
                                 pass
+                            # print(token)
                             if isinstance(token, str):
                                 yield {
                                         "event": "new_message",
@@ -209,17 +211,17 @@ if __name__ == "__main__":
     metagraph = subtensor.metagraph(netuid=4)
     # axons = [axon for axon in metagraph.axons]
 
-    axon = bt.AxonInfo(
-        ip="0.0.0.0",
-        port=8098,
-        ip_type=4,
-        hotkey="0x0",
-        coldkey="0x0",
-        protocol=4,
-        version=1042,
-    )
+    # axon = bt.AxonInfo(
+    #     ip="0.0.0.0",
+    #     port=8098,
+    #     ip_type=4,
+    #     hotkey="0x0",
+    #     coldkey="0x0",
+    #     protocol=4,
+    #     version=1042,
+    # )
 
-    axons = [axon]
+    # axons = [axon]
 
     # Run FastAPI server
     uvicorn.run(app, host="0.0.0.0", port=8000)
