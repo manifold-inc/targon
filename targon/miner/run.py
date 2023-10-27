@@ -64,7 +64,7 @@ def run(self):
     bt.logging.info(
         f"Serving axon {TargonSearchResultStream} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
     )
-    # self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
+    self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
