@@ -24,6 +24,10 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
         uid_is_available = check_uid_availability(self.metagraph, uid, self.config.neuron.vpermit_tao_limit)
         uid_is_not_excluded = exclude is None or uid not in exclude
 
+        if self.metagraph.axons[uid].ip in self.blacklisted_keys:
+            uid_is_available = False
+            bt.logging.info('blacklisted uid! not available', uid)
+
         if uid_is_available:
             avail_uids.append(uid)
             if uid_is_not_excluded:
