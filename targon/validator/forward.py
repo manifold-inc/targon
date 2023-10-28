@@ -26,7 +26,7 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
 
         if self.metagraph.axons[uid].coldkey in self.blacklisted_coldkeys:
             uid_is_available = False
-            bt.logging.info('blacklisted uid! not available', uid)
+            # bt.logging.info('blacklisted uid! not available', uid)
 
         if uid_is_available:
             avail_uids.append(uid)
