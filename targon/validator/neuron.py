@@ -50,6 +50,7 @@ class neuron:
         bt.logging.info("neuron.__init__()")
 
         # define blacklisted cheaters
+        self.blacklisted_coldkeys = []
         blacklist( self )
 
         # check if needs an update
