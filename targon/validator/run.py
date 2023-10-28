@@ -25,10 +25,23 @@ def set_weights(self):
     bt.logging.trace("top10 values", raw_weights.sort()[0])
     bt.logging.trace("top10 uids", raw_weights.sort()[1])
 
+    # Convert weights to CPU for processing
+    raw_weights_cpu = raw_weights.to("cpu")
+
+    # Get the UIDs and their corresponding coldkeys
+    uids = self.metagraph.uids.to("cpu")
+    coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
+
+    # Iterate through UIDs and set weights to 0 if coldkey is blacklisted
+    for idx, coldkey in enumerate(coldkeys):
+        if coldkey in self.blacklisted_coldkeys:
+            raw_weights_cpu[idx] = 0
+            bt.logging.trace('blacklisted uid! weight set to 0', uids[idx])
+
     # Process the raw weights to final_weights via subtensor limitations.
     (processed_weight_uids, processed_weights,) = bt.utils.weight_utils.process_weights_for_netuid(
-        uids=self.metagraph.uids.to("cpu"),
-        weights=raw_weights.to("cpu"),
+        uids=uids,
+        weights=raw_weights_cpu,
         netuid=self.config.netuid,
         subtensor=self.subtensor,
         metagraph=self.metagraph,
@@ -45,7 +58,6 @@ def set_weights(self):
         wait_for_finalization=False,
         version_key=targon.__spec_version__,
     )
-
 # Neuron run loop.`
 def run(self):
     bt.logging.info("run()")
