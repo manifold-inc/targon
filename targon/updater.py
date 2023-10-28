@@ -9,7 +9,7 @@ def autoupdate():
     Updates the targon codebase if a newer version is available.
     '''
     # try:
-    bt.logging.trace("Checking for updates...")
+    bt.logging.info("Checking for updates...")
     response = requests.get(
         "https://raw.githubusercontent.com/manifold-inc/targon/main/VERSION",
         headers={'Cache-Control': 'no-cache'}
@@ -20,8 +20,8 @@ def autoupdate():
     
     latest_version = [int(v) for v in repo_version.split(".")]
     local_version = [int(v) for v in targon.__version__.split(".")]
-    bt.logging.debug(f"local version: {targon.__version__}")
-    bt.logging.debug(f"Latest version: {repo_version}")
+    bt.logging.info(f"local version: {targon.__version__}")
+    bt.logging.info(f"Latest version: {repo_version}")
     if latest_version > local_version:
         bt.logging.trace("A newer version of Targon is available. Downloading...")
         # download latest version with git pull
@@ -40,9 +40,9 @@ def autoupdate():
             # convert to list of ints
             new__version__ = [int(v) for v in new__version__.split(".")]
             if new__version__ == latest_version:
-                bt.logging.debug("Targon updated successfully.")
-                bt.logging.debug("Restarting...")
-                bt.logging.debug(f"Running: {sys.executable} {sys.argv}")
+                bt.logging.info("Targon updated successfully.")
+                bt.logging.info("Restarting...")
+                bt.logging.info(f"Running: {sys.executable} {sys.argv}")
                 os.execv(sys.executable, [sys.executable] + sys.argv)
             else:
                 bt.logging.error("Targon git pull failed you will need to manually update and restart for latest code.")
