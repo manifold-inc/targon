@@ -20,7 +20,7 @@ import urllib.request
 from urllib.parse import urlparse
 import optparse
 import hashlib
-from cgi import escape
+from html import escape
 from traceback import format_exc
 from queue import Queue, Empty as QueueEmpty
 
