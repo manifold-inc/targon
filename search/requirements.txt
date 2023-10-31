@@ -1,2 +1,2 @@
 weaviate-client
-pyspider
+beautifulsoup4==4.5.1
