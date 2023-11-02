@@ -51,8 +51,14 @@ class WebCrawler:
 
             # Insert data into Milvus
             self.db_client.insert(url, text, embeddings)
-
+            new_links = []
+            links = soup.find_all("a")
+            for link in links:
+                child_url = link.get("href")
+                if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
+                    new_links.append(child_url)
+            return new_links
             # Find and crawl child links
-            self.recursive_crawl(soup, depth, max_depth)
+            # self.recursive_crawl(soup, depth, max_depth)
         # except Exception as e:
         #     print(f"Error crawling {url}: {str(e)}")
