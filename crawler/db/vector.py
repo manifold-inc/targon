@@ -22,6 +22,10 @@ class VectorDBClient:
         # connections.connect(host=MILVUS_HOST, port=MILVUS_PORT, password=PASSWORD, secure=True)
         connections.connect(host=MILVUS_HOST, port=MILVUS_PORT)
 
+        self.urls = []
+        self.texts = []
+        self.embeddings = []
+
         self.schema = [
             FieldSchema(name=DB_COLS["URL"], dtype=DataType.VARCHAR, is_primary=True, max_length=1024),
             FieldSchema(name=DB_COLS["TEXT"], dtype=DataType.VARCHAR, max_length=1024),
@@ -40,7 +44,7 @@ class VectorDBClient:
 
     def _reset_batch(self):
         """Reset the batch."""
-        self.batch = [[], [], []]  # url, text, embeddings
+        self.batch = []  # url, text, embeddings
 
     def _submit_batch(self):
         """Submit the batch to Milvus."""
@@ -64,15 +68,13 @@ class VectorDBClient:
             The embeddings of the crawled page.
         """
         # Insert data into Milvus
-        data = {
-            DB_COLS["URL"]: url,
-            DB_COLS["TEXT"]: text,
-            DB_COLS["EMBED"]: embeddings,
-        }
-        self.batch.append(data)
+        self.urls.append(url)
+        self.texts.append(text)
+        self.embeddings.append(embeddings)
 
-        # if len(self.batch[0]) >= self.batch_size:
-        self._submit_batch()
+        if len(self.batch[0]) >= self.batch_size:
+            self.batch = [self.urls, self.texts, self.embeddings]
+            self._submit_batch()
 
     def close(self):
         """Close the Milvus connection."""
