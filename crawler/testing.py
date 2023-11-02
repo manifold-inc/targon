@@ -22,16 +22,14 @@ if response.status_code == 200:
 
     # Generate BERT embeddings for the text
     embeddings = llm_model.text_to_embedding(text)
-    print('ranhere')
-    print('embeddings', embeddings)
 
     # Insert data into Milvus
     db_client.insert(url, text, embeddings)
 
     # Find and crawl child links
-    links = soup.find_all("a")
-    for link in links:
-        child_url = link.get("href")
-        if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
-            print(child_url)
+    # links = soup.find_all("a")
+    # for link in links:
+    #     child_url = link.get("href")
+    #     if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
+            # print(child_url)
             # self.crawl.remote(child_url, depth + 1, max_depth)

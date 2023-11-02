@@ -69,7 +69,9 @@ class VectorDBClient:
             DB_COLS["TEXT"]: text,
             DB_COLS["EMBED"]: embeddings.tolist(),
         }]
-        self.batch.append(data)
+        self.batch.append([url])
+        self.batch.append([text])
+        self.batch.append([embeddings.tolist()])
 
         if len(self.batch[0]) >= self.batch_size:
             self._submit_batch()
