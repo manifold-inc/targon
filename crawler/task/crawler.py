@@ -34,7 +34,6 @@ class WebCrawler:
 
                 # Extract text from the webpage
                 text = soup.get_text()
-                print('text', text)
 
                 # Generate BERT embeddings for the text
                 embeddings = self.llm_model.text_to_embedding(text)
@@ -47,7 +46,7 @@ class WebCrawler:
                 links = soup.find_all("a")
                 for link in links:
                     child_url = link.get("href")
-                    if child_url and child_url.startswith("http"):
+                    if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
                         self.crawl.remote(child_url, depth + 1, max_depth)
         except Exception as e:
             print(f"Error crawling {url}: {str(e)}")
