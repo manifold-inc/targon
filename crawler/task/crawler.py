@@ -13,7 +13,7 @@ class WebCrawler:
     def __init__(
         self,
         llm_model: str = "bert-base-uncased",
-        batch_size: int = 1,
+        batch_size: int = 32,
     ):
         # Initialize language model
         self.llm_model = MODEL_REGISTRY[llm_model]()
