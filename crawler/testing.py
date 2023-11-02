@@ -19,13 +19,13 @@ def crawl(url, depth, max_depth):
         soup = BeautifulSoup(response.text, "html.parser")
 
         # Extract text from the webpage
-        text = soup.get_text()
+        full_text = soup.get_text()
 
         # Generate BERT embeddings for the text
-        embeddings = llm_model.text_to_embedding(text)
+        embeddings = llm_model.text_to_embedding(full_text)
 
         # Insert data into Milvus
-        db_client.insert(url, text, embeddings)
+        db_client.insert(url, full_text, embeddings)
 
         # Find and crawl child links
         links = soup.find_all("a")

@@ -28,7 +28,7 @@ class VectorDBClient:
 
         self.schema = [
             FieldSchema(name=DB_COLS["URL"], dtype=DataType.VARCHAR, is_primary=True, max_length=1024),
-            FieldSchema(name=DB_COLS["TEXT"], dtype=DataType.VARCHAR, max_length=1024),
+            FieldSchema(name=DB_COLS["TEXT"], dtype=DataType.VARCHAR, max_length=100_000),
             FieldSchema(name=DB_COLS["EMBED"], dtype=DataType.FLOAT_VECTOR, dim=self.embed_size),
         ]
         if not utility.has_collection(COLLECTION_NAME):
