@@ -10,7 +10,6 @@ load_dotenv()
 from .miner.search import query as search
 from .miner.search import QueryParams
 
-from .crawler import Crawler
 __version__ = "0.4.6"
 version_split = __version__.split(".")
 __spec_version__ = (
