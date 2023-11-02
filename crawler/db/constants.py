@@ -8,6 +8,7 @@ COLLECTION_NAME = "web_crawler_data"
 INDEX_PARAM = {"metric_type": "L2", "index_type": "IVF_FLAT", "params": {"nlist": 1024}}
 DB_COLS = {
     "URL": "url",
-    "TEXT": "text",
+    "FULL_TEXT": "text",
+    # "SUMMARY": "summary",
     "EMBED": "embeddings",
 }
