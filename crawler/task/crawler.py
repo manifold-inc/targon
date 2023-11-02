@@ -22,14 +22,14 @@ class WebCrawler:
         self.db_client = VectorDBClient(embed_size=self.llm_model.embed_size, batch_size=batch_size)
 
     def recursive_crawl(self, soup, depth, max_depth):
-        try:
-            links = soup.find_all("a")
-            for link in links:
-                child_url = link.get("href")
-                if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
-                    self.crawl.remote(child_url, depth + 1, max_depth)
-        except Exception as e:
-            print(f"Error crawling: {str(e)}")
+        # try:
+        links = soup.find_all("a")
+        for link in links:
+            child_url = link.get("href")
+            if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
+                self.crawl(child_url, depth + 1, max_depth)
+        # except Exception as e:
+        #     print(f"Error crawling: {str(e)}")
     def crawl(self, url, depth, max_depth):
         if depth > max_depth:
             return
