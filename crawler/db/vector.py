@@ -65,9 +65,9 @@ class VectorDBClient:
         """
         # Insert data into Milvus
         data = [
-            [url],
-            [text],
-            [embeddings.tolist()],
+            url,
+            text,
+            embeddings.tolist(),
         ]
         self.batch.append(data)
 
