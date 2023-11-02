@@ -6,6 +6,7 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--host", type=str, default="localhost")
     argparser.add_argument("--port", type=int, default=19530)
+    argparser.add_argument("--collection", type=str, default="web_crawler_data")
     args = argparser.parse_args()
 
     try:
