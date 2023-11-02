@@ -28,8 +28,6 @@ class WebCrawler:
         try:
             # Fetch the webpage
             response = requests.get(url)
-            print('response', response)
-            print('content', response.content)
             if response.status_code == 200:
                 # Parse the HTML content
                 soup = BeautifulSoup(response.text, "html.parser")
