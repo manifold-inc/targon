@@ -25,29 +25,29 @@ class WebCrawler:
         if depth > max_depth:
             return
 
-        try:
+        # try:
             # Fetch the webpage
-            response = requests.get(url)
-            if response.status_code == 200:
-                # Parse the HTML content
-                soup = BeautifulSoup(response.text, "html.parser")
+        response = requests.get(url)
+        if response.status_code == 200:
+            # Parse the HTML content
+            soup = BeautifulSoup(response.text, "html.parser")
 
-                # Extract text from the webpage
-                text = soup.get_text()
+            # Extract text from the webpage
+            text = soup.get_text()
 
-                # Generate BERT embeddings for the text
-                embeddings = self.llm_model.text_to_embedding(text)
-                print('ranhere')
-                print('embeddings', embeddings)
+            # Generate BERT embeddings for the text
+            embeddings = self.llm_model.text_to_embedding(text)
+            print('ranhere')
+            print('embeddings', embeddings)
 
-                # Insert data into Milvus
-                self.db_client.insert(url, text, embeddings)
+            # Insert data into Milvus
+            self.db_client.insert(url, text, embeddings)
 
-                # Find and crawl child links
-                links = soup.find_all("a")
-                for link in links:
-                    child_url = link.get("href")
-                    if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
-                        self.crawl.remote(child_url, depth + 1, max_depth)
-        except Exception as e:
-            print(f"Error crawling {url}: {str(e)}")
+            # Find and crawl child links
+            links = soup.find_all("a")
+            for link in links:
+                child_url = link.get("href")
+                if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
+                    self.crawl.remote(child_url, depth + 1, max_depth)
+        # except Exception as e:
+        #     print(f"Error crawling {url}: {str(e)}")
