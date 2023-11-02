@@ -5,7 +5,7 @@ import bittensor as bt
 from db import VectorDBClient
 from llm import MODEL_REGISTRY
 from task import WebCrawler
-import threading
+import collections
 
 # llm_name = "bert-base-uncased"
 # llm_model = MODEL_REGISTRY[llm_name]()
@@ -82,22 +82,27 @@ ray.init(address="auto")
 # Instantiate Ray worker code
 crawler = WebCrawler.remote()
 
-print("Starting to crawl...")
-new_links = ray.get(
-    [crawler.crawl.remote(url, 0, max_depth) for url in initial_urls]
-)  # Initiate the crawling remotely
-while True:
-    try:
-        for link in new_links:
-            bt.logging.info('crawling', link)
-            links = ray.get(
-                [crawler.crawl.remote(url, 0, max_depth) for url in link]
-            )
-            bt.logging.success('crawled', link)
-            
-    except KeyboardInterrupt:
-        break
+# Use a set for deduplication
+seen_urls = set()
 
+# Use a deque as a queue
+url_queue = collections.deque(initial_urls)
+
+
+print("Starting to crawl...")
+while url_queue:
+    current_url = url_queue.popleft()
+    if current_url in seen_urls:
+        continue  # Skip this URL because it's already been crawled
+
+    seen_urls.add(current_url)  # Mark this URL as seen
+    new_links = ray.get(crawler.crawl.remote(current_url, 0, max_depth))
+
+    # Process new links - deduplicate and add to the queue
+    if new_links:
+        for link in new_links:
+            if link not in seen_urls:
+                url_queue.append(link)
 # print('new_links', new_links)
 # # Wait for all tasks to complete
 # print("Done crawling.")
