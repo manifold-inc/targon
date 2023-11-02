@@ -28,12 +28,15 @@ class WebCrawler:
         try:
             # Fetch the webpage
             response = requests.get(url)
+            print('response', response)
+            print('content', response.content)
             if response.status_code == 200:
                 # Parse the HTML content
                 soup = BeautifulSoup(response.text, "html.parser")
 
                 # Extract text from the webpage
                 text = soup.get_text()
+                print('text', text)
 
                 # Generate BERT embeddings for the text
                 embeddings = self.llm_model.text_to_embedding(text)
