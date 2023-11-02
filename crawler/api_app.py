@@ -26,7 +26,7 @@ def crawl(request: CrawlJob):
         loop.run_in_executor(
             None,
             functools.partial(
-                run_crawl, data={"crawler": crawler, "urls": request.urls, "max_depth": request.max_depth}
+                run_crawl, data={"crawler": crawler, "urls": request.url, "max_depth": request.max_depth}
             ),
         )
 

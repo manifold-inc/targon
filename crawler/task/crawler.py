@@ -37,6 +37,7 @@ class WebCrawler:
 
                 # Generate BERT embeddings for the text
                 embeddings = self.llm_model.text_to_embedding(text)
+                print('ranhere')
                 print('embeddings', embeddings)
 
                 # Insert data into Milvus
