@@ -72,7 +72,7 @@ class VectorDBClient:
         self.texts.append(text)
         self.embeddings.append(embeddings)
 
-        if len(self.batch[0]) >= self.batch_size:
+        if len(self.urls) >= self.batch_size:
             self.batch = [self.urls, self.texts, self.embeddings]
             self._submit_batch()
 
