@@ -64,17 +64,15 @@ class VectorDBClient:
             The embeddings of the crawled page.
         """
         # Insert data into Milvus
-        data = [{
-            DB_COLS["URL"]: url,
-            DB_COLS["TEXT"]: text,
-            DB_COLS["EMBED"]: embeddings.tolist(),
-        }]
-        self.batch.append([url])
-        self.batch.append([text])
-        self.batch.append([embeddings.tolist()])
+        data = [
+            [url],
+            [text],
+            [embeddings.tolist()],
+        ]
+        self.batch.append(data)
 
-        if len(self.batch[0]) >= self.batch_size:
-            self._submit_batch()
+        # if len(self.batch[0]) >= self.batch_size:
+        self._submit_batch()
 
     def close(self):
         """Close the Milvus connection."""
