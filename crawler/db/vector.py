@@ -44,7 +44,7 @@ class VectorDBClient:
 
     def _submit_batch(self):
         """Submit the batch to Milvus."""
-        self.collection.insert(self._batch)
+        self.collection.insert(self.batch)
         self.collection.flush()
         self._reset_batch()
 
