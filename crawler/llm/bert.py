@@ -11,7 +11,7 @@ class BertLanguageModel(BaseLanguageModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.tokenizer = BertTokenizer.from_pretrained(MODEL_NAME).to(device)
+        self.tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
         self.model = BertModel.from_pretrained(MODEL_NAME).to(device)
 
     @property
