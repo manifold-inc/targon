@@ -21,6 +21,13 @@ class WebCrawler:
         # Initialize Milvus connection
         self.db_client = VectorDBClient(embed_size=self.llm_model.embed_size, batch_size=batch_size)
 
+    def recursive_crawl(self, soup, depth, max_depth):
+        links = soup.find_all("a")
+        for link in links:
+            child_url = link.get("href")
+            if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
+                self.crawl.remote(child_url, depth + 1, max_depth)
+
     def crawl(self, url, depth, max_depth):
         if depth > max_depth:
             return
@@ -44,10 +51,6 @@ class WebCrawler:
             self.db_client.insert(url, text, embeddings)
 
             # Find and crawl child links
-            links = soup.find_all("a")
-            for link in links:
-                child_url = link.get("href")
-                if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
-                    self.crawl.remote(child_url, depth + 1, max_depth)
+            self.recursive_crawl(soup, depth, max_depth)
         # except Exception as e:
         #     print(f"Error crawling {url}: {str(e)}")
