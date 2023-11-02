@@ -48,8 +48,8 @@ class WebCrawler:
             for link in links:
                 child_url = link.get("href")
                 if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
-                    current_actor_handle = ray.actor.ActorHandle(self._ray_actor_id)
-                    current_actor_handle.crawl.remote(child_url, depth + 1, max_depth)
+                    
+                    self.crawl.remote(child_url, depth + 1, max_depth)
 
         # except Exception as e:
         #     print(f"Error crawling {url}: {str(e)}")
