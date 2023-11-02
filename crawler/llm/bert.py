@@ -1,5 +1,5 @@
 from transformers import BertModel, BertTokenizer
-
+import torch
 from llm.base import BaseLanguageModel
 
 MODEL_NAME = "bert-base-uncased"
@@ -10,8 +10,9 @@ EMBED_SIZE = 768
 class BertLanguageModel(BaseLanguageModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.tokenizer = BertTokenizer.from_pretrained(MODEL_NAME)
-        self.model = BertModel.from_pretrained(MODEL_NAME)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.tokenizer = BertTokenizer.from_pretrained(MODEL_NAME).to(device)
+        self.model = BertModel.from_pretrained(MODEL_NAME).to(device)
 
     @property
     def max_token_length(self):

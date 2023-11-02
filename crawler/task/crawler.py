@@ -1,5 +1,4 @@
 import ray
-import torch
 import requests
 from bs4 import BeautifulSoup
 
@@ -16,9 +15,8 @@ class WebCrawler:
         llm_model: str = "bert-base-uncased",
         batch_size: int = 32,
     ):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         # Initialize language model
-        self.llm_model = MODEL_REGISTRY[llm_model]().to(device)
+        self.llm_model = MODEL_REGISTRY[llm_model]()
 
         # Initialize Milvus connection
         self.db_client = VectorDBClient(embed_size=self.llm_model.embed_size, batch_size=batch_size)
