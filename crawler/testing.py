@@ -50,6 +50,15 @@ print("Starting to crawl...")
 new_links = ray.get(
     [crawler.crawl.remote(url, 0, max_depth) for url in initial_urls]
 )  # Initiate the crawling remotely
+while True:
+    try:
+        for link in new_links:
+            links = ray.get(
+                [crawler.crawl.remote(url, 0, max_depth) for url in link]
+            )
+            
+    except KeyboardInterrupt:
+        break
 
 print('new_links', new_links)
 # Wait for all tasks to complete
