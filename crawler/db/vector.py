@@ -44,7 +44,7 @@ class VectorDBClient:
 
     def _submit_batch(self):
         """Submit the batch to Milvus."""
-        self.collection.insert(COLLECTION_NAME, self._batch)
+        self.collection.insert(self._batch, partition_name=COLLECTION_NAME)
         self.collection.flush()
         self._reset_batch()
 
@@ -64,11 +64,11 @@ class VectorDBClient:
             The embeddings of the crawled page.
         """
         # Insert data into Milvus
-        data = {
+        data = [{
             DB_COLS["URL"]: url,
             DB_COLS["TEXT"]: text,
             DB_COLS["EMBED"]: embeddings.tolist(),
-        }
+        }]
         self.batch.append(data)
 
         if len(self.batch[0]) >= self.batch_size:
