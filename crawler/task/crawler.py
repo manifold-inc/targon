@@ -48,8 +48,7 @@ class WebCrawler:
             for link in links:
                 child_url = link.get("href")
                 if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
-                    
-                    self.crawl.remote(child_url, depth + 1, max_depth)
-
+                    new_links.append(child_url)
+            return new_links
         # except Exception as e:
         #     print(f"Error crawling {url}: {str(e)}")

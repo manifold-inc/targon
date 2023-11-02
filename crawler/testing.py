@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import ray
-
+import bittensor as bt
 from db import VectorDBClient
 from llm import MODEL_REGISTRY
 from task import WebCrawler
@@ -89,9 +89,11 @@ new_links = ray.get(
 while True:
     try:
         for link in new_links:
+            bt.logging.info('crawling', link)
             links = ray.get(
                 [crawler.crawl.remote(url, 0, max_depth) for url in link]
             )
+            bt.logging.success('crawled', link)
             
     except KeyboardInterrupt:
         break
