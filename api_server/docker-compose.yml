@@ -6,7 +6,7 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.app-http.rule=Host(`v1.api.sybil.com`)
+      - traefik.http.routers.app-http.rule=Host(`v1.sybil.com`)
       - traefik.http.routers.app-http.tls=true
       - traefik.http.routers.app-http.tls.certresolver=letsencrypt
 
