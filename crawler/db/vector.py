@@ -23,12 +23,14 @@ class VectorDBClient:
         connections.connect(host=MILVUS_HOST, port=MILVUS_PORT)
 
         self.urls = []
-        self.texts = []
+        self.full_texts = []
+        self.summaries = []
         self.embeddings = []
 
         self.schema = [
             FieldSchema(name=DB_COLS["URL"], dtype=DataType.VARCHAR, is_primary=True, max_length=1024),
-            FieldSchema(name=DB_COLS["FULL_TEXT"], dtype=DataType.VARCHAR, max_length=65_535),
+            FieldSchema(name=DB_COLS["FULL_TEXT"], dtype=DataType.VARCHAR, max_length=8000),
+            FieldSchema(name=DB_COLS["SUMMARY"], dtype=DataType.VARCHAR, max_length=65_000),
             FieldSchema(name=DB_COLS["EMBED"], dtype=DataType.FLOAT_VECTOR, dim=self.embed_size),
         ]
         if not utility.has_collection(COLLECTION_NAME):
@@ -52,7 +54,7 @@ class VectorDBClient:
         self.collection.flush()
         self._reset_batch()
 
-    def insert(self, url, text, embeddings):
+    def insert(self, url, text, summary, embeddings):
         """Insert a crawled entry in milvus.
 
             NOTE: the method will only insert the entries in the DB
@@ -69,11 +71,12 @@ class VectorDBClient:
         """
         # Insert data into Milvus
         self.urls.append(url)
-        self.texts.append(text)
+        self.full_texts.append(text)
+        self.summaries.append(summary)
         self.embeddings.append(embeddings)
 
         if len(self.urls) >= self.batch_size:
-            self.batch = [self.urls, self.texts, self.embeddings]
+            self.batch = [self.urls, self.full_texts, self.summaries, self.embeddings]
             self._submit_batch()
 
     def close(self):

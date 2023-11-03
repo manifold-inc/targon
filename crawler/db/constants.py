@@ -9,6 +9,6 @@ INDEX_PARAM = {"metric_type": "L2", "index_type": "IVF_FLAT", "params": {"nlist"
 DB_COLS = {
     "URL": "url",
     "FULL_TEXT": "text",
-    # "SUMMARY": "summary",
+    "SUMMARY": "summary",
     "EMBED": "embeddings",
 }
