@@ -36,6 +36,8 @@ class WebCrawler:
             # Extract text from the webpage
             text = soup.get_text()
 
+            # get summary
+
             # Generate BERT embeddings for the text
             embeddings = self.llm_model.text_to_embedding(text)
 
