@@ -3,9 +3,10 @@ import torch
 import random
 import bittensor as bt
 from typing import List
-
+from targon.validator.config import env_config
 from targon.validator import check_uid_availability
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from targon.validator.crawler import VectorController
+from targon.protocol import  TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
     """Returns k available random uids from the metagraph.
@@ -46,47 +47,9 @@ async def fetch(self, synapse, uids):
     responses = await self.dendrite_pool.async_forward(
         uids = uids,
         synapse = synapse,
-        timeout = 12
+        timeout = 20
     )
     return responses
-
-
-async def _qa_forward(self, question: str, uids: List[int]):
-    """Queries a list of uids for a question.
-    Args:
-        question (str): Question to query.
-        uids (torch.LongTensor): Uids to query.
-        timeout (float): Timeout for the query.
-    Returns:
-        responses (List[TargonQA]): List of responses.
-    """
-    # Check if we have any uids to query.
-    qa_synapse = TargonQA(question=question)
-    responses = await fetch(self, qa_synapse, uids)
-
-    bt.logging.info('qa synapse', responses)
-
-    answers = [response.answer for response in responses]
-    return answers
-
-
-
-async def _link_prediction_forward(self, question: str, uids: List[int]):
-    """Queries a list of uids for a question.
-    Args:
-        question (str): Question to query.
-        uids (torch.LongTensor): Uids to query.
-        timeout (float): Timeout for the query.
-    Returns:
-        responses (List[TargonQA]): List of responses.
-    """
-    # Check if we have any uids to query.
-    search_synapse = TargonLinkPrediction( query=question )
-    responses = await fetch( self, search_synapse, uids )
-
-    sources = [response.results for response in responses]
-
-    return sources
 
 
 async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
@@ -117,6 +80,25 @@ def select_qa(self):
     data = next(dataset)
     return data
 
+
+def get_new_link( self ):
+    """
+    Returns a new link from the queue that hasn't been seen before.
+    
+    Args:
+    seen_urls (set): A set of URLs that have already been seen.
+    url_queue (deque): A queue of URLs to be crawled.
+
+    Returns:
+    str: A new link that hasn't been seen before.
+    """
+    while self.url_queue:
+        potential_link = self.url_queue.popleft()
+        if potential_link not in self.seen_urls:
+            self.seen_urls.add(potential_link)
+            return potential_link
+    return None  # Return None if no new link is found
+
 async def forward_fn(self, validation=True, stream=False):
     """Queries a list of uids for a question.
     Args:
@@ -129,6 +111,36 @@ async def forward_fn(self, validation=True, stream=False):
     k = 20
     if validation:
             uids = get_random_uids(self, k=k).to(self.device)
+            for _ in range(self.config.neuron.crawler_depth):
+                url = get_new_link(self)
+
+                if url is None: assert False, "No new link found"
+
+                # crawl the internet
+                link_synapse = TargonLinkPrediction( url=url )
+                responses = await self.dendrite_pool.async_forward(
+                    uids = uids,
+                    synapse = link_synapse,
+                    timeout = 12
+                )
+
+                full_texts = [response.full_text for response in responses]
+                summaries = [response.summary for response in responses]
+                new_links = [response.new_links for response in responses]
+
+                for new_link in new_links:
+                    if new_link not in self.seen_urls:
+                        self.url_queue.extend(new_link)
+
+                api_key = env_config.get('SYBIL_API_KEY', None)
+                if api_key is not None:
+                    embeddings = self.embedding_model.encode(full_texts)
+                    for full_text, summary, new_links, embedding in zip(full_texts, summaries, new_links, embeddings):
+                        VectorController().submit(url, full_text, summary, embedding)
+                        bt.logging.debug('submitted url', url)
+                
+
+            # validate Search Result responses
             data = select_qa(self)
 
             question = data['question']
@@ -140,6 +152,8 @@ async def forward_fn(self, validation=True, stream=False):
             bt.logging.trace('task', task)
             bt.logging.trace('solution', solution)
 
+
+            # Search Result
             # TODO: add support for sources
             sources = []
             completions = await _search_result_forward(self, question, sources, uids)

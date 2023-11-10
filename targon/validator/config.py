@@ -3,8 +3,10 @@ import torch
 import argparse
 import bittensor as bt
 from loguru import logger
-
+from dotenv import dotenv_values
 from targon.validator.signals.config import DefaultRewardFrameworkConfig
+
+env_config = dotenv_values(".env")
 
 def check_config(cls, config: "bt.Config"):
     r"""Checks/validates the config namespace object."""
@@ -90,6 +92,12 @@ def add_args(cls, parser):
         action="store_true",
         help="Disables setting weights.",
         default=False,
+    )
+    parser.add_argument(
+        "--neuron.crawl_depth",
+        type=int,
+        help="the number of pages to crawl in a website",
+        default=20,
     )
     parser.add_argument(
         "--neuron.moving_average_alpha",

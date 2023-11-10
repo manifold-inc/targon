@@ -17,3 +17,5 @@ __spec_version__ = (
     + (10 * int(version_split[1]))
     + (1 * int(version_split[2]))
 )
+
+__api_endpoint__ = "https://us-central-02.db.sybil.com"

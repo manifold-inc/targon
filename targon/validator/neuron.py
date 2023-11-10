@@ -1,11 +1,14 @@
 import copy
 import torch
 import asyncio
+import collections
 import bittensor as bt
-from targon.validator import blacklist, AsyncDendritePool, check_config, add_args, config, run, init_wandb, ttl_get_block
-from targon.validator.dataset import CodingDataset, QADataset, ReasoningDataset
-from targon.protocol import TargonDendrite
 from targon import autoupdate
+from targon.protocol import TargonDendrite
+from targon.validator.crawler import get_inital_links
+from transformers import T5Tokenizer, T5ForConditionalGeneration, AutoModel
+from targon.validator.dataset import CodingDataset, QADataset, ReasoningDataset
+from targon.validator import blacklist, AsyncDendritePool, check_config, add_args, config, run, init_wandb, ttl_get_block
 from targon.validator.signals import (
     NSFWRewardModel,
     AccuracyRewardSignal,
@@ -16,7 +19,6 @@ from targon.validator.signals import (
     MockRewardModel,
     RewardModelType,
 )
-from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
 
 
 class neuron:
@@ -44,6 +46,7 @@ class neuron:
     def __init__(self):
         # config
         self.config = neuron.config()
+
         self.check_config(self.config)
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
         print(self.config)
@@ -55,6 +58,13 @@ class neuron:
 
         # check if needs an update
         autoupdate()
+
+        # urls
+        self.seen_urls = set()
+
+        bt.logging.info('loading the', "iniital links")
+        self.url_queue = collections.deque(get_inital_links())
+
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -129,13 +139,16 @@ class neuron:
 
         # reward model
         tokenizer = T5Tokenizer.from_pretrained(CorrectnessRewardSignal.reward_model_name)
-        model = T5ForConditionalGeneration.from_pretrained(CorrectnessRewardSignal.reward_model_name,
+        reward_model = T5ForConditionalGeneration.from_pretrained(CorrectnessRewardSignal.reward_model_name,
                                                             torch_dtype=torch.float16).to(self.device)
+
+        # embedding model
+        self.embedding_model = AutoModel.from_pretrained('jinaai/jina-embeddings-v2-small-en', trust_remote_code=True)
 
 
         self.reward_functions = [
-            AccuracyRewardSignal(device=self.device, tokenizer=tokenizer, model=model),
-            CorrectnessRewardSignal(device=self.device, tokenizer=tokenizer, model=model),
+            AccuracyRewardSignal(device=self.device, tokenizer=tokenizer, model=reward_model),
+            CorrectnessRewardSignal(device=self.device, tokenizer=tokenizer, model=reward_model),
         ]
 
         relevance_model = (
