@@ -1,7 +1,7 @@
 .env
 test.py
 
-# indexer/
+crawler/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
