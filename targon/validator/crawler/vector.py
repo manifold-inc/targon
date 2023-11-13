@@ -35,12 +35,13 @@ class VectorController:
     def __init__(self):
         pass
 
-    def submit(self, url, full_text, summary, embeddings):
+    def submit(self, url, title, text, query, embeddings):
         try:
             params = {
                 "url": url,
-                "text": full_text,
-                "summary": summary,
+                "title": title,
+                "text": text,
+                "query": query,
                 "embeddings": dumps({"embeddings": embeddings}, cls=NumpyArrayEncoder),
             }
 

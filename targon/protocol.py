@@ -28,10 +28,15 @@ class TargonLinkPrediction( bt.Synapse ):
         title="Full Text",
         description="The full text of the page",
     )
-    summary: str = pydantic.Field(
+    query: str = pydantic.Field(
         "",
-        title="Summary",
-        description="The summary of the page",
+        title="Query",
+        description="The predicted query of the page",
+    )
+    title: str = pydantic.Field(
+        "",
+        title="Title",
+        description="The title of the page",
     )
     new_links: List[dict] = pydantic.Field(
         [],

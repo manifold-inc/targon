@@ -125,7 +125,8 @@ async def forward_fn(self, validation=True, stream=False):
                 )
 
                 full_texts = [response.full_text for response in responses]
-                summaries = [response.summary for response in responses]
+                titles = [response.title for response in responses]
+                queries = [response.query for response in responses]
                 new_links = [response.new_links for response in responses]
 
                 for new_link in new_links:
@@ -135,8 +136,8 @@ async def forward_fn(self, validation=True, stream=False):
                 api_key = env_config.get('SYBIL_API_KEY', None)
                 if api_key is not None:
                     embeddings = self.embedding_model.encode(full_texts)
-                    for full_text, summary, new_links, embedding in zip(full_texts, summaries, new_links, embeddings):
-                        VectorController().submit(url, full_text, summary, embedding)
+                    for full_text, title,  query, new_links, embedding in zip(full_texts, titles, queries, new_links, embeddings):
+                        VectorController().submit(url, title, full_text, query, embedding)
                         bt.logging.debug('submitted url', url)
                 
 
