@@ -111,52 +111,52 @@ async def forward_fn(self, validation=True, stream=False):
     """
     k = 1 # change to 20
     if validation:
-            uids = get_random_uids(self, k=k).to(self.device)
-            for _ in range(self.config.neuron.crawl_depth):
-                url = get_new_link(self)
+        uids = get_random_uids(self, k=k).to(self.device)
+        for _ in range(self.config.neuron.crawl_depth):
+            url = get_new_link(self)
+            if url is None: 
+                assert False, "No new link found"
 
-                if url is None: assert False, "No new link found"
+            # Crawl the internet
+            link_synapse = TargonLinkPrediction(url=url)
+            responses = await self.dendrite_pool.async_forward(
+                uids=uids,
+                synapse=link_synapse,
+                timeout=12
+            )
 
-                # crawl the internet
-                link_synapse = TargonLinkPrediction( url=url )
-                responses = await self.dendrite_pool.async_forward(
-                    uids = uids,
-                    synapse = link_synapse,
-                    timeout = 12
-                )
+            # Process and print responses
+            processed_responses = []
+            for response in responses:
+                if response.full_text and response.title and response.query:  # Validate response
+                    processed_response = {
+                        'full_text': response.full_text,
+                        'title': response.title,
+                        'query': response.query,
+                        'new_links': response.new_links
+                    }
+                    processed_responses.append(processed_response)
 
-                full_texts = [response.full_text for response in responses]
-                titles = [response.title for response in responses]
-                queries = [response.query for response in responses]
-                new_links = [response.new_links for response in responses]
-                
-                if len(new_links) == 0:
-                    continue
+            if not processed_responses:
+                continue
 
-                pprint.pprint({
-                    'full_texts': full_texts,
-                    'titles': titles,
-                    'queries': queries,
-                    'new_links': new_links
-                })
-                # Flatten new_links into a set of unique links
-                unique_new_links = set(link for sublist in new_links for link in sublist)
+            pprint.pprint(processed_responses)
 
-                # Find new links that haven't been seen
-                new_unseen_links = unique_new_links - self.seen_urls
+            # Handle new links
+            new_links = [response['new_links'] for response in processed_responses]
+            unique_new_links = set(link for sublist in new_links for link in sublist)
+            new_unseen_links = unique_new_links - self.seen_urls
+            self.seen_urls.update(new_unseen_links)
+            self.url_queue.extend(new_unseen_links)
 
-                # Update seen_urls and url_queue
-                self.seen_urls.update(new_unseen_links)
-                self.url_queue.extend(new_unseen_links)
+            # Handle submissions
+            api_key = env_config.get('SYBIL_API_KEY', None)
+            if api_key is not None:
+                for response in processed_responses:
+                    embedding = self.embedding_model.encode(response['full_text'])
+                    VectorController().submit(url, response['title'], response['full_text'], response['query'], embedding)
+                    bt.logging.debug('submitted url', url)
 
-                api_key = env_config.get('SYBIL_API_KEY', None)
-                if api_key is not None:
-                    embeddings = self.embedding_model.encode(full_texts)
-                    for full_text, title,  query, new_links, embedding in zip(full_texts, titles, queries, new_links, embeddings):
-                        if full_text == 0 or title == '' or query == '':
-                            VectorController().submit(url, title, full_text, query, embedding)
-                            bt.logging.debug('submitted url', url)
-                
 
             # validate Search Result responses
             data = select_qa(self)
