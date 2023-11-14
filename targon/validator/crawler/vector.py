@@ -45,6 +45,8 @@ class VectorController:
                 "query": query,
                 "embeddings": dumps({"embeddings": embeddings}, cls=NumpyArrayEncoder),
             }
+            
+            print('params', params)
 
             headers = {
                 'X-API-KEY': self.api_key,
