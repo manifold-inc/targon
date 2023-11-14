@@ -38,8 +38,8 @@ class TargonLinkPrediction( bt.Synapse ):
         title="Title",
         description="The title of the page",
     )
-    new_links: List[dict] = pydantic.Field(
-        [],
+    new_links: List[str] = pydantic.Field(
+        [""],
         title="New Links",
         description="The New Links from the page",
     )
