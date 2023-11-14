@@ -8,7 +8,6 @@ import html2text
 import bittensor as bt
 from bs4 import BeautifulSoup
 from functools import partial
-from crawler import WebCrawler
 from starlette.types import Send
 from justext import get_stoplist
 from targon.miner.miner import Miner 
