@@ -109,7 +109,7 @@ async def forward_fn(self, validation=True, stream=False):
     Returns:
         responses (List[TargonQA]): List of responses.
     """
-    k = 2
+    k = 20
     if validation:
         uids = get_random_uids(self, k=k).to(self.device)
         urls = [get_new_link(self) for _ in range(k)]
