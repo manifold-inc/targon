@@ -228,6 +228,8 @@ assistant
 
         if type(synapse) == TargonLinkPrediction:
             url = synapse.url
+
+            prompt = url
         elif type(synapse) == TargonSearchResult:
             query = synapse.query
             sources = synapse.sources
@@ -241,7 +243,7 @@ assistant
             prompt = f"{query}"
 
         
-        def _prompt(prompt: str):
+        def _prompt(synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -261,6 +263,7 @@ assistant
             """
 
             if type(synapse) == TargonLinkPrediction:
+                url = synapse.url
                 bt.logging.debug('🕸️ crawling', url)
                 response = requests.get(url)
                 if response.status_code == 200:
@@ -290,6 +293,10 @@ assistant
 
 
             elif type(synapse) == TargonSearchResult:
+                query = synapse.query
+                sources = synapse.sources
+                context = synapse.context
+
                 prompt = self._build_search_result_prompt(query, sources, context)
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
                 output = self.get_response(prompt, response)
@@ -380,7 +387,7 @@ assistant
                 token_streamer = partial(_streaming_prompt, prompt)
                 return synapse.create_streaming_response(token_streamer)
             
-        synapse = _prompt(prompt)
+        synapse = _prompt(synapse)
         return synapse
 
 
