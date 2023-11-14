@@ -57,7 +57,6 @@ class SybilMiner( Miner ):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # get the directory this file is in
         base_path = os.path.dirname(os.path.realpath(__file__))
-        self.crawler = WebCrawler(base_path)
 
     def post_http_request(self,
                         prompt: str,
