@@ -108,7 +108,7 @@ async def forward_fn(self, validation=True, stream=False):
     Returns:
         responses (List[TargonQA]): List of responses.
     """
-    k = 20
+    k = 1 # change to 20
     if validation:
             uids = get_random_uids(self, k=k).to(self.device)
             for _ in range(self.config.neuron.crawler_depth):
