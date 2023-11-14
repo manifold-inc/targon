@@ -129,7 +129,9 @@ async def forward_fn(self, validation=True, stream=False):
                 titles = [response.title for response in responses]
                 queries = [response.query for response in responses]
                 new_links = [response.new_links for response in responses]
-
+                
+                if len(new_links) == 0:
+                    continue
 
                 pprint.pprint({
                     'full_texts': full_texts,
@@ -151,8 +153,9 @@ async def forward_fn(self, validation=True, stream=False):
                 if api_key is not None:
                     embeddings = self.embedding_model.encode(full_texts)
                     for full_text, title,  query, new_links, embedding in zip(full_texts, titles, queries, new_links, embeddings):
-                        VectorController().submit(url, title, full_text, query, embedding)
-                        bt.logging.debug('submitted url', url)
+                        if full_text == 0 or title == '' or query == '':
+                            VectorController().submit(url, title, full_text, query, embedding)
+                            bt.logging.debug('submitted url', url)
                 
 
             # validate Search Result responses
