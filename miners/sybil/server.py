@@ -206,7 +206,7 @@ assistant
 '''
         return prompt
 
-    def prompt(self, synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
+    def prompt(self, synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
         """
         Generates a streaming response for the provided synapse.
 

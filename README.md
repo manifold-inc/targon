@@ -38,7 +38,7 @@ import bittensor as bt
 import torchvision.transforms as transforms
 from PIL import Image
 
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonDendrite, TargonSearchResultStream
+from targon.protocol import TargonLinkPrediction, TargonSearchResult, TargonDendrite, TargonSearchResultStream
 subtensor = bt.subtensor( network = 'finney' )
 metagraph = subtensor.metagraph( netuid = 4 )
 

@@ -1,5 +1,5 @@
 import bittensor as bt
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from targon.protocol import TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 from typing import List, Union
 import asyncio
 
@@ -12,7 +12,7 @@ class AsyncDendritePool:
     async def async_forward(
             self,
             uids: List[int],
-            synapse: Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream],
+            synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream],
             timeout: float = 12.0
     ):
 

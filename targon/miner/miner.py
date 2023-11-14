@@ -30,7 +30,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple, Union
 
 import bittensor as bt
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from targon.protocol import TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 from targon.miner.priority import priority
 from targon.miner.blacklist import blacklist, is_prompt_in_cache
@@ -113,7 +113,6 @@ class Miner(ABC):
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to axon.")
 
-        # TargonQA
         self.axon.attach(
             forward_fn=self._prompt_link_prediction,
             blacklist_fn=self.blacklist_link_prediction,

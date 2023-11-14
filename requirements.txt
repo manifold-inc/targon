@@ -22,3 +22,4 @@ python-dotenv==1.0.0
 pymilvus==2.3.0
 ray==2.7.0
 beautifulsoup4==4.12.2
+justext==3.0.0
