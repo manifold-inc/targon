@@ -111,7 +111,7 @@ async def forward_fn(self, validation=True, stream=False):
     k = 1 # change to 20
     if validation:
             uids = get_random_uids(self, k=k).to(self.device)
-            for _ in range(self.config.neuron.crawler_depth):
+            for _ in range(self.config.neuron.crawl_depth):
                 url = get_new_link(self)
 
                 if url is None: assert False, "No new link found"
