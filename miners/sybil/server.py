@@ -39,7 +39,7 @@ class SybilMiner( Miner ):
                 The command line argument parser to which custom arguments should be added.
         """
         parser.add_argument('--sybil.model', type=str, default="teknium/CollectiveCognition-v1.1-Mistral-7B", help='Model to use for generation.')
-        parser.add_argument('--sybil.max_new_tokens', type=int, default=300, help='Maximum number of tokens to generate.')
+        parser.add_argument('--sybil.max_new_tokens', type=int, default=1024, help='Maximum number of tokens to generate.')
         parser.add_argument('--sybil.num_beams', type=int, default=1, help='Number of beams to use for beam search.')
         parser.add_argument('--sybil.min_length', type=int, default=1, help='Minimum number of tokens to generate.')
         parser.add_argument('--sybil.top_k', type=int, default=int(10), help='Top p for nucleus sampling.')
