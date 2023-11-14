@@ -286,8 +286,9 @@ assistant
                             prompt, markdown_content, title = self.format_link_prediction_prompt(text)
 
                             # get the summary
-                            response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
-                            query = self.get_response(prompt, response)
+                            # response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
+                            # query = self.get_response(prompt, response)
+                            query = ""
 
                             synapse.full_text = markdown_content
                             synapse.title = title
