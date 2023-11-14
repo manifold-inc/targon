@@ -109,42 +109,40 @@ async def forward_fn(self, validation=True, stream=False):
     Returns:
         responses (List[TargonQA]): List of responses.
     """
-    k = 1 # change to 20
+    k = 2
     if validation:
         uids = get_random_uids(self, k=k).to(self.device)
-        for _ in range(self.config.neuron.crawl_depth):
-            url = get_new_link(self)
-            if url is None: 
-                assert False, "No new link found"
+        urls = [get_new_link(self) for _ in range(k)]
+        urls = [url for url in urls if url is not None]
 
-            # Crawl the internet
-            link_synapse = TargonLinkPrediction(url=url)
-            responses = await self.dendrite_pool.async_forward(
-                uids=uids,
-                synapse=link_synapse,
-                timeout=12
-            )
+        # Crawl the internet
+        link_synapses = [TargonLinkPrediction(url=url) for url in urls]
+        responses = [await self.dendrite_pool.async_forward(
+            uids=[uid],
+            synapse=link_synapse,
+            timeout=12
+        ) for link_synapse, uid in zip(link_synapses, uids)]
 
-            # Process and print responses
-            processed_responses = []
-            for response in responses:
-                if response.full_text and response.title and response.query:  # Validate response
-                    processed_response = {
-                        'full_text': response.full_text,
-                        'title': response.title,
-                        'query': response.query,
-                        'new_links': response.new_links
-                    }
-                    processed_responses.append(processed_response)
-
-            if not processed_responses:
+        # Process and print responses
+        for response, uid in zip(responses, uids):
+            if not response:
                 continue
 
-            pprint.pprint(processed_responses)
+            processed_response = {
+                'uid': uid.item(),
+                'full_text': response[0].full_text,
+                'title': response[0].title,
+                'query': response[0].query,
+                'new_links': response[0].new_links
+            }
+
+            if not (processed_response['full_text'] and processed_response['title'] and processed_response['query']):
+                continue
+
+            pprint.pprint(processed_response)
 
             # Handle new links
-            new_links = [response['new_links'] for response in processed_responses]
-            unique_new_links = set(link for sublist in new_links for link in sublist)
+            unique_new_links = set(processed_response['new_links'])
             new_unseen_links = unique_new_links - self.seen_urls
             self.seen_urls.update(new_unseen_links)
             self.url_queue.extend(new_unseen_links)
@@ -152,12 +150,9 @@ async def forward_fn(self, validation=True, stream=False):
             # Handle submissions
             api_key = env_config.get('SYBIL_API_KEY', None)
             if api_key is not None:
-                for response in processed_responses:
-                    embedding = self.embedding_model.encode(response['full_text'])
-                    VectorController().submit(url, response['title'], response['full_text'], response['query'], embedding)
-                    bt.logging.debug('submitted url', url)
-
-
+                embedding = self.embedding_model.encode(processed_response['full_text'])
+                VectorController().submit(processed_response['uid'], processed_response['title'], processed_response['full_text'], processed_response['query'], embedding)
+                bt.logging.debug('submitted url', processed_response['uid'])
         # validate Search Result responses
         data = select_qa(self)
 
@@ -201,7 +196,7 @@ async def forward_fn(self, validation=True, stream=False):
         )
 
         bt.logging.info("rewards", rewards.tolist())
-        for i in range(30):
+        for i in range(10):
             bt.logging.info("sleeping for", i)
             time.sleep(1)
         
