@@ -2,17 +2,23 @@ import os
 import time
 import json
 import torch
+import aiohttp
 import requests
 import argparse
 import bittensor as bt
-
+from bs4 import BeautifulSoup
 from functools import partial
 from starlette.types import Send
+from justext import get_stoplist
 from targon.miner.miner import Miner 
 from targon import search, QueryParams
 from typing import List, Optional, Union, Iterable
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from targon.protocol import  TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from justext.core import html_to_dom, ParagraphMaker, classify_paragraphs, revise_paragraph_classification, \
+    LENGTH_LOW_DEFAULT, STOPWORDS_LOW_DEFAULT, MAX_LINK_DENSITY_DEFAULT, NO_HEADINGS_DEFAULT, LENGTH_HIGH_DEFAULT, \
+    STOPWORDS_HIGH_DEFAULT, MAX_HEADING_DISTANCE_DEFAULT, DEFAULT_ENCODING, DEFAULT_ENC_ERRORS, preprocessor
 
+NUM_EXTRACT_CHARS = 512
 
 
 class SybilMiner( Miner ):
@@ -97,8 +103,68 @@ class SybilMiner( Miner ):
         output = data[0]["generated_text"].replace(prompt, "")
         return output
 
+    def justext_with_dom(self, html_text, stoplist, length_low=LENGTH_LOW_DEFAULT,
+            length_high=LENGTH_HIGH_DEFAULT, stopwords_low=STOPWORDS_LOW_DEFAULT,
+            stopwords_high=STOPWORDS_HIGH_DEFAULT, max_link_density=MAX_LINK_DENSITY_DEFAULT,
+            max_heading_distance=MAX_HEADING_DISTANCE_DEFAULT, no_headings=NO_HEADINGS_DEFAULT,
+            encoding=None, default_encoding=DEFAULT_ENCODING,
+            enc_errors=DEFAULT_ENC_ERRORS):
+        """
+        Converts an HTML page into a list of classified paragraphs. Each paragraph
+        is represented as instance of class ˙˙justext.paragraph.Paragraph˙˙.
+        """
+        dom = html_to_dom(html_text, default_encoding, encoding, enc_errors)
 
-    def _build_search_result_prompt(self, query: str, sources: List[str]) -> TargonSearchResult:
+        titles = dom.xpath("//title")
+        title = titles[0].text if len(titles) > 0 else None
+
+        dom = preprocessor(dom)
+
+        paragraphs = ParagraphMaker.make_paragraphs(dom)
+
+        classify_paragraphs(paragraphs, stoplist, length_low, length_high,
+            stopwords_low, stopwords_high, max_link_density, no_headings)
+        revise_paragraph_classification(paragraphs, max_heading_distance)
+
+        return paragraphs, title
+
+    def format_link_prediction_prompt(self, html_content: str) -> str:
+        """
+        Formats a prompt for link prediction by summarizing the markdown content of a web page.
+
+        Args:
+            html_content (str): The HTML content of the web page.
+
+        Returns:
+            str: The formatted prompt string.
+        """
+
+        # Convert HTML to markdown
+
+
+        paragraphs, title = self.justext_with_dom(html_content, get_stoplist("English"))
+        good_paragraphs = [p for p in paragraphs if p.class_type == 'good']
+        extract = ' '.join([p.text for p in good_paragraphs])
+        if len(extract) > NUM_EXTRACT_CHARS:
+            extract = extract[:NUM_EXTRACT_CHARS - 1] + '…'
+        
+
+        # Create the prompt
+        prompt = f'''system
+you are an AI trained to summarize web content.
+
+Content:
+{title}
+{extract}
+
+Predict a query that would lead to this content.
+
+assistant
+'''
+
+        return prompt, extract, title
+    
+    def _build_search_result_prompt(self, query: str, sources: List[str], context: List[str]) -> TargonSearchResult:
 
         '''
 
@@ -112,35 +178,34 @@ class SybilMiner( Miner ):
 
         '''
 
-        if len(sources) == 0:
-            sys_prompt = f'''<|im_start|>system
+        context_str = ""
+        for message in context:
+            context_str += f'''user
+{message['query']}
+assistant
+{message['answer']}
+'''
+
+        # Format the current search results
+        search_results = ""
+        if sources:
+            search_results = "\n".join([f"{source['title']}\n    {source['url']}\n    {source['snippet']}" for source in sources])
+
+        # Build the complete prompt
+        prompt = f'''system
 you are an expert at summarizing sources and offering an answer to a question. you are a search engine.
-<|im_end|>
-'''
-        else:
-            search_results = [f'''{search_result['title']}
-    {search_result['url']}
-    {search_result['snippet']}
-    ''' for search_result in sources]
+{context_str}
+Search Results:
+{search_results if search_results != "" else "No results found."}
 
-            search_results = "\n".join(search_results)
-
-            sys_prompt = f'''<|im_start|>system
-    you are an expert at summarizing sources and offering an answer to a question. you are a search engine.
-    Search Results:\n{search_results}
-    <|im_end|>
-'''
-        user_prompt = f'''<|im_start|>user
+user
 {query}
-<|im_end|>
-'''
-        assistant_prompt = f'''<|im_start|>assistant
-'''
 
-        prompt = sys_prompt + user_prompt + assistant_prompt
+assistant
+'''
         return prompt
 
-    def prompt(self, synapse: Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
+    async def prompt(self, synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
         """
         Generates a streaming response for the provided synapse.
 
@@ -162,13 +227,10 @@ you are an expert at summarizing sources and offering an answer to a question. y
             are generated to suit their specific applications.
         """
 
+        if type(synapse) == TargonLinkPrediction:
+            url = synapse.url
 
-        if type(synapse) == TargonQA:
-            question = synapse.question
-            prompt = f"{question}"
-        elif type(synapse) == TargonLinkPrediction:
-            query = synapse.query
-            prompt = f"{query}"
+            prompt = url
         elif type(synapse) == TargonSearchResult:
             query = synapse.query
             sources = synapse.sources
@@ -177,11 +239,12 @@ you are an expert at summarizing sources and offering an answer to a question. y
         elif type(synapse) == TargonSearchResultStream:
             query = synapse.query
             sources = synapse.sources
+            context = synapse.context
 
             prompt = f"{query}"
 
         
-        def _prompt(prompt: str):
+        async def _prompt(synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -200,24 +263,42 @@ you are an expert at summarizing sources and offering an answer to a question. y
                 processing steps or modify how tokens are sent back to the client.
             """
 
-            if type(synapse) == TargonQA:
-                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
-                output = self.get_response(prompt, response)
-                synapse.answer = output
+            if type(synapse) == TargonLinkPrediction:
+                url = synapse.url
+                bt.logging.debug('🕸️ crawling', url)
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as resp:
+                        if resp.status == 200:
+                            bt.logging.trace('🕸️ crawled', url)
+                            # get soup
+                            text = await resp.text()
+                            soup = BeautifulSoup(text, 'html.parser')
 
-            elif type(synapse) == TargonLinkPrediction:
-                if self.config.sybil.serp_api_key is None:
-                    raise ValueError("SERP API key not set. Please set it in the config file.")
-                params = {
-                    "q": prompt,
-                    "api_key": self.config.sybil.serp_api_key,
-                }
+                            # get the new links from the page
+                            new_links = []
+                            links = soup.find_all("a")
+                            for link in links:
+                                child_url = link.get("href")
+                                if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
+                                    new_links.append(child_url)
 
-                output = search(params)
-                synapse.results = output
+                            # get the text from the page
+                            prompt, markdown_content, title = self.format_link_prediction_prompt(text)
+
+                            query = "hello world"
+
+                            synapse.full_text = markdown_content
+                            synapse.title = title
+                            synapse.query = query
+                            synapse.new_links = new_links
+
 
             elif type(synapse) == TargonSearchResult:
-                prompt = self._build_search_result_prompt(query, sources)
+                query = synapse.query
+                sources = synapse.sources
+                context = synapse.context
+
+                prompt = self._build_search_result_prompt(query, sources, context)
                 response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
                 output = self.get_response(prompt, response)
 
@@ -246,9 +327,9 @@ you are an expert at summarizing sources and offering an answer to a question. y
             """
 
             try:
-                prompt = self._build_search_result_prompt(query, sources)
+                prompt = self._build_search_result_prompt(query, sources, context)
 
-                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=True)
+                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=True, synapse=synapse)
                 bt.logging.info('response', response)
 
                 buffer = []
@@ -302,12 +383,12 @@ you are an expert at summarizing sources and offering an answer to a question. y
 
         # message = synapse.messages[0]
         
-        if type(synapse) != TargonQA or type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
+        if type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
             if synapse.stream:
                 token_streamer = partial(_streaming_prompt, prompt)
                 return synapse.create_streaming_response(token_streamer)
             
-        synapse = _prompt(prompt)
+        synapse = await _prompt(synapse)
         return synapse
 
 

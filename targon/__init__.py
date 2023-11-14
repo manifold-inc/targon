@@ -10,7 +10,6 @@ load_dotenv()
 from .miner.search import query as search
 from .miner.search import QueryParams
 
-
 __version__ = "0.4.7"
 version_split = __version__.split(".")
 __spec_version__ = (
@@ -18,3 +17,5 @@ __spec_version__ = (
     + (10 * int(version_split[1]))
     + (1 * int(version_split[2]))
 )
+
+__api_endpoint__ = "https://us-central-02.db.sybil.com"

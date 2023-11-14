@@ -14,45 +14,41 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from inspect import signature, Signature, Parameter
 
 
-class TargonQA( bt.Synapse ):
-    question: str = pydantic.Field(
-        ...,
-        title="Question",
-        description="The question to be asked. Immutable.",
-        allow_mutation=False,
-    )
-    answer: str = pydantic.Field(
-        "",
-        title="Answer",
-        description="The answer to the question. Mutable.",
-    )
-    stream: bool = False
-    max_new_tokens: int = 12
-    repetition_penalty: float = 1.2
-    temperature: float = 0.7
-    top_k: int = 10
-    top_p: float = 0.9
-    required_hash_fields: List[str] = pydantic.Field(
-        ["question"],
-        title="Required Hash Fields",
-        description="A list of required fields for the hash.",
-        allow_mutation=False,
-    )
 
 
 class TargonLinkPrediction( bt.Synapse ):
-    query: str = pydantic.Field(
+    url: str = pydantic.Field(
         ...,
         title="Query",
         description="The query to be asked. Immutable.",
         allow_mutation=False,
     )
-    results: List[dict] = pydantic.Field(
-        [],
-        title="Results",
-        description="The results of the query. Mutable.",
+    full_text: str = pydantic.Field(
+        "",
+        title="Full Text",
+        description="The full text of the page",
+    )
+    query: str = pydantic.Field(
+        "",
+        title="Query",
+        description="The predicted query of the page",
+    )
+    title: str = pydantic.Field(
+        "",
+        title="Title",
+        description="The title of the page",
+    )
+    new_links: List[str] = pydantic.Field(
+        [""],
+        title="New Links",
+        description="The New Links from the page",
     )
     stream: bool = False
+    max_new_tokens: int = 256
+    repetition_penalty: float = 1.2
+    temperature: float = 0.7
+    top_k: int = 10
+    top_p: float = 0.9
     required_hash_fields: List[str] = pydantic.Field(
         ["query"],
         title="Required Hash Fields",
@@ -71,6 +67,11 @@ class TargonSearchResult( bt.Synapse ):
         ...,
         title="Sources",
         description="The sources of the query. Mutable.",
+    )
+    context: List[str] = pydantic.Field(
+        [],
+        title="Context",
+        description="The context of the query. Mutable.",
     )
     completion: str = pydantic.Field(
         "",
@@ -102,6 +103,11 @@ class TargonSearchResultStream( bt.StreamingSynapse ):
         ...,
         title="Sources",
         description="The sources of the query. Mutable.",
+    )
+    context: List[str] = pydantic.Field(
+        [],
+        title="Context",
+        description="The context of the query. Mutable.",
     )
     completion: str = pydantic.Field(
         "",

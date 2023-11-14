@@ -1,11 +1,13 @@
 import time
 import torch
+import pprint
 import random
 import bittensor as bt
 from typing import List
-
+from targon.validator.config import env_config
 from targon.validator import check_uid_availability
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from targon.validator.crawler import VectorController
+from targon.protocol import  TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
     """Returns k available random uids from the metagraph.
@@ -46,47 +48,9 @@ async def fetch(self, synapse, uids):
     responses = await self.dendrite_pool.async_forward(
         uids = uids,
         synapse = synapse,
-        timeout = 12
+        timeout = 20
     )
     return responses
-
-
-async def _qa_forward(self, question: str, uids: List[int]):
-    """Queries a list of uids for a question.
-    Args:
-        question (str): Question to query.
-        uids (torch.LongTensor): Uids to query.
-        timeout (float): Timeout for the query.
-    Returns:
-        responses (List[TargonQA]): List of responses.
-    """
-    # Check if we have any uids to query.
-    qa_synapse = TargonQA(question=question)
-    responses = await fetch(self, qa_synapse, uids)
-
-    bt.logging.info('qa synapse', responses)
-
-    answers = [response.answer for response in responses]
-    return answers
-
-
-
-async def _link_prediction_forward(self, question: str, uids: List[int]):
-    """Queries a list of uids for a question.
-    Args:
-        question (str): Question to query.
-        uids (torch.LongTensor): Uids to query.
-        timeout (float): Timeout for the query.
-    Returns:
-        responses (List[TargonQA]): List of responses.
-    """
-    # Check if we have any uids to query.
-    search_synapse = TargonLinkPrediction( query=question )
-    responses = await fetch( self, search_synapse, uids )
-
-    sources = [response.results for response in responses]
-
-    return sources
 
 
 async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
@@ -117,6 +81,25 @@ def select_qa(self):
     data = next(dataset)
     return data
 
+
+def get_new_link( self ):
+    """
+    Returns a new link from the queue that hasn't been seen before.
+    
+    Args:
+    seen_urls (set): A set of URLs that have already been seen.
+    url_queue (deque): A queue of URLs to be crawled.
+
+    Returns:
+    str: A new link that hasn't been seen before.
+    """
+    while self.url_queue:
+        potential_link = self.url_queue.popleft()
+        if potential_link not in self.seen_urls:
+            self.seen_urls.add(potential_link)
+            return potential_link
+    return None  # Return None if no new link is found
+
 async def forward_fn(self, validation=True, stream=False):
     """Queries a list of uids for a question.
     Args:
@@ -128,51 +111,95 @@ async def forward_fn(self, validation=True, stream=False):
     """
     k = 20
     if validation:
-            uids = get_random_uids(self, k=k).to(self.device)
-            data = select_qa(self)
+        uids = get_random_uids(self, k=k).to(self.device)
+        urls = [get_new_link(self) for _ in range(k)]
+        urls = [url for url in urls if url is not None]
 
-            question = data['question']
-            task = data['task']
-            solution = data['solution']
-            
+        # Crawl the internet
+        link_synapses = [TargonLinkPrediction(url=url) for url in urls]
+        responses = [await self.dendrite_pool.async_forward(
+            uids=[uid],
+            synapse=link_synapse,
+            timeout=12
+        ) for link_synapse, uid in zip(link_synapses, uids)]
 
-            bt.logging.trace('question', question)
-            bt.logging.trace('task', task)
-            bt.logging.trace('solution', solution)
+        # Process and print responses
+        for response, uid in zip(responses, uids):
+            if not response:
+                continue
 
-            # TODO: add support for sources
-            sources = []
-            completions = await _search_result_forward(self, question, sources, uids)
-            bt.logging.info("completions", completions)
+            processed_response = {
+                'uid': uid.item(),
+                'full_text': response[0].full_text,
+                'title': response[0].title,
+                'query': response[0].query,
+                'new_links': response[0].new_links
+            }
 
-            # Compute the rewards for the responses given the prompt.
-            rewards: torch.FloatTensor = torch.zeros(len(completions), dtype=torch.float32).to(self.device)
-            for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-                reward_i, reward_i_normalized = reward_fn_i.apply(question, completions, task, solution)
-                rewards += weight_i * reward_i_normalized.to(self.device)
-                bt.logging.trace(str(reward_fn_i.name), reward_i.tolist())
-                bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
+            if not (processed_response['full_text'] and processed_response['title'] and processed_response['query']):
+                continue
 
-            for masking_fn_i in self.masking_functions:
-                mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task, solution)
-                rewards *= mask_i_normalized.to(self.device)  # includes diversity
-                bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
+            pprint.pprint(processed_response)
 
-            
-            scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
+            # Handle new links
+            unique_new_links = set(processed_response['new_links'])
+            new_unseen_links = unique_new_links - self.seen_urls
+            self.seen_urls.update(new_unseen_links)
+            self.url_queue.extend(new_unseen_links)
 
-            # Update moving_averaged_scores with rewards produced by this step.
-            # shape: [ metagraph.n ]
-            alpha: float = self.config.neuron.moving_average_alpha
-            self.moving_averaged_scores: torch.FloatTensor = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(
-                self.device
-            )
+            # Handle submissions
+            api_key = env_config.get('SYBIL_API_KEY', None)
+            if api_key is not None:
+                embedding = self.embedding_model.encode(processed_response['full_text'])
+                VectorController().submit(processed_response['uid'], processed_response['title'], processed_response['full_text'], processed_response['query'], embedding)
+                bt.logging.debug('submitted url', processed_response['uid'])
+        # validate Search Result responses
+        data = select_qa(self)
 
-            bt.logging.info("rewards", rewards.tolist())
-            for i in range(30):
-                bt.logging.info("sleeping for", i)
-                time.sleep(1)
-            
+        question = data['question']
+        task = data['task']
+        solution = data['solution']
+        
+
+        bt.logging.trace('question', question)
+        bt.logging.trace('task', task)
+        bt.logging.trace('solution', solution)
+
+
+        # Search Result
+        # TODO: add support for sources
+        sources = []
+        completions = await _search_result_forward(self, question, sources, uids)
+        bt.logging.info("completions", completions)
+
+        # Compute the rewards for the responses given the prompt.
+        rewards: torch.FloatTensor = torch.zeros(len(completions), dtype=torch.float32).to(self.device)
+        for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
+            reward_i, reward_i_normalized = reward_fn_i.apply(question, completions, task, solution)
+            rewards += weight_i * reward_i_normalized.to(self.device)
+            bt.logging.trace(str(reward_fn_i.name), reward_i.tolist())
+            bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
+
+        for masking_fn_i in self.masking_functions:
+            mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task, solution)
+            rewards *= mask_i_normalized.to(self.device)  # includes diversity
+            bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
+
+        
+        scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
+
+        # Update moving_averaged_scores with rewards produced by this step.
+        # shape: [ metagraph.n ]
+        alpha: float = self.config.neuron.moving_average_alpha
+        self.moving_averaged_scores: torch.FloatTensor = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(
+            self.device
+        )
+
+        bt.logging.info("rewards", rewards.tolist())
+        for i in range(10):
+            bt.logging.info("sleeping for", i)
+            time.sleep(1)
+        
 
 
 

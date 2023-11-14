@@ -158,8 +158,8 @@ def get_config() -> "bt.Config":
     parser.add_argument(
         "--miner.blacklist.min_request_period",
         type=int,
-        help="Time period (in minute) to serve a maximum of 50 requests for each hotkey",
-        default=5,
+        help="Time period (in minute) to serve a maximum of 100 requests for each hotkey",
+        default=1,
     )
 
     # Priority.

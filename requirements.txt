@@ -2,7 +2,7 @@ bittensor==6.1.0
 torch==2.1.0 # we can now specify 2.1.0 so sm_90 gpus work
 transformers==4.30.0
 wandb==0.15.10
-datasets==2.14.0
+datasets==2.14.6
 plotly==5.14.1
 networkx==3.1
 scipy==1.10.1
@@ -19,3 +19,7 @@ fschat==0.2.31
 google-search-results==2.4.2
 openai==0.28.1
 python-dotenv==1.0.0
+pymilvus==2.3.0
+ray==2.7.0
+beautifulsoup4==4.12.2
+justext==3.0.0

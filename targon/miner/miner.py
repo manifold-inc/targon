@@ -30,7 +30,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple, Union
 
 import bittensor as bt
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from targon.protocol import TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 from targon.miner.priority import priority
 from targon.miner.blacklist import blacklist, is_prompt_in_cache
@@ -113,12 +113,7 @@ class Miner(ABC):
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to axon.")
 
-        # TargonQA
         self.axon.attach(
-            forward_fn=self._prompt_qa,
-            blacklist_fn=self.blacklist_qa,
-            priority_fn=self.priority_qa,
-        ).attach(
             forward_fn=self._prompt_link_prediction,
             blacklist_fn=self.blacklist_link_prediction,
             priority_fn=self.priority_link_prediction,
@@ -183,44 +178,15 @@ class Miner(ABC):
         """
         ...
 
-    def _prompt_qa(self, synapse: TargonQA) -> TargonQA:
-        """
-        A wrapper method around the `prompt` method that will be defined by the subclass.
 
-        This method acts as an intermediary layer to perform pre-processing before calling the
-        actual `prompt` method implemented in the subclass. Specifically, it checks whether a
-        prompt is in cache to avoid reprocessing recent requests. If the prompt is not in the
-        cache, the subclass `prompt` method is called.
-
-        Args:
-            synapse (TargonSearchResultStream): The incoming request object encapsulating the details of the request.
-
-        Returns:
-            TargonSearchResultStream: The response object to be sent back in reply to the incoming request, essentially
-            the filled synapse request object.
-
-        Raises:
-            ValueError: If the prompt is found in the cache indicating it was sent recently.
-
-        Example:
-            This method is not meant to be called directly but is invoked internally when a request
-            is received, and it subsequently calls the `prompt` method of the subclass.
-        """
-        if self.config.miner.blacklist.use_prompt_cache:
-            if is_prompt_in_cache(self, synapse):
-                raise ValueError(
-                    f"Blacklisted: Prompt sent recently in last {self.config.miner.blacklist.prompt_cache_block_span} blocks."
-                )
-        return self.prompt(synapse)
-    
     def _prompt_link_prediction(self, synapse: TargonLinkPrediction) -> TargonLinkPrediction:
-        return self.prompt(synapse)
+        return asyncio.run(self.prompt(synapse))
     
     def _prompt_search_result(self, synapse: TargonSearchResult) -> TargonSearchResult:
-        return self.prompt(synapse)
+        return asyncio.run(self.prompt(synapse))
     
     def _prompt_search_result_stream(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
-        return self.prompt(synapse)
+        return asyncio.run(self.prompt(synapse))
     
 
     @abstractmethod
@@ -249,13 +215,6 @@ class Miner(ABC):
         """
         ...
 
-    def blacklist_qa(self, synapse: TargonQA) -> Tuple[bool, str]:
-
-        def _blacklist(synapse: "TargonSearchResultStream") -> Tuple[bool, str]:
-            raise NotImplementedError("blacklist not implemented in subclass")
-
-        return blacklist(self, _blacklist, synapse)
-    
 
     def blacklist_link_prediction(self, synapse: TargonLinkPrediction) -> Tuple[bool, str]:
             
@@ -303,12 +262,6 @@ class Miner(ABC):
         return blacklist(self, _blacklist, synapse)
     
 
-    def priority_qa(self, synapse: TargonQA) -> float:
-        def _priority(synapse: "TargonSearchResultStream") -> bool:
-            raise NotImplementedError("priority not implemented in subclass")
-
-        return priority(self, _priority, synapse)
-    
     def priority_link_prediction(self, synapse: TargonLinkPrediction) -> float:
         def _priority(synapse: "TargonSearchResultStream") -> bool:
             raise NotImplementedError("priority not implemented in subclass")

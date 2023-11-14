@@ -11,7 +11,7 @@ from starlette.types import Send
 from targon.miner.miner import Miner 
 from targon import search, QueryParams
 from typing import List, Optional, Union, Iterable
-from targon.protocol import TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
+from targon.protocol import TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream
 
 
 
@@ -130,7 +130,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
         prompt = sys_prompt + user_prompt + assistant_prompt
         return prompt
 
-    def prompt(self, synapse: Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonQA, TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
+    def prompt(self, synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
         """
         Generates a streaming response for the provided synapse.
 
@@ -153,10 +153,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
         """
 
 
-        if type(synapse) == TargonQA:
-            question = synapse.question
-            prompt = f"{question}"
-        elif type(synapse) == TargonLinkPrediction:
+        if type(synapse) == TargonLinkPrediction:
             query = synapse.query
             prompt = f"{query}"
         elif type(synapse) == TargonSearchResult:
@@ -190,12 +187,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
                 processing steps or modify how tokens are sent back to the client.
             """
 
-            if type(synapse) == TargonQA:
-                response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False)
-                output = self.get_response(prompt, response)
-                synapse.answer = output
-
-            elif type(synapse) == TargonLinkPrediction:
+            if type(synapse) == TargonLinkPrediction:
                 if self.config.sybil.serp_api_key is None:
                     raise ValueError("SERP API key not set. Please set it in the config file.")
                 params = {
@@ -290,7 +282,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
 
         # message = synapse.messages[0]
         
-        if type(synapse) != TargonQA or type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
+        if type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
             if synapse.stream:
                 token_streamer = partial(_streaming_prompt, prompt)
                 return synapse.create_streaming_response(token_streamer)
