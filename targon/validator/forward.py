@@ -129,9 +129,15 @@ async def forward_fn(self, validation=True, stream=False):
                 queries = [response.query for response in responses]
                 new_links = [response.new_links for response in responses]
 
-                for new_link in new_links:
-                    if new_link not in self.seen_urls:
-                        self.url_queue.append(new_link)
+                # Flatten new_links into a set of unique links
+                unique_new_links = set(link for sublist in new_links for link in sublist)
+
+                # Find new links that haven't been seen
+                new_unseen_links = unique_new_links - self.seen_urls
+
+                # Update seen_urls and url_queue
+                self.seen_urls.update(new_unseen_links)
+                self.url_queue.extend(new_unseen_links)
 
                 api_key = env_config.get('SYBIL_API_KEY', None)
                 if api_key is not None:
