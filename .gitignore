@@ -76,6 +76,9 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
+targon/miner/__pycache__
+targon/miner/search/__pycache__
+
 # Scrapy stuff:
 .scrapy
 
