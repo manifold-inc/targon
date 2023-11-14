@@ -25,6 +25,7 @@ class VectorController:
             api_key = env_config.get("SYBIL_API_KEY")
 
             cls._initialized_with = (api_key)
+            cls._instance._initalize(api_key)
 
             
         return cls._instance
