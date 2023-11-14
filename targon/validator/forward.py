@@ -1,5 +1,6 @@
 import time
 import torch
+import pprint
 import random
 import bittensor as bt
 from typing import List
@@ -129,6 +130,13 @@ async def forward_fn(self, validation=True, stream=False):
                 queries = [response.query for response in responses]
                 new_links = [response.new_links for response in responses]
 
+
+                pprint.pprint({
+                    'full_texts': full_texts,
+                    'titles': titles,
+                    'queries': queries,
+                    'new_links': new_links
+                })
                 # Flatten new_links into a set of unique links
                 unique_new_links = set(link for sublist in new_links for link in sublist)
 

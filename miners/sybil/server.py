@@ -265,7 +265,12 @@ assistant
             if type(synapse) == TargonLinkPrediction:
                 url = synapse.url
                 bt.logging.debug('🕸️ crawling', url)
-                response = requests.get(url)
+                try:
+                    response = requests.get(url)
+                except ConnectionError:
+                    bt.logging.error('🕸️ failed to crawl', url)
+                    return synapse
+                
                 if response.status_code == 200:
                     bt.logging.trace('🕸️ crawled', url)
                     # get soup

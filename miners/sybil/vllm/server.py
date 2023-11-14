@@ -282,7 +282,7 @@ you are an expert at summarizing sources and offering an answer to a question. y
 
         # message = synapse.messages[0]
         
-        if type(synapse) != TargonQA or type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
+        if type(synapse) != TargonLinkPrediction or type(synapse) != TargonSearchResult:
             if synapse.stream:
                 token_streamer = partial(_streaming_prompt, prompt)
                 return synapse.create_streaming_response(token_streamer)
