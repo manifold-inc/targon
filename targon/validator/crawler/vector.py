@@ -50,7 +50,7 @@ class VectorController:
                 'X-API-KEY': self.api_key,
             }
 
-            response = requests.post(__api_endpoint__+"/v1/db/submit", json=params, headers=headers)
+            response = requests.post(__api_endpoint__+"/v1/vector/submit", json=params, headers=headers)
 
             if response.status_code != 200:
                 print(response)
