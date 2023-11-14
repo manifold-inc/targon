@@ -158,53 +158,53 @@ async def forward_fn(self, validation=True, stream=False):
                     bt.logging.debug('submitted url', url)
 
 
-            # validate Search Result responses
-            data = select_qa(self)
+        # validate Search Result responses
+        data = select_qa(self)
 
-            question = data['question']
-            task = data['task']
-            solution = data['solution']
-            
+        question = data['question']
+        task = data['task']
+        solution = data['solution']
+        
 
-            bt.logging.trace('question', question)
-            bt.logging.trace('task', task)
-            bt.logging.trace('solution', solution)
+        bt.logging.trace('question', question)
+        bt.logging.trace('task', task)
+        bt.logging.trace('solution', solution)
 
 
-            # Search Result
-            # TODO: add support for sources
-            sources = []
-            completions = await _search_result_forward(self, question, sources, uids)
-            bt.logging.info("completions", completions)
+        # Search Result
+        # TODO: add support for sources
+        sources = []
+        completions = await _search_result_forward(self, question, sources, uids)
+        bt.logging.info("completions", completions)
 
-            # Compute the rewards for the responses given the prompt.
-            rewards: torch.FloatTensor = torch.zeros(len(completions), dtype=torch.float32).to(self.device)
-            for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-                reward_i, reward_i_normalized = reward_fn_i.apply(question, completions, task, solution)
-                rewards += weight_i * reward_i_normalized.to(self.device)
-                bt.logging.trace(str(reward_fn_i.name), reward_i.tolist())
-                bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
+        # Compute the rewards for the responses given the prompt.
+        rewards: torch.FloatTensor = torch.zeros(len(completions), dtype=torch.float32).to(self.device)
+        for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
+            reward_i, reward_i_normalized = reward_fn_i.apply(question, completions, task, solution)
+            rewards += weight_i * reward_i_normalized.to(self.device)
+            bt.logging.trace(str(reward_fn_i.name), reward_i.tolist())
+            bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
 
-            for masking_fn_i in self.masking_functions:
-                mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task, solution)
-                rewards *= mask_i_normalized.to(self.device)  # includes diversity
-                bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
+        for masking_fn_i in self.masking_functions:
+            mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task, solution)
+            rewards *= mask_i_normalized.to(self.device)  # includes diversity
+            bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
 
-            
-            scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
+        
+        scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
 
-            # Update moving_averaged_scores with rewards produced by this step.
-            # shape: [ metagraph.n ]
-            alpha: float = self.config.neuron.moving_average_alpha
-            self.moving_averaged_scores: torch.FloatTensor = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(
-                self.device
-            )
+        # Update moving_averaged_scores with rewards produced by this step.
+        # shape: [ metagraph.n ]
+        alpha: float = self.config.neuron.moving_average_alpha
+        self.moving_averaged_scores: torch.FloatTensor = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(
+            self.device
+        )
 
-            bt.logging.info("rewards", rewards.tolist())
-            for i in range(30):
-                bt.logging.info("sleeping for", i)
-                time.sleep(1)
-            
+        bt.logging.info("rewards", rewards.tolist())
+        for i in range(30):
+            bt.logging.info("sleeping for", i)
+            time.sleep(1)
+        
 
 
 
