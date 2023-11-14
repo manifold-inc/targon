@@ -131,7 +131,7 @@ async def forward_fn(self, validation=True, stream=False):
 
                 for new_link in new_links:
                     if new_link not in self.seen_urls:
-                        self.url_queue.extend(new_link)
+                        self.url_queue.append(new_link)
 
                 api_key = env_config.get('SYBIL_API_KEY', None)
                 if api_key is not None:
