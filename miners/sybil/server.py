@@ -2,6 +2,7 @@ import os
 import time
 import json
 import torch
+import aiohttp
 import requests
 import argparse
 import bittensor as bt
@@ -243,7 +244,7 @@ assistant
             prompt = f"{query}"
 
         
-        def _prompt(synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
+        async def _prompt(synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
             """
             Asynchronously processes the input text and sends back tokens as a streaming response.
 
@@ -265,36 +266,33 @@ assistant
             if type(synapse) == TargonLinkPrediction:
                 url = synapse.url
                 bt.logging.debug('🕸️ crawling', url)
-                try:
-                    response = requests.get(url)
-                except ConnectionError:
-                    bt.logging.error('🕸️ failed to crawl', url)
-                    return synapse
-                
-                if response.status_code == 200:
-                    bt.logging.trace('🕸️ crawled', url)
-                    # get soup
-                    soup = BeautifulSoup(response.text, 'html.parser')
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        if response.status == 200:
+                            bt.logging.trace('🕸️ crawled', url)
+                            # get soup
+                            text = await response.text()
+                            soup = BeautifulSoup(text, 'html.parser')
 
-                    # get the new links from the page
-                    new_links = []
-                    links = soup.find_all("a")
-                    for link in links:
-                        child_url = link.get("href")
-                        if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
-                            new_links.append(child_url)
+                            # get the new links from the page
+                            new_links = []
+                            links = soup.find_all("a")
+                            for link in links:
+                                child_url = link.get("href")
+                                if child_url and child_url.startswith("http") or child_url and child_url.startswith("https"):
+                                    new_links.append(child_url)
 
-                    # get the text from the page
-                    prompt, markdown_content, title = self.format_link_prediction_prompt(response.text)
+                            # get the text from the page
+                            prompt, markdown_content, title = self.format_link_prediction_prompt(text)
 
-                    # get the summary
-                    response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
-                    query = self.get_response(prompt, response)
+                            # get the summary
+                            response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
+                            query = self.get_response(prompt, response)
 
-                    synapse.full_text = markdown_content
-                    synapse.title = title
-                    synapse.query = query
-                    synapse.new_links = new_links
+                            synapse.full_text = markdown_content
+                            synapse.title = title
+                            synapse.query = query
+                            synapse.new_links = new_links
 
 
             elif type(synapse) == TargonSearchResult:
