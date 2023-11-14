@@ -267,11 +267,11 @@ assistant
                 url = synapse.url
                 bt.logging.debug('🕸️ crawling', url)
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as response:
-                        if response.status == 200:
+                    async with session.get(url) as resp:
+                        if resp.status == 200:
                             bt.logging.trace('🕸️ crawled', url)
                             # get soup
-                            text = await response.text()
+                            text = await resp.text()
                             soup = BeautifulSoup(text, 'html.parser')
 
                             # get the new links from the page
@@ -285,10 +285,7 @@ assistant
                             # get the text from the page
                             prompt, markdown_content, title = self.format_link_prediction_prompt(text)
 
-                            # get the summary
-                            # response = self.post_http_request(prompt, self.config.sybil.api_url, n=1, stream=False, synapse=synapse)
-                            # query = self.get_response(prompt, response)
-                            query = ""
+                            query = "hello world"
 
                             synapse.full_text = markdown_content
                             synapse.title = title
