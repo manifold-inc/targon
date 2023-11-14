@@ -180,13 +180,13 @@ class Miner(ABC):
 
 
     def _prompt_link_prediction(self, synapse: TargonLinkPrediction) -> TargonLinkPrediction:
-        return self.prompt(synapse)
+        return asyncio.run(self.prompt(synapse))
     
     def _prompt_search_result(self, synapse: TargonSearchResult) -> TargonSearchResult:
-        return self.prompt(synapse)
+        return asyncio.run(self.prompt(synapse))
     
     def _prompt_search_result_stream(self, synapse: TargonSearchResultStream) -> TargonSearchResultStream:
-        return self.prompt(synapse)
+        return asyncio.run(self.prompt(synapse))
     
 
     @abstractmethod

@@ -205,7 +205,7 @@ assistant
 '''
         return prompt
 
-    def prompt(self, synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
+    async def prompt(self, synapse: Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]) -> Union[TargonLinkPrediction, TargonSearchResult, TargonSearchResultStream]:
         """
         Generates a streaming response for the provided synapse.
 
@@ -388,7 +388,7 @@ assistant
                 token_streamer = partial(_streaming_prompt, prompt)
                 return synapse.create_streaming_response(token_streamer)
             
-        synapse = _prompt(synapse)
+        synapse = await _prompt(synapse)
         return synapse
 
 
