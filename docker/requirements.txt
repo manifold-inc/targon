@@ -1,3 +1,0 @@
-weaviate-client
-beautifulsoup4
-ruia @ git+https://github.com/howie6879/ruia
