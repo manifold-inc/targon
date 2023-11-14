@@ -4,7 +4,6 @@ import json
 import torch
 import requests
 import argparse
-import html2text
 import bittensor as bt
 from bs4 import BeautifulSoup
 from functools import partial
