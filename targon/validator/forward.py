@@ -75,14 +75,12 @@ async def postprocess_result(self, uid, responses):
         List[str]: List of completions.
     """
     full_response = ""
-    for resp in responses:
-        async for chunk in resp:
-            if isinstance(chunk, str):
-                bt.logging.trace(chunk)
-                full_response += chunk
+    async for resp in responses:
+        full_response += resp
         bt.logging.debug(f"full_response for uid {uid}: {full_response}")
         break
     return uid, full_response
+
 def select_qa(self):
     '''Returns a question from the different tasks
     
