@@ -66,11 +66,9 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
     # Check if we have any uids to query.
     search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
     top_k_axons = [self.metagraph.axons[uid] for uid in uids]
-    results = [asyncio.create_task(self.dendrite(axons=[axon], synapse=search_synapse, timeout=12, streaming=True)) for axon in top_k_axons]
+    tasks = [asyncio.create_task(self.dendrite(axons=[axon], synapse=search_synapse, timeout=12, streaming=True)) for axon in top_k_axons]
 
-    done, pending = await asyncio.wait(results, timeout=12, return_when=asyncio.FIRST_COMPLETED)
-
-    completions = [response.result() for response in done]
+    completions = await asyncio.gather(*tasks)
 
     return completions
 
