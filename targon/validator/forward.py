@@ -46,40 +46,31 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
 
 
 async def fetch(self, synapse, axon, uid):
-    responses = await self.dendrite([axon], synapse, timeout=12, streaming=True)
-    return await postprocess_result(self, uid, responses)
-
+    try:
+        responses = await self.dendrite([axon], synapse, timeout=12, streaming=True)
+        return await postprocess_result(self, uid, responses)
+    except Exception as e:
+        # Handle or log the exception
+        return uid, str(e)
 
 async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
-    """Queries a list of uids for a question.
-    Args:
-        question (str): Question to query.
-        uids (torch.LongTensor): Uids to query.
-        timeout (float): Timeout for the query.
-    Returns:
-        responses (List[TargonQA]): List of responses.
-    """
-    # Check if we have any uids to query.
-    search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
+    search_synapse = TargonSearchResultStream(query=question, sources=sources, stream=True)
     axons = [self.metagraph.axons[uid] for uid in uids]
-    tasks = [fetch(self, search_synapse, axon, uid) for uid, axon in zip(uids, axons)]
+    tasks = [asyncio.create_task(fetch(self, search_synapse, axon, uid)) for uid, axon in zip(uids, axons)]
     full_responses = await asyncio.gather(*tasks)
-
     return full_responses
 
 async def postprocess_result(self, uid, responses):
-    """Post-processes the result from the model.
-    Args:
-        result (List[Dict[str, Any]]): List of dictionaries containing the model's output.
-    Returns:
-        List[str]: List of completions.
-    """
     full_response = ""
-    async for resp in responses:
-        full_response += resp
-        bt.logging.debug(f"full_response for uid {uid}: {full_response}")
-        break
+    try:
+        async for resp in responses:
+            full_response += resp
+        # Consider adding logging here, if necessary
+    except Exception as e:
+        # Handle or log the exception
+        full_response = str(e)
     return uid, full_response
+
 
 def select_qa(self):
     '''Returns a question from the different tasks
