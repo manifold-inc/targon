@@ -45,31 +45,23 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
     return uids
 
 
-async def fetch(self, synapse, axon, uid):
-    try:
-        responses = await self.dendrite([axon], synapse, timeout=12, streaming=True)
-        return await postprocess_result(self, uid, responses)
-    except Exception as e:
-        # Handle or log the exception
-        return uid, str(e)
+async def search(self, synapse, axons):
+    tasks = [asyncio.create_task(self.dendrite(axons=[axon], synapse=synapse, timeout=60, streaming=True)) for axon in axons]    
+    return await asyncio.gather(*tasks)
 
 async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
     search_synapse = TargonSearchResultStream(query=question, sources=sources, stream=True)
     axons = [self.metagraph.axons[uid] for uid in uids]
-    tasks = [asyncio.create_task(fetch(self, search_synapse, axon, uid)) for uid, axon in zip(uids, axons)]
-    full_responses = await asyncio.gather(*tasks)
+    search_results = await self.search(search_synapse, axons)
+
+    full_responses = [await self.postprocess_result(result) for result in search_results]
     return full_responses
 
-async def postprocess_result(self, uid, responses):
+async def postprocess_result(self, search_result):
     full_response = ""
-    try:
-        async for resp in responses:
-            full_response += resp
-        # Consider adding logging here, if necessary
-    except Exception as e:
-        # Handle or log the exception
-        full_response = str(e)
-    return uid, full_response
+    async for response_chunk in search_result:
+        full_response += response_chunk
+    return full_response
 
 
 def select_qa(self):
