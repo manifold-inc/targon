@@ -57,7 +57,7 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
     full_responses = [await postprocess_result(self, result) for result in search_results]
     return full_responses
 
-async def postprocess_result(self, uid, responses):
+async def postprocess_result(self, responses):
     full_response = ""
     async for resp in responses:
         # Check if the response is a string
@@ -65,10 +65,8 @@ async def postprocess_result(self, uid, responses):
             bt.logging.trace(resp)  # Logging the response
             full_response += resp  # Concatenating the response chunk
         else:
-            bt.logging.debug(f"response for uid {uid}: {resp}")
             full_response += "error"
-    bt.logging.debug(f"full_response for uid {uid}: {full_response}")
-    return uid, full_response
+    return full_response
 
 def select_qa(self):
     '''Returns a question from the different tasks
