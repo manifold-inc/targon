@@ -48,7 +48,7 @@ async def fetch(self, synapse, uids):
     responses = await self.dendrite_pool.async_forward(
         uids = uids,
         synapse = synapse,
-        timeout = 20
+        timeout = 10
     )
     return responses
 
@@ -63,7 +63,7 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
         responses (List[TargonQA]): List of responses.
     """
     # Check if we have any uids to query.
-    search_synapse = TargonSearchResult( query=question, sources=sources )
+    search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
     responses = await fetch( self, search_synapse, uids )
 
     completions = [response.completion for response in responses]
