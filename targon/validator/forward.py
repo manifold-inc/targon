@@ -45,13 +45,9 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
     return uids
 
 
-async def fetch(self, synapse, uids):
-    responses = await self.dendrite_pool.async_forward(
-        uids = uids,
-        synapse = synapse,
-        timeout = 10
-    )
-    return responses
+async def fetch(self, synapse, axon, uid):
+    responses = await self.dendrite([axon], synapse, timeout=12, streaming=True)
+    return await postprocess_result(self, uid, responses)
 
 
 async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
@@ -65,22 +61,28 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
     """
     # Check if we have any uids to query.
     search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
-    top_k_axons = [self.metagraph.axons[uid] for uid in uids]
-    tasks = [asyncio.create_task(self.dendrite(axons=[axon], synapse=search_synapse, timeout=12, streaming=True)) for axon in top_k_axons]
-
-    completions = await asyncio.gather(*tasks)
-
-    full_responses = []
-    for uid, resp in zip(uids, completions):
-        full_response = ""
-        async for chunk in resp:
-            if isinstance(chunk, str):
-                full_response += chunk
-        full_responses.append(full_response)
+    axons = [self.metagraph.axons[uid] for uid in uids]
+    tasks = [fetch(self, search_synapse, [uid]) for uid in uids]
+    full_responses = await asyncio.gather(*tasks)
 
     return full_responses
 
-
+async def postprocess_result(self, uid, responses):
+    """Post-processes the result from the model.
+    Args:
+        result (List[Dict[str, Any]]): List of dictionaries containing the model's output.
+    Returns:
+        List[str]: List of completions.
+    """
+    full_response = ""
+    for resp in responses:
+        async for chunk in resp:
+            if isinstance(chunk, str):
+                bt.logging.trace(chunk)
+                full_response += chunk
+        bt.logging.debug(f"full_response for uid {uid}: {full_response}")
+        break
+    return uid, full_response
 def select_qa(self):
     '''Returns a question from the different tasks
     
