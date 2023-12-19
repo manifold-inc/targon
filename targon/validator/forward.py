@@ -52,7 +52,7 @@ async def search(self, synapse, axons):
 async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
     search_synapse = TargonSearchResultStream(query=question, sources=sources, stream=True)
     axons = [self.metagraph.axons[uid] for uid in uids]
-    search_results = await self.search(search_synapse, axons)
+    search_results = await search(self, search_synapse, axons)
 
     full_responses = [await self.postprocess_result(result) for result in search_results]
     return full_responses
