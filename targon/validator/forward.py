@@ -70,7 +70,15 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
 
     completions = await asyncio.gather(*tasks)
 
-    return completions
+    full_responses = []
+    for uid, resp in zip(uids, completions):
+        full_response = ""
+        async for chunk in resp:
+            if isinstance(chunk, str):
+                full_response += chunk
+        full_responses.append(full_response)
+
+    return full_responses
 
 
 def select_qa(self):
