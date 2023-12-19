@@ -54,7 +54,7 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
     axons = [self.metagraph.axons[uid] for uid in uids]
     search_results = await search(self, search_synapse, axons)
 
-    full_responses = [await self.postprocess_result(result) for result in search_results]
+    full_responses = [await postprocess_result(self, result) for result in search_results]
     return full_responses
 
 async def postprocess_result(self, search_result):
