@@ -62,7 +62,7 @@ async def _search_result_forward(self, question: str, sources: List[dict], uids:
     # Check if we have any uids to query.
     search_synapse = TargonSearchResultStream( query=question, sources=sources, stream=True )
     axons = [self.metagraph.axons[uid] for uid in uids]
-    tasks = [fetch(self, search_synapse, [uid]) for uid in uids]
+    tasks = [fetch(self, search_synapse, axon, uid) for uid, axon in zip(uids, axons)]
     full_responses = await asyncio.gather(*tasks)
 
     return full_responses
