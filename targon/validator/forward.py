@@ -2,6 +2,7 @@ import time
 import torch
 import pprint
 import random
+import asyncio
 import bittensor as bt
 from typing import List
 from targon.validator.config import env_config
@@ -44,32 +45,28 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
     return uids
 
 
-async def fetch(self, synapse, uids):
-    responses = await self.dendrite_pool.async_forward(
-        uids = uids,
-        synapse = synapse,
-        timeout = 20
-    )
-    return responses
-
+async def search(self, synapse, axons):
+    tasks = [asyncio.create_task(self.dendrite(axons=[axon], synapse=synapse, timeout=60, streaming=True)) for axon in axons]    
+    return await asyncio.gather(*tasks)
 
 async def _search_result_forward(self, question: str, sources: List[dict], uids: List[int]):
-    """Queries a list of uids for a question.
-    Args:
-        question (str): Question to query.
-        uids (torch.LongTensor): Uids to query.
-        timeout (float): Timeout for the query.
-    Returns:
-        responses (List[TargonQA]): List of responses.
-    """
-    # Check if we have any uids to query.
-    search_synapse = TargonSearchResult( query=question, sources=sources )
-    responses = await fetch( self, search_synapse, uids )
+    search_synapse = TargonSearchResultStream(query=question, sources=sources, stream=True)
+    axons = [self.metagraph.axons[uid] for uid in uids]
+    search_results = await search(self, search_synapse, axons)
 
-    completions = [response.completion for response in responses]
+    full_responses = [await postprocess_result(self, result) for result in search_results]
+    return full_responses
 
-    return completions
-
+async def postprocess_result(self, responses):
+    full_response = ""
+    async for resp in responses:
+        # Check if the response is a string
+        if isinstance(resp, str):
+            bt.logging.trace(resp)  # Logging the response
+            full_response += resp  # Concatenating the response chunk
+        else:
+            full_response += "error"
+    return full_response
 
 def select_qa(self):
     '''Returns a question from the different tasks

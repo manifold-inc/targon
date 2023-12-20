@@ -170,7 +170,7 @@ class neuron:
 
 
         self.dendrite_pool = AsyncDendritePool(wallet=self.wallet, metagraph=self.metagraph)
-
+        self.dendrite = TargonDendrite(wallet=self.wallet)
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
 
