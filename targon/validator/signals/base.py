@@ -78,7 +78,7 @@ class BaseRewardModel:
         successful_completions: List[str] = [ responses[idx].strip() for idx in successful_completions_indices]
 
         # Reward each completion.
-        successful_rewards = self.get_rewards( prompt, successful_completions, name, solution )
+        successful_rewards = self.get_rewards( prompt, successful_completions )
 
         # Softmax rewards across samples.
         successful_rewards_normalized = self.normalize_rewards( successful_rewards )

@@ -78,24 +78,22 @@ def select_qa(self):
     data = next(dataset)
     return data
 
-
-def get_new_link( self ):
-    """
-    Returns a new link from the queue that hasn't been seen before.
+def generate_system_response(self, question):
+    '''Generates a system response based on the task and solution
     
-    Args:
-    seen_urls (set): A set of URLs that have already been seen.
-    url_queue (deque): A queue of URLs to be crawled.
+    '''
+    output = self.model.generate(
+        self.tokenizer.encode(question, return_tensors="pt").to(self.device),
+        do_sample=True,
+        max_length=512,
+        top_k=50,
+        top_p=0.95,
+        num_return_sequences=1,
+    )
 
-    Returns:
-    str: A new link that hasn't been seen before.
-    """
-    while self.url_queue:
-        potential_link = self.url_queue.popleft()
-        if potential_link not in self.seen_urls:
-            self.seen_urls.add(potential_link)
-            return potential_link
-    return None  # Return None if no new link is found
+    system_response = self.tokenizer.decode(output[0], skip_special_tokens=True)
+    return system_response
+
 
 async def forward_fn(self, validation=True, stream=False):
     """Queries a list of uids for a question.
@@ -109,47 +107,7 @@ async def forward_fn(self, validation=True, stream=False):
     k = 20
     if validation:
         uids = get_random_uids(self, k=k).to(self.device)
-        urls = [get_new_link(self) for _ in range(k)]
-        urls = [url for url in urls if url is not None]
 
-        # Crawl the internet
-        link_synapses = [TargonLinkPrediction(url=url) for url in urls]
-        responses = [await self.dendrite_pool.async_forward(
-            uids=[uid],
-            synapse=link_synapse,
-            timeout=12
-        ) for link_synapse, uid in zip(link_synapses, uids)]
-
-        # Process and print responses
-        for response, uid in zip(responses, uids):
-            if not response:
-                continue
-
-            processed_response = {
-                'uid': uid.item(),
-                'full_text': response[0].full_text,
-                'title': response[0].title,
-                'query': response[0].query,
-                'new_links': response[0].new_links
-            }
-
-            if not (processed_response['full_text'] and processed_response['title'] and processed_response['query']):
-                continue
-
-            pprint.pprint(processed_response)
-
-            # Handle new links
-            unique_new_links = set(processed_response['new_links'])
-            new_unseen_links = unique_new_links - self.seen_urls
-            self.seen_urls.update(new_unseen_links)
-            self.url_queue.extend(new_unseen_links)
-
-            # Handle submissions
-            api_key = env_config.get('SYBIL_API_KEY', None)
-            if api_key is not None:
-                embedding = self.embedding_model.encode(processed_response['full_text'])
-                VectorController().submit(processed_response['uid'], processed_response['title'], processed_response['full_text'], processed_response['query'], embedding)
-                bt.logging.debug('submitted url', processed_response['uid'])
         # validate Search Result responses
         data = select_qa(self)
 
@@ -157,7 +115,7 @@ async def forward_fn(self, validation=True, stream=False):
         task = data['task']
         solution = data['solution']
         
-
+        system_response = generate_system_response(self, question)
         bt.logging.trace('question', question)
         bt.logging.trace('task', task)
         bt.logging.trace('solution', solution)
@@ -172,17 +130,17 @@ async def forward_fn(self, validation=True, stream=False):
         # Compute the rewards for the responses given the prompt.
         rewards: torch.FloatTensor = torch.zeros(len(completions), dtype=torch.float32).to(self.device)
         for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-            reward_i, reward_i_normalized = reward_fn_i.apply(question, completions, task, solution)
+            reward_i, reward_i_normalized = reward_fn_i.apply(system_response, completions)
             rewards += weight_i * reward_i_normalized.to(self.device)
             bt.logging.trace(str(reward_fn_i.name), reward_i.tolist())
             bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
 
         for masking_fn_i in self.masking_functions:
-            mask_i, mask_i_normalized = masking_fn_i.apply(question, completions, task, solution)
+            mask_i, mask_i_normalized = masking_fn_i.apply(question, completions)
             rewards *= mask_i_normalized.to(self.device)  # includes diversity
             bt.logging.trace(str(masking_fn_i.name), mask_i_normalized.tolist())
 
-        
+
         scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
 
         # Update moving_averaged_scores with rewards produced by this step.
