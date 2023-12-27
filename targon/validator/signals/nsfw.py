@@ -36,7 +36,7 @@ class NSFWRewardModel( BaseRewardModel ):
         self.tokenizer = AutoTokenizer.from_pretrained( NSFWRewardModel.nsfw_filter_model_path )
         self.model = AutoModelForSequenceClassification.from_pretrained( NSFWRewardModel.nsfw_filter_model_path ).to(self.device)
 
-    def reward( self, prompt: str, completion: str, name: str ) -> float:
+    def reward( self, prompt: str, completion: str ) -> float:
 
         boundary = -0.5
         with torch.no_grad():
@@ -60,8 +60,8 @@ class NSFWRewardModel( BaseRewardModel ):
             # 0 when needs to be filtered out, 1 when it is safe
             return 0.0 if sum_nsfw_scores( input_ids, chunk_size = 512 ) > boundary else 1.0
         
-    def get_rewards( self, prompt: str, completions: List[str], name: str, solution: str ) -> torch.FloatTensor:
-        return torch.tensor( [self.reward( prompt, completion, name ) for completion in completions], dtype=torch.float32).to(self.device)
+    def get_rewards( self, prompt: str, completions: List[str] ) -> torch.FloatTensor:
+        return torch.tensor( [self.reward( prompt, completion ) for completion in completions], dtype=torch.float32).to(self.device)
 
     def normalize_rewards( self, rewards: torch.FloatTensor ) -> torch.FloatTensor:
         return rewards
