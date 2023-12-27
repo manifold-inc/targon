@@ -108,7 +108,7 @@ async def forward_fn(self, validation=True, stream=False):
     Returns:
         responses (List[TargonQA]): List of responses.
     """
-    k = 20
+    k = 1 # TODO: change before release. for testing purposes only
     if validation:
         uids = get_random_uids(self, k=k).to(self.device)
 

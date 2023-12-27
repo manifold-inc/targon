@@ -12,7 +12,7 @@ class BaseRewardModel:
     def __repr__(self) -> str: return str(self.name)
 
     @abstractmethod
-    def get_rewards( self, prompt: str, completion: List[str], name: str ) -> torch.FloatTensor: ...
+    def get_rewards( self, prompt: str, completion: List[str] ) -> torch.FloatTensor: ...
 
     def __init__(self) -> None:
         self.count = 0
@@ -67,7 +67,7 @@ class BaseRewardModel:
 
         return rewards
 
-    def apply( self, prompt: str, responses: List[ str ], name: str, solution: str) -> torch.FloatTensor:
+    def apply( self, prompt: str, responses: List[ str ]) -> torch.FloatTensor:
         """ Applies the reward model across each call. Unsuccessful responses are zeroed.
         """
         # Get indices of correctly responding calls.

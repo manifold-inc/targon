@@ -161,13 +161,13 @@ class RelevanceRewardModel( BaseRewardModel ):
         ]
         self.bounds = [-0.0246, 0.3]
 
-    def get_rewards( self, prompt: str, completions: List[str], name: str, solution: str ) -> torch.FloatTensor:
-        return torch.tensor( [self.reward( prompt, completion, name ) for completion in completions], dtype=torch.float32).to(self.device)
+    def get_rewards( self, prompt: str, completions: List[str] ) -> torch.FloatTensor:
+        return torch.tensor( [self.reward( prompt, completion ) for completion in completions], dtype=torch.float32).to(self.device)
     
     def normalize_rewards( self, rewards: torch.FloatTensor ) -> torch.FloatTensor:
         return rewards
     
-    def reward(self, prompt: str, completion: str, name: str) -> float:
+    def reward(self, prompt: str, completion: str) -> float:
         for i, model in enumerate(self.models):
 
             # rewards
