@@ -20,52 +20,34 @@ class BaseRewardModel:
         self.var = 0.0
         self.count_limit = 3000
 
-    def normalize_rewards( self, rewards: torch.FloatTensor ) -> torch.FloatTensor:
-        """
-            This method normalizes the given rewards by updating the moving mean and variance statistics. The rewards are first standardized, and then scaled to the 0-1 range using a cumulative distribution function (CDF) to ensure they're in a comparable range across different environments.
-
-            Args:
-            rewards (torch.FloatTensor): The reward values to be normalized.
-
-            Returns:
-            torch.FloatTensor: The normalized reward values.
-
-            Note:
-            - This function uses Welford's online algorithm to update the mean and variance.
-            - It standardizes the reward values using the updated mean and variance.
-            - It then scales the standardized values to the 0-1 range using the error function (erf) as a CDF.
-        """        
-        # Get the number of rewards (successful responses).
-        new_count = rewards.numel()
-
+    def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
         # Update stats only if there are new rewards.
-        if 0 < new_count and 0 < self.count + new_count:
-            # Calculate the mean and standard deviation of the new rewards.
+        new_count = rewards.numel()
+        if new_count > 0 and self.count + new_count > 0:
             new_mean = rewards.mean()
             new_var = rewards.var(dim=0)
-
-            # Compute the weights for the new and old rewards.
             new_weight = new_count / (self.count + new_count)
             old_weight = self.count / (self.count + new_count)
-
-            # Save the difference in means before updating the old mean.
             diff = new_mean - self.mean
-
-            # Update the old mean with the new mean and weights.
             self.mean = new_weight * new_mean + old_weight * self.mean
-            # Update the old variance with the new variance and weights, and adjusting for the difference in means.
             self.var = (new_weight * new_var) + (old_weight * self.var) + (new_weight * old_weight) * diff * diff
-            # Update the old count with the new count, but don't exceed the limit.
             self.count = min(self.count_limit, self.count + new_count)
 
-        # Standardize the rewards using the updated mean and variance.
-        rewards = rewards - self.mean
+        # Standardize the rewards.
+        standardized_rewards = rewards - self.mean
         if self.var > 0:
-            rewards /= torch.sqrt(self.var)
-        # Scale the standardized rewards to the range [0, 1] using the error function as a cumulative distribution function (CDF).
-        rewards = 0.5 * (1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device)))
+            standardized_rewards /= torch.sqrt(self.var)
 
-        return rewards
+        # Apply Pareto transformation to the standardized rewards.
+        pareto_scale = 1  # Minimum value (scale parameter of Pareto distribution)
+        pareto_shape = 3  # Shape parameter (alpha)
+        # Transform to Pareto distribution
+        pareto_rewards = pareto_scale / torch.pow(torch.abs(standardized_rewards), 1/pareto_shape)
+
+        # Normalize to 0-1 range
+        pareto_rewards_normalized = (pareto_rewards - pareto_rewards.min()) / (pareto_rewards.max() - pareto_rewards.min())
+
+        return pareto_rewards_normalized
 
     def apply( self, prompt: str, responses: List[ str ]) -> torch.FloatTensor:
         """ Applies the reward model across each call. Unsuccessful responses are zeroed.

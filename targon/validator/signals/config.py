@@ -23,7 +23,10 @@ class RewardModelType(Enum):
     faith = 'faith_reward_signal'
     diversity = 'diversity_reward_signal'
     nsfw = 'nsfw_filter'
-    relevance = 'relevance_filter'
+    primary_relevance_ = 'primary_relevance_signal'
+    redundant_relevance = 'redundant_relevance_signal'
+    primary_relevance_filter = 'primary_relevance_filter'
+    redundant_relevance_filter = 'redundant_relevance_filter'
 
 
 @dataclass(frozen=True)

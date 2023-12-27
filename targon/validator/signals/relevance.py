@@ -51,7 +51,7 @@ def mean_pooling(model_output, attention_mask):
 class RelevanceRewardSignal( BaseRewardModel ):
 
     @property
-    def name(self) -> str: return RewardModelType.relevance.value
+    def name(self) -> str: return RewardModelType.primary_relevance_.value
    
     def __init__( self, device: str ):
         super().__init__()
@@ -151,7 +151,7 @@ class BertRelevanceRewardSignal( BaseRewardModel ):
 class RelevanceRewardModel( BaseRewardModel ):
 
     @property
-    def name(self) -> str: return RewardModelType.relevance.value
+    def name(self) -> str: return RewardModelType.primary_relevance_filter.value
    
     def __init__( self, device: str ):
         super().__init__()
