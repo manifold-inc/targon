@@ -1,6 +1,6 @@
 bittensor==6.1.0
 torch==2.1.0 # we can now specify 2.1.0 so sm_90 gpus work
-transformers==4.30.0
+transformers==4.36.2
 wandb==0.15.10
 datasets==2.14.6
 plotly==5.14.1

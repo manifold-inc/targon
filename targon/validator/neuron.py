@@ -61,13 +61,6 @@ class neuron:
         # check if needs an update
         autoupdate()
 
-        # urls
-        self.seen_urls = set()
-
-        bt.logging.info('loading the', "iniital links")
-        self.url_queue = collections.deque(get_inital_links())
-
-
         # Init device.
         bt.logging.debug("loading", "device")
         self.device = torch.device(self.config.neuron.device)
@@ -139,7 +132,7 @@ class neuron:
         ).to(self.device)
 
         self.model = AutoModelForCausalLM.from_pretrained("upstage/SOLAR-10.7B-Instruct-v1.0").to(self.device)
-        self.tokenizer = AutoTokenizer.from_pretrained("upstage/SOLAR-10.7B-Instruct-v1.0").to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained("upstage/SOLAR-10.7B-Instruct-v1.0")
 
         self.reward_functions = [
             RelevanceRewardSignal(device=self.device),

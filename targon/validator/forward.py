@@ -80,19 +80,23 @@ def select_qa(self):
 
 def generate_system_response(self, question):
     '''Generates a system response based on the task and solution
-    
-    '''
-    output = self.model.generate(
-        self.tokenizer.encode(question, return_tensors="pt").to(self.device),
-        do_sample=True,
-        max_length=512,
-        top_k=50,
-        top_p=0.95,
-        num_return_sequences=1,
-    )
+        # Conducting Single-Turn Conversation
+            conversation = [ {'role': 'user', 'content': 'Hello?'} ] 
 
-    system_response = self.tokenizer.decode(output[0], skip_special_tokens=True)
-    return system_response
+            prompt = tokenizer.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
+
+            inputs = tokenizer(prompt, return_tensors="pt").to(model.device) 
+            outputs = model.generate(**inputs, use_cache=True, max_length=4096)
+            output_text = tokenizer.decode(outputs[0]) 
+            print(output_text)
+    '''
+    conversation = [ {'role': 'user', 'content': question} ]
+    prompt = self.tokenizer.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
+    inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+    outputs = self.model.generate(**inputs, use_cache=True, max_length=4096)
+    output_text = self.tokenizer.decode(outputs[0])
+    return output_text
+
 
 
 async def forward_fn(self, validation=True, stream=False):
