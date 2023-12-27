@@ -131,7 +131,12 @@ class neuron:
             dtype=torch.float32,
         ).to(self.device)
 
-        self.model = AutoModelForCausalLM.from_pretrained("upstage/SOLAR-10.7B-Instruct-v1.0").to(self.device)
+        self.model = AutoModelForCausalLM.from_pretrained(
+                "upstage/SOLAR-10.7B-Instruct-v1.0",
+                return_dict=True,
+                torch_dtype=torch.float16,
+                device_map='auto'
+        )
         self.tokenizer = AutoTokenizer.from_pretrained("upstage/SOLAR-10.7B-Instruct-v1.0")
 
         self.reward_functions = [
