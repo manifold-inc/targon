@@ -58,7 +58,7 @@ class RelevanceRewardSignal( BaseRewardModel ):
         self.device = device
         self.models = [
             BertRelevanceRewardSignal(self.device),
-            TfidfCosineSimilaritySignal()
+            TfidfCosineSimilaritySignal(self.device)
        ]
         self.bounds = [-0.0246, 0.001]
 
