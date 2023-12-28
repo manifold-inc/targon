@@ -39,8 +39,8 @@ class BaseRewardModel:
             standardized_rewards /= torch.sqrt(self.var)
 
         # Desired range
-        min_desired = 0.01
-        max_desired = 0.99
+        min_desired = 0.2
+        max_desired = 0.8
 
         # Find the min and max in the current rewards
         min_current = rewards.min()
