@@ -81,6 +81,9 @@ class BaseRewardModel:
         # Softmax rewards across samples.
         successful_rewards_normalized = self.normalize_rewards( successful_rewards )
 
+        successful_rewards = standardization_transformation(successful_rewards)
+        successful_rewards_normalized = standardization_transformation(successful_rewards_normalized)
+        
         # Init zero rewards for all calls.
         filled_rewards = torch.ones( len( responses ), dtype=torch.float32) * torch.nan
         filled_rewards_normalized = torch.zeros( len( responses ), dtype=torch.float32)
@@ -91,8 +94,6 @@ class BaseRewardModel:
             filled_rewards[idx] = reward
             filled_rewards_normalized[idx] = reward_normalized
 
-        filled_rewards = standardization_transformation(filled_rewards)
-        filled_rewards_normalized = standardization_transformation(filled_rewards_normalized)
         # Return the filled rewards.
         return filled_rewards, filled_rewards_normalized
 
