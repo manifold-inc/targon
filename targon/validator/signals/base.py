@@ -51,8 +51,20 @@ class BaseRewardModel:
 
         # Scale to the desired range
         scaled_rewards = normalized_rewards * (max_desired - min_desired) + min_desired
+        def standardization_transformation(rewards):
+            # Standardization
+            standardized_rewards = (rewards - rewards.mean()) / rewards.std()
 
-        return scaled_rewards
+            # Min-Max scaling to the range [0, 1]
+            min_val = standardized_rewards.min()
+            max_val = standardized_rewards.max()
+            min_max_scaled_rewards = (standardized_rewards - min_val) / (max_val - min_val)
+
+            return min_max_scaled_rewards
+
+
+
+        return standardization_transformation(scaled_rewards)
 
     def apply( self, prompt: str, responses: List[ str ]) -> torch.FloatTensor:
         """ Applies the reward model across each call. Unsuccessful responses are zeroed.
