@@ -38,16 +38,21 @@ class BaseRewardModel:
         if self.var > 0:
             standardized_rewards /= torch.sqrt(self.var)
 
-        # Apply Pareto transformation to the standardized rewards.
-        pareto_scale = 1  # Minimum value (scale parameter of Pareto distribution)
-        pareto_shape = 3  # Shape parameter (alpha)
-        # Transform to Pareto distribution
-        pareto_rewards = pareto_scale / torch.pow(torch.abs(standardized_rewards), 1/pareto_shape)
+        # Desired range
+        min_desired = 0.01
+        max_desired = 0.99
 
-        # Normalize to 0-1 range
-        pareto_rewards_normalized = (pareto_rewards - pareto_rewards.min()) / (pareto_rewards.max() - pareto_rewards.min())
+        # Find the min and max in the current rewards
+        min_current = rewards.min()
+        max_current = rewards.max()
 
-        return pareto_rewards_normalized
+        # Normalize the rewards to the 0-1 range
+        normalized_rewards = (rewards - min_current) / (max_current - min_current)
+
+        # Scale to the desired range
+        scaled_rewards = normalized_rewards * (max_desired - min_desired) + min_desired
+
+        return scaled_rewards
 
     def apply( self, prompt: str, responses: List[ str ]) -> torch.FloatTensor:
         """ Applies the reward model across each call. Unsuccessful responses are zeroed.
