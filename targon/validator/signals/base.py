@@ -40,7 +40,7 @@ class BaseRewardModel:
 
         # Desired range
         min_desired = 0.2
-        max_desired = 0.8
+        max_desired = 8.0
 
         # Find the min and max in the current rewards
         min_current = rewards.min()
