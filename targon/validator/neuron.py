@@ -141,7 +141,6 @@ class neuron:
 
         self.reward_functions = [
             RelevanceRewardSignal(device=self.device),
-            TfidfCosineSimilaritySignal(device=self.device),
         ]
 
         relevance_model = (
