@@ -51,6 +51,15 @@ class BaseRewardModel:
 
         # Scale to the desired range
         scaled_rewards = normalized_rewards * (max_desired - min_desired) + min_desired
+
+
+
+        return scaled_rewards
+
+    def apply( self, prompt: str, responses: List[ str ]) -> torch.FloatTensor:
+        """ Applies the reward model across each call. Unsuccessful responses are zeroed.
+        """
+        # Get indices of correctly responding calls.
         def standardization_transformation(rewards):
             # Standardization
             standardized_rewards = (rewards - rewards.mean()) / rewards.std()
@@ -61,16 +70,6 @@ class BaseRewardModel:
             min_max_scaled_rewards = (standardized_rewards - min_val) / (max_val - min_val)
 
             return min_max_scaled_rewards
-
-
-
-        return standardization_transformation(scaled_rewards)
-
-    def apply( self, prompt: str, responses: List[ str ]) -> torch.FloatTensor:
-        """ Applies the reward model across each call. Unsuccessful responses are zeroed.
-        """
-        # Get indices of correctly responding calls.
-        
         successful_completions_indices: List[int] = [ idx for idx, resp in enumerate(responses) if resp != "" ]
 
         # Get all completions from responding calls.
@@ -86,11 +85,14 @@ class BaseRewardModel:
         filled_rewards = torch.ones( len( responses ), dtype=torch.float32) * torch.nan
         filled_rewards_normalized = torch.zeros( len( responses ), dtype=torch.float32)
 
+
         # Fill reward tensor.
         for idx, reward, reward_normalized in zip(successful_completions_indices, successful_rewards, successful_rewards_normalized):
             filled_rewards[idx] = reward
             filled_rewards_normalized[idx] = reward_normalized
 
+        filled_rewards = standardization_transformation(filled_rewards)
+        filled_rewards_normalized = standardization_transformation(filled_rewards_normalized)
         # Return the filled rewards.
         return filled_rewards, filled_rewards_normalized
 
