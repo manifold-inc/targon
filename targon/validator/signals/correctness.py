@@ -87,7 +87,7 @@ class CorrectnessRewardSignal(BaseRewardModel):
             if denominator == 0:
                 return 0.0  # or some other default value
 
-            score = (p_no / denominator - 0.5) * 10
+            score = (p_yes / denominator - 0.5) * 10
             if np.isnan(score):
                 return 0.0
             return float(score)

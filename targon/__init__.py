@@ -10,7 +10,7 @@ load_dotenv()
 from .miner.search import query as search
 from .miner.search import QueryParams
 
-__version__ = "0.5.1"
+__version__ = "0.5.3"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
