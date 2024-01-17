@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  model_endpoint:
+    image: ghcr.io/huggingface/text-generation-inference:1.3
+    ports:
+      - "8080:80"
+    volumes:
+      - $PWD/models:/data
+    args:
+      - --model-id mlabonne/NeuralDaredevil-7B
+      - --max-input-length 3072
+      - --max-total-tokens 4096
