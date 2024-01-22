@@ -64,6 +64,12 @@ def add_args(cls, parser):
         default=DefaultRewardFrameworkConfig.correctness_weight,
     )
     parser.add_argument(
+        "--disable_auto_update",
+        action="store_true",
+        help="If true, the validator will disable auto-update of its software from the repository.",
+        default=False,
+    )
+    parser.add_argument(
         "--neuron.name",
         type=str,
         help="Trials for this miner go in miner.root / (wallet_cold - wallet_hot) / miner.name. ",

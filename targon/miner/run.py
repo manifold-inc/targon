@@ -129,7 +129,10 @@ def run(self):
                     self.config.wandb.on,
                 )
             step += 1
-            autoupdate()
+
+            # Check if we should autopdate.
+            if not self.config.miner.disable_auto_update:
+                autoupdate()
     # If someone intentionally stops the miner, it'll safely terminate operations.
     except KeyboardInterrupt:
         self.axon.stop()
