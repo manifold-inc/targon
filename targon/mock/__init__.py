@@ -98,7 +98,7 @@ class MockSubtensor(bt.MockSubtensor):
         if not self.subnet_exists(netuid):
             self.create_subnet(netuid)
 
-        # Register ourself (the validator) as a neuron at uid=0
+        # Register ourself (the verifier) as a neuron at uid=0
         if wallet is not None:
             self.force_register_neuron(
                 netuid=netuid,
@@ -108,11 +108,11 @@ class MockSubtensor(bt.MockSubtensor):
                 stake=100000,
             )
 
-        # Register n mock neurons who will be miners
+        # Register n mock neurons who will be provers
         for i in range(1, n + 1):
             self.force_register_neuron(
                 netuid=netuid,
-                hotkey=f"miner-hotkey-{i}",
+                hotkey=f"prover-hotkey-{i}",
                 coldkey="mock-coldkey",
                 balance=100000,
                 stake=100000,
@@ -172,7 +172,7 @@ class MockDendrite(bt.dendrite):
                 if process_time < timeout:
                     s.dendrite.process_time = str(time.time() - start_time)
                     # Update the status code and status message of the dendrite to match the axon
-                    s.completion = f'Mock miner completion {i}'
+                    s.completion = f'Mock prover completion {i}'
                     s.dendrite.status_code = 200
                     s.dendrite.status_message = "OK"
                     synapse.dendrite.process_time = str(process_time)

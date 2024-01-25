@@ -31,7 +31,7 @@ def check_config(cls, config: "bt.Config"):
 
     full_path = os.path.expanduser(
         "{}/{}/{}/netuid{}/{}".format(
-            config.logging.logging_dir,  # TODO: change from ~/.bittensor/miners to ~/.bittensor/neurons
+            config.logging.logging_dir,  # TODO: change from ~/.bittensor/provers to ~/.bittensor/neurons
             config.wallet.name,
             config.wallet.hotkey,
             config.netuid,
@@ -63,7 +63,7 @@ def add_args(cls, parser):
     Adds relevant arguments to the parser for operation.
     """
     # Netuid Arg: The netuid of the subnet to connect to.
-    parser.add_argument("--netuid", type=int, help="Subnet netuid", default=1)
+    parser.add_argument("--netuid", type=int, help="Subnet netuid", default=4)
 
     parser.add_argument(
         "--neuron.device",
@@ -114,37 +114,19 @@ def add_args(cls, parser):
         default=False,
     )
 
-    parser.add_argument(
-        "--wandb.off", action="store_true", help="Turn off wandb.", default=False
-    )
 
-
-    parser.add_argument(
-        "--wandb.offline",
-        action="store_true",
-        help="Runs wandb in offline mode.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--wandb.notes",
-        type=str,
-        help="Notes to add to the wandb run.",
-        default="",
-    )
-
-def add_miner_args(cls, parser):
-    """Add miner specific arguments to the parser."""
+def add_prover_args(cls, parser):
+    """Add prover specific arguments to the parser."""
 
     parser.add_argument(
         "--neuron.name",
         type=str,
         help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default='miner',
+        default='prover',
     )
 
     parser.add_argument(
-        "--blacklist.force_validator_permit",
+        "--blacklist.force_verifier_permit",
         action="store_true",
         help="If set, we will force incoming requests to have a permit.",
         default=False,
@@ -153,83 +135,39 @@ def add_miner_args(cls, parser):
     parser.add_argument(
         "--blacklist.allow_non_registered",
         action="store_true",
-        help="If set, miners will accept queries from non registered entities. (Dangerous!)",
+        help="If set, provers will accept queries from non registered entities. (Dangerous!)",
         default=False,
     )
 
     parser.add_argument(
-        "--neuron.system_prompt",
+        "--neuron.tgi_endpoint",
         type=str,
-        help="The system prompt to use for the miner.",
-        default="You are a helpful AI assistant. You answer questions, summarize documents, and debug code. You are always straight to the point and honest.",
+        help="The endpoint to use for the TGI client.",
+        default="http://0.0.0.0:8080",
     )
 
-    parser.add_argument(
-        "--neuron.max_tokens",
-        type=int,
-        default=256,
-        help="The maximum number of tokens to generate in the completion.",
-    )
-
-    parser.add_argument(
-        "--neuron.temperature",
-        type=float,
-        default=0.7,
-        help="Sampling temperature to use, between 0 and 2.",
-    )
-
-    parser.add_argument(
-        "--neuron.top_k",
-        type=float,
-        default=50,
-        help="Nucleus sampling parameter, top_p probability mass.",
-    )
-
-    parser.add_argument(
-        "--neuron.top_p",
-        type=float,
-        default=0.95,
-        help="Nucleus sampling parameter, top_p probability mass.",
-    )
-
-def add_validator_args(cls, parser):
-    """Add validator specific arguments to the parser."""
+def add_verifier_args(cls, parser):
+    """Add verifier specific arguments to the parser."""
 
     parser.add_argument(
         "--neuron.name",
         type=str,
         help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default='validator',
+        default='verifier',
     )
 
     parser.add_argument(
         "--neuron.model_id",
         type=str,
-        help="The model to use for the validator.",
+        help="The model to use for the verifier.",
         default="HuggingFaceH4/zephyr-7b-beta",
-    )
-
-    parser.add_argument(
-        "--neuron.tasks",
-        type=str,
-        nargs="+",
-        help="The tasks to use for the validator.",
-        default=["summarization", "qa", "debugging", "math", "date_qa"],
-    )
-
-    parser.add_argument(
-        "--neuron.task_p",
-        type=float,
-        nargs="+",
-        help="The probability of sampling each task.",
-        default=[0.3, 0.3, 0.1, 0.1, 0.2],
     )
 
     parser.add_argument(
         "--neuron.timeout",
         type=float,
         help="The timeout for each forward call in seconds.",
-        default=10,
+        default=12,
     )
 
     parser.add_argument(
@@ -247,9 +185,31 @@ def add_validator_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.verbose",
+        action="store_true",
+        help="If set, we will print more information.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.reward_mode",
+        default="sigmoid",
+        type=str,
+        choices=["minmax", "sigmoid"],
+        help="Reward mode for the validator.",
+    )
+
+    parser.add_argument(
+        "--neuron.challenge_url",
+        type=str,
+        help="The url to use for the challenge server.",
+        default="https://mx-central-01.sybil.com/",
+    )
+
+    parser.add_argument(
         "--neuron.sample_size",
         type=int,
-        help="The number of miners to query in a single step.",
+        help="The number of provers to query in a single step.",
         default=10,
     )
 
@@ -271,7 +231,7 @@ def add_validator_args(cls, parser):
         "--neuron.axon_off",
         "--axon_off",
         action="store_true",
-        # Note: the validator needs to serve an Axon with their IP or they may
+        # Note: the verifier needs to serve an Axon with their IP or they may
         #   be blacklisted by the firewall of serving peers on the network.
         help="Set this flag to not attempt to serve an Axon.",
         default=False,
@@ -280,22 +240,65 @@ def add_validator_args(cls, parser):
     parser.add_argument(
         "--neuron.vpermit_tao_limit",
         type=int,
-        help="The maximum number of TAO allowed to query a validator with a vpermit.",
+        help="The maximum number of TAO allowed to query a verifier with a vpermit.",
             default=4096,
         )
     
     parser.add_argument(
-        "--wandb.project_name",
+        "--neuron.tgi_endpoint",
         type=str,
-        help="The name of the project where you are sending the new run.",
-        default="synapse_agent_experiments",
+        help="The endpoint to use for the TGI client.",
+        default="http://0.0.0.0:8080",
     )
+    
+    parser.add_argument(
+        "--database.host",
+        type=str,
+        help="The path to write debug logs to.",
+        default="127.0.0.1",
+    )
+
+    parser.add_argument(
+        "--database.port",
+        type=int,
+        help="The path to write debug logs to.",
+        default=6379,
+    )
+
+    parser.add_argument(
+        "--database.index",
+        type=int,
+        help="The path to write debug logs to.",
+        default=1,
+    )
+
+    parser.add_argument(
+        "--database.password",
+        type=str,
+        help="the password to use for the redis database.",
+        default="eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81",
+    )
+
+    parser.add_argument(
+        "--database.purge_challenges",
+        action="store_true",
+        help="If set, we will purge all challenges from ALL provers on start.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.compute_stats_interval",
+        type=int,
+        help="The interval at which to compute statistics.",
+        default=360,
+    )
+
 
 
 
 def config(cls):
     """
-    Returns the configuration object specific to this miner or validator after adding relevant arguments.
+    Returns the configuration object specific to this prover or verifier after adding relevant arguments.
     """
     parser = argparse.ArgumentParser()
     bt.wallet.add_args(parser)

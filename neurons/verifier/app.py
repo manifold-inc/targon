@@ -21,63 +21,56 @@ import time
 import torch
 import bittensor as bt
 
-from targon.forward import forward
-from targon.llm import load_pipeline
-from targon.base.validator import BaseValidatorNeuron
-from targon.rewards import RewardPipeline
+
+from targon.verifier.forward import forward
+from huggingface_hub import AsyncInferenceClient
+from targon.base.verifier import BaseVerifierNeuron
 from targon.utils.uids import check_uid_availability
 
-class Validator(BaseValidatorNeuron):
+
+class Verifier(BaseVerifierNeuron):
     """
-    Text prompt validator neuron.
+    Text prompt verifier neuron.
     """
 
     def __init__(self, config=None):
-        super(Validator, self).__init__(config=config)
+        super(Verifier, self).__init__(config=config)
 
         bt.logging.info("load_state()")
-        self.load_state()
+        if not self.config.mock:
+            self.load_state()
+            for i, axon in enumerate(self.metagraph.axons):
+                bt.logging.info(f"axons[{i}]: {axon}")
+                check_uid_availability(self.metagraph, i, self.config.neuron.vpermit_tao_limit)
 
-        self.llm_pipeline = load_pipeline(
-            model_id=self.config.neuron.model_id,
-            torch_dtype=torch.bfloat16,
-            device=self.device,
-            mock=self.config.mock,
-        )
 
-        if sum(self.config.neuron.task_p) != 1:
-            raise ValueError("Task probabilities do not sum to 1.")
+        # inference client
+        self.client = AsyncInferenceClient(model=self.config.neuron.tgi_endpoint)
 
-        # Filter out tasks with 0 probability
-        self.active_tasks = [
-            task
-            for task, p in zip(
-                self.config.neuron.tasks, self.config.neuron.task_p
-            )
-            if p > 0
-        ]
-        # Load the reward pipeline
-        self.reward_pipeline = RewardPipeline(self.active_tasks, device=self.device)
-        
-        for i, axon in enumerate(self.metagraph.axons):
-            bt.logging.info(f"axons[{i}]: {axon}")
-            check_uid_availability(self.metagraph, i, self.config.neuron.vpermit_tao_limit)
+        # --- Block 
+        self.last_interval_block = self.get_last_adjustment_block()
+        self.adjustment_interval = self.get_adjustment_interval()
+        self.next_adjustment_block = self.last_interval_block + self.adjustment_interval
+
+
 
     async def forward(self):
         """
-        Validator forward pass. Consists of:
+        Verifier forward pass. Consists of:
         - Generating the query
-        - Querying the miners
+        - Querying the provers
         - Getting the responses
-        - Rewarding the miners
+        - Rewarding the provers
         - Updating the scores
         """
+        print("forward()")
+    
         return await forward(self)
 
     def __enter__(self):
         
         if self.config.no_background_thread:
-            bt.logging.warning("Running validator in main thread.")
+            bt.logging.warning("Running verifier in main thread.")
             self.run()
         else:
             self.run_in_background_thread()
@@ -86,8 +79,8 @@ class Validator(BaseValidatorNeuron):
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
-        Stops the validator's background operations upon exiting the context.
-        This method facilitates the use of the validator in a 'with' statement.
+        Stops the verifier's background operations upon exiting the context.
+        This method facilitates the use of the verifier in a 'with' statement.
 
         Args:
             exc_type: The type of the exception that caused the context to be exited.
@@ -98,15 +91,15 @@ class Validator(BaseValidatorNeuron):
                        None if the context was exited without an exception.
         """
         if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
+            bt.logging.debug("Stopping verifier in background thread.")
             self.should_exit = True
             self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
-# The main function parses the configuration and runs the validator.
+# The main function parses the configuration and runs the verifier.
 if __name__ == "__main__":
-    with Validator() as validator:
+    with Verifier() as verifier:
         while True:
-            bt.logging.info("Validator running...", time.time())
+            bt.logging.info("Verifier running...", time.time())
             time.sleep(5)

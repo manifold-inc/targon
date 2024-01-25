@@ -106,6 +106,6 @@ def ttl_get_block(self) -> int:
     Example:
         current_block = ttl_get_block(self)
 
-    Note: self here is the miner or validator instance
+    Note: self here is the prover or verifier instance
     """
     return self.subtensor.get_current_block()

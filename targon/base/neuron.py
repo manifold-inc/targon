@@ -34,7 +34,7 @@ from targon.mock import MockSubtensor, MockMetagraph
 
 class BaseNeuron(ABC):
     """
-    Base class for Bittensor miners. This class is abstract and should be inherited by a subclass. It contains the core logic for all neurons; validators and miners.
+    Base class for Bittensor provers. This class is abstract and should be inherited by a subclass. It contains the core logic for all neurons; verifiers and provers.
 
     In addition to creating a wallet, subtensor, and metagraph, this class also handles the synchronization of the network state via a basic checkpointing mechanism based on epoch length.
     """
@@ -79,7 +79,7 @@ class BaseNeuron(ABC):
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
 
-        # The wallet holds the cryptographic key pairs for the miner.
+        # The wallet holds the cryptographic key pairs for the prover.
         if self.config.mock:
             self.wallet = bt.MockWallet(config=self.config)
             self.subtensor = MockSubtensor(
@@ -97,10 +97,10 @@ class BaseNeuron(ABC):
         bt.logging.info(f"Subtensor: {self.subtensor}")
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
-        # Check if the miner is registered on the Bittensor network before proceeding further.
+        # Check if the prover is registered on the Bittensor network before proceeding further.
         self.check_registered()
 
-        # Each miner gets a unique identity (UID) in the network for differentiation.
+        # Each prover gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         bt.logging.info(
             f"Running neuron on subnet: {self.config.netuid} with uid {self.uid} using network: {self.subtensor.chain_endpoint}"
@@ -116,11 +116,20 @@ class BaseNeuron(ABC):
     def run(self):
         ...
 
+    def get_last_adjustment_block(self) -> int:
+        with self.subtensor.substrate as substrate:
+            return substrate.query('SubtensorModule', 'LastAdjustmentBlock', [self.config.netuid]).value
+    
+    def get_adjustment_interval(self) -> int:
+        with self.subtensor.substrate as substrate:
+            return substrate.query('SubtensorModule', 'AdjustmentInterval', [self.config.netuid]).value
+
+
     def sync(self):
         """
-        Wrapper for synchronizing the state of the network for the given miner or validator.
+        Wrapper for synchronizing the state of the network for the given prover or verifier.
         """
-        # Ensure miner or validator hotkey is still registered on the network.
+        # Ensure prover or verifier hotkey is still registered on the network.
         self.check_registered()
 
         if self.should_sync_metagraph():

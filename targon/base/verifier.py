@@ -17,31 +17,38 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
 import sys
 import copy
 import torch
 import asyncio
+import aioredis
 import argparse
 import threading
+import subprocess
 import bittensor as bt
 
+from shlex import quote
 from typing import List
+from copy import deepcopy
+from pprint import pformat
 from traceback import print_exception
+from substrateinterface.base import SubstrateInterface
 
-from targon.base.neuron import BaseNeuron
 from targon.mock import MockDendrite
-from targon.utils.config import add_validator_args
+from targon.base.neuron import BaseNeuron
+from targon.utils.config import add_verifier_args
 
 
-class BaseValidatorNeuron(BaseNeuron):
+class BaseVerifierNeuron(BaseNeuron):
     """
-    Base class for Bittensor validators. Your validator should inherit from this class.
+    Base class for Bittensor verifiers. Your verifier should inherit from this class.
     """
     
     @classmethod
     def add_args(cls, parser: argparse.ArgumentParser):
         super().add_args(parser)
-        add_validator_args(cls, parser)    
+        add_verifier_args(cls, parser)    
  
 
     def __init__(self, config=None):
@@ -50,12 +57,23 @@ class BaseValidatorNeuron(BaseNeuron):
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
+        # Setup database
+        self.database = aioredis.StrictRedis(
+            host=self.config.database.host,
+            port=self.config.database.port,
+            db=self.config.database.index,
+            password=self.config.database.password,
+        )
+        self.db_semaphore = asyncio.Semaphore()
+
+
         # Dendrite lets us send messages to other nodes (axons) in the network.
-        # TODO: Mock the dendrite (Brian/Pedro)
         if self.config.mock:
             self.dendrite = MockDendrite(wallet=self.wallet)
         else:
             self.dendrite = bt.dendrite(wallet=self.wallet)
+
+
         bt.logging.info(f"Dendrite: {self.dendrite}")
 
         # Set up initial scoring weights for validation
@@ -79,6 +97,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
+
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -109,34 +128,34 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def run(self):
         """
-        Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
+        Initiates and manages the main loop for the prover on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
 
         This function performs the following primary tasks:
         1. Check for registration on the Bittensor network.
-        2. Continuously forwards queries to the miners on the network, rewarding their responses and updating the scores accordingly.
+        2. Continuously forwards queries to the provers on the network, rewarding their responses and updating the scores accordingly.
         3. Periodically resynchronizes with the chain; updating the metagraph with the latest network state and setting weights.
 
-        The essence of the validator's operations is in the forward function, which is called every step. The forward function is responsible for querying the network and scoring the responses.
+        The essence of the verifier's operations is in the forward function, which is called every step. The forward function is responsible for querying the network and scoring the responses.
 
         Note:
-            - The function leverages the global configurations set during the initialization of the miner.
-            - The miner's axon serves as its interface to the Bittensor network, handling incoming and outgoing requests.
+            - The function leverages the global configurations set during the initialization of the prover.
+            - The prover's axon serves as its interface to the Bittensor network, handling incoming and outgoing requests.
 
         Raises:
-            KeyboardInterrupt: If the miner is stopped by a manual interruption.
-            Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
+            KeyboardInterrupt: If the prover is stopped by a manual interruption.
+            Exception: For unforeseen errors during the prover's operation, which are logged for diagnosis.
         """
 
-        # Check that validator is registered on the network.
+        # Check that verifier is registered on the network.
         self.sync()
 
         bt.logging.info(
-            f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Running verifier {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
 
-        bt.logging.info(f"Validator starting at block: {self.block}")
+        bt.logging.info(f"Verifier starting at block: {self.block}")
 
-        # This loop maintains the validator's operations until intentionally stopped.
+        # This loop maintains the verifier's operations until intentionally stopped.
         try:
             while True:
                 bt.logging.info(f"step({self.step}) block({self.block})")
@@ -153,24 +172,24 @@ class BaseValidatorNeuron(BaseNeuron):
 
                 self.step += 1
 
-        # If someone intentionally stops the validator, it'll safely terminate operations.
+        # If someone intentionally stops the verifier, it'll safely terminate operations.
         except KeyboardInterrupt:
             self.axon.stop()
-            bt.logging.success("Validator killed by keyboard interrupt.")
+            bt.logging.success("Verifier killed by keyboard interrupt.")
             sys.exit()
 
-        # In case of unforeseen errors, the validator will log the error and continue operations.
+        # In case of unforeseen errors, the verifier will log the error and continue operations.
         except Exception as err:
             bt.logging.error("Error during validation", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
 
     def run_in_background_thread(self):
         """
-        Starts the validator's operations in a background thread upon entering the context.
-        This method facilitates the use of the validator in a 'with' statement.
+        Starts the verifier's operations in a background thread upon entering the context.
+        This method facilitates the use of the verifier in a 'with' statement.
         """
         if not self.is_running:
-            bt.logging.debug("Starting validator in background thread.")
+            bt.logging.debug("Starting verifier in background thread.")
             self.should_exit = False
             self.thread = threading.Thread(target=self.run, daemon=True)
             self.thread.start()
@@ -179,23 +198,23 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def stop_run_thread(self):
         """
-        Stops the validator's operations that are running in the background thread.
+        Stops the verifier's operations that are running in the background thread.
         """
         if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
+            bt.logging.debug("Stopping verifier in background thread.")
             self.should_exit = True
             self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
     def __enter__(self):
-        self.run_in_background_thread()
+        self.run()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
-        Stops the validator's background operations upon exiting the context.
-        This method facilitates the use of the validator in a 'with' statement.
+        Stops the verifier's background operations upon exiting the context.
+        This method facilitates the use of the verifier in a 'with' statement.
 
         Args:
             exc_type: The type of the exception that caused the context to be exited.
@@ -206,7 +225,7 @@ class BaseValidatorNeuron(BaseNeuron):
                        None if the context was exited without an exception.
         """
         if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
+            bt.logging.debug("Stopping verifier in background thread.")
             self.should_exit = True
             self.thread.join(5)
             self.is_running = False
@@ -214,13 +233,13 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def set_weights(self):
         """
-        Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
+        Sets the verifier weights to the metagraph hotkeys based on the scores it has received from the provers. The weights determine the trust and incentive level the verifier assigns to prover nodes on the network.
         """
 
         # Check if self.scores contains any NaN values and log a warning if it does.
         if torch.isnan(self.scores).any():
             bt.logging.warning(
-                "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
+                "Scores contain NaN values. This may be due to a lack of responses from provers, or a bug in your reward functions."
             )
 
         # Calculate the average reward for each uid across non-zero values.
@@ -305,7 +324,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
-        """Performs exponential moving average on the scores based on the rewards received from the miners."""
+        """Performs exponential moving average on the scores based on the rewards received from the provers."""
 
         # Check if rewards contains NaN values.
         if torch.isnan(rewards).any():
@@ -327,10 +346,10 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.debug(f"Updated moving avg scores: {self.scores}")
 
     def save_state(self):
-        """Saves the state of the validator to a file."""
-        bt.logging.info("Saving validator state.")
+        """Saves the state of the verifier to a file."""
+        bt.logging.info("Saving verifier state.")
 
-        # Save the state of the validator to file.
+        # Save the state of the verifier to file.
         torch.save(
             {
                 "step": self.step,
@@ -341,11 +360,98 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
     def load_state(self):
-        """Loads the state of the validator from a file."""
-        bt.logging.info("Loading validator state.")
+        """Loads the state of the verifier from a file."""
+        bt.logging.info("Loading verifier state.")
 
-        # Load the state of the validator from file.
+        # Load the state of the verifier from file.
         state = torch.load(self.config.neuron.full_path + "/state.pt")
         self.step = state["step"]
         self.scores = state["scores"]
         self.hotkeys = state["hotkeys"]
+
+    def start_event_subscription(self):
+        """
+        Starts the subscription handler in a background thread.
+        """
+        substrate = SubstrateInterface(
+            ss58_format=bt.__ss58_format__,
+            use_remote_preset=True,
+            url=self.subtensor.chain_endpoint,
+            type_registry=bt.__type_registry__,
+        )
+        self.subscription_substrate = substrate
+
+        def neuron_registered_subscription_handler(obj, update_nr, subscription_id):
+            block_no = obj["header"]["number"]
+            block_hash = substrate.get_block_hash(block_id=block_no)
+            bt.logging.debug(f"subscription block hash: {block_hash}")
+            events = substrate.get_events(block_hash)
+
+            for event in events:
+                event_dict = event["event"].decode()
+                if event_dict["event_id"] == "NeuronRegistered":
+                    netuid, uid, hotkey = event_dict["attributes"]
+                    if int(netuid) == 21:
+                        self.log(
+                            f"NeuronRegistered Event {uid}! Rebalancing data...\n"
+                            f"{pformat(event_dict)}\n"
+                        )
+
+                        self.last_registered_block = block_no
+                        self.rebalance_queue.append(hotkey)
+
+            # If we have some hotkeys deregistered, and it's been 5 blocks since we've caught a registration: rebalance
+            if (
+                len(self.rebalance_queue) > 0
+                and self.last_registered_block + 5 <= block_no
+            ):
+                hotkeys = deepcopy(self.rebalance_queue)
+                self.rebalance_queue.clear()
+                self.log(f"Running rebalance in separate process on hotkeys {hotkeys}")
+
+                # Fire off the script
+                hotkeys_str = ",".join(map(str, hotkeys))
+                hotkeys_arg = quote(hotkeys_str)
+                path = os.path.join(
+                    os.path.abspath("."), "scripts/rebalance_deregistration.sh"
+                )
+                subprocess.Popen(
+                    [
+                        path,
+                        hotkeys_arg,
+                        self.subtensor.chain_endpoint,
+                        str(self.config.database.index),
+                    ]
+                )
+
+        substrate.subscribe_block_headers(neuron_registered_subscription_handler)
+
+    def run_subscription_thread(self):
+        """
+        Start the block header subscription handler in a separate thread.
+        """
+        if not self.subscription_is_running:
+            self.subscription_thread = threading.Thread(
+                target=self.start_event_subscription, daemon=True
+            )
+            self.subscription_thread.start()
+            self.subscription_is_running = True
+            bt.logging.debug("Started subscription handler.")
+
+    def stop_subscription_thread(self):
+        """
+        Stops the subscription handler that is running in the background thread.
+        """
+        if self.subscription_is_running:
+            bt.logging.debug("Stopping subscription in background thread.")
+            self.should_exit = True
+            self.subscription_thread.join(5)
+            self.subscription_is_running = False
+            self.subscription_substrate.close()
+            bt.logging.debug("Stopped subscription handler.")
+
+    def __del__(self):
+        """
+        Stops the subscription handler thread.
+        """
+        self.stop_subscription_thread()
