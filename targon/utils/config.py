@@ -203,7 +203,7 @@ def add_verifier_args(cls, parser):
         "--neuron.challenge_url",
         type=str,
         help="The url to use for the challenge server.",
-        default="https://mx-central-01.sybil.com/",
+        default="https://challenge.sybil.com/",
     )
 
     parser.add_argument(

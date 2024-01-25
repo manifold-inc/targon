@@ -41,6 +41,6 @@ Query:
 {}
 
 ### Response:
-'''.format(challenge_data['query'], challenge_data['source'], challenge_data['query'])
+'''.format(challenge_data['query'], challenge_data['sources'], challenge_data['query'])
     
     return output

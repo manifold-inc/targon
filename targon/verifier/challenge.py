@@ -60,7 +60,7 @@ def verify( self, output, ground_truth_hash):
     )
     return True
 
-async def handle_challenge( self, uid: int, private_input: typing.Dict[str], ground_truth_hash: str, sampling_params: protocol.ChallengeSamplingParams ) -> typing.Tuple[bool, protocol.Challenge]:
+async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_truth_hash: str, sampling_params: protocol.ChallengeSamplingParams ) -> typing.Tuple[bool, protocol.Challenge]:
     """
     Handles a challenge sent to a prover and verifies the response.
 
