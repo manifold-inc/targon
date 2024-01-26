@@ -144,12 +144,12 @@ async def forward_fn(self, validation=True, stream=False):
             self.seen_urls.update(new_unseen_links)
             self.url_queue.extend(new_unseen_links)
 
-            # Handle submissions
-            api_key = env_config.get('SYBIL_API_KEY', None)
-            if api_key is not None:
-                embedding = self.embedding_model.encode(processed_response['full_text'])
-                VectorController().submit(processed_response['uid'], processed_response['title'], processed_response['full_text'], processed_response['query'], embedding)
-                bt.logging.debug('submitted url', processed_response['uid'])
+            # # Handle submissions
+            # api_key = env_config.get('SYBIL_API_KEY', None)
+            # if api_key is not None:
+            #     embedding = self.embedding_model.encode(processed_response['full_text'])
+            #     VectorController().submit(processed_response['uid'], processed_response['title'], processed_response['full_text'], processed_response['query'], embedding)
+            #     bt.logging.debug('submitted url', processed_response['uid'])
         # validate Search Result responses
         data = select_qa(self)
 

@@ -143,7 +143,7 @@ class neuron:
                                                             torch_dtype=torch.float16).to(self.device)
 
         # embedding model
-        self.embedding_model = AutoModel.from_pretrained('jinaai/jina-embeddings-v2-small-en', trust_remote_code=True)
+        # self.embedding_model = AutoModel.from_pretrained('jinaai/jina-embeddings-v2-small-en', trust_remote_code=True)
 
 
         self.reward_functions = [
