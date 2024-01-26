@@ -63,6 +63,15 @@ class BaseProverNeuron(BaseNeuron):
         )
         bt.logging.info(f"Axon created: {self.axon}")      
 
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError as e:
+            if str(e).startswith('There is no current event loop in thread'):
+                self.loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self.loop)
+            else:
+                raise e
+
         # Instantiate runners
         self.should_exit: bool = False
         self.is_running: bool = False
@@ -103,7 +112,7 @@ class BaseProverNeuron(BaseNeuron):
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
         # Start  starts the prover's axon, making it active on the network.
-        self.axon.start()
+        self.loop.run_until_complete(self.axon.start())
 
         bt.logging.info(f"Prover starting at block: {self.block}")
 
