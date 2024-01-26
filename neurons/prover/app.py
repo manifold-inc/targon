@@ -40,7 +40,6 @@ class Miner(BaseProverNeuron):
         super(Miner, self).__init__(config=config)
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
-        self.axon.start()
 
     async def forward(
         self, synapse: Challenge
