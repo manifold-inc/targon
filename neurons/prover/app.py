@@ -22,38 +22,10 @@ import bittensor as bt
 
 from functools import partial
 from starlette.types import Send
+from targon.utils.prompt import create_prompt
 from targon.base.prover import BaseProverNeuron
 from huggingface_hub import AsyncInferenceClient
 from targon.protocol import Challenge, ChallengeSamplingParams
-
-
-def create_prompt( challenge_data ):
-    """
-    Creates a prompt for the prover to respond to.
-
-    Parameters:
-    - challenge_data (protocol.Challenge): The challenge data sent to the prover.
-
-    Returns:
-    - str: The prompt for the prover to respond to.
-    """
-
-    output = '''### Instruction: 
-Your task is to perform retrieval augmented generation (RAG) over the given query and search results. Return your answer in a json format that includes a summary of the search results. 
-
-Query:
-{}
-\n\n
-Search Results:
-{}
-\n\n
-Query:
-{}
-
-### Response:
-'''.format(challenge_data['query'], challenge_data['sources'], challenge_data['query'])
-    
-    return output
 
 class Miner(BaseProverNeuron):
     """
@@ -68,6 +40,7 @@ class Miner(BaseProverNeuron):
         super(Miner, self).__init__(config=config)
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
+        self.axon.start()
 
     async def forward(
         self, synapse: Challenge
