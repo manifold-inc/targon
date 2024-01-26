@@ -82,8 +82,9 @@ def run(self):
                 set_weights(self)
                 save_state(self)
             
-            # Check if we should update.
-            autoupdate()
+            # Check if we should autopdate.
+            if not self.config.disable_auto_update:
+                autoupdate()
 
             # Rollover wandb to a new run.
             if should_reinit_wandb(self):

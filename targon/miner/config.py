@@ -206,6 +206,12 @@ def get_config() -> "bt.Config":
         help="If True, the miner doesnt register its wallet.",
         default=False,
     )
+    parser.add_argument(
+        "--miner.disable_auto_update",
+        action="store_true",
+        help="If true, the miner will disable auto-update of its software from the repository.",
+        default=False,
+    )
 
     # Mocks.
     parser.add_argument(
