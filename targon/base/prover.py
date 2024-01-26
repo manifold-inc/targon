@@ -112,8 +112,7 @@ class BaseProverNeuron(BaseNeuron):
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
         # Start  starts the prover's axon, making it active on the network.
-        a = self.axon.start()
-        asyncio.run(a)
+        self.axon.start()
 
         bt.logging.info(f"Prover starting at block: {self.block}")
 
@@ -174,7 +173,7 @@ class BaseProverNeuron(BaseNeuron):
         Starts the prover's operations in a background thread upon entering the context.
         This method facilitates the use of the prover in a 'with' statement.
         """
-        self.run_in_background_thread()
+        self.run()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
