@@ -38,17 +38,16 @@ def check_uid_availability(
         bool: True if uid is available, False otherwise
     """
     # Filter non serving axons.
-    # if not metagraph.axons[uid].is_serving:
-    #     bt.logging.debug(f"uid: {uid} is not serving")
-    #     return False
-    # # Filter verifier permit > 1024 stake.
-    # if metagraph.validator_permit[uid]:
-    #     bt.logging.debug(f"uid: {uid} has verifier permit")
-    #     if metagraph.S[uid] > vpermit_tao_limit:
-    #         bt.logging.debug(f"uid: {uid} has stake ({metagraph.S[uid]}) > {vpermit_tao_limit}")
-    #         return False
-    if uid is not 1:
+    if not metagraph.axons[uid].is_serving:
+        bt.logging.debug(f"uid: {uid} is not serving")
         return False
+    # Filter verifier permit > 1024 stake.
+    if metagraph.validator_permit[uid]:
+        bt.logging.debug(f"uid: {uid} has verifier permit")
+        if metagraph.S[uid] > vpermit_tao_limit:
+            bt.logging.debug(f"uid: {uid} has stake ({metagraph.S[uid]}) > {vpermit_tao_limit}")
+            return False
+
     # Available otherwise.
     return True
 
@@ -136,7 +135,7 @@ def get_tiered_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
         raise ValueError("No verifiers available in metagraph")
 
     # Calculate requests needed based on step in the interval
-    step_proportion = self.step / 360
+    step_proportion = self.step / self.config.neuron.compute_stats_interval
     requests_needed = lambda uid: step_proportion * get_tier_requests(self, self.metagraph.hotkeys[uid]) / verifier_count
 
     # Sort candidate uids based on their requests needed, descending order

@@ -66,13 +66,14 @@ class BaseVerifierNeuron(BaseNeuron):
         )
         self.db_semaphore = asyncio.Semaphore()
 
-        substrate = SubstrateInterface(
-            ss58_format=bt.__ss58_format__,
-            use_remote_preset=True,
-            url=self.subtensor.chain_endpoint,
-            type_registry=bt.__type_registry__,
-        )
-        self.subscription_substrate = substrate
+        if not self.config.mock:
+            substrate = SubstrateInterface(
+                ss58_format=bt.__ss58_format__,
+                use_remote_preset=True,
+                url=self.subtensor.chain_endpoint,
+                type_registry=bt.__type_registry__,
+            )
+            self.subscription_substrate = substrate
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
         if self.config.mock:

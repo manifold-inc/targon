@@ -25,7 +25,7 @@ import requests
 import bittensor as bt
 
 from targon import protocol
-from targon.utils.uids import get_random_uids
+from targon.utils.uids import get_tiered_uids
 from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.constants import CHALLENGE_FAILURE_REWARD
@@ -194,7 +194,7 @@ async def challenge_data( self ):
     # --- Get the uids to query
     start_time = time.time()
     tasks = []
-    uids = get_random_uids( self, k=self.config.neuron.sample_size )
+    uids = get_tiered_uids( self, k=self.config.neuron.sample_size )
 
     bt.logging.debug(f"challenge uids {uids}")
     responses = []
