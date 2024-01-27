@@ -113,7 +113,8 @@ class BaseProverNeuron(BaseNeuron):
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
         # Start  starts the prover's axon, making it active on the network.
-        self.start_axon()
+        asyncio.set_event_loop(self.loop)
+        self.axon.start()
 
         bt.logging.info(f"Prover starting at block: {self.block}")
 
