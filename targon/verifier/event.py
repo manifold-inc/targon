@@ -24,7 +24,7 @@ from typing import List, Optional, Dict
 
 @dataclass
 class EventSchema:
-    task_name: str  # Task type, e.g. 'store', 'challenge', 'retrieve' 'broadcast'
+    task_name: str  # Task type, e.g. 'challenge', 'inference', 'monitor'
     successful: List[bool]  # List of whether or not the task was successful or not
     completion_times: List[float]  # List of completion times for a given task
     task_status_messages: List[

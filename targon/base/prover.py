@@ -19,13 +19,16 @@
 
 import time
 import torch
-import argparse
 import asyncio
+import uvicorn
+import argparse
 import threading
 import traceback
 import bittensor as bt
 from targon.base.neuron import BaseNeuron
 from targon.utils.config import add_prover_args
+
+from bittensor.axon import FastAPIThreadedServer
 
 
 class BaseProverNeuron(BaseNeuron):
@@ -113,8 +116,18 @@ class BaseProverNeuron(BaseNeuron):
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
         # Start  starts the prover's axon, making it active on the network.
-        asyncio.set_event_loop(self.loop)
+
+        # change the config in the axon
+        log_level = "trace" if bt.logging.__trace_on__ else "critical"
+        fast_config = uvicorn.Config(
+            self.axon.app, host="0.0.0.0", port=self.config.axon.port, log_level=log_level, loop="asyncio"
+        )
+        self.axon.fast_server = FastAPIThreadedServer(config=fast_config)
+
         self.axon.start()
+
+
+        asyncio.run(self.axon.run())
 
         bt.logging.info(f"Prover starting at block: {self.block}")
 

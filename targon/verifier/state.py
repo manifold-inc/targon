@@ -1,5 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
+# Copyright © 2023 philanthrope <-- main author
 # Copyright © 2024 Manifold Labs
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
