@@ -80,7 +80,8 @@ class BaseProverNeuron(BaseNeuron):
 
     async def start_axon(self):
         """Starts the prover's axon."""
-        await self.axon.start()
+        a = await self.axon.start()
+        return a
 
     def run(self):
         """
