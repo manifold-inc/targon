@@ -127,7 +127,6 @@ class BaseProverNeuron(BaseNeuron):
         self.axon.start()
 
 
-        asyncio.run(self.axon.run())
 
         bt.logging.info(f"Prover starting at block: {self.block}")
 
