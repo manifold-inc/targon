@@ -124,6 +124,13 @@ class ChallengeSamplingParams(pydantic.BaseModel):
         description="Whether to watermark.",
     )
 
+    stream: bool = pydantic.Field(
+        False,
+        title="Stream",
+        description="Whether to stream.",
+    )
+    
+
 
 
 

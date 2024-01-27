@@ -27,7 +27,7 @@ import bittensor as bt
 from targon import protocol
 from targon.utils.uids import get_random_uids
 from targon.verifier.event import EventSchema
-from targon.verifier.prompt import create_prompt
+from targon.utils.prompt import create_prompt
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.bonding import update_statistics, get_tier_factor
 from targon.verifier.reward import hashing_function, apply_reward_scores
@@ -73,11 +73,11 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
 
     hotkey = self.metagraph.hotkeys[uid]
     keys = await self.database.hkeys(f"hotkey:{hotkey}")
-    bt.logging.trace(f"{len(keys)} hashes pulled for hotkey {hotkey}")
+    bt.logging.trace(f"{len(keys)} stats pulled for hotkey {hotkey}")
 
     if not self.config.mock:
         synapse = protocol.Challenge(
-            sources = [private_input["source"]],
+            sources = [private_input["sources"]],
             query = private_input["query"],
             sampling_params=sampling_params,
         )
@@ -87,11 +87,13 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         response = await self.dendrite(
             [axon],
             synapse,
-            deserialize=True,
-            timeout=self.config.neuron.timeout
+            deserialize=False,
+            timeout=self.config.neuron.timeout,
+            streaming=True
         )
 
         output = ""
+        print(response)
         async for r in response:
             if not isinstance(r, str):
                 continue
@@ -168,6 +170,7 @@ async def challenge_data( self ):
 
     sampling_params = protocol.ChallengeSamplingParams(
         seed=seed,
+        stream=True,
     )
 
     ground_truth_output = await self.client.text_generation(

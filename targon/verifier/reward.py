@@ -75,7 +75,7 @@ def calculate_sigmoid_params(timeout):
     return steepness, shift
 
 
-def get_sorted_response_times(uids, responses, timeout: float):
+def get_sorted_response_times(self, uids, responses, timeout: float):
     """
     Sorts a list of axons based on their response times.
 
@@ -93,12 +93,14 @@ def get_sorted_response_times(uids, responses, timeout: float):
         >>> get_sorted_response_times([1, 2, 3], [response1, response2, response3])
         [(2, 0.1), (1, 0.2), (3, 0.3)]
     """
+    if self.config.mock:
+        return [(uid, 0.5) for uid in uids]
     axon_times = [
         (
             uids[idx],
-            # response.dendrite.process_time
-            # if response.dendrite.process_time != None
-            # else timeout,
+            response.dendrite.process_time
+            if response.dendrite.process_time != None
+            else timeout,
             timeout
         )
         for idx, response in enumerate(responses)
@@ -139,7 +141,7 @@ def min_max_normalize(times):
     return [(time - max_time) / range_time for time in times]
 
 
-def scale_rewards(uids, responses, rewards, timeout: float, mode: str):
+def scale_rewards(self, uids, responses, rewards, timeout: float, mode: str):
     """
     Scales the rewards for each axon based on their response times using `mode` normalization.
     Args:
@@ -151,7 +153,7 @@ def scale_rewards(uids, responses, rewards, timeout: float, mode: str):
     Returns:
         List[float]: A list of scaled rewards for each axon.
     """
-    sorted_axon_times = get_sorted_response_times(uids, responses, timeout=timeout)
+    sorted_axon_times = get_sorted_response_times(self, uids, responses, timeout=timeout)
 
     # Extract only the process times
     process_times = [proc_time for _, proc_time in sorted_axon_times]
@@ -200,7 +202,7 @@ def apply_reward_scores(
         bt.logging.debug(f"Reward shape: {rewards.shape}")
         bt.logging.debug(f"UIDs: {uids}")
 
-    scaled_rewards = scale_rewards(uids, responses, rewards, timeout=timeout, mode=mode)
+    scaled_rewards = scale_rewards(self, uids, responses, rewards, timeout=timeout, mode=mode)
     bt.logging.debug(f"apply_reward_scores() Scaled rewards: {scaled_rewards}")
 
     # Compute forward pass rewards

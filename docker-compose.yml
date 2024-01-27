@@ -9,7 +9,7 @@ services:
   #     - "8080:80"
   #   deploy:
   #     resources:
-  #       reservations:
+  #       reservat  ions:
   #         devices:
   #           - driver: nvidia
   #             capabilities: [gpu]
@@ -24,7 +24,5 @@ services:
       - db:/data
 
 volumes:
-  # db:
-  #   driver: local
   db:
     driver: local

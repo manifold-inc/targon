@@ -3,8 +3,7 @@ FROM opentensorfdn/bittensor:6.6.0
 COPY ../../ /app/targon
 COPY app.py /app/app.py
 
-WORKDIR /app
-
+WORKDIR /app  
 
 # install python, build essentials
 RUN pip install -e targon

@@ -187,7 +187,7 @@ class BaseProverNeuron(BaseNeuron):
         Starts the prover's operations in a background thread upon entering the context.
         This method facilitates the use of the prover in a 'with' statement.
         """
-        self.run()
+        self.run_in_background_thread()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -243,3 +243,10 @@ class BaseProverNeuron(BaseNeuron):
 
         # Sync the metagraph.
         self.metagraph.sync(subtensor=self.subtensor)
+
+    def save_state(self):
+        return True
+    
+    def load_state(self):
+        return True
+    
