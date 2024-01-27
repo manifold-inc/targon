@@ -78,10 +78,6 @@ class BaseProverNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
-    async def start_axon(self):
-        """Starts the prover's axon."""
-        a = await self.axon.start()
-        return a
 
     def run(self):
         """
@@ -117,7 +113,7 @@ class BaseProverNeuron(BaseNeuron):
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
         # Start  starts the prover's axon, making it active on the network.
-        self.loop.run_until_complete(self.start_axon())
+        self.start_axon()
 
         bt.logging.info(f"Prover starting at block: {self.block}")
 

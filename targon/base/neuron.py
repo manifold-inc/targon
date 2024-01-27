@@ -116,6 +116,13 @@ class BaseNeuron(ABC):
     def run(self):
         ...
 
+    def start_axon(self):
+        """
+        Starts the prover's axon, making it active on the network.
+        """
+        bt.logging.info("Starting axon.")
+        return self.axon.start()
+
     def get_last_adjustment_block(self) -> int:
         with self.subtensor.substrate as substrate:
             return substrate.query('SubtensorModule', 'LastAdjustmentBlock', [self.config.netuid]).value
