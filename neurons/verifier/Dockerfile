@@ -7,7 +7,7 @@ WORKDIR /app
 
 
 # install python, build essentials
-RUN pip install -r targon/requirements.txt
+RUN pip install -e targon
 RUN pip install uvicorn[standard]
 
 EXPOSE 8000

@@ -78,6 +78,10 @@ class BaseProverNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
+    async def start_axon(self):
+        """Starts the prover's axon."""
+        await self.axon.start()
+
     def run(self):
         """
         Initiates and manages the main loop for the prover on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
@@ -112,7 +116,7 @@ class BaseProverNeuron(BaseNeuron):
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
         # Start  starts the prover's axon, making it active on the network.
-        self.axon.start()
+        self.loop.run_until_complete(self.start_axon())
 
         bt.logging.info(f"Prover starting at block: {self.block}")
 
