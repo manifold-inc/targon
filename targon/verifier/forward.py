@@ -88,11 +88,11 @@ async def forward(self):
         next_block_number = await self.subscribe_to_next_block()
         bt.logging.info(f"Next block arrived: {next_block_number}")
     
-    else:
-        sleep_time = 12 - (time.time() - start_time)
-        if sleep_time > 0:
-            bt.logging.info(f"Sleeping for {sleep_time} seconds")
-            await asyncio.sleep(sleep_time)
+    # else:
+    #     sleep_time = 12 - (time.time() - start_time)
+    #     if sleep_time > 0:
+    #         bt.logging.info(f"Sleeping for {sleep_time} seconds")
+    #         await asyncio.sleep(sleep_time)
 
 
 

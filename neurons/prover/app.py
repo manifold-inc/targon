@@ -98,6 +98,7 @@ class Miner(BaseProverNeuron):
                 truncate=sampling_params.truncate,
                 typical_p=sampling_params.typical_p,
                 watermark=sampling_params.watermark,
+                details=sampling_params.details,
                 stream=True
                 )
         

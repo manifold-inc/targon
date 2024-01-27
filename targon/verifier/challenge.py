@@ -82,10 +82,9 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
             sampling_params=sampling_params,
         )
 
-        axon = self.metagraph.axons[uid]
 
         response = await self.dendrite(
-            [axon],
+            self.metagraph.axons[uid],
             synapse,
             deserialize=False,
             timeout=self.config.neuron.timeout,
@@ -93,12 +92,13 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         )
 
         output = ""
-        print(response)
         async for r in response:
             if not isinstance(r, str):
                 continue
 
             output += r
+        
+        bt.logging.info('output',output)
 
         verified = verify( self, output, ground_truth_hash )
 

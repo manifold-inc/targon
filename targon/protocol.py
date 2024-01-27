@@ -41,7 +41,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     details: bool = pydantic.Field(
-        True,
+        False,
         title="Details",
         description="Whether to return the details.",
     )
@@ -83,7 +83,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     temperature: float = pydantic.Field(
-        0.0000000000000000000000000000000001,
+        0.001,
         title="Temperature",
         description="Sampling temperature to use, between 0 and 2.",
     )
@@ -129,7 +129,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
         title="Stream",
         description="Whether to stream.",
     )
-    
+
 
 
 
