@@ -25,7 +25,7 @@ from starlette.types import Send
 from targon.utils.prompt import create_prompt
 from targon.base.prover import BaseProverNeuron
 from huggingface_hub import AsyncInferenceClient
-from targon.protocol import Challenge, ChallengeSamplingParams
+from targon.protocol import Inference, Challenge, ChallengeSamplingParams
 
 class Miner(BaseProverNeuron):
     """
@@ -41,25 +41,22 @@ class Miner(BaseProverNeuron):
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
-    async def forward(
-        self, synapse: Challenge
-    ) -> Challenge:
+    async def inference_request(
+            self, synapse: Inference
+    ):
         """
-        Processes the incoming synapse by performing a predefined operation on the input data.
-        This method should be replaced with actual logic relevant to the miner's purpose.
+        Sends an inference request to the miner's TGI endpoint.
 
         Args:
-            synapse (PromptingSynapse): The synapse object containing the 'dummy_input' data.
+            synapse (typing.Union[Challenge, Inference]): The synapse object containing the request data.
 
         Returns:
-            PromptingSynapse: The synapse object with the 'dummy_output' field set to twice the 'dummy_input' value.
+            typing.Tuple[bool, str]: A tuple containing a boolean indicating whether the request was successful,
+                                    and a string containing the response from the miner's TGI endpoint.
 
-        The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
-        the miner's intended operation. This method demonstrates a basic transformation of input data.
+        This function is a placeholder and should be replaced with a call to your miner's TGI endpoint.
         """
-
-
-        async def _prompt(synapse: Challenge, send: Send) -> None:
+        async def _prompt(synapse: Inference, send: Send) -> None:
             """
             Processes the incoming synapse by performing a predefined operation on the input data.
             This method should be replaced with actual logic relevant to the miner's purpose.
@@ -73,8 +70,6 @@ class Miner(BaseProverNeuron):
             The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
             the miner's intended operation. This method demonstrates a basic transformation of input data.
             """
-            # TODO(developer): Replace with actual implementation logic.
-
             sampling_params = synapse.sampling_params
 
             prompt_input = {
@@ -98,15 +93,12 @@ class Miner(BaseProverNeuron):
                 truncate=sampling_params.truncate,
                 typical_p=sampling_params.typical_p,
                 watermark=sampling_params.watermark,
-                details=sampling_params.details,
+                details=False,
                 stream=True
                 )
         
-
+            output = ""
             async for completion in output:
-                if completion is not isinstance(str):
-                    continue
-
                 await send(
                     {
                         "type": "http.response.body",
@@ -114,14 +106,83 @@ class Miner(BaseProverNeuron):
                         "more_body": True,
                     }
                 )
-                bt.logging.info(f"Streamed text: {completion}")
+                output += completion
+            bt.logging.info(f"Streamed text: {output}")
 
-            # Send final message to close the stream
+            # # Send final message to close the stream
             await send({"type": "http.response.body", "body": b'', "more_body": False})
 
 
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
+
+
+    async def challenge_request(
+            self, synapse: Challenge
+    ):
+        """
+        Sends an inference request to the miner's TGI endpoint.
+
+        Args:
+            synapse (typing.Union[Challenge, Inference]): The synapse object containing the request data.
+
+        Returns:
+            typing.Tuple[bool, str]: A tuple containing a boolean indicating whether the request was successful,
+                                    and a string containing the response from the miner's TGI endpoint.
+
+        This function is a placeholder and should be replaced with a call to your miner's TGI endpoint.
+        """
+        sampling_params = synapse.sampling_params
+
+        prompt_input = {
+            "query": synapse.query,
+            "sources": synapse.sources,
+        }
+
+        prompt = create_prompt(prompt_input)
+
+
+        output = await self.client.text_generation(
+            prompt=prompt,
+            best_of=sampling_params.best_of,
+            max_new_tokens=sampling_params.max_new_tokens,
+            seed=sampling_params.seed,
+            do_sample=sampling_params.do_sample,
+            repetition_penalty=sampling_params.repetition_penalty,
+            temperature=sampling_params.temperature,
+            top_k=sampling_params.top_k,
+            top_p=sampling_params.top_p,
+            truncate=sampling_params.truncate,
+            typical_p=sampling_params.typical_p,
+            watermark=sampling_params.watermark,
+            details=False,
+            stream=False
+        )
+        bt.logging.debug('miner output', output)
+
+        synapse.completion = output
+
+        return synapse
+
+    async def forward(
+        self, synapse: Challenge
+    ) -> Challenge:
+        """
+        Processes the incoming synapse by performing a predefined operation on the input data.
+
+        Args:
+            synapse (typing.Union[Challenge, Inference]): The synapse object containing the 'dummy_input' data.
+
+        Returns:
+            typing.Union[Challenge, Inference]: The synapse object with the 'dummy_output' field set to twice the 'dummy_input' value.
+
+        The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
+        the miner's intended operation. This method demonstrates a basic transformation of input data.
+        """
+        if isinstance(synapse, Inference):
+            return await self.inference_request(synapse)
+    
+        return await self.challenge_request(synapse)
 
     async def blacklist(
         self, synapse: Challenge

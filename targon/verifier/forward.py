@@ -35,9 +35,8 @@ def subscribe_to_next_block(self):
 
     def next_block_handler(obj, update_nr, subscription_id):
         future.set_result(obj["header"]["number"])
-        self.subscription_substrate.unsubscribe_block_headers(subscription_id)
+        self.subscription_substrate.subscribe_block_headers(subscription_id)
 
-    self.subscription_substrate.subscribe_block_headers(next_block_handler)
     return future
 
 async def forward(self):
@@ -73,7 +72,7 @@ async def forward(self):
             self.next_adjustment_block = self.last_interval_block + self.adjustment_interval
 
     else:
-        if self.step % 10 == 0 and self.step > 0:
+        if self.step % self.config.neuron.compute_stats_interval == 0 and self.step > 0:
             bt.logging.info("initiating compute stats")
             await compute_all_tiers(self.database)
 
@@ -84,15 +83,11 @@ async def forward(self):
 
     total_request_size = await total_verifier_requests(self.database)
     bt.logging.info(f"total verifier requests: {total_request_size}")
-    if not self.config.mock:
-        next_block_number = await self.subscribe_to_next_block()
-        bt.logging.info(f"Next block arrived: {next_block_number}")
-    
-    # else:
-    #     sleep_time = 12 - (time.time() - start_time)
-    #     if sleep_time > 0:
-    #         bt.logging.info(f"Sleeping for {sleep_time} seconds")
-    #         await asyncio.sleep(sleep_time)
+
+    # sleep_time = 12 - (time.time() - start_time)
+    # if sleep_time > 0:
+    #     bt.logging.info(f"Sleeping for {sleep_time} seconds")
+    #     await asyncio.sleep(sleep_time)
 
 
 

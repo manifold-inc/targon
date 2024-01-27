@@ -47,7 +47,7 @@ def check_uid_availability(
     #     if metagraph.S[uid] > vpermit_tao_limit:
     #         bt.logging.debug(f"uid: {uid} has stake ({metagraph.S[uid]}) > {vpermit_tao_limit}")
     #         return False
-    if uid is 0:
+    if uid is not 1:
         return False
     # Available otherwise.
     return True

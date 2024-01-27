@@ -53,6 +53,8 @@ def verify( self, output, ground_truth_hash):
         bt.logging.debug(
             f"Output hash {output_hash} does not match ground truth hash {ground_truth_hash}"
         )
+        bt.logging.debug(f"prover output: {output}")
+        bt.logging.debug(f"ground truth output: {ground_truth_hash}")
         return False
 
     bt.logging.debug(
@@ -88,29 +90,23 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
             synapse,
             deserialize=False,
             timeout=self.config.neuron.timeout,
-            streaming=True
         )
 
-        output = ""
-        async for r in response:
-            if not isinstance(r, str):
-                continue
-
-            output += r
+        output = response.completion
         
-        bt.logging.info('output',output)
-
+        bt.logging.debug('output', output)
         verified = verify( self, output, ground_truth_hash )
 
         output_dict = (
-            output,
+            response,
             uid
         )
         return verified, output_dict
     
     else:
         prompt = create_prompt(private_input)
-        output = await self.client.text_generation(
+
+        response = await self.client.text_generation(
             prompt=prompt,
             best_of=sampling_params.best_of,
             max_new_tokens=sampling_params.max_new_tokens,
@@ -123,11 +119,15 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
             truncate=sampling_params.truncate,
             typical_p=sampling_params.typical_p,
             watermark=sampling_params.watermark,
-            )
-        verified = verify( self, output, ground_truth_hash )
+            details=sampling_params.details,
+            stream=True
+        )
+        
+
+        verified = verify( self, response, ground_truth_hash )
 
         output_dict = (
-            output,
+            response,
             uid
         )
         return verified, output_dict
@@ -210,7 +210,7 @@ async def challenge_data( self ):
     remove_reward_idxs = []
     for i, (verified, (response, uid)) in enumerate(responses):
         bt.logging.trace(
-            f"Challenge iteration {i} uid {uid} response {str(response)}"
+            f"Challenge iteration {i} uid {uid} response {str(response.completion)}"
         )
 
         hotkey = self.metagraph.hotkeys[uid]
@@ -237,9 +237,9 @@ async def challenge_data( self ):
         else: 
             event.uids.append(uid)
             event.successful.append(verified)
-            event.completion_times.append(response[0].dendrite.process_time)
-            event.task_status_messages.append(response[0].dendrite.status_message)
-            event.task_status_codes.append(response[0].dendrite.status_code)
+            event.completion_times.append(response.dendrite.process_time)
+            event.task_status_messages.append(response.dendrite.status_message)
+            event.task_status_codes.append(response.dendrite.status_code)
             event.rewards.append(rewards[i].item())
 
     bt.logging.debug(

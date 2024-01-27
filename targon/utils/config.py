@@ -157,13 +157,6 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.model_id",
-        type=str,
-        help="The model to use for the verifier.",
-        default="HuggingFaceH4/zephyr-7b-beta",
-    )
-
-    parser.add_argument(
         "--neuron.timeout",
         type=float,
         help="The timeout for each forward call in seconds.",

@@ -24,6 +24,113 @@ from typing import List
 from starlette.responses import StreamingResponse
 
 
+class InferenceeSamplingParams(pydantic.BaseModel):
+    '''
+    SamplingParams is a pydantic model that represents the sampling parameters for the TGI model.
+    '''
+    best_of: int = pydantic.Field(
+        1,
+        title="Best of",
+        description="The number of samples to generate.",
+    )
+
+    decoder_input_details: bool = pydantic.Field(
+        True,
+        title="Decoder Input Details",
+        description="Whether to return the decoder input details.",
+    )
+
+    details: bool = pydantic.Field(
+        False,
+        title="Details",
+        description="Whether to return the details.",
+    )
+
+    do_sample: bool = pydantic.Field(
+        True,
+        title="Do Sample",
+        description="Whether to sample.",
+    )
+
+    max_new_tokens: int = pydantic.Field(
+        16,
+        title="Max New Tokens",
+        description="The maximum number of tokens to generate in the completion.",
+    )
+
+    repetition_penalty: float = pydantic.Field(
+        1.0,
+        title="Repetition Penalty",
+        description="The repetition penalty.",
+    )
+
+    return_full_text: bool = pydantic.Field(
+        False,
+        title="Return Full Text",
+        description="Whether to return the full text.",
+    )
+
+    seed: int = pydantic.Field(
+        None,
+        title="Seed",
+        description="The seed used to generate the output.",
+    )
+
+    stop: List[str] = pydantic.Field(
+        ["photographer"],
+        title="Stop",
+        description="The stop words.",
+    )
+
+    temperature: float = pydantic.Field(
+        0.01,
+        title="Temperature",
+        description="Sampling temperature to use, between 0 and 2.",
+    )
+
+    top_k: int = pydantic.Field(
+        10,
+        title="Top K",
+        description="Nucleus sampling parameter, top_p probability mass.",
+    )
+
+    top_n_tokens: int = pydantic.Field(
+        5,
+        title="Top N Tokens",
+        description="The number of tokens to return.",
+    )
+
+    top_p: float = pydantic.Field(
+        0.9999999,
+        title="Top P",
+        description="Nucleus sampling parameter, top_p probability mass.",
+    )
+
+    truncate: int = pydantic.Field(
+        None,
+        title="Truncate",
+        description="The truncation length.",
+    )
+
+    typical_p: float = pydantic.Field(
+        0.9999999,
+        title="Typical P",
+        description="The typical probability.",
+    )
+
+    watermark: bool = pydantic.Field(
+        False,
+        title="Watermark",
+        description="Whether to watermark.",
+    )
+
+    stream: bool = pydantic.Field(
+        False,
+        title="Stream",
+        description="Whether to stream.",
+    )
+
+
 class ChallengeSamplingParams(pydantic.BaseModel):
     '''
     SamplingParams is a pydantic model that represents the sampling parameters for the TGI model.
@@ -83,7 +190,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     temperature: float = pydantic.Field(
-        0.001,
+        1e-23,
         title="Temperature",
         description="Sampling temperature to use, between 0 and 2.",
     )
@@ -132,9 +239,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
 
 
 
-
-
-class Challenge(bt.StreamingSynapse):
+class Inference(bt.StreamingSynapse):
     """
     Challenge is a specialized implementation of the `StreamingSynapse` tailored for prompting functionalities within
     the Bittensor network. This class is intended to interact with a streaming response that contains a sequence of tokens,
@@ -272,8 +377,77 @@ class Challenge(bt.StreamingSynapse):
             "header_size": int(headers.get("header_size", 0)),
             "dendrite": extract_info("bt_header_dendrite"),
             "axon": extract_info("bt_header_axon"),
-            "roles": self.roles,
-            "messages": self.messages,
+            "sources": self.sources,
+            "query": self.query,
             "completion": self.completion,
         }
 
+
+
+
+class Challenge(bt.Synapse):
+    """
+    Challenge is a specialized implementation of the `StreamingSynapse` tailored for prompting functionalities within
+    the Bittensor network. This class is intended to interact with a streaming response that contains a sequence of tokens,
+    which represent prompts or messages in a certain scenario.
+
+    As a developer, when using or extending the `Challenge` class, you should be primarily focused on the structure
+    and behavior of the prompts you are working with. The class has been designed to seamlessly handle the streaming,
+    decoding, and accumulation of tokens that represent these prompts.
+
+    Attributes:
+    - `sources` (List[str]): A list of sources related to the query. Immutable.
+
+    - `query` (str): The query to be sent to the Bittensor network. Immutable.
+
+    - `seed` (int): The seed used to generate the output. Immutable.
+
+    - `completion` (str): Stores the processed result of the streaming tokens. As tokens are streamed, decoded, and
+                          processed, they are accumulated in the completion attribute. This represents the "final"
+                          product or result of the streaming process.
+    - `required_hash_fields` (List[str]): A list of fields that are required for the hash.
+
+    Methods:
+    - `process_streaming_response`: This method asynchronously processes the incoming streaming response by decoding
+                                    the tokens and accumulating them in the `completion` attribute.
+
+    - `deserialize`: Converts the `completion` attribute into its desired data format, in this case, a string.
+
+    - `extract_response_json`: Extracts relevant JSON data from the response, useful for gaining insights on the response's
+                               metadata or for debugging purposes.
+
+    Note: While you can directly use the `Challenge` class, it's designed to be extensible. Thus, you can create
+    subclasses to further customize behavior for specific prompting scenarios or requirements.
+    """
+
+
+    sources: List[str] = pydantic.Field(
+        ...,
+        title="Sources",
+        description="A list of sources related to the query.",
+    )
+
+    query: str = pydantic.Field(
+        ...,
+        title="Query",
+        description="The query to be sent to the Bittensor network.",
+    )
+
+    sampling_params: ChallengeSamplingParams = pydantic.Field(
+        ChallengeSamplingParams(),
+        title="Sampling Params",
+        description="The sampling parameters for the TGI model.",
+    )
+    completion: str = pydantic.Field(
+        None,
+        title="Completion",
+        description="The processed result of the streaming tokens.",
+    )
+
+    required_hash_fields: List[str] = pydantic.Field(
+        ["sources", "query", "sampling_params"],
+        title="Required Hash Fields",
+        description="A list of fields that are required for the hash.",
+    )
+
+  

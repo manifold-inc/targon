@@ -156,7 +156,7 @@ def scale_rewards(self, uids, responses, rewards, timeout: float, mode: str):
     sorted_axon_times = get_sorted_response_times(self, uids, responses, timeout=timeout)
 
     # Extract only the process times
-    process_times = [proc_time for _, proc_time in sorted_axon_times]
+    process_times = [proc_time for _, proc_time, _ in sorted_axon_times]
 
     # Normalize the response times
     normalized_times = (
@@ -168,7 +168,7 @@ def scale_rewards(self, uids, responses, rewards, timeout: float, mode: str):
     # Create a dictionary mapping UIDs to normalized times
     uid_to_normalized_time = {
         uid: normalized_time
-        for (uid, _), normalized_time in zip(sorted_axon_times, normalized_times)
+        for (uid, _, _), normalized_time in zip(sorted_axon_times, normalized_times)
     }
     bt.logging.debug(
         f"scale_rewards_by_{mode}() uid_to_normalized_time: {uid_to_normalized_time}"
