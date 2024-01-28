@@ -94,7 +94,7 @@ def get_sorted_response_times(self, uids, responses, timeout: float):
         [(2, 0.1), (1, 0.2), (3, 0.3)]
     """
     if self.config.mock:
-        return [(uid, 0.5) for uid in uids]
+        return [(uid, 0.5, timeout) for uid in uids]
     axon_times = [
         (
             uids[idx],

@@ -25,7 +25,7 @@ import requests
 import bittensor as bt
 
 from targon import protocol
-from targon.utils.uids import get_tiered_uids
+from targon.utils.uids import get_tiered_uids, get_random_uids
 from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.constants import CHALLENGE_FAILURE_REWARD
@@ -106,6 +106,12 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
     else:
         prompt = create_prompt(private_input)
 
+        synapse = protocol.Challenge(
+            sources = [private_input["sources"]],
+            query = private_input["query"],
+            sampling_params=sampling_params,
+        )
+
         response = await self.client.text_generation(
             prompt=prompt,
             best_of=sampling_params.best_of,
@@ -120,14 +126,16 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
             typical_p=sampling_params.typical_p,
             watermark=sampling_params.watermark,
             details=sampling_params.details,
-            stream=True
+            stream=False
         )
+
+        synapse.completion = response
         
 
         verified = verify( self, response, ground_truth_hash )
 
         output_dict = (
-            response,
+            synapse,
             uid
         )
         return verified, output_dict
@@ -194,7 +202,8 @@ async def challenge_data( self ):
     # --- Get the uids to query
     start_time = time.time()
     tasks = []
-    uids = get_tiered_uids( self, k=self.config.neuron.sample_size )
+    # uids = get_tiered_uids( self, k=self.config.neuron.sample_size )
+    uids = get_random_uids( self, k=self.config.neuron.sample_size )
 
     bt.logging.debug(f"challenge uids {uids}")
     responses = []
@@ -210,7 +219,7 @@ async def challenge_data( self ):
     remove_reward_idxs = []
     for i, (verified, (response, uid)) in enumerate(responses):
         bt.logging.trace(
-            f"Challenge iteration {i} uid {uid} response {str(response.completion)}"
+            f"Challenge iteration {i} uid {uid} response {str(response.completion if not self.config.mock else response)}"
         )
 
         hotkey = self.metagraph.hotkeys[uid]
