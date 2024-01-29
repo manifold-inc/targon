@@ -2,7 +2,7 @@ FROM opentensorfdn/bittensor:6.6.0
 
 COPY ../../ /app/targon
 COPY app.py /app/app.py
-
+COPY entrypoint.sh /app/entrypoint.sh
 WORKDIR /app
 
 
@@ -12,5 +12,6 @@ RUN pip install uvicorn[standard]
 
 EXPOSE 8000
 
+RUN chmod +x /app/entrypoint.sh
 #add your flag commands
-CMD [ "uvicorn", "app:app", "--loop", "asyncio" ]
+# CMD [ "python", "app.py", "--logging.debug", "--logging.trace",  ]

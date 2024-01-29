@@ -29,17 +29,17 @@ REQUEST_LIMIT_SILVER = 5_000 # 5k every 360 blocks
 REQUEST_LIMIT_BRONZE = 500 # 1k every 360 blocks
 
 # Requirements for each tier. These must be maintained for a prover to remain in that tier.
-CHALLENGER_INFERENCE_SUCCESS_RATE = 0.99  # 1/1000 chance of failure
-CHALLENGER_CHALLENGE_SUCCESS_RATE = 0.99  # 1/1000 chance of failure
+CHALLENGER_INFERENCE_SUCCESS_RATE = 0.999  # 1/1000 chance of failure
+CHALLENGER_CHALLENGE_SUCCESS_RATE = 0.999  # 1/1000 chance of failure
 
-GRANDMASTER_INFERENCE_SUCCESS_RATE = 0.980  # 1/100 chance of failure
-GRANDMASTER_CHALLENGE_SUCCESS_RATE = 0.980  # 1/100 chance of failure
+GRANDMASTER_INFERENCE_SUCCESS_RATE = 0.989  # 1/100 chance of failure
+GRANDMASTER_CHALLENGE_SUCCESS_RATE = 0.989  # 1/100 chance of failure
 
-GOLD_INFERENCE_SUCCESS_RATE = 0.97  # 1/50 chance of failure
-GOLD_CHALLENGE_SUCCESS_RATE = 0.97  # 1/50 chance of failure
+GOLD_INFERENCE_SUCCESS_RATE = 0.949  # 1/50 chance of failure
+GOLD_CHALLENGE_SUCCESS_RATE = 0.949  # 1/50 chance of failure
 
-SILVER_INFERENCE_SUCCESS_RATE = 0.95  # 1/20 chance of failure
-SILVER_CHALLENGE_SUCCESS_RATE = 0.95  # 1/20 chance of failure
+SILVER_INFERENCE_SUCCESS_RATE = 0.949  # 1/20 chance of failure
+SILVER_CHALLENGE_SUCCESS_RATE = 0.949  # 1/20 chance of failure
 
 CHALLENGER_TIER_REWARD_FACTOR = 1.0  # Get 100% rewards
 GRANDMASTER_TIER_REWARD_FACTOR = 0.888  # Get 88.8% rewards

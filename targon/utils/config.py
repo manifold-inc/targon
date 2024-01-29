@@ -76,7 +76,7 @@ def add_args(cls, parser):
         "--neuron.epoch_length",
         type=int,
         help="The default epoch length (how often we set weights, measured in 12 second blocks).",
-        default=100,
+        default=360,
     )
 
     parser.add_argument(
@@ -269,7 +269,7 @@ def add_verifier_args(cls, parser):
         "--database.password",
         type=str,
         help="the password to use for the redis database.",
-        default="eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81",
+        default=None,
     )
 
     parser.add_argument(

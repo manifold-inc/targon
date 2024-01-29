@@ -16,28 +16,32 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
 import time
 import typing
+import argparse
 import bittensor as bt
 
+from pathlib import Path
 from functools import partial
+from dotenv import load_dotenv
 from starlette.types import Send
 from targon.utils.prompt import create_prompt
-from targon.base.prover import BaseProverNeuron
 from huggingface_hub import AsyncInferenceClient
+from targon.base.prover import BaseProverNeuron, add_prover_args
 from targon.protocol import Inference, Challenge, ChallengeSamplingParams
 
-class Miner(BaseProverNeuron):
+class Prover(BaseProverNeuron):
     """
-    Your miner neuron class. You should use this class to define your miner's behavior. In particular, you should replace the forward function with your own logic. You may also want to override the blacklist and priority functions according to your needs.
+    Your prover neuron class. You should use this class to define your prover's behavior. In particular, you should replace the forward function with your own logic. You may also want to override the blacklist and priority functions according to your needs.
 
-    This class inherits from the BaseMinerNeuron class, which in turn inherits from BaseNeuron. The BaseNeuron class takes care of routine tasks such as setting up wallet, subtensor, metagraph, logging directory, parsing config, etc. You can override any of the methods in BaseNeuron if you need to customize the behavior.
+    This class inherits from the BaseProverNeuron class, which in turn inherits from BaseNeuron. The BaseNeuron class takes care of routine tasks such as setting up wallet, subtensor, metagraph, logging directory, parsing config, etc. You can override any of the methods in BaseNeuron if you need to customize the behavior.
 
-    This class provides reasonable default behavior for a miner such as blacklisting unrecognized hotkeys, prioritizing requests based on stake, and forwarding requests to the forward function. If you need to define custom
+    This class provides reasonable default behavior for a prover such as blacklisting unrecognized hotkeys, prioritizing requests based on stake, and forwarding requests to the forward function. If you need to define custom
     """
 
     def __init__(self, config=None):
-        super(Miner, self).__init__(config=config)
+        super(Prover, self).__init__(config=config)
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
@@ -45,21 +49,21 @@ class Miner(BaseProverNeuron):
             self, synapse: Inference
     ):
         """
-        Sends an inference request to the miner's TGI endpoint.
+        Sends an inference request to the prover's TGI endpoint.
 
         Args:
             synapse (typing.Union[Challenge, Inference]): The synapse object containing the request data.
 
         Returns:
             typing.Tuple[bool, str]: A tuple containing a boolean indicating whether the request was successful,
-                                    and a string containing the response from the miner's TGI endpoint.
+                                    and a string containing the response from the prover's TGI endpoint.
 
-        This function is a placeholder and should be replaced with a call to your miner's TGI endpoint.
+        This function is a placeholder and should be replaced with a call to your prover's TGI endpoint.
         """
         async def _prompt(synapse: Inference, send: Send) -> None:
             """
             Processes the incoming synapse by performing a predefined operation on the input data.
-            This method should be replaced with actual logic relevant to the miner's purpose.
+            This method should be replaced with actual logic relevant to the prover's purpose.
 
             Args:
                 synapse (PromptingSynapse): The synapse object containing the 'dummy_input' data.
@@ -68,7 +72,7 @@ class Miner(BaseProverNeuron):
                 PromptingSynapse: The synapse object with the 'dummy_output' field set to twice the 'dummy_input' value.
 
             The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
-            the miner's intended operation. This method demonstrates a basic transformation of input data.
+            the prover's intended operation. This method demonstrates a basic transformation of input data.
             """
             sampling_params = synapse.sampling_params
 
@@ -121,16 +125,16 @@ class Miner(BaseProverNeuron):
             self, synapse: Challenge
     ):
         """
-        Sends an inference request to the miner's TGI endpoint.
+        Sends an inference request to the prover's TGI endpoint.
 
         Args:
             synapse (typing.Union[Challenge, Inference]): The synapse object containing the request data.
 
         Returns:
             typing.Tuple[bool, str]: A tuple containing a boolean indicating whether the request was successful,
-                                    and a string containing the response from the miner's TGI endpoint.
+                                    and a string containing the response from the prover's TGI endpoint.
 
-        This function is a placeholder and should be replaced with a call to your miner's TGI endpoint.
+        This function is a placeholder and should be replaced with a call to your prover's TGI endpoint.
         """
         sampling_params = synapse.sampling_params
 
@@ -158,7 +162,7 @@ class Miner(BaseProverNeuron):
             details=False,
             stream=False
         )
-        bt.logging.debug('miner output', output)
+        bt.logging.debug('prover output', output)
 
         synapse.completion = output
 
@@ -177,7 +181,7 @@ class Miner(BaseProverNeuron):
             typing.Union[Challenge, Inference]: The synapse object with the 'dummy_output' field set to twice the 'dummy_input' value.
 
         The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
-        the miner's intended operation. This method demonstrates a basic transformation of input data.
+        the prover's intended operation. This method demonstrates a basic transformation of input data.
         """
         if isinstance(synapse, Inference):
             return await self.inference_request(synapse)
@@ -241,7 +245,7 @@ class Miner(BaseProverNeuron):
         Returns:
             float: A priority score derived from the stake of the calling entity.
 
-        Miners may recieve messages from multiple entities at once. This function determines which request should be
+        Provers may recieve messages from multiple entities at once. This function determines which request should be
         processed first. Higher values indicate that the request should be processed first. Lower values indicate
         that the request should be processed later.
 
@@ -261,9 +265,9 @@ class Miner(BaseProverNeuron):
         return prirority
 
 
-# This is the main function, which runs the miner.
+# This is the main function, which runs the prover.
 if __name__ == "__main__":
-    with Miner() as miner:
+    with Prover() as prover:
         while True:
-            bt.logging.info("Miner running...", time.time())
+            bt.logging.info("Prover running...", time.time())
             time.sleep(5)

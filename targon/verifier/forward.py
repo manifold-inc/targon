@@ -63,9 +63,9 @@ async def forward(self):
             bt.logging.info("initiating compute stats")
             await compute_all_tiers(self.database)
 
-            # Update miner statistics and usage data.
+            # Update prover statistics and usage data.
             stats = await get_prover_statistics(self.database)
-            bt.logging.debug(f"miner stats: {pformat(stats)}")
+            bt.logging.debug(f"prover stats: {pformat(stats)}")
 
             self.last_interval_block = self.get_last_adjustment_block()
             self.adjustment_interval = self.get_adjustment_interval()
@@ -76,9 +76,9 @@ async def forward(self):
             bt.logging.info("initiating compute stats")
             await compute_all_tiers(self.database)
 
-            # Update miner statistics and usage data.
+            # Update prover statistics and usage data.
             stats = await get_prover_statistics(self.database)
-            bt.logging.debug(f"miner stats: {pformat(stats)}")
+            bt.logging.debug(f"prover stats: {pformat(stats)}")
 
 
     total_request_size = await total_verifier_requests(self.database)

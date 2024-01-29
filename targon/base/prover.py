@@ -44,6 +44,8 @@ class BaseProverNeuron(BaseNeuron):
     def __init__(self, config=None):
         super().__init__(config=config)
 
+        assert self.config.database.password is not None, "Database password must be set."
+        
         # Warn if allowing incoming requests from anyone.
         if not self.config.blacklist.force_verifier_permit:
             bt.logging.warning(
