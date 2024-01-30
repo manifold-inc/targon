@@ -269,16 +269,36 @@ async def compute_all_tiers(database: aioredis.Redis):
     bt.logging.info(f"Resetting statistics for all hotkeys...")
     await rollover_request_stats(database)
 
-
-async def get_tier_requests(ss58_address: str, database: aioredis.Redis):
+async def get_uid_tier_mapping(database: aioredis.Redis):
     """
-    Retrieves the number of requests a prover has made in the current epoch.
-    This function returns the number of requests a prover has made in the current epoch.
+    Retrieves a mapping of UIDs to their respective tiers.
+
+    Args:
+        database (aioredis.Redis): The Redis client instance for database operations.
+
+    Returns:
+        dict: A dictionary mapping UIDs to their tiers.
+    """
+    uid_tier_mapping = {}
+    stats_keys = [key async for key in database.scan_iter("stats:*")]
+    for key in stats_keys:
+        ss58_address = key.decode().split(":")[1]
+        tier = await database.hget(key, "tier")
+        if tier is not None:
+            uid_tier_mapping[ss58_address] = tier.decode()
+    return uid_tier_mapping
+
+
+async def get_remaining_requests(ss58_address: str, database: aioredis.Redis):
+    """
+    Calculates the remaining number of requests a prover can make in the current epoch.
+
     Args:
         ss58_address (str): The unique address (hotkey) of the prover.
-        database (redis.Redis): The Redis client instance for database operations.
+        database (aioredis.Redis): The Redis client instance for database operations.
+
     Returns:
-        int: The number of requests the prover has made in the current epoch.
+        int: The remaining number of requests for the prover.
     """
     request_limit = int(await database.hget(f"stats:{ss58_address}", "request_limit"))
     total_interval_successes = int(

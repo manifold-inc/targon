@@ -68,3 +68,4 @@ services:
 volumes:
   db:
     driver: local
+  mainnet-lite-volume:

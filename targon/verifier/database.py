@@ -67,7 +67,7 @@ async def total_hotkey_requests(
         The total number of requests made for the hotkey.
     """
     total_requests = 0
-    keys = await database.hkeys(f"hotkey:{hotkey}")
+    keys = await database.hkeys(f"stats:{hotkey}")
     for data_hash in keys:
         # Get the metadata for the current data hash
         metadata = await get_metadata_for_hotkey_and_hash(
@@ -198,11 +198,11 @@ async def total_verifier_requests(database: aioredis.Redis) -> int:
         The total request used by all hotkeys in the database in bytes.
     """
     total_requests = 0
-    async for key in database.scan_iter("*"):
-        if not key.startswith(b"stats:"):
-            continue
+    async for key in database.scan_iter("stats:*"):
         # Get the total storage used by the hotkey
-        total_requests += await total_hotkey_requests(key.decode("utf-8").split(":")[-1], database)
+        total_successes = await database.hget(key, "total_successes")
+        if total_successes is not None:
+            total_requests += int(total_successes)
     return total_requests
 
 async def get_prover_statistics(database: aioredis.Redis) -> Dict[str, Dict[str, str]]:

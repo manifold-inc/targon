@@ -69,7 +69,7 @@ async def handle_inference(
     return None
 
 async def inference_data(
-        self, data_hash: str = None
+        self
 )-> typing.Tuple[bytes, typing.Callable]:
     """ Returns the data and a callback to be used for inference. """
 

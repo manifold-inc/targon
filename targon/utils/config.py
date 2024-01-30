@@ -169,7 +169,7 @@ def add_verifier_args(cls, parser):
         help="If true, the validator will disable auto-update of its software from the repository.",
         default=False,
     )
-    
+
     parser.add_argument(
         "--neuron.timeout",
         type=float,
@@ -284,13 +284,6 @@ def add_verifier_args(cls, parser):
         type=str,
         help="the password to use for the redis database.",
         default=None,
-    )
-
-    parser.add_argument(
-        "--database.purge_challenges",
-        action="store_true",
-        help="If set, we will purge all challenges from ALL provers on start.",
-        default=False,
     )
 
     parser.add_argument(
