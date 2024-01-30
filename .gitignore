@@ -1,3 +1,5 @@
 *.egg-info
 __pycache__/
 test.py
+neurons/verifier/docker-compose.yml
+neurons/prover/docker-compose.yml
