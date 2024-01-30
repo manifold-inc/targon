@@ -23,6 +23,7 @@ from pprint import pformat
 
 from targon.verifier.state import log_event
 from targon.verifier.challenge import challenge_data
+from targon.verifier.inference import inference_data
 from targon.verifier.bonding import compute_all_tiers
 from targon.verifier.database import get_prover_statistics, total_verifier_requests
 
@@ -70,7 +71,7 @@ async def forward(self):
             self.last_interval_block = self.get_last_adjustment_block()
             self.adjustment_interval = self.get_adjustment_interval()
             self.next_adjustment_block = self.last_interval_block + self.adjustment_interval
-
+            self.step = 0
     else:
         if self.step % self.config.neuron.compute_stats_interval == 0 and self.step > 0:
             bt.logging.info("initiating compute stats")
@@ -79,15 +80,16 @@ async def forward(self):
             # Update prover statistics and usage data.
             stats = await get_prover_statistics(self.database)
             bt.logging.debug(f"prover stats: {pformat(stats)}")
+            self.step = 0
 
 
     total_request_size = await total_verifier_requests(self.database)
     bt.logging.info(f"total verifier requests: {total_request_size}")
 
-    sleep_time = 12 - (time.time() - start_time)
-    if sleep_time > 0:
-        bt.logging.info(f"Sleeping for {sleep_time} seconds")
-        await asyncio.sleep(sleep_time)
+    # sleep_time = 12 - (time.time() - start_time)
+    # if sleep_time > 0:
+    #     bt.logging.info(f"Sleeping for {sleep_time} seconds")
+    #     await asyncio.sleep(sleep_time)
 
 
 

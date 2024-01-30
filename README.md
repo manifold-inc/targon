@@ -1,6 +1,6 @@
 # TARGON: A Redundant Deterministic Verification Network
 
-TARGON (Bittensor Subnet 4) implements a redundant deterministic verification mechanism that can be used to interpret and analyze ground truth sources and a query. 
+TARGON (Bittensor Subnet 4)s a redundant deterministic verification mechanism that can be used to interpret and analyze ground truth sources and a query. 
 
 
 NOTICE: Using this software, you must agree to the Terms and Agreements provided in the terms and conditions document. By downloading and running this software, you implicitly agree to these terms and conditions.
@@ -29,6 +29,29 @@ Currently supporting python>=3.9,<3.11.
     - [Tier System](#tier-system)
     - [Promotion/Relegation](#promotion/relegation)
 1. [How to Contribute](#how-to-contribute)
+
+# Roadmap
+
+<details open>
+<summary>Completed</summary>
+
+- [x] Challenge Request
+- [x] Reward System
+- [x] Bonding
+- [x] Database
+- [x] Auto Update
+- [x] Forwarding
+
+</details>
+
+<details>
+<summary>In Progress</summary>
+
+- [ ] Inference Request
+- [ ] Metapool
+- [ ] flashbots' style block space for verifier bandwidth
+- [ ] metrics dashboard
+</details>
 
 # Installation
 

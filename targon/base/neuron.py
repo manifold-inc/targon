@@ -17,9 +17,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import copy
 import sys
-
+import copy
+import torch
 import bittensor as bt
 
 from abc import ABC, abstractmethod
@@ -28,8 +28,8 @@ from abc import ABC, abstractmethod
 from targon.utils.updater import autoupdate
 from targon.utils.misc import ttl_get_block
 from targon import __spec_version__ as spec_version
-from targon.utils.config import check_config, add_args, config
 from targon.mock import MockSubtensor, MockMetagraph
+from targon.utils.config import check_config, add_args, config
 
 
 class BaseNeuron(ABC):
@@ -71,9 +71,11 @@ class BaseNeuron(ABC):
 
         if not self.config.disable_autoupdate:
             autoupdate("v1.0.0")
-            
+
         # Log the configuration for reference.
         bt.logging.info(self.config)
+        
+        self.device = torch.device(self.config.neuron.device)
 
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
