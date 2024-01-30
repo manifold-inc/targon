@@ -25,10 +25,10 @@ import bittensor as bt
 from abc import ABC, abstractmethod
 
 # Sync calls set weights and also resyncs the metagraph.
-from targon.utils.config import check_config, add_args, config
+from targon.utils.updater import autoupdate
 from targon.utils.misc import ttl_get_block
 from targon import __spec_version__ as spec_version
-
+from targon.utils.config import check_config, add_args, config
 from targon.mock import MockSubtensor, MockMetagraph
 
 
@@ -69,9 +69,9 @@ class BaseNeuron(ABC):
         # Set up logging with the provided configuration and directory.
         bt.logging(config=self.config, logging_dir=self.config.full_path)
 
-        # If a gpu is required, set the device to cuda:N (e.g. cuda:0)
-        self.device = self.config.neuron.device
-
+        if not self.config.disable_autoupdate:
+            autoupdate("v1.0.0")
+            
         # Log the configuration for reference.
         bt.logging.info(self.config)
 

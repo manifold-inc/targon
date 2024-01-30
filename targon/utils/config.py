@@ -133,6 +133,13 @@ def add_prover_args(cls, parser):
     )
 
     parser.add_argument(
+        "--disable_auto_update",
+        action="store_true",
+        help="If true, the validator will disable auto-update of its software from the repository.",
+        default=False,
+    )
+
+    parser.add_argument(
         "--blacklist.allow_non_registered",
         action="store_true",
         help="If set, provers will accept queries from non registered entities. (Dangerous!)",
@@ -156,6 +163,13 @@ def add_verifier_args(cls, parser):
         default='verifier',
     )
 
+    parser.add_argument(
+        "--disable_auto_update",
+        action="store_true",
+        help="If true, the validator will disable auto-update of its software from the repository.",
+        default=False,
+    )
+    
     parser.add_argument(
         "--neuron.timeout",
         type=float,
