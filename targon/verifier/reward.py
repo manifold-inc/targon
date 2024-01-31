@@ -22,6 +22,8 @@ import numpy as np
 import bittensor as bt
 
 def hashing_function(input):
+    if input is None:
+        return '0000000000000000000000000000000000000000000000000000000000000000'
     hashed_input = hashlib.sha256(input.encode()).hexdigest()
     return hashed_input
 
