@@ -24,43 +24,43 @@ services:
   #   command: ./entrypoint.sh
   #   volumes:
   #     - ~/.bittensor/wallets:/root/.bittensor/wallets
-  common: &common
-    image: opentensor/subtensor:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: subtensor
-    cpu_count: 4
-    mem_limit: 40000000000
-    memswap_limit: 80000000000
-    ports:
-      - "9944:9944"
-      - "30333:30333"
-      - "9933:9933"
-    expose:
-      - "9944"
-      - "30333"
-      - "9933"
-    environment:
-      - CARGO_HOME=/var/www/node-subtensor/.cargo
+  # common: &common
+  #   image: opentensor/subtensor:latest
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     target: subtensor
+  #   cpu_count: 4
+  #   mem_limit: 40000000000
+  #   memswap_limit: 80000000000
+  #   ports:
+  #     - "9944:9944"
+  #     - "30333:30333"
+  #     - "9933:9933"
+  #   expose:
+  #     - "9944"
+  #     - "30333"
+  #     - "9933"
+  #   environment:
+  #     - CARGO_HOME=/var/www/node-subtensor/.cargo
 
-  mainnet-lite:
-    <<: *common
-    container_name: subtensor-mainnet-lite
-    volumes:
-      - mainnet-lite-volume:/tmp/blockchain
-    command:
-      - /bin/bash
-      - -c
-      - |
-        node-subtensor \
-          --base-path /tmp/blockchain \
-          --chain raw_spec.json \
-          --rpc-external --rpc-cors all \
-          --ws-external --no-mdns \
-          --ws-max-connections 10000 --in-peers 500 --out-peers 500 \
-          --bootnodes /dns/bootnode.finney.opentensor.ai/tcp/30333/ws/p2p/12D3KooWRwbMb85RWnT8DSXSYMWQtuDwh4LJzndoRrTDotTR5gDC \
-          --sync warp
+  # mainnet-lite:
+  #   <<: *common
+  #   container_name: subtensor-mainnet-lite
+  #   volumes:
+  #     - mainnet-lite-volume:/tmp/blockchain
+  #   command:
+  #     - /bin/bash
+  #     - -c
+  #     - |
+  #       node-subtensor \
+  #         --base-path /tmp/blockchain \
+  #         --chain raw_spec.json \
+  #         --rpc-external --rpc-cors all \
+  #         --ws-external --no-mdns \
+  #         --ws-max-connections 10000 --in-peers 500 --out-peers 500 \
+  #         --bootnodes /dns/bootnode.finney.opentensor.ai/tcp/30333/ws/p2p/12D3KooWRwbMb85RWnT8DSXSYMWQtuDwh4LJzndoRrTDotTR5gDC \
+  #         --sync warp
 
 
 
