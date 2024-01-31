@@ -349,10 +349,10 @@ Refer to the code here:
 replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you perfer.
 
 ## Reward System
-Inspired by [FileTAO](https://github.com/ifrit98/storage-subnet)'s reputation system, the reward system is based on the complete correct answer being responded consistently over time. If a ground truth hash and the prover output hash are equal, then the reward is 1. Performing these challenges and inference requests over time will result in a multiplication of your reard based off the tier. The tiers are as follows:
+Inspired by [FileTAO](https://github.com/ifrit98/storage-subnet)'s reputation system, the reward system is based on the complete correct answer being responded consistently over time. If a ground truth hash and the prover output hash are equal, then the reward is 1. Performing these challenges and inference requests over time will result in a multiplication of your reward based off the tier.
 
 ### Tier System
-The tier system classifies miners into five distinct categories, each with specific requirements and storage limits. These tiers are designed to reward miners based on their performance, reliability, and the total volume of requests they can fulfill.
+The tier system classifies miners into five distinct categories, each with specific requirements and request limits. These tiers are designed to reward miners based on their performance, reliability, and the total volume of requests they can fulfill.
 
 
 
@@ -372,16 +372,16 @@ The tier system classifies miners into five distinct categories, each with speci
 
 
 **3.) Gold Tier** 
-- **Request Success Rate:** 94.9% (1/1000 chance of failure)
-- **Validation Success Rate:** 94.9% (1/1000 chance of failure)
+- **Request Success Rate:** 94.9% 
+- **Validation Success Rate:** 94.9% 
 **- Minimum Successful Requests Required:** 14,000 Required
 - **Reward Factor:** 0.72 (70% rewards)
 - **Requests Limit (per interval):** 14,000 per interval
 
 
 **4.) Silver Tier** 
-- **Request Success Rate:** 94.9% (1/1000 chance of failure)
-- **Validation Success Rate:** 94.9% (1/1000 chance of failure)
+- **Request Success Rate:** 94.9%
+- **Validation Success Rate:** 94.9% 
 **- Minimum Successful Requests Required:** 3,500 Required
 - **Reward Factor:** 0.55 (95% rewards)
 - **Requests Limit (per interval):** 3,500 per interval
@@ -395,7 +395,7 @@ The tier system classifies miners into five distinct categories, each with speci
 
 
 ### Promotion/Relegation
-Miners will be promoted or relegated based on their performance over the last 360 blocks. The promotion/relegation computation will be done every 360 blocks. In order to be promoted to a tier, you must satisdy the tier success rate requirements and the minimum successful requests required. In order to be relegated to a tier, you must fail to satisfy the tier success rate requirements, leading to a demotion to the lower tier. 
+Miners will be promoted or relegated based on their performance over the last 360 blocks. The promotion/relegation computation will be done every 360 blocks. In order to be promoted to a tier, you must satisfy the tier success rate requirements and the minimum successful requests required. In order to be relegated to a tier, you must fail to satisfy the tier success rate requirements, leading to a demotion to the lower tier. 
 
 If you experience downtime as a challenger UID, you will be demoted down, however you will not have to satisfy the minimum successful requests required. You will be instantly promoted back to the tier if you satisfy the tier success rate requirements.
 
