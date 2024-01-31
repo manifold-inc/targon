@@ -150,7 +150,7 @@ def add_prover_args(cls, parser):
         "--neuron.tgi_endpoint",
         type=str,
         help="The endpoint to use for the TGI client.",
-        default="http://0.0.0.0:8080",
+        default="http://127.0.0.1:8080",
     )
 
 def add_verifier_args(cls, parser):
@@ -255,7 +255,7 @@ def add_verifier_args(cls, parser):
         "--neuron.tgi_endpoint",
         type=str,
         help="The endpoint to use for the TGI client.",
-        default="http://0.0.0.0:8080",
+        default="http://localhost:8080",
     )
     
     parser.add_argument(
