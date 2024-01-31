@@ -1,6 +1,7 @@
 # The MIT License (MIT)
-# Copyright © 2021 Yuma Rao
-# Copyright © 2023 Manifold Labs
+# Copyright © 2023 Yuma Rao
+# Copyright © 2023 philanthrope <-- main author
+# Copyright © 2024 Manifold Labs
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -15,3 +16,11 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
+from loguru import logger
+
+
+def log_event(self, event):
+    # Log event
+    if not self.config.neuron.dont_save_events:
+        logger.log("EVENTS", "events", **event.__dict__)

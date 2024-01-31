@@ -1,6 +1,6 @@
 # The MIT License (MIT)
-# Copyright © 2021 Yuma Rao
-# Copyright © 2023 Manifold Labs
+# Copyright © 2023 Yuma Rao
+# Copyright © 2024 Manifold Labs
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -15,3 +15,32 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
+
+def create_prompt( challenge_data ):
+    """
+    Creates a prompt for the prover to respond to.
+
+    Parameters:
+    - challenge_data (protocol.Challenge): The challenge data sent to the prover.
+
+    Returns:
+    - str: The prompt for the prover to respond to.
+    """
+
+    output = '''### Instruction: 
+Your task is to perform retrieval augmented generation (RAG) over the given query and search results. Return your answer in a json format that includes a summary of the search results. 
+
+Query:
+{}
+\n\n
+Search Results:
+{}
+\n\n
+Query:
+{}
+
+### Response:
+'''.format(challenge_data['query'], challenge_data['sources'], challenge_data['query'])
+    
+    return output

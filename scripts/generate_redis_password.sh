@@ -1,0 +1,1 @@
+python scripts/generate_redis_password.py

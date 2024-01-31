@@ -1,6 +1,7 @@
 # The MIT License (MIT)
-# Copyright © 2021 Yuma Rao
-# Copyright © 2023 Manifold Labs
+# Copyright © 2023 Yuma Rao
+# Copyright © 2023 Opentensor Foundation
+# Copyright © 2024 Manifold Labs
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -15,3 +16,16 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
+import string
+import random
+
+def generate_strong_password(length=32):
+    all_characters = string.ascii_letters + string.digits
+    password = ''.join(random.choice(all_characters) for i in range(length))
+    return password
+
+
+
+if __name__ == "__main__":
+    print(generate_strong_password())
