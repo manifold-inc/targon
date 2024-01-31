@@ -1,0 +1,3 @@
+FROM ghcr.io/huggingface/text-generation-inference:latest
+
+CMD ["/bin/bash"]

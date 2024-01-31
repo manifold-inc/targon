@@ -46,11 +46,12 @@ Currently supporting python>=3.9,<3.11.
 
 <details>
 <summary>In Progress</summary>
-- [ ] Tiered Requests to match throughput
-- [ ] Inference Request
-- [ ] Metapool
-- [ ] flashbots' style block space for verifier bandwidth
-- [ ] metrics dashboard
+
+- [] Tiered Requests to match throughput
+- [] Inference Request
+- [] Metapool
+- [] flashbots' style block space for verifier bandwidth
+- [] metrics dashboard
 </details>
 
 # Installation
@@ -219,6 +220,7 @@ replace the wallet name and wallet hotkey with your wallet name and wallet hotke
 
 <details>
 <summary> Run with PM2</summary>
+
 ```bash
 cd neurons/prover
 pm2 start app.py --name prover -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944

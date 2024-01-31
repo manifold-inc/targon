@@ -15,15 +15,15 @@ services:
             - driver: nvidia
               capabilities: [gpu]
     shm_size: '1g'
-  # verifier:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8091:8091"
-  #   command: ./entrypoint.sh
-  #   volumes:
-  #     - ~/.bittensor/wallets:/root/.bittensor/wallets
+  verifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8091:8091"
+    command: ./entrypoint.sh
+    volumes:
+      - ~/.bittensor/wallets:/root/.bittensor/wallets
   db:
     image: redis:6.2-alpine
     restart: always
