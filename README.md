@@ -44,7 +44,7 @@ The following table shows the VRAM, Storage, RAM, and CPU minimum requirements f
 | Verifier | 12GB | 64GB | 16GB | 8 Cores |
 
 
-# Suggested Compute Providers
+# Recommended Compute Providers
 The following table shows the suggested compute providers for running a verifier or prover.
 
 | Provider   | Cost  | Location |   Machine Type   | Rating |
@@ -292,7 +292,7 @@ this will output a secure password for you to use. You will then need to edit th
 
 first use vim to edit the docker-compose.yml file:
 ```bash
-vim neuron/verifier/docker-compose.yml
+vim neurons/verifier/docker-compose.yml
 ```
 then replace the password with your new password:
 
