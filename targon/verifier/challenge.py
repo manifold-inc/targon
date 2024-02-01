@@ -178,7 +178,7 @@ async def challenge_data( self ):
 
     sampling_params = protocol.ChallengeSamplingParams(
         seed=seed,
-        stream=True,
+        do_sample=True,
     )
 
     ground_truth_output = await self.client.text_generation(
