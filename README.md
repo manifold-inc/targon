@@ -40,7 +40,7 @@ The following table shows the VRAM, Storage, RAM, and CPU minimum requirements f
 
 | Role | VRAM | Storage | RAM | CPU |
 | --- | --- | --- | --- | --- |
-| 24GB | 32GB | 8GB | 8 Cores |
+| Prover   | 24GB | 32GB | 8GB | 8 Cores  |
 | Verifier | 12GB | 64GB | 16GB | 8 Cores |
 
 
