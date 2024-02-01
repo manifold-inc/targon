@@ -196,7 +196,12 @@ async def challenge_data( self ):
         watermark=sampling_params.watermark,
     ) 
 
-    bt.logging.trace('ground_truth_output', ground_truth_output) 
+    verifier_stats_dict = {
+        'prompt': prompt,
+        'seed': seed,
+        'ground_truth_output': ground_truth_output
+    }
+    bt.logging.trace('verifier_stats_dict', verifier_stats_dict) 
     
     # --- get hashing function
     ground_truth_hash = hashing_function(ground_truth_output)
