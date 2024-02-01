@@ -57,6 +57,8 @@ class BaseVerifierNeuron(BaseNeuron):
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
+        assert self.config.database.password is not None, "Database password must be set."
+
         # Setup database
         self.database = aioredis.StrictRedis(
             host=self.config.database.host,
