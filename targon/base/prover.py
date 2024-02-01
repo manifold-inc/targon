@@ -26,8 +26,8 @@ import threading
 import traceback
 import bittensor as bt
 from targon.base.neuron import BaseNeuron
+from targon.utils.updater import autoupdate
 from targon.utils.config import add_prover_args
-
 from bittensor.axon import FastAPIThreadedServer
 
 
@@ -246,6 +246,8 @@ class BaseProverNeuron(BaseNeuron):
         self.metagraph.sync(subtensor=self.subtensor)
 
     def save_state(self):
+        if not self.config.disable_autoupdate:
+            autoupdate("main")
         return True
     
     def load_state(self):
