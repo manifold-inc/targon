@@ -194,7 +194,9 @@ async def challenge_data( self ):
         truncate=sampling_params.truncate,
         typical_p=sampling_params.typical_p,
         watermark=sampling_params.watermark,
-    )   
+    ) 
+
+    bt.logging.trace('ground_truth_output', ground_truth_output) 
     
     # --- get hashing function
     ground_truth_hash = hashing_function(ground_truth_output)
