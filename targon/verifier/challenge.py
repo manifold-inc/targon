@@ -182,7 +182,7 @@ async def challenge_data( self ):
     )
 
     ground_truth_output = await self.client.text_generation(
-        prompt=prompt,
+        prompt,
         best_of=sampling_params.best_of,
         max_new_tokens=sampling_params.max_new_tokens,
         seed=sampling_params.seed,
