@@ -16,12 +16,92 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
 import time
+import httpx
+import typing
 from math import floor
+from targon import protocol
 from typing import Callable, Any
 from functools import lru_cache, update_wrapper
 
+def return_json_params(sampling_params: protocol.ChallengeRequest) -> dict:
+    return {
+        "inputs": sampling_params.inputs,
+        "parameters": {
+            "best_of": sampling_params.parameters.best_of,
+            "max_new_tokens": sampling_params.parameters.max_new_tokens,
+            "seed": sampling_params.parameters.seed,
+            "do_sample": sampling_params.parameters.do_sample,
+            "repetition_penalty": sampling_params.parameters.repetition_penalty,
+            "temperature": sampling_params.parameters.temperature,
+            "top_k": sampling_params.parameters.top_k,
+            "top_p": sampling_params.parameters.top_p,
+            "truncate": sampling_params.parameters.truncate,
+            "typical_p": sampling_params.parameters.typical_p,
+            "watermark": sampling_params.parameters.watermark,
+            "return_full_text": False
+        },
+        "stream": False
+    }
+
+async def get_generated_text(url: str, sampling_params: protocol.ChallengeRequest) -> typing.Optional[str]:
+    json_params = {
+            "inputs": sampling_params.inputs,
+            "parameters": {
+                "best_of": sampling_params.parameters.best_of,
+                "max_new_tokens": sampling_params.parameters.max_new_tokens,
+                "seed": sampling_params.parameters.seed,
+                "do_sample": sampling_params.parameters.do_sample,
+                "repetition_penalty": sampling_params.parameters.repetition_penalty,
+                "temperature": sampling_params.parameters.temperature,
+                "top_k": sampling_params.parameters.top_k,
+                "top_p": sampling_params.parameters.top_p,
+                "truncate": sampling_params.parameters.truncate,
+                "typical_p": sampling_params.parameters.typical_p,
+                "watermark": sampling_params.parameters.watermark,
+                "return_full_text": False
+            },
+            "stream": False
+
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            # bt.logging.trace(f"Sending request to {url} with sampling params {sampling_params.dict()}")
+            response = await client.post(format_url(url), json=json_params)
+            response.raise_for_status()  # Raises an exception for 4XX/5XX responses
+            data = response.json()
+            
+            return data[0].get("generated_text", None)
+        except httpx.RequestError as exc:
+            print(f"An error occurred while requesting {exc.request.url!r}.")
+        except httpx.HTTPStatusError as exc:
+            print(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
+            print(f"Response text: {exc.response.text}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+        return None
+
+def format_url(url: str) -> str:
+    """
+    Formats the given URL by ensuring that it starts with http:// and ends with a trailing slash.
+
+    Args:
+        url (str): The URL to be formatted.
+
+    Returns:
+        str: The formatted URL.
+
+    This function is useful for ensuring that URLs are consistently formatted with a trailing slash,
+    which can be important for some web servers and APIs.
+
+    Example:
+        url = format_url("example.com/api")
+    """
+    if not url.startswith("http"):
+        url = f"http://{url}"
+    if not url.endswith("/"):
+        url += "/"
+    return url
 
 # LRU Cache with TTL
 def ttl_cache(maxsize: int = 128, typed: bool = False, ttl: int = -1):

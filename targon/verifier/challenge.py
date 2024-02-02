@@ -21,12 +21,13 @@ import torch
 import random
 import typing
 import asyncio
-import requests
+import httpx
 import bittensor as bt
 
 from targon import protocol
 from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
+from targon.utils.misc import return_json_params
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.utils.uids import get_tiered_uids, get_random_uids
 from targon.verifier.bonding import update_statistics, get_tier_factor
@@ -169,17 +170,18 @@ async def challenge_data( self ):
     )
 
     
-
+    bt.logging.info("Grabbing challenge data")
     url = self.config.neuron.challenge_url
-    private_input = requests.get(url).json()
+    private_input = httpx.get(url).json()
     prompt = create_prompt(private_input)
+    bt.logging.info('prompt created')
     seed = random.randint(10000, 10000000)
 
 
     sampling_params = protocol.ChallengeSamplingParams(
-        seed=seed,
-        stream=True,
+        seed=seed
     )
+
 
     ground_truth_output = await self.client.text_generation(
         prompt=prompt,
@@ -194,8 +196,10 @@ async def challenge_data( self ):
         truncate=sampling_params.truncate,
         typical_p=sampling_params.typical_p,
         watermark=sampling_params.watermark,
-    )   
-    
+    ) 
+
+
+
     # --- get hashing function
     ground_truth_hash = hashing_function(ground_truth_output)
 

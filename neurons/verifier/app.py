@@ -45,8 +45,6 @@ class Verifier(BaseVerifierNeuron):
 
 
         # inference client
-        self.client = AsyncInferenceClient(model=self.config.neuron.tgi_endpoint)
-
         # --- Block 
         self.last_interval_block = self.get_last_adjustment_block()
         self.adjustment_interval = self.get_adjustment_interval()

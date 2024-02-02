@@ -32,13 +32,13 @@ from shlex import quote
 from typing import List
 from copy import deepcopy
 from pprint import pformat
-from traceback import print_exception
-from substrateinterface.base import SubstrateInterface
-
 from targon.mock import MockDendrite
+from traceback import print_exception
 from targon.base.neuron import BaseNeuron
 from targon.utils.updater import autoupdate
+from huggingface_hub import AsyncInferenceClient
 from targon.utils.config import add_verifier_args
+from substrateinterface.base import SubstrateInterface
 
 
 class BaseVerifierNeuron(BaseNeuron):
@@ -68,6 +68,9 @@ class BaseVerifierNeuron(BaseNeuron):
             password=self.config.database.password,
         )
         self.db_semaphore = asyncio.Semaphore()
+
+        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
+
 
         if not self.config.mock:
             substrate = SubstrateInterface(
