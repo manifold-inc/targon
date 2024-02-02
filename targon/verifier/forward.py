@@ -27,7 +27,7 @@ from targon.verifier.inference import inference_data
 from targon.verifier.bonding import compute_all_tiers
 from targon.verifier.database import get_prover_statistics, total_verifier_requests
 
-def block_subscription_handler( obj, _, _ ):
+def block_subscription_handler( obj, ss, nn ):
     block_number = obj['header']['number']
     print(f"Received block number: {block_number}")
 
