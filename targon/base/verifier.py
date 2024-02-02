@@ -122,11 +122,11 @@ class BaseVerifierNeuron(BaseNeuron):
         block_number = obj['header']['number']
         print(f"Received block number: {block_number}")
         # Unsubscribe after receiving a new block
-        await self.stop_subscription(subscription_id)
+        return block_number
 
     async def subscribe_to_blocks(self):
         # This method initiates the subscription and waits for new blocks
-        subscription_id = await self.substrate.subscribe_block_headers(self.block_subscription_handler)
+        return await self.substrate.subscribe_block_headers(self.block_subscription_handler)
 
     async def stop_subscription(self, subscription_id):
         # This method stops the block header subscription

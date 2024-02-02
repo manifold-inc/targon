@@ -73,7 +73,7 @@ async def forward(self):
         total_request_size = await total_verifier_requests(self.database)
         bt.logging.info(f"total verifier requests: {total_request_size}")
 
-        await self.subscribe_to_blocks()
+        block = await self.substrate.subscribe_block_headers(self.block_subscription_handler)
         # sleep_time = 12 - (time.time() - start_time)
         # if sleep_time > 0:
         #     bt.logging.info(f"Sleeping for {sleep_time} seconds")
