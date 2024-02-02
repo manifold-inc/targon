@@ -118,7 +118,7 @@ class BaseVerifierNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
-    async def subscription_handler(self, obj, update_nr, subscription_id):
+    def subscription_handler(self, obj, update_nr, subscription_id):
         bt.logging.info(f"Current block #{obj['header']['number']}")
 
         block = self.substrate.get_block(block_number=obj['header']['number'])
@@ -127,15 +127,6 @@ class BaseVerifierNeuron(BaseNeuron):
             bt.logging.info(f"New block #{obj['header']['number']}")
             return block
 
-
-    async def subscribe_to_blocks(self):
-        # This method initiates the subscription and waits for new blocks
-        return await self.substrate.subscribe_block_headers(self.block_subscription_handler)
-
-    async def stop_subscription(self, subscription_id):
-        # This method stops the block header subscription
-        self.substrate.unsubscribe(subscription_id)
-        print("Unsubscribed from block headers.")
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
