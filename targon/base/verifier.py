@@ -125,7 +125,7 @@ class BaseVerifierNeuron(BaseNeuron):
 
         if update_nr > 2:
             bt.logging.info(f"New block #{obj['header']['number']}")
-            return block
+            # return block
 
 
     async def subscribe_to_blocks(self):
