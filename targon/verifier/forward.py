@@ -42,7 +42,6 @@ async def forward(self):
 
         # --- Generate the query.
         event = await challenge_data(self)
-        current_block = await self.substrate.subscribe_block_headers(self.subscription_handler)
 
         # --- Log the event
         log_event(self, event)
@@ -74,10 +73,7 @@ async def forward(self):
         total_request_size = await total_verifier_requests(self.database)
         bt.logging.info(f"total verifier requests: {total_request_size}")
 
-
-        while current_block <= await self.substrate.subscribe_block_headers(self.subscription_handler):
-            bt.logging.info(f"waiting for block: {current_block}")
-            await asyncio.sleep(0.1)
+        block = await self.substrate.subscribe_block_headers(self.subscription_handler)
         # sleep_time = 12 - (time.time() - start_time)
         # if sleep_time > 0:
         #     bt.logging.info(f"Sleeping for {sleep_time} seconds")
