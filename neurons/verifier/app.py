@@ -43,13 +43,6 @@ class Verifier(BaseVerifierNeuron):
                 bt.logging.info(f"axons[{i}]: {axon}")
                 check_uid_availability(self.metagraph, i, self.config.neuron.vpermit_tao_limit)
                 
-
-        self.substrate = SubstrateInterface(
-            ss58_format=bt.__ss58_format__,
-            use_remote_preset=True,
-            url=self.config.subtensor.chain_endpoint,
-            type_registry=bt.__type_registry__,
-        )
         # inference client
         # --- Block 
         self.last_interval_block = self.get_last_adjustment_block()

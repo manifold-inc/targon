@@ -27,10 +27,6 @@ from targon.verifier.inference import inference_data
 from targon.verifier.bonding import compute_all_tiers
 from targon.verifier.database import get_prover_statistics, total_verifier_requests
 
-def block_subscription_handler( obj, ss, nn ):
-    block_number = obj['header']['number']
-    print(f"Received block number: {block_number}")
-
 async def forward(self):
     """
     Verifier forward pass. Consists of:
@@ -77,7 +73,7 @@ async def forward(self):
         total_request_size = await total_verifier_requests(self.database)
         bt.logging.info(f"total verifier requests: {total_request_size}")
 
-        self.substrate.subscribe_block_headers(block_subscription_handler)
+        await self.substrate.subscribe_block_headers(self.block_subscription_handler)
 
         # sleep_time = 12 - (time.time() - start_time)
         # if sleep_time > 0:
