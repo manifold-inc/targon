@@ -118,7 +118,7 @@ class BaseVerifierNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
-    async def block_subscription_handler(self, obj, subscription_id):
+    async def block_subscription_handler(self, obj, subscription_id, _):
         block_number = obj['header']['number']
         print(f"Received block number: {block_number}")
         # Unsubscribe after receiving a new block
