@@ -123,9 +123,6 @@ class BaseVerifierNeuron(BaseNeuron):
 
         block = self.substrate.get_block(block_number=obj['header']['number'])
 
-        for idx, extrinsic in enumerate(block['extrinsics']):
-            print(f'# {idx}:  {extrinsic.value}')
-
         if update_nr > 1:
             bt.logging.info(f"New block #{obj['header']['number']}")
             return block
