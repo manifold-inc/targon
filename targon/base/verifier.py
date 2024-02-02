@@ -126,7 +126,7 @@ class BaseVerifierNeuron(BaseNeuron):
 
     async def subscribe_to_blocks(self):
         # This method initiates the subscription and waits for new blocks
-        subscription_id = self.substrate.subscribe_block_headers(self.block_subscription_handler)
+        subscription_id = await self.substrate.subscribe_block_headers(self.block_subscription_handler)
 
     async def stop_subscription(self, subscription_id):
         # This method stops the block header subscription
