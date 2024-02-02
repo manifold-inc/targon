@@ -27,18 +27,9 @@ from targon.verifier.inference import inference_data
 from targon.verifier.bonding import compute_all_tiers
 from targon.verifier.database import get_prover_statistics, total_verifier_requests
 
-def subscribe_to_next_block(self):
-    """
-    Subscribes to block headers and waits for the next block.
-    Returns a future that gets completed upon the arrival of the next block.
-    """
-    future = asyncio.Future()
-
-    def next_block_handler(obj, update_nr, subscription_id):
-        future.set_result(obj["header"]["number"])
-        self.subscription_substrate.subscribe_block_headers(subscription_id)
-
-    return future
+def block_subscription_handler( obj ):
+    block_number = obj['header']['number']
+    print(f"Received block number: {block_number}")
 
 async def forward(self):
     """
@@ -86,10 +77,12 @@ async def forward(self):
         total_request_size = await total_verifier_requests(self.database)
         bt.logging.info(f"total verifier requests: {total_request_size}")
 
-        sleep_time = 12 - (time.time() - start_time)
-        if sleep_time > 0:
-            bt.logging.info(f"Sleeping for {sleep_time} seconds")
-            await asyncio.sleep(sleep_time)
+        self.substrate.subscribe_block_headers(self.block_subscription_handler)
+
+        # sleep_time = 12 - (time.time() - start_time)
+        # if sleep_time > 0:
+        #     bt.logging.info(f"Sleeping for {sleep_time} seconds")
+        #     await asyncio.sleep(sleep_time)
     
     except Exception as e:
         bt.logging.error(f"Error in forward: {e}")
