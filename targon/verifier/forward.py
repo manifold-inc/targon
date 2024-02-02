@@ -72,13 +72,14 @@ async def forward(self):
 
         total_request_size = await total_verifier_requests(self.database)
         bt.logging.info(f"total verifier requests: {total_request_size}")
-
-        block = self.substrate.subscribe_block_headers(self.subscription_handler)
-        # sleep_time = 12 - (time.time() - start_time)
-        # if sleep_time > 0:
-        #     bt.logging.info(f"Sleeping for {sleep_time} seconds")
-        #     await asyncio.sleep(sleep_time)
-    
+        try:
+            block = self.substrate.subscribe_block_headers(self.subscription_handler)
+        except:
+            sleep_time = 12 - (time.time() - start_time)
+            if sleep_time > 0:
+                bt.logging.info(f"Sleeping for {sleep_time} seconds")
+                await asyncio.sleep(sleep_time)
+        
     except Exception as e:
         bt.logging.error(f"Error in forward: {e}")
         pass
