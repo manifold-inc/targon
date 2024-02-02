@@ -42,7 +42,7 @@ async def forward(self):
 
         # --- Generate the query.
         event = await challenge_data(self)
-        current_block = self.subtensor.get_block_number()
+        current_block = self.subtensor.get_current_block()
 
         # --- Log the event
         log_event(self, event)
