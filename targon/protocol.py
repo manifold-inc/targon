@@ -184,13 +184,13 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     stop: List[str] = pydantic.Field(
-        ["photographer"],
+        [""],
         title="Stop",
         description="The stop words.",
     )
 
     temperature: float = pydantic.Field(
-        1e-23,
+        1e-3,
         title="Temperature",
         description="Sampling temperature to use, between 0 and 2.",
     )
@@ -231,12 +231,11 @@ class ChallengeSamplingParams(pydantic.BaseModel):
         description="Whether to watermark.",
     )
 
-    stream: bool = pydantic.Field(
-        False,
-        title="Stream",
-        description="Whether to stream.",
-    )
 
+class ChallengeRequest(pydantic.BaseModel):
+    inputs: str
+    parameters: ChallengeSamplingParams
+    stream: bool = False
 
 
 class Inference(bt.StreamingSynapse):
