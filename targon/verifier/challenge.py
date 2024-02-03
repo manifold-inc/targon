@@ -50,6 +50,7 @@ def _filter_verified_responses(uids, responses):
 def verify( self, output, ground_truth_hash):
 
     output_hash = hashing_function(output)
+
     if not output_hash == ground_truth_hash:
         bt.logging.debug(
             f"Output hash {output_hash} does not match ground truth hash {ground_truth_hash}"
