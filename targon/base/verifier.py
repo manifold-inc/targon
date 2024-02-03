@@ -73,13 +73,12 @@ class BaseVerifierNeuron(BaseNeuron):
 
 
         if not self.config.mock:
-            substrate = SubstrateInterface(
+            self.substrate = SubstrateInterface(
                 ss58_format=bt.__ss58_format__,
                 use_remote_preset=True,
                 url=self.subtensor.chain_endpoint,
                 type_registry=bt.__type_registry__,
             )
-            self.subscription_substrate = substrate
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
         if self.config.mock:
@@ -118,6 +117,15 @@ class BaseVerifierNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
+
+    def subscription_handler(self, obj, update_nr, subscription_id):
+        bt.logging.info(f"Current block #{obj['header']['number']}")
+
+        block = self.substrate.get_block(block_number=obj['header']['number'])
+
+        if update_nr >= 1:
+            bt.logging.info(f"New block #{obj['header']['number']}")
+            return block
 
 
     def serve_axon(self):

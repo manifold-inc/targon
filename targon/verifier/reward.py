@@ -24,7 +24,7 @@ import bittensor as bt
 def hashing_function(input):
     if input is None:
         return '0000000000000000000000000000000000000000000000000000000000000000'
-    hashed_input = hashlib.sha256(input.encode()).hexdigest()
+    hashed_input = hashlib.sha256(input.encode('utf-8')).hexdigest()
     return hashed_input
 
 

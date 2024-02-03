@@ -22,14 +22,12 @@ import typing
 import argparse
 import bittensor as bt
 
-from pathlib import Path
 from functools import partial
-from dotenv import load_dotenv
 from starlette.types import Send
 from targon.utils.prompt import create_prompt
+from targon.base.prover import BaseProverNeuron
 from huggingface_hub import AsyncInferenceClient
-from targon.base.prover import BaseProverNeuron, add_prover_args
-from targon.protocol import Inference, Challenge, ChallengeSamplingParams
+from targon.protocol import Inference, Challenge
 
 class Prover(BaseProverNeuron):
     """

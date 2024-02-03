@@ -29,7 +29,7 @@ from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.utils.misc import return_json_params
 from targon.constants import CHALLENGE_FAILURE_REWARD
-from targon.utils.uids import get_tiered_uids, get_random_uids
+from targon.verifier.uids import get_tiered_uids, get_random_uids
 from targon.verifier.bonding import update_statistics, get_tier_factor
 from targon.verifier.reward import hashing_function, apply_reward_scores
 
@@ -50,6 +50,7 @@ def _filter_verified_responses(uids, responses):
 def verify( self, output, ground_truth_hash):
 
     output_hash = hashing_function(output)
+
     if not output_hash == ground_truth_hash:
         bt.logging.debug(
             f"Output hash {output_hash} does not match ground truth hash {ground_truth_hash}"
@@ -94,9 +95,14 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         )
 
         output = response.completion
+
+        # output_encoded = output.encode('utf-8')
+        output_normalized = output.replace('\r\n', '\n')
+        output_cleaned = ' '.join(output_normalized.split())
+
         
-        bt.logging.debug('output', output)
-        verified = verify( self, output, ground_truth_hash )
+        bt.logging.debug('output', output_cleaned)
+        verified = verify( self, output_cleaned, ground_truth_hash )
 
         output_dict = (
             response,
@@ -199,9 +205,13 @@ async def challenge_data( self ):
     ) 
 
 
+    # ground_truth_output_encoded = ground_truth_output.encode('utf-8')
+    ground_truth_output_normalized = ground_truth_output.replace('\r\n', '\n')
+    ground_truth_output_cleaned = ' '.join(ground_truth_output_normalized.split())
+
 
     # --- get hashing function
-    ground_truth_hash = hashing_function(ground_truth_output)
+    ground_truth_hash = hashing_function(ground_truth_output_cleaned)
 
     # --- Get the uids to query
     start_time = time.time()

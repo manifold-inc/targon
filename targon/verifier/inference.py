@@ -22,7 +22,7 @@ import asyncio
 
 from targon import protocol
 from targon.utils.prompt import create_prompt
-from targon.utils.uids import get_tiered_uids
+from targon.verifier.uids import get_tiered_uids
 from targon.verifier.event import EventSchema
 
 async def handle_inference(
