@@ -29,7 +29,7 @@ from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.utils.misc import return_json_params
 from targon.constants import CHALLENGE_FAILURE_REWARD
-from targon.utils.uids import get_tiered_uids, get_random_uids
+from targon.verifier.uids import get_tiered_uids, get_random_uids
 from targon.verifier.bonding import update_statistics, get_tier_factor
 from targon.verifier.reward import hashing_function, apply_reward_scores
 
