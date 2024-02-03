@@ -95,8 +95,8 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
 
         output = response.completion
 
-        output_encoded = output.encode('utf-8')
-        output_normalized = output_encoded.replace('\r\n', '\n')
+        # output_encoded = output.encode('utf-8')
+        output_normalized = output.replace('\r\n', '\n')
         output_cleaned = ' '.join(output_normalized.split())
 
         
@@ -204,8 +204,8 @@ async def challenge_data( self ):
     ) 
 
 
-    ground_truth_output_encoded = ground_truth_output.encode('utf-8')
-    ground_truth_output_normalized = ground_truth_output_encoded.replace('\r\n', '\n')
+    # ground_truth_output_encoded = ground_truth_output.encode('utf-8')
+    ground_truth_output_normalized = ground_truth_output.replace('\r\n', '\n')
     ground_truth_output_cleaned = ' '.join(ground_truth_output_normalized.split())
 
 
