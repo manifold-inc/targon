@@ -25,7 +25,7 @@ import bittensor as bt
 from targon.verifier.forward import forward
 from substrateinterface import SubstrateInterface
 from targon.base.verifier import BaseVerifierNeuron
-from targon.utils.uids import check_uid_availability
+from targon.verifier.uids import check_uid_availability
 from targon.verifier.state import SimpleBlockSubscriber
 
 class Verifier(BaseVerifierNeuron):
