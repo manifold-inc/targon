@@ -31,8 +31,8 @@ from targon.utils.misc import return_json_params
 from torch.nn.functional import cosine_similarity
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_tiered_uids, get_random_uids
-from targon.verifier.bonding import update_statistics, get_tier_factor
 from targon.verifier.reward import hashing_function, apply_reward_scores
+from targon.verifier.bonding import update_statistics, get_tier_factor, get_similarity_threshhold
 
 
 def _filter_verified_responses(uids, responses):
@@ -48,7 +48,7 @@ def _filter_verified_responses(uids, responses):
     uids, responses = zip(*not_none_responses)
     return uids, responses
 
-def embedding_check( self, prover_output, ground_truth_output ):
+async def embedding_check( self, prover_output, ground_truth_output, prover_ss58_address ):
     bt.logging.debug(
         f"Checking embeddings for prover output {prover_output} and ground truth output {ground_truth_output}"
     )
@@ -63,11 +63,11 @@ def embedding_check( self, prover_output, ground_truth_output ):
 
     similarity = cosine_similarity(prover_embeddings, ground_truth_embeddings)
 
-    success = similarity > 0.95 # hard coded threshold for now
+    success = similarity > await get_similarity_threshhold( prover_ss58_address, self.database )
     bt.logging.debug(f"Embedding similarity: {similarity} | Success: {success}")
     return success
 
-def verify( self, prover_output, ground_truth_output):
+def verify( self, prover_output, ground_truth_output, prover_ss58 ):
 
     prover_output_hash = hashing_function(prover_output)
     ground_truth_hash = hashing_function(ground_truth_output)
@@ -76,7 +76,7 @@ def verify( self, prover_output, ground_truth_output):
         bt.logging.debug(
             f"Output hash {prover_output_hash} does not match ground truth hash {ground_truth_hash}"
         )
-        return embedding_check( self, prover_output, ground_truth_output )
+        return asyncio.run(embedding_check( self, prover_output, ground_truth_output, prover_ss58 ))
 
     bt.logging.debug(
         f"Output hash {prover_output_hash} matches ground truth hash {ground_truth_hash}"
@@ -121,7 +121,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
 
         
         bt.logging.debug('output', output_cleaned)
-        verified = verify( self, output_cleaned, ground_truth_output )
+        verified = verify( self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid] )
 
         output_dict = (
             response,
