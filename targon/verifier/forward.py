@@ -38,13 +38,14 @@ async def forward(self):
     """
     try:
         start_time = time.time()
-        bt.logging.info(f"forward block: {self.block}")
+        for _ in range(3):
+            bt.logging.info(f"forward block: {self.block}")
 
-        # --- Generate the query.
-        event = await challenge_data(self)
+            # --- Generate the query.
+            event = await challenge_data(self)
 
-        # --- Log the event
-        log_event(self, event)
+            # --- Log the event
+            log_event(self, event)
 
         if not self.config.mock:
             if self.block >= self.next_adjustment_block and self.step > 0:
