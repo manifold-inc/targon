@@ -28,6 +28,7 @@ from targon import protocol
 from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.utils.misc import return_json_params
+from torch.nn.functional import cosine_similarity
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_tiered_uids, get_random_uids
 from targon.verifier.bonding import update_statistics, get_tier_factor
@@ -47,24 +48,42 @@ def _filter_verified_responses(uids, responses):
     uids, responses = zip(*not_none_responses)
     return uids, responses
 
-def verify( self, output, ground_truth_hash):
+def embedding_check( self, prover_output, ground_truth_output ):
+    bt.logging.debug(
+        f"Checking embeddings for prover output {prover_output} and ground truth output {ground_truth_output}"
+    )
+    prover_tokens = self.embedding_tokenizer(prover_output, return_tensors="pt", padding=True, truncation=True)
+    ground_truth_tokens = self.embedding_tokenizer(ground_truth_output, return_tensors="pt", padding=True, truncation=True)
 
-    output_hash = hashing_function(output)
+    # Generate embeddings
+    with torch.no_grad():  # Disable gradient calculation for efficiency
+        prover_embeddings = self.embedding_model(**prover_tokens).pooler_output
+        ground_truth_embeddings = self.embedding_model(**ground_truth_tokens).pooler_output
 
-    if not output_hash == ground_truth_hash:
+
+    similarity = cosine_similarity(prover_embeddings, ground_truth_embeddings)
+
+    success = similarity > 0.95 # hard coded threshold for now
+    bt.logging.debug(f"Embedding similarity: {similarity} | Success: {success}")
+    return success
+
+def verify( self, prover_output, ground_truth_output):
+
+    prover_output_hash = hashing_function(prover_output)
+    ground_truth_hash = hashing_function(ground_truth_output)
+
+    if not prover_output_hash == ground_truth_hash:
         bt.logging.debug(
-            f"Output hash {output_hash} does not match ground truth hash {ground_truth_hash}"
+            f"Output hash {prover_output_hash} does not match ground truth hash {ground_truth_hash}"
         )
-        bt.logging.debug(f"prover output: {output}")
-        bt.logging.debug(f"ground truth output: {ground_truth_hash}")
-        return False
+        return embedding_check( self, prover_output, ground_truth_output )
 
     bt.logging.debug(
-        f"Output hash {output_hash} matches ground truth hash {ground_truth_hash}"
+        f"Output hash {prover_output_hash} matches ground truth hash {ground_truth_hash}"
     )
     return True
 
-async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_truth_hash: str, sampling_params: protocol.ChallengeSamplingParams ) -> typing.Tuple[bool, protocol.Challenge]:
+async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_truth_output: str, sampling_params: protocol.ChallengeSamplingParams ) -> typing.Tuple[bool, protocol.Challenge]:
     """
     Handles a challenge sent to a prover and verifies the response.
 
@@ -102,7 +121,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
 
         
         bt.logging.debug('output', output_cleaned)
-        verified = verify( self, output_cleaned, ground_truth_hash )
+        verified = verify( self, output_cleaned, ground_truth_output )
 
         output_dict = (
             response,
@@ -139,7 +158,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         synapse.completion = response
         
 
-        verified = verify( self, response, ground_truth_hash )
+        verified = verify( self, response, ground_truth_output )
 
         output_dict = (
             synapse,
@@ -209,10 +228,6 @@ async def challenge_data( self ):
     ground_truth_output_normalized = ground_truth_output.replace('\r\n', '\n')
     ground_truth_output_cleaned = ' '.join(ground_truth_output_normalized.split())
 
-
-    # --- get hashing function
-    ground_truth_hash = hashing_function(ground_truth_output_cleaned)
-
     # --- Get the uids to query
     start_time = time.time()
     tasks = []
@@ -222,7 +237,7 @@ async def challenge_data( self ):
     bt.logging.debug(f"challenge uids {uids}")
     responses = []
     for uid in uids:
-        tasks.append(asyncio.create_task(handle_challenge(self, uid, private_input, ground_truth_hash, sampling_params)))
+        tasks.append(asyncio.create_task(handle_challenge(self, uid, private_input, ground_truth_output_cleaned, sampling_params)))
     responses = await asyncio.gather(*tasks)
 
 
