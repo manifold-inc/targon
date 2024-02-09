@@ -15,15 +15,15 @@ services:
             - driver: nvidia
               capabilities: [gpu]
     shm_size: '1g'
-  prover:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8091:8091"
-    command: ./entrypoint.sh
-    volumes:
-      - ~/.bittensor/wallets:/root/.bittensor/wallets
+  #prover:
+  #  build:
+  #    context: .
+  #    dockerfile: Dockerfile
+  #  ports:
+  #    - "8091:8091"
+  #  command: ./entrypoint.sh
+  #  volumes:
+  #    - ~/.bittensor/wallets:/root/.bittensor/wallets
 
   # common: &common
   #   image: opentensor/subtensor:latest
