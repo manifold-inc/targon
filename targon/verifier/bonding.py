@@ -82,7 +82,7 @@ async def reset_request_stats(stats_key: str, database: aioredis.Redis):
             "inference_successes": 0,
             "challenge_successes": 0,
             "challenge_attempts": 0,
-            "total_interval_successes": 0,
+            "total_interval_successes": 0, 
         },
     )
 

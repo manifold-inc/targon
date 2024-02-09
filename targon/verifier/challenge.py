@@ -36,6 +36,16 @@ from targon.verifier.bonding import update_statistics, get_tier_factor, get_simi
 
 
 def _filter_verified_responses(uids, responses):
+    """
+    Filters out responses that have not been verified.
+
+    Args:
+    - uids (list): A list of user IDs.
+    - responses (list): A list of tuples containing verification status and response.
+
+    Returns:
+    - tuple: Two tuples, one containing filtered user IDs and the other containing their corresponding responses.
+    """
     not_none_responses = [
         (uid, response[0])
         for (uid, (verified, response)) in zip(uids, responses)
@@ -49,6 +59,18 @@ def _filter_verified_responses(uids, responses):
     return uids, responses
 
 async def embedding_check( self, prover_output, ground_truth_output, prover_ss58_address ):
+    """
+    Checks the similarity between the prover's output embeddings and the ground truth output embeddings.
+
+    Args:
+    - self: Reference to the current instance of the class.
+    - prover_output (str): The output provided by the prover.
+    - ground_truth_output (str): The expected output.
+    - prover_ss58_address (str): The prover's SS58 address.
+
+    Returns:
+    - bool: True if the similarity is above a certain threshold, False otherwise.
+    """
     bt.logging.debug(
         f"Checking embeddings for prover output {prover_output} and ground truth output {ground_truth_output}"
     )
@@ -68,7 +90,18 @@ async def embedding_check( self, prover_output, ground_truth_output, prover_ss58
     return success
 
 def verify( self, prover_output, ground_truth_output, prover_ss58 ):
+    """
+    Verifies the prover's output against the ground truth output.
 
+    Args:
+    - self: Reference to the current instance of the class.
+    - prover_output (str): The output provided by the prover.
+    - ground_truth_output (str): The expected output.
+    - prover_ss58 (str): The prover's SS58 address.
+
+    Returns:
+    - bool: True if the outputs match or if the embedding check passes, False otherwise.
+    """
     prover_output_hash = hashing_function(prover_output)
     ground_truth_hash = hashing_function(ground_truth_output)
 
@@ -171,8 +204,23 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         return verified, output_dict
 
 async def challenge_data( self ):
+    """
+    Orchestrates the challenge process, from fetching challenge data to applying rewards based on the verification results.
 
-    
+    This function performs several key steps:
+    1. Fetches challenge data from a configured URL.
+    2. Generates a ground truth output using the challenge data.
+    3. Selects a set of UIDs (user identifiers) to challenge.
+    4. Sends the challenge to each selected UID and collects their responses.
+    5. Verifies the responses against the ground truth output.
+    6. Applies rewards or penalties based on the verification results.
+    7. Updates the event schema with the results of the challenge.
+
+    The function handles both real and mock challenges, allowing for testing without actual data.
+
+    Returns:
+    - EventSchema: An object containing detailed information about the challenge, including which UIDs were successful, the rewards applied, and other metadata.
+    """
     def remove_indices_from_tensor(tensor, indices_to_remove):
         # Sort indices in descending order to avoid index out of range error
         sorted_indices = sorted(indices_to_remove, reverse=True)
