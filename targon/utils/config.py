@@ -217,7 +217,7 @@ def add_verifier_args(cls, parser):
         "--neuron.sample_size",
         type=int,
         help="The number of provers to query in a single step.",
-        default=50,
+        default=25,
     )
 
     parser.add_argument(
