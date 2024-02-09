@@ -37,6 +37,7 @@ from traceback import print_exception
 from targon.base.neuron import BaseNeuron
 from targon.utils.updater import autoupdate
 from huggingface_hub import AsyncInferenceClient
+from transformers import AutoTokenizer, AutoModel
 from targon.utils.config import add_verifier_args
 from substrateinterface.base import SubstrateInterface
 
@@ -70,6 +71,10 @@ class BaseVerifierNeuron(BaseNeuron):
         self.db_semaphore = asyncio.Semaphore()
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
+
+
+        self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+        self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
 
         if not self.config.mock:

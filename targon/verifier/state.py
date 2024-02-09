@@ -24,6 +24,12 @@ from loguru import logger
 from substrateinterface import SubstrateInterface
 
 class SimpleBlockSubscriber:
+    '''
+    Simple block subscriber for the substrate blockchain.
+
+    Args:
+        substrate_url (str): The URL of the substrate node.
+    '''
     def __init__(self, substrate_url):
         self.substrate = SubstrateInterface(
             ss58_format=bt.__ss58_format__,

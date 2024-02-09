@@ -28,13 +28,24 @@ from targon import protocol
 from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.utils.misc import return_json_params
+from torch.nn.functional import cosine_similarity
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_tiered_uids, get_random_uids
-from targon.verifier.bonding import update_statistics, get_tier_factor
 from targon.verifier.reward import hashing_function, apply_reward_scores
+from targon.verifier.bonding import update_statistics, get_tier_factor, get_similarity_threshold
 
 
 def _filter_verified_responses(uids, responses):
+    """
+    Filters out responses that have not been verified.
+
+    Args:
+    - uids (list): A list of user IDs.
+    - responses (list): A list of tuples containing verification status and response.
+
+    Returns:
+    - tuple: Two tuples, one containing filtered user IDs and the other containing their corresponding responses.
+    """
     not_none_responses = [
         (uid, response[0])
         for (uid, (verified, response)) in zip(uids, responses)
@@ -47,24 +58,65 @@ def _filter_verified_responses(uids, responses):
     uids, responses = zip(*not_none_responses)
     return uids, responses
 
-def verify( self, output, ground_truth_hash):
+async def embedding_check( self, prover_output, ground_truth_output, prover_ss58_address ):
+    """
+    Checks the similarity between the prover's output embeddings and the ground truth output embeddings.
 
-    output_hash = hashing_function(output)
+    Args:
+    - self: Reference to the current instance of the class.
+    - prover_output (str): The output provided by the prover.
+    - ground_truth_output (str): The expected output.
+    - prover_ss58_address (str): The prover's SS58 address.
 
-    if not output_hash == ground_truth_hash:
+    Returns:
+    - bool: True if the similarity is above a certain threshold, False otherwise.
+    """
+    bt.logging.debug(
+        f"Checking embeddings for prover output {prover_output} and ground truth output {ground_truth_output}"
+    )
+    prover_tokens = self.embedding_tokenizer(prover_output, return_tensors="pt", padding=True, truncation=True)
+    ground_truth_tokens = self.embedding_tokenizer(ground_truth_output, return_tensors="pt", padding=True, truncation=True)
+
+    # Generate embeddings
+    with torch.no_grad():  # Disable gradient calculation for efficiency
+        prover_embeddings = self.embedding_model(**prover_tokens).pooler_output
+        ground_truth_embeddings = self.embedding_model(**ground_truth_tokens).pooler_output
+
+
+    similarity = cosine_similarity(prover_embeddings, ground_truth_embeddings)
+
+    success = similarity > await get_similarity_threshold( prover_ss58_address, self.database )
+    bt.logging.debug(f"Embedding similarity: {similarity} | Success: {success}")
+    return success
+
+def verify( self, prover_output, ground_truth_output, prover_ss58 ):
+    """
+    Verifies the prover's output against the ground truth output.
+
+    Args:
+    - self: Reference to the current instance of the class.
+    - prover_output (str): The output provided by the prover.
+    - ground_truth_output (str): The expected output.
+    - prover_ss58 (str): The prover's SS58 address.
+
+    Returns:
+    - bool: True if the outputs match or if the embedding check passes, False otherwise.
+    """
+    prover_output_hash = hashing_function(prover_output)
+    ground_truth_hash = hashing_function(ground_truth_output)
+
+    if not prover_output_hash == ground_truth_hash:
         bt.logging.debug(
-            f"Output hash {output_hash} does not match ground truth hash {ground_truth_hash}"
+            f"Output hash {prover_output_hash} does not match ground truth hash {ground_truth_hash}"
         )
-        bt.logging.debug(f"prover output: {output}")
-        bt.logging.debug(f"ground truth output: {ground_truth_hash}")
-        return False
+        return asyncio.run(embedding_check( self, prover_output, ground_truth_output, prover_ss58 ))
 
     bt.logging.debug(
-        f"Output hash {output_hash} matches ground truth hash {ground_truth_hash}"
+        f"Output hash {prover_output_hash} matches ground truth hash {ground_truth_hash}"
     )
     return True
 
-async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_truth_hash: str, sampling_params: protocol.ChallengeSamplingParams ) -> typing.Tuple[bool, protocol.Challenge]:
+async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_truth_output: str, sampling_params: protocol.ChallengeSamplingParams ) -> typing.Tuple[bool, protocol.Challenge]:
     """
     Handles a challenge sent to a prover and verifies the response.
 
@@ -97,12 +149,16 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         output = response.completion
 
         # output_encoded = output.encode('utf-8')
-        output_normalized = output.replace('\r\n', '\n')
-        output_cleaned = ' '.join(output_normalized.split())
+        if output is not None:
+            output_normalized = output.replace('\r\n', '\n')
+            output_cleaned = ' '.join(output_normalized.split())
 
         
-        bt.logging.debug('output', output_cleaned)
-        verified = verify( self, output_cleaned, ground_truth_hash )
+            bt.logging.debug('output', output_cleaned)
+            verified = verify( self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid] )
+        
+        else:
+            verified = False
 
         output_dict = (
             response,
@@ -139,7 +195,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         synapse.completion = response
         
 
-        verified = verify( self, response, ground_truth_hash )
+        verified = verify( self, response, ground_truth_output )
 
         output_dict = (
             synapse,
@@ -148,8 +204,23 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         return verified, output_dict
 
 async def challenge_data( self ):
+    """
+    Orchestrates the challenge process, from fetching challenge data to applying rewards based on the verification results.
 
-    
+    This function performs several key steps:
+    1. Fetches challenge data from a configured URL.
+    2. Generates a ground truth output using the challenge data.
+    3. Selects a set of UIDs (user identifiers) to challenge.
+    4. Sends the challenge to each selected UID and collects their responses.
+    5. Verifies the responses against the ground truth output.
+    6. Applies rewards or penalties based on the verification results.
+    7. Updates the event schema with the results of the challenge.
+
+    The function handles both real and mock challenges, allowing for testing without actual data.
+
+    Returns:
+    - EventSchema: An object containing detailed information about the challenge, including which UIDs were successful, the rewards applied, and other metadata.
+    """
     def remove_indices_from_tensor(tensor, indices_to_remove):
         # Sort indices in descending order to avoid index out of range error
         sorted_indices = sorted(indices_to_remove, reverse=True)
@@ -209,10 +280,6 @@ async def challenge_data( self ):
     ground_truth_output_normalized = ground_truth_output.replace('\r\n', '\n')
     ground_truth_output_cleaned = ' '.join(ground_truth_output_normalized.split())
 
-
-    # --- get hashing function
-    ground_truth_hash = hashing_function(ground_truth_output_cleaned)
-
     # --- Get the uids to query
     start_time = time.time()
     tasks = []
@@ -222,7 +289,7 @@ async def challenge_data( self ):
     bt.logging.debug(f"challenge uids {uids}")
     responses = []
     for uid in uids:
-        tasks.append(asyncio.create_task(handle_challenge(self, uid, private_input, ground_truth_hash, sampling_params)))
+        tasks.append(asyncio.create_task(handle_challenge(self, uid, private_input, ground_truth_output_cleaned, sampling_params)))
     responses = await asyncio.gather(*tasks)
 
 

@@ -28,6 +28,13 @@ REQUEST_LIMIT_GOLD = 10_000 # 10k every 360 blocks
 REQUEST_LIMIT_SILVER = 5_000 # 5k every 360 blocks
 REQUEST_LIMIT_BRONZE = 500 # 1k every 360 blocks
 
+
+COSINE_SIMILARITY_THRESHOLD_CHALLENGER = 0.98
+COSINE_SIMILARITY_THRESHOLD_GRANDMASTER = 0.95
+COSINE_SIMILARITY_THRESHOLD_GOLD = 0.90
+COSINE_SIMILARITY_THRESHOLD_SILVER = 0.85
+COSINE_SIMILARITY_THRESHOLD_BRONZE = 0.80
+
 # Requirements for each tier. These must be maintained for a prover to remain in that tier.
 CHALLENGER_INFERENCE_SUCCESS_RATE = 0.999  # 1/1000 chance of failure
 CHALLENGER_CHALLENGE_SUCCESS_RATE = 0.999  # 1/1000 chance of failure
@@ -47,11 +54,16 @@ GOLD_TIER_REWARD_FACTOR = 0.777  # Get 77.7% rewards
 SILVER_TIER_REWARD_FACTOR = 0.555  # Get 55.5% rewards
 BRONZE_TIER_REWARD_FACTOR = 0.444  # Get 44.4% rewards
 
-CHALLENGER_TIER_TOTAL_SUCCESSES = 100_000  # 100,000
-GRANDMASTER_TIER_TOTAL_SUCCESSES = 50_000  # 50,000
-GOLD_TIER_TOTAL_SUCCESSES = 5_000  # 5,000
-SILVER_TIER_TOTAL_SUCCESSES = 1_000  # 1,000
+# CHALLENGER_TIER_TOTAL_SUCCESSES = 100_000  # 100,000
+# GRANDMASTER_TIER_TOTAL_SUCCESSES = 50_000  # 50,000
+# GOLD_TIER_TOTAL_SUCCESSES = 5_000  # 5,000
+# SILVER_TIER_TOTAL_SUCCESSES = 1_000  # 1,000
 
+
+CHALLENGER_TIER_TOTAL_SUCCESSES = 4_000
+GRANDMASTER_TIER_TOTAL_SUCCESSES = 2_000
+GOLD_TIER_TOTAL_SUCCESSES = 500  # 50
+SILVER_TIER_TOTAL_SUCCESSES = 250
 
 async def reset_request_stats(stats_key: str, database: aioredis.Redis):
     """
@@ -70,7 +82,7 @@ async def reset_request_stats(stats_key: str, database: aioredis.Redis):
             "inference_successes": 0,
             "challenge_successes": 0,
             "challenge_attempts": 0,
-            "total_interval_successes": 0,
+            "total_interval_successes": 0, 
         },
     )
 
@@ -165,6 +177,33 @@ async def update_statistics(
     if success:
         await database.hincrby(stats_key, "total_successes", 1)
 
+
+
+async def get_similarity_threshold(ss58_address: str, database: aioredis.Redis):
+    """
+    Retrieves the similarity threshold based on the tier of a given prover.
+    This function returns the similarity threshold that a prover must maintain to remain in their tier.
+    Args:
+        ss58_address (str): The unique address (hotkey) of the prover.
+        database (redis.Redis): The Redis client instance for database operations.
+    Returns:
+        float: The similarity threshold corresponding to the prover's tier.
+    """
+    if not await database.exists(ss58_address):
+        bt.logging.warning(f"Prover key {ss58_address} is not registered!")
+        return COSINE_SIMILARITY_THRESHOLD_BRONZE
+    
+    tier = await database.hget(f"stats:{ss58_address}", "tier")
+    if tier == b"Challenger":
+        return COSINE_SIMILARITY_THRESHOLD_CHALLENGER
+    elif tier == b"Grandmaster":
+        return COSINE_SIMILARITY_THRESHOLD_GRANDMASTER
+    elif tier == b"Gold":
+        return COSINE_SIMILARITY_THRESHOLD_GOLD
+    elif tier == b"Silver":
+        return COSINE_SIMILARITY_THRESHOLD_SILVER
+    else:
+        return COSINE_SIMILARITY_THRESHOLD_BRONZE
 
 async def compute_tier(stats_key: str, database: aioredis.Redis):
     """
