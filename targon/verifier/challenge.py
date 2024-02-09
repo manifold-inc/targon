@@ -32,7 +32,7 @@ from torch.nn.functional import cosine_similarity
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_tiered_uids, get_random_uids
 from targon.verifier.reward import hashing_function, apply_reward_scores
-from targon.verifier.bonding import update_statistics, get_tier_factor, get_similarity_threshhold
+from targon.verifier.bonding import update_statistics, get_tier_factor, get_similarity_threshold
 
 
 def _filter_verified_responses(uids, responses):
@@ -85,7 +85,7 @@ async def embedding_check( self, prover_output, ground_truth_output, prover_ss58
 
     similarity = cosine_similarity(prover_embeddings, ground_truth_embeddings)
 
-    success = similarity > await get_similarity_threshhold( prover_ss58_address, self.database )
+    success = similarity > await get_similarity_threshold( prover_ss58_address, self.database )
     bt.logging.debug(f"Embedding similarity: {similarity} | Success: {success}")
     return success
 

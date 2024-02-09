@@ -179,7 +179,7 @@ async def update_statistics(
 
 
 
-async def get_similarity_threshhold(ss58_address: str, database: aioredis.Redis):
+async def get_similarity_threshold(ss58_address: str, database: aioredis.Redis):
     """
     Retrieves the similarity threshold based on the tier of a given prover.
     This function returns the similarity threshold that a prover must maintain to remain in their tier.
