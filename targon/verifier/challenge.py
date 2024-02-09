@@ -116,12 +116,16 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         output = response.completion
 
         # output_encoded = output.encode('utf-8')
-        output_normalized = output.replace('\r\n', '\n')
-        output_cleaned = ' '.join(output_normalized.split())
+        if output is not None:
+            output_normalized = output.replace('\r\n', '\n')
+            output_cleaned = ' '.join(output_normalized.split())
 
         
-        bt.logging.debug('output', output_cleaned)
-        verified = verify( self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid] )
+            bt.logging.debug('output', output_cleaned)
+            verified = verify( self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid] )
+        
+        else:
+            verified = False
 
         output_dict = (
             response,
