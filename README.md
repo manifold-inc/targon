@@ -5,7 +5,9 @@ TARGON (Bittensor Subnet 4) is a redundant deterministic verification mechanism 
 
 NOTICE: Using this software, you must agree to the Terms and Agreements provided in the terms and conditions document. By downloading and running this software, you implicitly agree to these terms and conditions.
 
-> v1.0.0 - Runpod is not currently supported on this version of TARGON for verifiers. An easy alternative can be found in the [Running on TensorDock](#running-on-tensordock) section.
+> v1.0.6 - Runpod is now supported 🎉. Check out the runpod docs in docs/runpod/verifier.md and docs/runpod/prover.md for more information.
+
+> ~~v1.0.0 - Runpod is not currently supported on this version of TARGON for verifiers. An easy alternative can be found in the [Running on TensorDock](#running-on-tensordock) section.~~
 
 
 Currently supporting python>=3.9,<3.11.
@@ -38,10 +40,16 @@ Currently supporting python>=3.9,<3.11.
 # Compute Requirements
 The following table shows the VRAM, Storage, RAM, and CPU minimum requirements for running a verifier or prover.
 
-| Role | VRAM | Storage | RAM | CPU |
-| --- | --- | --- | --- | --- |
-| Prover   | 24GB | 32GB | 8GB | 8 Cores  |
-| Verifier | 12GB | 64GB | 16GB | 8 Cores |
+GPU - A100
+| Provider   | VRAM  | Storage |   RAM   | CPU  |
+|------------|-------|---------|---------|------|
+| TensorDock | 40GB  | 100GB   | 16GB    | 4    |
+| Latitude   | 40GB  | 100GB   | 16GB    | 4    |
+| Paperspace | 40GB  | 100GB   | 16GB    | 4    |
+| GCP        | 40GB  | 100GB   | 16GB    | 4    |
+| Azure      | 40GB  | 100GB   | 16GB    | 4    |
+| AWS        | 40GB  | 100GB   | 16GB    | 4    |
+| Runpod     | 40GB  | 100GB   | 16GB    | 4    |
 
 
 # Recommended Compute Providers
@@ -55,6 +63,7 @@ The following table shows the suggested compute providers for running a verifier
 | GCP        | High  | Global   | VM & Bare Metal  | 3/5    |
 | Azure      | High  | Global   | VM & Bare Metal  | 3/5    |
 | AWS        | High  | Global   | VM & Bare Metal  | 3/5    |
+| Runpod     | Low   | Global   | VM & Container   | 5/5    |
 
 # Roadmap
 

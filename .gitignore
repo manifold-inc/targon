@@ -3,3 +3,4 @@ __pycache__/
 test.py
 
 docker-compose.yml
+.DS_Store
