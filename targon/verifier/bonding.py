@@ -248,15 +248,17 @@ async def get_similarity_threshold(ss58_address: str, database: aioredis.Redis):
     # Default similarity threshold if the prover's tier cannot be determined
     default_similarity_threshold = 0.70
 
+    # Make sure to await the existence check
     if not await database.exists(f"stats:{ss58_address}"):
         bt.logging.warning(f"Prover key {ss58_address} is not registered!")
         return default_similarity_threshold
 
-    tier = await database.hget(f"stats:{ss58_address}", "tier")
-    if tier is None:
+    # Properly await the async call before decoding
+    tier_bytes = await database.hget(f"stats:{ss58_address}", "tier")
+    if tier_bytes is None:
         return default_similarity_threshold
 
-    tier = tier.decode()
+    tier = tier_bytes.decode()
 
     # Assuming we add a 'similarity_threshold' to each tier's configuration in TIER_CONFIG
     similarity_threshold = TIER_CONFIG.get(tier, {}).get("similarity_threshold", default_similarity_threshold)
