@@ -25,6 +25,7 @@ import argparse
 import threading
 import traceback
 import bittensor as bt
+from targon import protocol
 from targon.base.neuron import BaseNeuron
 from targon.utils.updater import autoupdate
 from targon.utils.config import add_prover_args
@@ -61,9 +62,13 @@ class BaseProverNeuron(BaseNeuron):
         # Attach deterprovers which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to prover axon.")
         self.axon.attach(
-            forward_fn=self.forward,
+            forward_fn=self.challenge,
             blacklist_fn=self.blacklist,
             priority_fn=self.priority,
+        ).attach(
+            forward_fn=self.inference,
+            blacklist_fn=self.inference_blacklist,
+            priority_fn=self.inference_priority,
         )
         bt.logging.info(f"Axon created: {self.axon}")      
 
@@ -82,6 +87,30 @@ class BaseProverNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
+
+    async def challenge(self, synapse: protocol.Challenge):
+        """
+        Prover's challenge function. This function is called by the verifier to request a response to a challenge.
+
+        Args:
+            synapse (protocol.Challenge): The challenge sent by the verifier.
+
+        Returns:
+            protocol.Response: The response to the challenge.
+        """
+        return await self.forward(synapse)
+    
+    async def inference(self, synapse: protocol.Inference):
+        """
+        Prover's inference function. This function is called by the verifier to request a response to an inference.
+
+        Args:
+            synapse (protocol.Inference): The inference sent by the verifier.
+
+        Returns:
+            protocol.Response: The response to the inference.
+        """
+        return await self.forward(synapse)
 
     def run(self):
         """

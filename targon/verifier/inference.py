@@ -28,7 +28,7 @@ from targon.verifier.event import EventSchema
 async def handle_inference(
         self, 
         private_input: typing.Dict[str,str], 
-        sampling_params: protocol.InferenceeSamplingParams, 
+        sampling_params: protocol.InferenceSamplingParams, 
         uid: int
     ):
     if not self.config.mock:

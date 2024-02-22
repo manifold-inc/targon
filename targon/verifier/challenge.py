@@ -195,7 +195,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
         synapse.completion = response
         
 
-        verified = verify( self, response, ground_truth_output )
+        verified = verify( self, response, ground_truth_output, self.metagraph.hotkeys[uid] )
 
         output_dict = (
             synapse,

@@ -22,7 +22,6 @@ import sys
 import copy
 import torch
 import asyncio
-import aioredis
 import argparse
 import threading
 import subprocess
@@ -33,6 +32,7 @@ from typing import List
 from copy import deepcopy
 from pprint import pformat
 from targon.mock import MockDendrite
+from redis import asyncio as aioredis
 from traceback import print_exception
 from targon.base.neuron import BaseNeuron
 from targon.utils.updater import autoupdate

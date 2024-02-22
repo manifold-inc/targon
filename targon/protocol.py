@@ -24,7 +24,7 @@ from typing import List
 from starlette.responses import StreamingResponse
 
 
-class InferenceeSamplingParams(pydantic.BaseModel):
+class InferenceSamplingParams(pydantic.BaseModel):
     '''
     SamplingParams is a pydantic model that represents the sampling parameters for the TGI model.
     '''

@@ -127,9 +127,9 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.force_verifier_permit",
-        action="store_true",
+        type=bool,
         help="If set, we will force incoming requests to have a permit.",
-        default=False,
+        default=True,
     )
 
     parser.add_argument(
@@ -141,9 +141,9 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.allow_non_registered",
-        action="store_true",
+        type=bool,
         help="If set, provers will accept queries from non registered entities. (Dangerous!)",
-        default=False,
+        default=True,
     )
 
     parser.add_argument(
