@@ -16,6 +16,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+from datetime import datetime
 
 def create_prompt( challenge_data ):
     """
@@ -28,19 +29,19 @@ def create_prompt( challenge_data ):
     - str: The prompt for the prover to respond to.
     """
 
-    output = '''### Instruction: 
-Your task is to perform retrieval augmented generation (RAG) over the given query and search results. Return your answer in a json format that includes a summary of the search results. 
+    output = '''
+### Current Date: {date}
+### Instruction: 
+You are an expert language model that is tasked with performing a search over the given query and search results.
+your answer should be short, two paragraphs exactly, and should be relevant to the query and search results.
 
-Query:
-{}
-\n\n
 Search Results:
-{}
-\n\n
-Query:
-{}
+{sources}
 
-### Response:
-'''.format(challenge_data['query'], challenge_data['sources'], challenge_data['query'])
-    
+Query:
+{query}
+
+Response:
+'''.format(date=(datetime.now().strftime('%Y-%m-%d')), query=challenge_data['query'], sources='\n'.join(challenge_data['sources'])) 
+
     return output

@@ -266,22 +266,38 @@ async def get_similarity_threshold(ss58_address: str, database: aioredis.Redis):
     return similarity_threshold
 
 async def compute_tier(stats_key: str, database: aioredis.Redis):
+    """
+    Asynchronously computes and updates the tier for a prover in the decentralized storage system.
+    This function should be called periodically to ensure a prover's tier is up-to-date based on
+    their performance. It computes the tier based on the prover's success rate in challenges.
+    Args:
+        stats_key (str): The key representing the prover's statistics in the database.
+        database (redis.Redis): The Redis client instance for database operations.
+    """
+    
     if not await database.exists(stats_key):
         bt.logging.warning(f"Prover key {stats_key} is not registered!")
         return
 
-    challenge_successes = int(await database.hget(stats_key, "challenge_successes"))
-    challenge_attempts = int(await database.hget(stats_key, "challenge_attempts"))
+    challenge_successes = int(await database.hget(stats_key, "challenge_successes") or 0)
+    challenge_attempts = int(await database.hget(stats_key, "challenge_attempts") or 0)
     challenge_success_rate = challenge_successes / challenge_attempts if challenge_attempts > 0 else 0
 
-    # Determine the prover's new tier based on success rate and adjust by one level only if necessary
-    current_tier = await database.hget(stats_key, "tier").decode()
+    # Correctly wait for the coroutine to finish and then decode the result if it's not None
+    current_tier_bytes = await database.hget(stats_key, "tier")
+    if current_tier_bytes is None:
+        bt.logging.error(f"No tier found for {stats_key}, setting to default 'Bronze'.")
+        current_tier = "Bronze"  # Set a default tier if not found
+    else:
+        current_tier = current_tier_bytes.decode()
+
     current_tier_index = list(TIER_CONFIG.keys()).index(current_tier)
     new_tier_index = None
 
     for tier_name, tier_info in TIER_CONFIG.items():
         if challenge_success_rate >= tier_info["success_rate"]:
             new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
+            break  # Assuming you want to stop at the first match which is a higher or equal success rate
 
     # Adjust by one level if necessary
     if new_tier_index is not None:
@@ -298,24 +314,18 @@ async def compute_tier(stats_key: str, database: aioredis.Redis):
         await database.hset(stats_key, "tier", new_tier_name)
         await database.hset(stats_key, "request_limit", TIER_CONFIG[new_tier_name]["request_limit"])
 
-
 async def compute_all_tiers(database: aioredis.Redis):
-    # Iterate over all provers
     """
     Asynchronously computes and updates the tiers for all provers in the decentralized storage system.
     This function should be called periodically to ensure provers' tiers are up-to-date based on
     their performance. It iterates over all provers and calls `compute_tier` for each one.
-    Args:
-        database (redis.Redis): The Redis client instance for database operations.
     """
     provers = [prover async for prover in database.scan_iter("stats:*")]
     tasks = [compute_tier(prover, database) for prover in provers]
     await asyncio.gather(*tasks)
 
-    # Reset the statistics for the next epoch
     bt.logging.info(f"Resetting statistics for all hotkeys...")
     await rollover_request_stats(database)
-
 async def get_uid_tier_mapping(database: aioredis.Redis):
     """
     Retrieves a mapping of UIDs to their respective tiers.
