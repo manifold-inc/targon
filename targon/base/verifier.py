@@ -22,7 +22,7 @@ import sys
 import copy
 import torch
 import asyncio
-import aioredis
+from redis import asyncio as aioredis
 import argparse
 import threading
 import subprocess

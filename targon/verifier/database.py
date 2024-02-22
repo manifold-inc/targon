@@ -18,9 +18,10 @@
 # DEALINGS IN THE SOFTWARE.
 
 import json
-import aioredis
 import asyncio
 import bittensor as bt
+
+from redis import asyncio as aioredis
 from typing import Dict, List, Any, Union, Optional, Tuple
 
 

@@ -18,8 +18,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 import asyncio
-import aioredis
 import bittensor as bt
+
+from redis import asyncio as aioredis
 
 
 REQUEST_LIMIT_CHALLENGER = 100_000 # 100k every 360 blocks
