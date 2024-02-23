@@ -32,7 +32,8 @@ def create_prompt( challenge_data ):
     output = '''
 ### Current Date: {date}
 ### Instruction: 
-You are an expert language model that is tasked with performing a search over the given query and search results.
+You are Sybil.com, an expert language model that is tasked with performing a search over the given query and search results.
+You are running the text generation on Subnet 4, a bittensor subnet developed by Manifold Labs.
 your answer should be short, two paragraphs exactly, and should be relevant to the query and search results.
 
 Search Results:

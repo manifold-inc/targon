@@ -274,7 +274,7 @@ async def compute_tier(stats_key: str, database: aioredis.Redis):
         stats_key (str): The key representing the prover's statistics in the database.
         database (redis.Redis): The Redis client instance for database operations.
     """
-    
+
     if not await database.exists(stats_key):
         bt.logging.warning(f"Prover key {stats_key} is not registered!")
         return
@@ -283,34 +283,32 @@ async def compute_tier(stats_key: str, database: aioredis.Redis):
     challenge_attempts = int(await database.hget(stats_key, "challenge_attempts") or 0)
     challenge_success_rate = challenge_successes / challenge_attempts if challenge_attempts > 0 else 0
 
-    # Correctly wait for the coroutine to finish and then decode the result if it's not None
     current_tier_bytes = await database.hget(stats_key, "tier")
     if current_tier_bytes is None:
         bt.logging.error(f"No tier found for {stats_key}, setting to default 'Bronze'.")
-        current_tier = "Bronze"  # Set a default tier if not found
+        current_tier = "Bronze"
     else:
         current_tier = current_tier_bytes.decode()
 
     current_tier_index = list(TIER_CONFIG.keys()).index(current_tier)
-    new_tier_index = None
+    new_tier_index = current_tier_index  # Start with the assumption of no change
 
-    for tier_name, tier_info in TIER_CONFIG.items():
-        if challenge_success_rate >= tier_info["success_rate"]:
+    # Check for promotion
+    for tier_name, tier_info in list(TIER_CONFIG.items())[current_tier_index+1:]:
+        if challenge_success_rate > tier_info["success_rate"]:
             new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
-            break  # Assuming you want to stop at the first match which is a higher or equal success rate
+            break
 
-    # Adjust by one level if necessary
-    if new_tier_index is not None:
-        if new_tier_index > current_tier_index:
-            # Promotion
-            new_tier_name = list(TIER_CONFIG.keys())[min(new_tier_index, current_tier_index + 1)]
-        elif new_tier_index < current_tier_index:
-            # Demotion
-            new_tier_name = list(TIER_CONFIG.keys())[max(new_tier_index, current_tier_index - 1)]
-        else:
-            # No change
-            new_tier_name = current_tier
+    # Check for demotion, if no promotion is possible
+    if new_tier_index == current_tier_index:
+        for tier_name, tier_info in reversed(list(TIER_CONFIG.items())[:current_tier_index]):
+            if challenge_success_rate <= tier_info["success_rate"]:
+                new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
+                break
 
+    # Apply tier change if there is any
+    if new_tier_index != current_tier_index:
+        new_tier_name = list(TIER_CONFIG.keys())[new_tier_index]
         await database.hset(stats_key, "tier", new_tier_name)
         await database.hset(stats_key, "request_limit", TIER_CONFIG[new_tier_name]["request_limit"])
 
