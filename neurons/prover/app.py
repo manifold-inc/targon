@@ -99,16 +99,16 @@ class Prover(BaseProverNeuron):
                 stream=True
                 )
         
-            output = ""
+            buffer = ""
             async for completion in output:
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": completion.encode("utf-8"),
+                        "body": completion[0].encode("utf-8"),
                         "more_body": True,
                     }
                 )
-                output += completion
+                buffer += completion
             bt.logging.info(f"Streamed text: {output}")
 
             # # Send final message to close the stream
