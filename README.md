@@ -392,7 +392,7 @@ replace the wallet name and wallet hotkey with your wallet name and wallet hotke
 </details>
 
 # Reward System
-Inspired by [FileTAO](https://github.com/ifrit98/storage-subnet)'s reputation system, the reward system is based on the complete correct answer being responded consistently over time. If a ground truth hash and the prover output hash are equal, then the reward is 1. Performing these challenges and inference requests over time will result in a multiplication of your reward based off the tier.
+Inspired by [FileTAO](https://github.com/ifrit98/storage-subnet)'s reputation system, the reward system is based on the complete correct answer being responded consistently over time. If a ground truth hash and the prover output hash are equal, then the reward is performing these challenges and inference requests over time will result in a multiplication of your reward based off the tier.
 
 ## Tier System
 The tier system classifies miners into five distinct categories, each with specific requirements and request limits. These tiers are designed to reward miners based on their performance, reliability, and the total volume of requests they can fulfill.
