@@ -399,43 +399,76 @@ The tier system classifies miners into five distinct categories, each with speci
 
 
 
+## New Tier System
+The updated tier system introduces a refined classification for miners, with expanded categories to more precisely reward performance, reliability, and the total volume of requests they can handle. Each tier now includes not only the request success rate and request limits but also incorporates a reward factor and a similarity threshold for more nuanced performance assessment.
+
+**V1.1.1 Tiers:**
+
 **1.) Challenger Tier** 
-- **Request Success Rate:** 99.9% (1/1000 chance of failure)
-- **Validation Success Rate:** 99.9% (1/1000 chance of failure)
-**- Minimum Successful Requests Required:** 2,000,000 Required
-- **Reward Factor:** 1.0 (100% rewards)
-- **Requests Limit (per interval):** 100,000 per interval
+- **Success Rate:** 98%
+- **Request Limit:** 25,000 
+- **Reward Factor:** 1.0
+- **Similarity Threshold:** 0.95
 
 **2.) Grandmaster Tier** 
-- **Request Success Rate:** 99.9% (1/1000 chance of failure)
-- **Validation Success Rate:** 99.9% (1/1000 chance of failure)
-**- Minimum Successful Requests Required:** 700,000 Required
-- **Reward Factor:** 0.85 (85% rewards)
-- **Requests Limit (per interval):** 25,000 per interval
+- **Success Rate:** 92%
+- **Request Limit:** 22,500 
+- **Reward Factor:** 0.980
+- **Similarity Threshold:** 0.92
 
+**3.) Master Tier** 
+- **Success Rate:** 88%
+- **Request Limit:** 20,000 
+- **Reward Factor:** 0.960
+- **Similarity Threshold:** 0.88
 
-**3.) Gold Tier** 
-- **Request Success Rate:** 94.9% 
-- **Validation Success Rate:** 94.9% 
-**- Minimum Successful Requests Required:** 14,000 Required
-- **Reward Factor:** 0.72 (70% rewards)
-- **Requests Limit (per interval):** 14,000 per interval
+**4.) Jade Tier** 
+- **Success Rate:** 84%
+- **Request Limit:** 17,500 
+- **Reward Factor:** 0.940
+- **Similarity Threshold:** 0.84
 
+**5.) Ruby Tier** 
+- **Success Rate:** 82%
+- **Request Limit:** 15,000 
+- **Reward Factor:** 0.920
+- **Similarity Threshold:** 0.82
 
-**4.) Silver Tier** 
-- **Request Success Rate:** 94.9%
-- **Validation Success Rate:** 94.9% 
-**- Minimum Successful Requests Required:** 3,500 Required
-- **Reward Factor:** 0.55 (95% rewards)
-- **Requests Limit (per interval):** 3,500 per interval
+**6.) Emerald Tier** 
+- **Success Rate:** 80%
+- **Request Limit:** 12,500 
+- **Reward Factor:** 0.900
+- **Similarity Threshold:** 0.80
 
-5.**) Bronze Tier** 
-- **Request Success Rate:** Not defined
-- **Validation Success Rate:** Not defined
-**- Minimum Successful Requests Required:** Not defined
-- **Reward Factor:** 0.45 (33% rewards)
-- **Requests Limit (per interval):** 500 per interval
+**7.) Diamond Tier** 
+- **Success Rate:** 78%
+- **Request Limit:** 10,000 
+- **Reward Factor:** 0.888
+- **Similarity Threshold:** 0.78
 
+**8.) Platinum Tier** 
+- **Success Rate:** 76%
+- **Request Limit:** 7,500 
+- **Reward Factor:** 0.777
+- **Similarity Threshold:** 0.76
+
+**9.) Gold Tier** 
+- **Success Rate:** 74%
+- **Request Limit:** 5,000 
+- **Reward Factor:** 0.666
+- **Similarity Threshold:** 0.74
+
+**10.) Silver Tier** 
+- **Success Rate:** 72%
+- **Request Limit:** 1,000 
+- **Reward Factor:** 0.555
+- **Similarity Threshold:** 0.72
+
+**11.) Bronze Tier** 
+- **Success Rate:** 70%
+- **Request Limit:** 500 
+- **Reward Factor:** 0.444
+- **Similarity Threshold:** 0.70
 
 ## Promotion/Relegation
 Miners will be promoted or relegated based on their performance over the last 360 blocks. The promotion/relegation computation will be done every 360 blocks. In order to be promoted to a tier, you must satisfy the tier success rate requirements and the minimum successful requests required. In order to be relegated to a tier, you must fail to satisfy the tier success rate requirements, leading to a demotion to the lower tier. 
