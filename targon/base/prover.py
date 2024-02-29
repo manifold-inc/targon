@@ -36,6 +36,8 @@ class BaseProverNeuron(BaseNeuron):
     """
     Base class for Bittensor provers.
     """
+    neuron_type: str = "ProverNeuron"
+
     @classmethod
     def add_args(cls, parser: argparse.ArgumentParser):
         super().add_args(parser)  

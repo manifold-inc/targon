@@ -47,6 +47,8 @@ class BaseVerifierNeuron(BaseNeuron):
     Base class for Bittensor verifiers. Your verifier should inherit from this class.
     """
     
+    neuron_type: str = "VerifierNeuron"
+
     @classmethod
     def add_args(cls, parser: argparse.ArgumentParser):
         super().add_args(parser)

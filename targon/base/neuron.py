@@ -39,6 +39,7 @@ class BaseNeuron(ABC):
     In addition to creating a wallet, subtensor, and metagraph, this class also handles the synchronization of the network state via a basic checkpointing mechanism based on epoch length.
     """
 
+    neuron_type: str = "BaseNeuron"
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -176,7 +177,7 @@ class BaseNeuron(ABC):
         # Define appropriate logic for when set weights.
         return (
             self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length
+        ) > self.config.neuron.epoch_length and self.neuron_type != "ProverNeuron"
 
     def save_state(self):
         bt.logging.warning(
