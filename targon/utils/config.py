@@ -22,6 +22,7 @@ import torch
 import argparse
 import bittensor as bt
 from loguru import logger
+from typing import List
 
 #TODO: enable 4bit and 8bit precision llms via config
 
@@ -114,6 +115,21 @@ def add_args(cls, parser):
         default=False,
     )
 
+    # add blacklist keys
+    parser.add_argument(
+        '--blacklist.coldkeys',
+        type=List[str],
+        help='List of coldkeys to blacklist.',
+        default=[],
+    )
+
+    parser.add_argument(
+        '--blacklist.hotkeys',
+        type=List[str],
+        help='List of hotkeys to blacklist.',
+        default=[],
+    )
+
 
 def add_prover_args(cls, parser):
     """Add prover specific arguments to the parser."""
@@ -127,7 +143,7 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.force_verifier_permit",
-        type=bool,
+        action="store_false",
         help="If set, we will force incoming requests to have a permit.",
         default=True,
     )
@@ -141,7 +157,7 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.allow_non_registered",
-        type=bool,
+        action="store_false",
         help="If set, provers will accept queries from non registered entities. (Dangerous!)",
         default=True,
     )

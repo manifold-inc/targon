@@ -224,6 +224,15 @@ class Prover(BaseProverNeuron):
                 f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
             )
             return True, "Unrecognized hotkey"
+        
+
+        # EXPERIMENTAL
+        if synapse.dendrite.hotkey in self.config.blacklist.hotkeys:
+            # Ignore requests from unrecognized entities.
+            bt.logging.trace(
+                f"Blacklisting unrecognized coldkey {synapse.dendrite.hotkey}"
+            )
+            return True, "Unrecognized coldkey"
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"

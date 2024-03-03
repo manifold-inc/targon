@@ -74,6 +74,7 @@ class BaseVerifierNeuron(BaseNeuron):
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
+        self.blacklisted_coldkeys = self.config.blacklist.coldkeys
 
         self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
@@ -283,6 +284,17 @@ class BaseVerifierNeuron(BaseNeuron):
         raw_weights = torch.nn.functional.normalize(
             self.scores, p=1, dim=0
         )
+
+        # Get the UIDs and their corresponding coldkeys
+        uids = self.metagraph.uids
+        coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
+
+        # Iterate through UIDs and set weights to 0 if coldkey is blacklisted
+        for idx, coldkey in enumerate(coldkeys):
+            if coldkey in self.blacklisted_coldkeys:
+                raw_weights[idx] = raw_weights[idx] * 0.1 # testing
+                bt.logging.trace('blacklisted uid! weight set to 0', uids[idx])
+
 
         bt.logging.debug("raw_weights", raw_weights)
         bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
