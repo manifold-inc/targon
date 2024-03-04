@@ -130,6 +130,14 @@ def add_args(cls, parser):
         default=[],
     )
 
+    parser.add_argument(
+        '--blacklist.scale',
+        type=float,
+        help='The scale to apply to the blacklist.',
+        default=0.0,
+    )
+
+
 
 def add_prover_args(cls, parser):
     """Add prover specific arguments to the parser."""
