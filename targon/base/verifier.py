@@ -63,6 +63,13 @@ class BaseVerifierNeuron(BaseNeuron):
 
         assert self.config.database.password is not None, "Database password must be set."
 
+        try:
+            self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        except Exception as e:
+            bt.logging.error(
+                f"Failed to create Axon initialize with exception: {e}"
+            )
+        
         # Setup database
         self.database = aioredis.StrictRedis(
             host=self.config.database.host,
@@ -140,22 +147,16 @@ class BaseVerifierNeuron(BaseNeuron):
         """Serve axon to enable external connections."""
 
         bt.logging.info("serving ip to chain...")
+        
         try:
-            self.axon = bt.axon(wallet=self.wallet, config=self.config)
-
-            try:
-                self.subtensor.serve_axon(
-                    netuid=self.config.netuid,
-                    axon=self.axon,
-                )
-            except Exception as e:
-                bt.logging.error(f"Failed to serve Axon with exception: {e}")
-
-        except Exception as e:
-            bt.logging.error(
-                f"Failed to create Axon initialize with exception: {e}"
+            self.subtensor.serve_axon(
+                netuid=self.config.netuid,
+                axon=self.axon,
             )
+        except Exception as e:
+            bt.logging.error(f"Failed to serve Axon with exception: {e}")
 
+       
     async def concurrent_forward(self):
         coroutines = [
             self.forward()
