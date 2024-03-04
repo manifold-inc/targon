@@ -279,21 +279,22 @@ class BaseVerifierNeuron(BaseNeuron):
                 "Scores contain NaN values. This may be due to a lack of responses from provers, or a bug in your reward functions."
             )
 
+        # # Get the UIDs and their corresponding coldkeys
+        # uids = self.metagraph.uids
+        # coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
+
+        # # Iterate through UIDs and set weights to 0 if coldkey is blacklisted
+        # for idx, coldkey in enumerate(coldkeys):
+        #     if coldkey in self.blacklisted_coldkeys:
+        #         self.scores[idx] = self.scores[idx] * 0.1 # testing
+        #         bt.logging.trace('blacklisted uid! weight reduced', uids[idx])
+
+
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(
             self.scores, p=1, dim=0
         )
-
-        # Get the UIDs and their corresponding coldkeys
-        uids = self.metagraph.uids
-        coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
-
-        # Iterate through UIDs and set weights to 0 if coldkey is blacklisted
-        for idx, coldkey in enumerate(coldkeys):
-            if coldkey in self.blacklisted_coldkeys:
-                raw_weights[idx] = raw_weights[idx] * 0.1 # testing
-                bt.logging.trace('blacklisted uid! weight set to 0', uids[idx])
 
 
         bt.logging.debug("raw_weights", raw_weights)
