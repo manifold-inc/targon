@@ -118,14 +118,14 @@ def add_args(cls, parser):
     # add blacklist keys
     parser.add_argument(
         '--blacklist.coldkeys',
-        type=List[str],
+        nargs='+',
         help='List of coldkeys to blacklist.',
         default=[],
     )
 
     parser.add_argument(
         '--blacklist.hotkeys',
-        type=List[str],
+        nargs='+',
         help='List of hotkeys to blacklist.',
         default=[],
     )
