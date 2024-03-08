@@ -221,6 +221,7 @@ def apply_reward_scores(
         1 - alpha
     ) * self.scores.to(self.device)
 
+    self.scores = (self.scores - self.config.neuron.decay_alpha).clamp(min=0)
     # Get the UIDs and their corresponding coldkeys
     coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
 

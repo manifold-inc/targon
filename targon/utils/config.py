@@ -202,6 +202,13 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.decay_alpha",
+        type=float,
+        help="The decay alpha for the verifier.",
+        default=0.001,
+    )
+
+    parser.add_argument(
         "--neuron.max_tokens",
         type=int,
         help="The maximum number of tokens in generated responses.",
