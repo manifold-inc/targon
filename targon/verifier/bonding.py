@@ -368,18 +368,21 @@ async def get_tier_factor(ss58_address: str, database: aioredis.Redis):
     is eligible to receive based on their tier.
     Args:
         ss58_address (str): The unique address (hotkey) of the prover.
-        database (redis.Redis): The Redis client instance for database operations.
+        database (aioredis.Redis): The Redis client instance for database operations.
     Returns:
         float: The reward factor corresponding to the prover's tier.
     """
-    tier = await database.hget(f"stats:{ss58_address}", "tier")
-    if tier == b"Challenger":
-        return CHALLENGER_TIER_REWARD_FACTOR
-    elif tier == b"Grandmaster":
-        return GRANDMASTER_TIER_REWARD_FACTOR
-    elif tier == b"Gold":
-        return GOLD_TIER_REWARD_FACTOR
-    elif tier == b"Silver":
-        return SILVER_TIER_REWARD_FACTOR
-    else:
-        return BRONZE_TIER_REWARD_FACTOR
+    # Retrieve the tier from the database
+    tier_bytes = await database.hget(f"stats:{ss58_address}", "tier")
+    if tier_bytes is None:
+        # If the tier is not found, return a default reward factor
+        return 0.444  # Assuming Bronze is the default tier with the lowest reward factor
+
+    # Decode the tier value from bytes to string
+    tier = tier_bytes.decode()
+
+    # Use the tier to get the reward factor from TIER_CONFIG
+    # If the tier is not found in TIER_CONFIG, return a default reward factor
+    reward_factor = TIER_CONFIG.get(tier, {}).get("reward_factor", 0.444)
+
+    return reward_factor
