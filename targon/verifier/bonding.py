@@ -63,68 +63,68 @@ TIER_CONFIG = {
         "success_rate": 0.70, 
         "request_limit": 500, 
         "reward_factor": 0.444,
-        "similarity_threshold": 0.70
+        "similarity_threshold": 0.80
     },
     "Silver": {
         "success_rate": 0.72, 
         "request_limit": 1000, 
         "reward_factor": 0.555,
-        "similarity_threshold": 0.72
+        "similarity_threshold": 0.84
     },
     "Gold": {
         "success_rate": 0.74, 
         "request_limit": 5000, 
         "reward_factor": 0.666,
-        "similarity_threshold": 0.74
+        "similarity_threshold": 0.88
     },
     "Platinum": {
         "success_rate": 0.76, 
         "request_limit": 7500, 
         "reward_factor": 0.777,
-        "similarity_threshold": 0.76
+        "similarity_threshold": 0.92
     },
     "Diamond": {
         "success_rate": 0.78, 
         "request_limit": 10000, 
         "reward_factor": 0.888,
-        "similarity_threshold": 0.78
+        "similarity_threshold": 0.93
     },
     "Emerald": {
         "success_rate": 0.80, 
         "request_limit": 12500, 
         "reward_factor": 0.900,
-        "similarity_threshold": 0.80
+        "similarity_threshold": 0.94
     },
     "Ruby": {
         "success_rate": 0.82, 
         "request_limit": 15000, 
         "reward_factor": 0.920,
-        "similarity_threshold": 0.82
+        "similarity_threshold": 0.95
     },
     "Jade": {
         "success_rate": 0.84, 
         "request_limit": 17500, 
         "reward_factor": 0.940,
-        "similarity_threshold": 0.84
+        "similarity_threshold": 0.96
     },
     "Master": {
         "success_rate": 0.88, 
         "request_limit": 20000, 
         "reward_factor": 0.960,
-        "similarity_threshold": 0.88
+        "similarity_threshold": 0.97
     },
     "Grandmaster": 
     {
         "success_rate": 0.92, 
         "request_limit": 22500, 
         "reward_factor": 0.980,
-        "similarity_threshold": 0.92
+        "similarity_threshold": 0.98
     },
     "Challenger": {
         "success_rate": 0.98, 
         "request_limit": 25000, 
         "reward_factor": 1.0,
-        "similarity_threshold": 0.95
+        "similarity_threshold": 0.99
     },
 }
 
