@@ -16,7 +16,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-
+import os
+import sys
 import time
 import torch
 import bittensor as bt
@@ -98,5 +99,7 @@ class Verifier(BaseVerifierNeuron):
 if __name__ == "__main__":
     with Verifier() as verifier:
         while True:
+            if verifier.is_running:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
             bt.logging.info("Verifier running...", time.time())
             time.sleep(5)
