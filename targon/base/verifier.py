@@ -81,7 +81,6 @@ class BaseVerifierNeuron(BaseNeuron):
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
-        self.blacklisted_coldkeys = self.config.blacklist.coldkeys
 
         self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
