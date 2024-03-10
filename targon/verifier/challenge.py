@@ -64,6 +64,11 @@ def check_tokens( self, prover_output, ground_truth_output ):
     prover_tokenized = self.embedding_tokenizer(prover_output, return_tensors="pt", padding=True, truncation=True)
     ground_truth_tokenized = self.embedding_tokenizer(ground_truth_output, return_tensors="pt", padding=True, truncation=True)
 
+    # make the tokenized outputs the same length, perferring the ground truth output length
+    if prover_tokenized['input_ids'].shape[1] != ground_truth_tokenized['input_ids'].shape[1]:
+        prover_tokenized['input_ids'] = prover_tokenized['input_ids'][:, :ground_truth_tokenized['input_ids'].shape[1]]
+        prover_tokenized['attention_mask'] = prover_tokenized['attention_mask'][:, :ground_truth_tokenized['input_ids'].shape[1]]
+
     # Compare the list of tokens
     prover_tokens = prover_tokenized['input_ids']
     ground_truth_tokens = ground_truth_tokenized['input_ids']
