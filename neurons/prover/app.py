@@ -17,6 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
+import sys
 import time
 import typing
 import argparse
@@ -224,6 +225,7 @@ class Prover(BaseProverNeuron):
                 f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
             )
             return True, "Unrecognized hotkey"
+        
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
@@ -342,5 +344,7 @@ class Prover(BaseProverNeuron):
 if __name__ == "__main__":
     with Prover() as prover:
         while True:
+            if prover.restart_required:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
             bt.logging.info("Prover running...", time.time())
             time.sleep(5)

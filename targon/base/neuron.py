@@ -71,12 +71,14 @@ class BaseNeuron(ABC):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
 
         if not self.config.disable_autoupdate:
-            autoupdate("main")
+            autoupdate(self.config.autoupdate.branch)
 
         # Log the configuration for reference.
         bt.logging.info(self.config)
         
         self.device = torch.device(self.config.neuron.device)
+
+        self.restart_required = False
 
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.

@@ -22,6 +22,7 @@ import torch
 import argparse
 import bittensor as bt
 from loguru import logger
+from typing import List
 
 #TODO: enable 4bit and 8bit precision llms via config
 
@@ -115,6 +116,15 @@ def add_args(cls, parser):
     )
 
 
+    parser.add_argument(
+        '--autoupdate.branch',
+        type=str,
+        help="The branch to auto-update from.",
+        default="main",
+    )
+
+
+
 def add_prover_args(cls, parser):
     """Add prover specific arguments to the parser."""
 
@@ -127,7 +137,7 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.force_verifier_permit",
-        type=bool,
+        action="store_false",
         help="If set, we will force incoming requests to have a permit.",
         default=True,
     )
@@ -141,7 +151,7 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.allow_non_registered",
-        type=bool,
+        action="store_false",
         help="If set, provers will accept queries from non registered entities. (Dangerous!)",
         default=True,
     )
@@ -175,6 +185,13 @@ def add_verifier_args(cls, parser):
         type=float,
         help="The timeout for each forward call in seconds.",
         default=12,
+    )
+
+    parser.add_argument(
+        "--neuron.decay_alpha",
+        type=float,
+        help="The decay alpha for the verifier.",
+        default=0.001,
     )
 
     parser.add_argument(

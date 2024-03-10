@@ -22,111 +22,8 @@ import bittensor as bt
 
 from redis import asyncio as aioredis
 
+from targon.constants import *
 
-REQUEST_LIMIT_CHALLENGER = 100_000 # 100k every 360 blocks
-REQUEST_LIMIT_GRANDMASTER = 25_000 # 10k every 360 blocks
-REQUEST_LIMIT_GOLD = 10_000 # 10k every 360 blocks
-REQUEST_LIMIT_GOLD = 10_000 # 10k every 360 blocks
-REQUEST_LIMIT_SILVER = 5_000 # 5k every 360 blocks
-REQUEST_LIMIT_BRONZE = 500 # 1k every 360 blocks
-
-
-COSINE_SIMILARITY_THRESHOLD_CHALLENGER = 0.98
-COSINE_SIMILARITY_THRESHOLD_GRANDMASTER = 0.95
-COSINE_SIMILARITY_THRESHOLD_GOLD = 0.90
-COSINE_SIMILARITY_THRESHOLD_SILVER = 0.85
-COSINE_SIMILARITY_THRESHOLD_BRONZE = 0.80
-
-# Requirements for each tier. These must be maintained for a prover to remain in that tier.
-CHALLENGER_INFERENCE_SUCCESS_RATE = 0.999  # 1/1000 chance of failure
-CHALLENGER_CHALLENGE_SUCCESS_RATE = 0.999  # 1/1000 chance of failure
-GRANDMASTER_INFERENCE_SUCCESS_RATE = 0.989  # 1/100 chance of failure
-GRANDMASTER_CHALLENGE_SUCCESS_RATE = 0.989  # 1/100 chance of failure
-GOLD_INFERENCE_SUCCESS_RATE = 0.949  # 1/50 chance of failure
-GOLD_CHALLENGE_SUCCESS_RATE = 0.949  # 1/50 chance of failure
-SILVER_INFERENCE_SUCCESS_RATE = 0.949  # 1/20 chance of failure
-SILVER_CHALLENGE_SUCCESS_RATE = 0.949  # 1/20 chance of failure
-
-CHALLENGER_TIER_REWARD_FACTOR = 1.0  # Get 100% rewards
-GRANDMASTER_TIER_REWARD_FACTOR = 0.888  # Get 88.8% rewards
-GOLD_TIER_REWARD_FACTOR = 0.777  # Get 77.7% rewards
-SILVER_TIER_REWARD_FACTOR = 0.555  # Get 55.5% rewards
-BRONZE_TIER_REWARD_FACTOR = 0.444  # Get 44.4% rewards
-
-CHALLENGER_TIER_TOTAL_SUCCESSES = 4_000
-GRANDMASTER_TIER_TOTAL_SUCCESSES = 2_000
-GOLD_TIER_TOTAL_SUCCESSES = 500  # 50
-SILVER_TIER_TOTAL_SUCCESSES = 250
-
-TIER_CONFIG = {
-    "Bronze": {
-        "success_rate": 0.70, 
-        "request_limit": 500, 
-        "reward_factor": 0.444,
-        "similarity_threshold": 0.80
-    },
-    "Silver": {
-        "success_rate": 0.72, 
-        "request_limit": 1000, 
-        "reward_factor": 0.555,
-        "similarity_threshold": 0.84
-    },
-    "Gold": {
-        "success_rate": 0.74, 
-        "request_limit": 5000, 
-        "reward_factor": 0.666,
-        "similarity_threshold": 0.88
-    },
-    "Platinum": {
-        "success_rate": 0.76, 
-        "request_limit": 7500, 
-        "reward_factor": 0.777,
-        "similarity_threshold": 0.92
-    },
-    "Diamond": {
-        "success_rate": 0.78, 
-        "request_limit": 10000, 
-        "reward_factor": 0.888,
-        "similarity_threshold": 0.93
-    },
-    "Emerald": {
-        "success_rate": 0.80, 
-        "request_limit": 12500, 
-        "reward_factor": 0.900,
-        "similarity_threshold": 0.94
-    },
-    "Ruby": {
-        "success_rate": 0.82, 
-        "request_limit": 15000, 
-        "reward_factor": 0.920,
-        "similarity_threshold": 0.95
-    },
-    "Jade": {
-        "success_rate": 0.84, 
-        "request_limit": 17500, 
-        "reward_factor": 0.940,
-        "similarity_threshold": 0.96
-    },
-    "Master": {
-        "success_rate": 0.88, 
-        "request_limit": 20000, 
-        "reward_factor": 0.960,
-        "similarity_threshold": 0.97
-    },
-    "Grandmaster": 
-    {
-        "success_rate": 0.92, 
-        "request_limit": 22500, 
-        "reward_factor": 0.980,
-        "similarity_threshold": 0.98
-    },
-    "Challenger": {
-        "success_rate": 0.98, 
-        "request_limit": 25000, 
-        "reward_factor": 1.0,
-        "similarity_threshold": 0.99
-    },
-}
 
 
 
@@ -368,18 +265,21 @@ async def get_tier_factor(ss58_address: str, database: aioredis.Redis):
     is eligible to receive based on their tier.
     Args:
         ss58_address (str): The unique address (hotkey) of the prover.
-        database (redis.Redis): The Redis client instance for database operations.
+        database (aioredis.Redis): The Redis client instance for database operations.
     Returns:
         float: The reward factor corresponding to the prover's tier.
     """
-    tier = await database.hget(f"stats:{ss58_address}", "tier")
-    if tier == b"Challenger":
-        return CHALLENGER_TIER_REWARD_FACTOR
-    elif tier == b"Grandmaster":
-        return GRANDMASTER_TIER_REWARD_FACTOR
-    elif tier == b"Gold":
-        return GOLD_TIER_REWARD_FACTOR
-    elif tier == b"Silver":
-        return SILVER_TIER_REWARD_FACTOR
-    else:
+    # Retrieve the tier from the database
+    tier_bytes = await database.hget(f"stats:{ss58_address}", "tier")
+    if tier_bytes is None:
+        # If the tier is not found, return a default reward factor
         return BRONZE_TIER_REWARD_FACTOR
+
+    # Decode the tier value from bytes to string
+    tier = tier_bytes.decode()
+
+    # Use the tier to get the reward factor from TIER_CONFIG
+    # If the tier is not found in TIER_CONFIG, return a default reward factor
+    reward_factor = TIER_CONFIG.get(tier, {}).get("reward_factor", 0.444)
+
+    return reward_factor

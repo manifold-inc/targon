@@ -22,7 +22,7 @@ import requests
 import bittensor as bt
 import targon
 
-def autoupdate(branch: str = "main"):
+def autoupdate( self, branch: str = "main" ):
     '''
     Automatically updates the Targon codebase to the latest version available on the specified branch.
 
@@ -68,7 +68,7 @@ def autoupdate(branch: str = "main"):
 
                 if new_version == latest_version:
                     bt.logging.info("Targon updated successfully. Restarting...")
-                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                    self.restart_required = True
                 else:
                     bt.logging.error("Update failed. Manual update required.")
     except Exception as e:

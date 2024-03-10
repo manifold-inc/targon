@@ -58,36 +58,34 @@ def _filter_verified_responses(uids, responses):
     uids, responses = zip(*not_none_responses)
     return uids, responses
 
-async def embedding_check( self, prover_output, ground_truth_output, prover_ss58_address ):
-    """
-    Checks the similarity between the prover's output embeddings and the ground truth output embeddings.
+def check_tokens( self, prover_output, ground_truth_output ):
+    
+    # Tokenize the prover output and the ground truth output
+    prover_tokenized = self.embedding_tokenizer(prover_output, return_tensors="pt", padding=True, truncation=True)
+    ground_truth_tokenized = self.embedding_tokenizer(ground_truth_output, return_tensors="pt", padding=True, truncation=True)
 
-    Args:
-    - self: Reference to the current instance of the class.
-    - prover_output (str): The output provided by the prover.
-    - ground_truth_output (str): The expected output.
-    - prover_ss58_address (str): The prover's SS58 address.
+    # Compare the list of tokens
+    prover_tokens = prover_tokenized['input_ids']
+    ground_truth_tokens = ground_truth_tokenized['input_ids']
 
-    Returns:
-    - bool: True if the similarity is above a certain threshold, False otherwise.
-    """
-    bt.logging.debug(
-        f"Checking embeddings for prover output {prover_output} and ground truth output {ground_truth_output}"
-    )
-    prover_tokens = self.embedding_tokenizer(prover_output, return_tensors="pt", padding=True, truncation=True)
-    ground_truth_tokens = self.embedding_tokenizer(ground_truth_output, return_tensors="pt", padding=True, truncation=True)
+    bt.logging.info(prover_tokens)
+    bt.logging.info(ground_truth_tokens)
 
-    # Generate embeddings
-    with torch.no_grad():  # Disable gradient calculation for efficiency
-        prover_embeddings = self.embedding_model(**prover_tokens).pooler_output
-        ground_truth_embeddings = self.embedding_model(**ground_truth_tokens).pooler_output
+    # convert to list
+    prover_tokens = prover_tokens[0].tolist()
+    ground_truth_tokens = ground_truth_tokens[0].tolist()
 
+    # make the tokenized outputs the same length, perferring the ground truth output length
+    if len(prover_tokens) > len(ground_truth_tokens):
+        prover_tokens = prover_tokens[:len(ground_truth_tokens)]
+    elif len(prover_tokens) < len(ground_truth_tokens):
+        return 0
 
-    similarity = cosine_similarity(prover_embeddings, ground_truth_embeddings)
+    # Calculate the score from 0 to 1
+    score = sum([1 for token in prover_tokens if token in ground_truth_tokens]) / len(prover_tokens)
 
-    success = similarity > await get_similarity_threshold( prover_ss58_address, self.database )
-    bt.logging.debug(f"Embedding similarity: {similarity} | Success: {success}")
-    return success
+    bt.logging.info(score)
+    return score
 
 def verify( self, prover_output, ground_truth_output, prover_ss58 ):
     """
@@ -109,8 +107,13 @@ def verify( self, prover_output, ground_truth_output, prover_ss58 ):
         bt.logging.debug(
             f"Output hash {prover_output_hash} does not match ground truth hash {ground_truth_hash}"
         )
-        return asyncio.run(embedding_check( self, prover_output, ground_truth_output, prover_ss58 ))
 
+        # check how t
+
+
+        # return asyncio.run(embedding_check( self, prover_output, ground_truth_output, prover_ss58 ))
+        return check_tokens( self, prover_output, ground_truth_output )
+    
     bt.logging.debug(
         f"Output hash {prover_output_hash} matches ground truth hash {ground_truth_hash}"
     )
@@ -190,7 +193,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
             watermark=sampling_params.watermark,
             details=sampling_params.details,
             stream=False
-        )
+        ) + "bean"
 
         synapse.completion = response
         

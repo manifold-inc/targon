@@ -63,6 +63,13 @@ class BaseVerifierNeuron(BaseNeuron):
 
         assert self.config.database.password is not None, "Database password must be set."
 
+        try:
+            self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        except Exception as e:
+            bt.logging.error(
+                f"Failed to create Axon initialize with exception: {e}"
+            )
+        
         # Setup database
         self.database = aioredis.StrictRedis(
             host=self.config.database.host,
@@ -74,6 +81,7 @@ class BaseVerifierNeuron(BaseNeuron):
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
+        self.blacklisted_coldkeys = self.config.blacklist.coldkeys
 
         self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
@@ -139,22 +147,16 @@ class BaseVerifierNeuron(BaseNeuron):
         """Serve axon to enable external connections."""
 
         bt.logging.info("serving ip to chain...")
+        
         try:
-            self.axon = bt.axon(wallet=self.wallet, config=self.config)
-
-            try:
-                self.subtensor.serve_axon(
-                    netuid=self.config.netuid,
-                    axon=self.axon,
-                )
-            except Exception as e:
-                bt.logging.error(f"Failed to serve Axon with exception: {e}")
-
-        except Exception as e:
-            bt.logging.error(
-                f"Failed to create Axon initialize with exception: {e}"
+            self.subtensor.serve_axon(
+                netuid=self.config.netuid,
+                axon=self.axon,
             )
+        except Exception as e:
+            bt.logging.error(f"Failed to serve Axon with exception: {e}")
 
+       
     async def concurrent_forward(self):
         coroutines = [
             self.forward()
@@ -278,11 +280,23 @@ class BaseVerifierNeuron(BaseNeuron):
                 "Scores contain NaN values. This may be due to a lack of responses from provers, or a bug in your reward functions."
             )
 
+        # # Get the UIDs and their corresponding coldkeys
+        # uids = self.metagraph.uids
+        # coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
+
+        # # Iterate through UIDs and set weights to 0 if coldkey is blacklisted
+        # for idx, coldkey in enumerate(coldkeys):
+        #     if coldkey in self.blacklisted_coldkeys:
+        #         self.scores[idx] = self.scores[idx] * 0.1 # testing
+        #         bt.logging.trace('blacklisted uid! weight reduced', uids[idx])
+
+
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(
             self.scores, p=1, dim=0
         )
+
 
         bt.logging.debug("raw_weights", raw_weights)
         bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
@@ -395,7 +409,7 @@ class BaseVerifierNeuron(BaseNeuron):
             self.config.neuron.full_path + "/state.pt",
         )
         if not self.config.disable_autoupdate:
-            autoupdate("main")
+            autoupdate(self.config.autoupdate.branch)
 
     def load_state(self):
         """Loads the state of the verifier from a file."""
