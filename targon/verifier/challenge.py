@@ -64,18 +64,27 @@ def check_tokens( self, prover_output, ground_truth_output ):
     prover_tokenized = self.embedding_tokenizer(prover_output, return_tensors="pt", padding=True, truncation=True)
     ground_truth_tokenized = self.embedding_tokenizer(ground_truth_output, return_tensors="pt", padding=True, truncation=True)
 
-    # make the tokenized outputs the same length, perferring the ground truth output length
-    if prover_tokenized['input_ids'].shape[1] != ground_truth_tokenized['input_ids'].shape[1]:
-        prover_tokenized['input_ids'] = prover_tokenized['input_ids'][:, :ground_truth_tokenized['input_ids'].shape[1]]
-        prover_tokenized['attention_mask'] = prover_tokenized['attention_mask'][:, :ground_truth_tokenized['input_ids'].shape[1]]
-
     # Compare the list of tokens
     prover_tokens = prover_tokenized['input_ids']
     ground_truth_tokens = ground_truth_tokenized['input_ids']
 
+    bt.logging.info(prover_tokens)
+    bt.logging.info(ground_truth_tokens)
+
+    # convert to list
+    prover_tokens = prover_tokens[0].tolist()
+    ground_truth_tokens = ground_truth_tokens[0].tolist()
+
+    # make the tokenized outputs the same length, perferring the ground truth output length
+    if len(prover_tokens) > len(ground_truth_tokens):
+        prover_tokens = prover_tokens[:len(ground_truth_tokens)]
+    elif len(prover_tokens) < len(ground_truth_tokens):
+        return 0
+
     # Calculate the score from 0 to 1
     score = sum([1 for token in prover_tokens if token in ground_truth_tokens]) / len(prover_tokens)
 
+    bt.logging.info(score)
     return score
 
 def verify( self, prover_output, ground_truth_output, prover_ss58 ):
@@ -184,7 +193,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
             watermark=sampling_params.watermark,
             details=sampling_params.details,
             stream=False
-        )
+        ) + "bean"
 
         synapse.completion = response
         

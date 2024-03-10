@@ -84,6 +84,7 @@ async def forward(self):
             time.sleep(1)
     except Exception as e:
         bt.logging.error(f"Error in forward: {e}")
+        time.sleep(12)
         pass
 
 
