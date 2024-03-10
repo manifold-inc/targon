@@ -225,11 +225,5 @@ def apply_reward_scores(
     # Get the UIDs and their corresponding coldkeys
     coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
 
-    # Iterate through UIDs and set weights to 0 if coldkey is blacklisted
-    for idx, coldkey in enumerate(coldkeys):
-        if coldkey in self.blacklisted_coldkeys:
-            self.scores[idx] = self.scores[idx] * self.config.blacklist.scale # testing
-            bt.logging.trace('blacklisted uid! weight reduced', uids[idx])
-
     bt.logging.trace(f"Updated moving avg scores: {self.scores}")
 
