@@ -115,27 +115,6 @@ def add_args(cls, parser):
         default=False,
     )
 
-    # add blacklist keys
-    parser.add_argument(
-        '--blacklist.coldkeys',
-        nargs='+',
-        help='List of coldkeys to blacklist.',
-        default=[],
-    )
-
-    parser.add_argument(
-        '--blacklist.hotkeys',
-        nargs='+',
-        help='List of hotkeys to blacklist.',
-        default=[],
-    )
-
-    parser.add_argument(
-        '--blacklist.scale',
-        type=float,
-        help='The scale to apply to the blacklist.',
-        default=0.0,
-    )
 
     parser.add_argument(
         '--autoupdate.branch',
