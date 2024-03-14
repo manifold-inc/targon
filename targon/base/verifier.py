@@ -213,7 +213,7 @@ class BaseVerifierNeuron(BaseNeuron):
         except KeyboardInterrupt:
             self.axon.stop()
             bt.logging.success("Verifier killed by keyboard interrupt.")
-            sys.exit()
+            self.restart_required = True
 
         # In case of unforeseen errors, the verifier will log the error and continue operations.
         except Exception as err:
@@ -264,6 +264,7 @@ class BaseVerifierNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping verifier in background thread.")
             self.should_exit = True
+            self.restart_required = True
             self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
