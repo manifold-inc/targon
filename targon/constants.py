@@ -58,37 +58,37 @@ SILVER_TIER_TOTAL_SUCCESSES = 250
 
 TIER_CONFIG = {
     "Bronze": {
-        "success_rate": 0.70, 
+        "success_rate": 0.50, 
         "request_limit": 500, 
         "reward_factor": 0.444,
         "similarity_threshold": 5/16
     },
     "Silver": {
-        "success_rate": 0.72, 
+        "success_rate": 0.60, 
         "request_limit": 1000, 
         "reward_factor": 0.555,
         "similarity_threshold": 6/16
     },
     "Gold": {
-        "success_rate": 0.74, 
+        "success_rate": 0.70, 
         "request_limit": 5000, 
         "reward_factor": 0.666,
         "similarity_threshold": 7/16
     },
     "Platinum": {
-        "success_rate": 0.76, 
+        "success_rate": 0.72, 
         "request_limit": 7500, 
         "reward_factor": 0.777,
         "similarity_threshold": 1/2
     },
     "Diamond": {
-        "success_rate": 0.78, 
+        "success_rate": 0.74, 
         "request_limit": 10000, 
         "reward_factor": 0.888,
         "similarity_threshold": 9/16
     },
     "Emerald": {
-        "success_rate": 0.80, 
+        "success_rate": 0.78, 
         "request_limit": 12500, 
         "reward_factor": 0.900,
         "similarity_threshold": 10/16
@@ -100,26 +100,26 @@ TIER_CONFIG = {
         "similarity_threshold": 11/16
     },
     "Jade": {
-        "success_rate": 0.84, 
+        "success_rate": 0.88, 
         "request_limit": 17500, 
         "reward_factor": 0.940,
         "similarity_threshold": 12/16
     },
     "Master": {
-        "success_rate": 0.88, 
+        "success_rate": 0.92, 
         "request_limit": 20000, 
         "reward_factor": 0.960,
         "similarity_threshold": 13/16
     },
     "Grandmaster": 
     {
-        "success_rate": 0.92, 
+        "success_rate": 0.96, 
         "request_limit": 22500, 
         "reward_factor": 0.980,
         "similarity_threshold": 14/16
     },
     "Challenger": {
-        "success_rate": 0.98, 
+        "success_rate": 0.99, 
         "request_limit": 25000, 
         "reward_factor": 1.0,
         "similarity_threshold": 15/16
