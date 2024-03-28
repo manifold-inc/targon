@@ -223,7 +223,6 @@ def apply_reward_scores(
 
     self.scores = (self.scores - self.config.neuron.decay_alpha).clamp(min=0)
     # Get the UIDs and their corresponding coldkeys
-    coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
 
     bt.logging.trace(f"Updated moving avg scores: {self.scores}")
 
