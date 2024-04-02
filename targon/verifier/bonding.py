@@ -185,6 +185,7 @@ async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: 
     
     if last_interval_block == 0:
         # set the last interval block to the current block
+        bt.logging.info(f"Setting last interval block to {current_block}")
         await database.hset(stats_key, "last_interval_block", current_block)
 
     current_tier_bytes = await database.hget(stats_key, "tier")
