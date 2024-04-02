@@ -66,7 +66,7 @@ async def prover_is_registered(ss58_address: str, database: aioredis.Redis):
     return await database.exists(f"stats:{ss58_address}")
 
 
-async def register_prover(ss58_address: str, database: aioredis.Redis):
+async def register_prover(ss58_address: str, database: aioredis.Redis, current_block: int):
     """
     Registers a new prover in the decentralized storage system, initializing their statistics.
     This function creates a new entry in the database for a prover with default values,
@@ -86,12 +86,13 @@ async def register_prover(ss58_address: str, database: aioredis.Redis):
             "total_successes": 0,
             "tier": "Bronze",
             "request_limit": TIER_CONFIG["Bronze"]["request_limit"],
+            "last_interval_block": current_block, 
         },
     )
 
 
 async def update_statistics(
-    ss58_address: str, success: bool, task_type: str, database: aioredis.Redis
+    ss58_address: str, success: bool, task_type: str, database: aioredis.Redis, current_block: int
 ):
     """
     Updates the statistics of a prover in the decentralized storage system.
@@ -107,7 +108,7 @@ async def update_statistics(
     # Check and see if this prover is registered.
     if not await prover_is_registered(ss58_address, database):
         bt.logging.debug(f"Registering new prover {ss58_address}...")
-        await register_prover(ss58_address, database)
+        await register_prover(ss58_address, database, current_block)
 
     # Update statistics in the stats hash
     stats_key = f"stats:{ss58_address}"
@@ -162,7 +163,7 @@ async def get_similarity_threshold(ss58_address: str, database: aioredis.Redis):
 
     return similarity_threshold
 
-async def compute_tier(stats_key: str, database: aioredis.Redis):
+async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: int):
     """
     Asynchronously computes and updates the tier for a prover in the decentralized storage system.
     This function should be called periodically to ensure a prover's tier is up-to-date based on
@@ -179,6 +180,13 @@ async def compute_tier(stats_key: str, database: aioredis.Redis):
     challenge_successes = int(await database.hget(stats_key, "challenge_successes") or 0)
     challenge_attempts = int(await database.hget(stats_key, "challenge_attempts") or 0)
     challenge_success_rate = challenge_successes / challenge_attempts if challenge_attempts > 0 else 0
+    total_successes = int(await database.hget(stats_key, "total_successes") or 0)
+    last_interval_block = int(await database.hget(stats_key, "last_interval_block") or 0)
+    
+    if last_interval_block == 0:
+        # set the last interval block to the current block
+        bt.logging.info(f"Setting last interval block to {current_block}")
+        await database.hset(stats_key, "last_interval_block", current_block)
 
     current_tier_bytes = await database.hget(stats_key, "tier")
     if current_tier_bytes is None:
@@ -192,14 +200,14 @@ async def compute_tier(stats_key: str, database: aioredis.Redis):
 
     # Check for promotion
     for tier_name, tier_info in list(TIER_CONFIG.items())[current_tier_index+1:]:
-        if challenge_success_rate > tier_info["success_rate"]:
+        if challenge_success_rate > tier_info["success_rate"] and total_successes > tier_info["request_limit"]:
             new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
             break
 
     # Check for demotion, if no promotion is possible
     if new_tier_index == current_tier_index:
         for tier_name, tier_info in reversed(list(TIER_CONFIG.items())[:current_tier_index]):
-            if challenge_success_rate <= tier_info["success_rate"]:
+            if challenge_success_rate <= tier_info["success_rate"] and total_successes <= tier_info["request_limit"]:
                 new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
                 break
 
@@ -209,18 +217,45 @@ async def compute_tier(stats_key: str, database: aioredis.Redis):
         await database.hset(stats_key, "tier", new_tier_name)
         await database.hset(stats_key, "request_limit", TIER_CONFIG[new_tier_name]["request_limit"])
 
-async def compute_all_tiers(database: aioredis.Redis):
+    if current_block - last_interval_block >= EPOCH_LENGTH:
+        if new_tier_index < 2:
+             # set the tier to bronze
+            await database.hmset(
+                f"stats:{stats_key}",
+                {
+                    "inference_attempts": 0,
+                    "inference_successes": 0,
+                    "challenge_successes": 0,
+                    "challenge_attempts": 0,
+                    "total_successes": 0,
+                    "tier": "Bronze",
+                    "request_limit": TIER_CONFIG["Bronze"]["request_limit"],
+                    "last_interval_block": current_block, 
+                },
+            )
+        else:
+            new_tier_name = list(TIER_CONFIG.keys())[new_tier_index]
+            await database.hset(stats_key, "tier", new_tier_name)
+            await database.hset(stats_key, "request_limit", TIER_CONFIG[new_tier_name]["request_limit"])
+            await database.hset(stats_key, "last_interval_block", current_block)
+            await database.hset(stats_key, "total_successes", TIER_CONFIG[new_tier_name]["request_limit"])
+
+        # set the total_successes to 
+async def compute_all_tiers(database: aioredis.Redis, current_block: int):
     """
     Asynchronously computes and updates the tiers for all provers in the decentralized storage system.
     This function should be called periodically to ensure provers' tiers are up-to-date based on
     their performance. It iterates over all provers and calls `compute_tier` for each one.
     """
     provers = [prover async for prover in database.scan_iter("stats:*")]
-    tasks = [compute_tier(prover, database) for prover in provers]
+    tasks = [compute_tier(prover, database, current_block) for prover in provers]
     await asyncio.gather(*tasks)
 
     bt.logging.info(f"Resetting statistics for all hotkeys...")
     await rollover_request_stats(database)
+    
+
+
 async def get_uid_tier_mapping(database: aioredis.Redis):
     """
     Retrieves a mapping of UIDs to their respective tiers.

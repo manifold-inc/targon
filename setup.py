@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
-
+from targon import __version__
 setup(
     name='targon',  # Replace with your package's name
-    version='1.1.6',  # Replace with your package's version
+    version=__version__,  # Replace with your package's version
     author='Manifold Labs',  # Replace with your name
     author_email='robert@manifold.inc',  # Replace with your email
     description='The code for SN4 on bittensor',  # Replace with a brief description of your package

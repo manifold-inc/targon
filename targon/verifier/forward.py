@@ -49,7 +49,7 @@ async def forward(self):
         if not self.config.mock:
             if self.block >= self.next_adjustment_block and self.step > 0:
                 bt.logging.info("initiating compute stats")
-                await compute_all_tiers(self.database)
+                await compute_all_tiers(self.database, self.block)
 
                 # Update prover statistics and usage data.
                 stats = await get_prover_statistics(self.database)
@@ -62,7 +62,7 @@ async def forward(self):
         else:
             if self.step % self.config.neuron.compute_stats_interval == 0 and self.step > 0:
                 bt.logging.info("initiating compute stats")
-                await compute_all_tiers(self.database)
+                await compute_all_tiers(self.database, 10000)
 
                 # Update prover statistics and usage data.
                 stats = await get_prover_statistics(self.database)
