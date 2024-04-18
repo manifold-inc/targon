@@ -17,6 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
+import random
 import asyncio
 import bittensor as bt
 from pprint import pformat
@@ -40,8 +41,13 @@ async def forward(self):
     start_time = time.time()
     bt.logging.info(f"forward block: {self.block if not self.config.mock else self.block_number} step: {self.step}")
 
-    # --- Generate the query.
-    event = await inference_data(self)
+    # --- Perform coin flip
+    if random.random() < self.config.neuron.challenge_probability:
+        # --- Generate the query.
+        event = await challenge_data(self)
+    else:
+        # --- Generate the query.
+        event = await inference_data(self)
 
     # --- Log the event
     log_event(self, event)
