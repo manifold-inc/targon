@@ -165,7 +165,7 @@ async def handle_challenge( self, uid: int, private_input: typing.Dict, ground_t
             verified = False
 
         output_dict = (
-            output_cleaned,
+            response,
             uid
         )
         return verified, output_dict
