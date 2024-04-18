@@ -53,7 +53,7 @@ class InferenceSamplingParams(pydantic.BaseModel):
     )
 
     max_new_tokens: int = pydantic.Field(
-        16,
+        32,
         title="Max New Tokens",
         description="The maximum number of tokens to generate in the completion.",
     )
@@ -160,7 +160,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     max_new_tokens: int = pydantic.Field(
-        16,
+        32,
         title="Max New Tokens",
         description="The maximum number of tokens to generate in the completion.",
     )

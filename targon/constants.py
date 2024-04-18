@@ -62,25 +62,25 @@ TIER_CONFIG = {
     "Bronze": {
         "success_rate": 0.50, 
         "request_limit": 500, 
-        "reward_factor": 0.444,
+        "reward_factor": 0.555,
         "similarity_threshold": 5/16
     },
     "Silver": {
         "success_rate": 0.60, 
         "request_limit": 1000, 
-        "reward_factor": 0.555,
+        "reward_factor": 0.666,
         "similarity_threshold": 6/16
     },
     "Gold": {
         "success_rate": 0.70, 
         "request_limit": 5000, 
-        "reward_factor": 0.666,
+        "reward_factor": 0.777,
         "similarity_threshold": 7/16
     },
     "Platinum": {
         "success_rate": 0.72, 
         "request_limit": 7500, 
-        "reward_factor": 0.777,
+        "reward_factor": 0.822,
         "similarity_threshold": 1/2
     },
     "Diamond": {

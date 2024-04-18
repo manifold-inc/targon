@@ -344,7 +344,5 @@ class Prover(BaseProverNeuron):
 if __name__ == "__main__":
     with Prover() as prover:
         while True:
-            if prover.restart_required:
-                os.execv(sys.executable, [sys.executable] + sys.argv)
             bt.logging.info("Prover running...", time.time())
             time.sleep(5)

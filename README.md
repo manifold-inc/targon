@@ -27,7 +27,7 @@ Currently supporting python>=3.9,<3.11.
    - [Role of a Verifier](#role-of-a-verifier)
 1. [Features of TARGON](#features-of-targon)
     - [Challenge Request](#challenge-request)
-    - [Inference Request (IN PROGRESS) ](#inference-request-(IN-PROGRESS))
+    - [Inference Request ](#inference-request))
 1. [How to Run TARGON](#how-to-run-targon)
     - [Run a Prover](#run-a-prover)
     - [Run a Verifier](#run-a-verifier)
@@ -41,15 +41,15 @@ Currently supporting python>=3.9,<3.11.
 The following table shows the VRAM, Storage, RAM, and CPU minimum requirements for running a verifier or prover.
 
 GPU - A100
-| Provider   | VRAM  | Storage |   RAM   | CPU  |
-|------------|-------|---------|---------|------|
-| TensorDock | 40GB  | 100GB   | 16GB    | 4    |
-| Latitude   | 40GB  | 100GB   | 16GB    | 4    |
-| Paperspace | 40GB  | 100GB   | 16GB    | 4    |
-| GCP        | 40GB  | 100GB   | 16GB    | 4    |
-| Azure      | 40GB  | 100GB   | 16GB    | 4    |
-| AWS        | 40GB  | 100GB   | 16GB    | 4    |
-| Runpod     | 40GB  | 100GB   | 16GB    | 4    |
+| Provider   | VRAM   | Storage |   RAM   | CPU  |
+|------------|--------|---------|---------|------|
+| TensorDock |  80GB  | 200GB   |   16GB  | 4    |
+| Latitude   |  80GB  | 200GB   |   16GB  | 4    |
+| Paperspace |  80GB  | 200GB   |   16GB  | 4    |
+| GCP        |  80GB  | 200GB   |   16GB  | 4    |
+| Azure      |  80GB  | 200GB   |   16GB  | 4    |
+| AWS        |  80GB  | 200GB   |   16GB  | 4    |
+| Runpod     |  80GB  | 200GB   |   16GB  | 4    |
 
 
 # Recommended Compute Providers
@@ -76,14 +76,14 @@ The following table shows the suggested compute providers for running a verifier
 - [x] Database
 - [x] Auto Update
 - [x] Forwarding
+- [x] Tiered Requests to match throughput
+- [x] Inference Request
 
 </details>
 
 <details>
 <summary>In Progress</summary>
 
-- [] Tiered Requests to match throughput
-- [] Inference Request
 - [] Metapool
 - [] flashbots' style block space for verifier bandwidth
 - [] metrics dashboard
@@ -201,7 +201,7 @@ A verifier is a node that is responsible for verifying a prover's output. The ve
 ## Challenge Request
 A challenge request is a request sent by a verifier to a prover. The challenge request contains a query, private input, and deterministic sampling params. The prover will then generate an output from the query, private input, and deterministic sampling params. The prover will then send the output back to the verifier.
 
-## Inference Request (IN PROGRESS)
+## Inference Request
 An inference request is a request sent by a verifier to a prover. The inference request contains a query, private input, and inference sampling params. The prover will then generate an output from the query, private input, and deterministic sampling params. The prover will then stream the output back to the verifier.
 > *CAVEAT:* Every Interval (360 blocks) there will be a random amount of inference samples by the verifier. The verifier will then compare the outputs to the ground truth outputs. The cosine similarity of the outputs will be used to determine the reward for the prover. Failing to do an inference request will result in a 5x penalty.
 
@@ -449,25 +449,25 @@ The updated tier system introduces a refined classification for miners, with exp
 **8.) Platinum Tier** 
 - **Success Rate:** 76%
 - **Request Limit:** 7,500 
-- **Reward Factor:** 0.777
+- **Reward Factor:** 0.822
 - **Similarity Threshold:** 0.76
 
 **9.) Gold Tier** 
 - **Success Rate:** 74%
 - **Request Limit:** 5,000 
-- **Reward Factor:** 0.666
+- **Reward Factor:** 0.777
 - **Similarity Threshold:** 0.74
 
 **10.) Silver Tier** 
 - **Success Rate:** 72%
 - **Request Limit:** 1,000 
-- **Reward Factor:** 0.555
+- **Reward Factor:** 0.666
 - **Similarity Threshold:** 0.72
 
 **11.) Bronze Tier** 
 - **Success Rate:** 70%
 - **Request Limit:** 500 
-- **Reward Factor:** 0.444
+- **Reward Factor:** 0.555
 - **Similarity Threshold:** 0.70
 
 ## Promotion/Relegation

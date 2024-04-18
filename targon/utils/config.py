@@ -238,6 +238,13 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.challenge_probability",
+        type=float,
+        help="The probability of challenging a prover.",
+        default=0.5,
+    )
+
+    parser.add_argument(
         "--neuron.sample_size",
         type=int,
         help="The number of provers to query in a single step.",

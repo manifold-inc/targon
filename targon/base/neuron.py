@@ -16,10 +16,12 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
+import os
 import sys
 import copy
 import torch
+import signal
+import asyncio
 import bittensor as bt
 
 from abc import ABC, abstractmethod
@@ -121,6 +123,9 @@ class BaseNeuron(ABC):
     def run(self):
         ...
 
+
+    def stop(self):
+        sys.exit()
 
     def get_last_adjustment_block(self) -> int:
         with self.subtensor.substrate as substrate:

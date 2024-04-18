@@ -56,12 +56,15 @@ class BaseVerifierNeuron(BaseNeuron):
  
 
     def __init__(self, config=None):
-        super().__init__(config=config)
+        super(BaseVerifierNeuron, self).__init__(config=config)
 
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
         assert self.config.database.password is not None, "Database password must be set."
+
+        if self.config.mock:
+            self.block_number = 10000
 
         try:
             self.axon = bt.axon(wallet=self.wallet, config=self.config)

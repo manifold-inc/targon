@@ -43,6 +43,6 @@ Query:
 {query}
 
 Response:
-'''.format(date=(datetime.now().strftime('%Y-%m-%d')), query=challenge_data['query'], sources='\n'.join(challenge_data['sources'])) 
+'''.format(date=(datetime.now().strftime('%Y-%m-%d')), query=challenge_data['query'], sources=challenge_data['sources']) 
 
     return output
