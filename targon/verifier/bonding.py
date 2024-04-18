@@ -177,9 +177,16 @@ async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: 
         bt.logging.warning(f"Prover key {stats_key} is not registered!")
         return
 
+    # challenge
     challenge_successes = int(await database.hget(stats_key, "challenge_successes") or 0)
     challenge_attempts = int(await database.hget(stats_key, "challenge_attempts") or 0)
     challenge_success_rate = challenge_successes / challenge_attempts if challenge_attempts > 0 else 0
+
+    # inference
+    inference_successes = int(await database.hget(stats_key, "inference_successes") or 0)
+    inference_attempts = int(await database.hget(stats_key, "inference_attempts") or 0)
+    inference_success_rate = inference_successes / inference_attempts if inference_attempts > 0 else 0
+
     total_successes = int(await database.hget(stats_key, "total_successes") or 0)
     last_interval_block = int(await database.hget(stats_key, "last_interval_block") or 0)
     
@@ -200,14 +207,14 @@ async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: 
 
     # Check for promotion
     for tier_name, tier_info in list(TIER_CONFIG.items())[current_tier_index+1:]:
-        if challenge_success_rate > tier_info["success_rate"] and total_successes > tier_info["request_limit"]:
+        if challenge_success_rate > tier_info["success_rate"] and inference_success_rate > tier_info["inference_success_rate"] and total_successes > tier_info["request_limit"]:
             new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
             break
 
     # Check for demotion, if no promotion is possible
     if new_tier_index == current_tier_index:
         for tier_name, tier_info in reversed(list(TIER_CONFIG.items())[:current_tier_index]):
-            if challenge_success_rate <= tier_info["success_rate"] and total_successes <= tier_info["request_limit"]:
+            if challenge_success_rate <= tier_info["success_rate"] and inference_success_rate <= tier_info["inference_success_rate"] and total_successes <= tier_info["request_limit"]:
                 new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
                 break
 
@@ -219,7 +226,8 @@ async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: 
 
     if current_block - last_interval_block >= EPOCH_LENGTH:
         if new_tier_index < 2:
-             # set the tier to bronze
+            # set the tier to bronze
+            bt.logging.debug(f"Setting tier to Bronze for {stats_key}")
             await database.hmset(
                 f"stats:{stats_key}",
                 {
@@ -234,6 +242,8 @@ async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: 
                 },
             )
         else:
+            # set the tier to the new tier
+            bt.logging.debug(f"Setting tier to {new_tier_name} for {stats_key}")
             new_tier_name = list(TIER_CONFIG.keys())[new_tier_index]
             await database.hset(stats_key, "tier", new_tier_name)
             await database.hset(stats_key, "request_limit", TIER_CONFIG[new_tier_name]["request_limit"])
