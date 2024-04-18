@@ -48,10 +48,7 @@ async def forward(self):
         else:
             # --- Generate the query.
             event = await inference_data(self)
-        
-        if self.config.mock:
-            raise Exception("Mock mode not supported")
-
+      
         # --- Log the event
         log_event(self, event)
 
@@ -95,8 +92,7 @@ async def forward(self):
         
     except Exception as e:
         bt.logging.error(f"Error in forward: {e}")
-        # time.sleep(12)
-        self.stop()
+        time.sleep(12)
         pass
 
 
