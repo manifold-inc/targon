@@ -156,9 +156,8 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
             elif isinstance(token, str):
                 response_tokens.append(token)
         
-        response = ''.join(response_tokens)
+        output = ''.join(response_tokens)
 
-        output = response.completion
 
         # output_encoded = output.encode('utf-8')
         if output is not None:
