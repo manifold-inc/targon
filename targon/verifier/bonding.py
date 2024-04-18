@@ -207,14 +207,14 @@ async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: 
 
     # Check for promotion
     for tier_name, tier_info in list(TIER_CONFIG.items())[current_tier_index+1:]:
-        if challenge_success_rate > tier_info["success_rate"] and inference_success_rate > tier_info["inference_success_rate"] and total_successes > tier_info["request_limit"]:
+        if challenge_success_rate > tier_info["success_rate"] and inference_success_rate > tier_info["success_rate"] and total_successes > tier_info["request_limit"]:
             new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
             break
 
     # Check for demotion, if no promotion is possible
     if new_tier_index == current_tier_index:
         for tier_name, tier_info in reversed(list(TIER_CONFIG.items())[:current_tier_index]):
-            if challenge_success_rate <= tier_info["success_rate"] and inference_success_rate <= tier_info["inference_success_rate"] and total_successes <= tier_info["request_limit"]:
+            if challenge_success_rate <= tier_info["success_rate"] and inference_success_rate <= tier_info["success_rate"] and total_successes <= tier_info["request_limit"]:
                 new_tier_index = list(TIER_CONFIG.keys()).index(tier_name)
                 break
 
