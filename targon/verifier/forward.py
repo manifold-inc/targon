@@ -36,56 +36,58 @@ async def forward(self):
     - Rewarding the provers
     - Updating the scores
     """
-    try:
-        start_time = time.time()
-        bt.logging.info(f"forward block: {self.block}")
+    # try:
+    start_time = time.time()
+    bt.logging.info(f"forward block: {self.block if not self.config.mock else self.block_number} step: {self.step}")
 
-        # --- Generate the query.
-        event = await challenge_data(self)
+    # --- Generate the query.
+    event = await inference_data(self)
 
-        # --- Log the event
-        log_event(self, event)
+    # --- Log the event
+    log_event(self, event)
 
-        if not self.config.mock:
-            if self.block >= self.next_adjustment_block and self.step > 0:
-                bt.logging.info("initiating compute stats")
-                await compute_all_tiers(self.database, self.block)
+    if not self.config.mock:
+        if self.block >= self.next_adjustment_block and self.step > 0:
+            bt.logging.info("initiating compute stats")
+            await compute_all_tiers(self.database, self.block)
 
-                # Update prover statistics and usage data.
-                stats = await get_prover_statistics(self.database)
-                bt.logging.debug(f"prover stats: {pformat(stats)}")
+            # Update prover statistics and usage data.
+            stats = await get_prover_statistics(self.database)
+            bt.logging.debug(f"prover stats: {pformat(stats)}")
 
-                self.last_interval_block = self.get_last_adjustment_block()
-                self.adjustment_interval = self.get_adjustment_interval()
-                self.next_adjustment_block = self.last_interval_block + self.adjustment_interval
-                self.step = 0
-        else:
-            if self.step % self.config.neuron.compute_stats_interval == 0 and self.step > 0:
-                bt.logging.info("initiating compute stats")
-                await compute_all_tiers(self.database, 10000)
+            self.last_interval_block = self.get_last_adjustment_block()
+            self.adjustment_interval = self.get_adjustment_interval()
+            self.next_adjustment_block = self.last_interval_block + self.adjustment_interval
+            self.step = 0
+    else:
+        self.block_number += 1
+        if self.step % self.config.neuron.compute_stats_interval == 0 and self.step > 0:
+            bt.logging.info("initiating compute stats")
+            await compute_all_tiers(self.database, self.block_number)
 
-                # Update prover statistics and usage data.
-                stats = await get_prover_statistics(self.database)
-                bt.logging.debug(f"prover stats: {pformat(stats)}")
-                self.step = 0
+            # Update prover statistics and usage data.
+            stats = await get_prover_statistics(self.database)
+            bt.logging.debug(f"prover stats: {pformat(stats)}")
+            self.step = 0
 
 
-        total_request_size = await total_verifier_requests(self.database)
-        bt.logging.info(f"total verifier requests: {total_request_size}")
-        if not self.config.mock:
-            try:
-                block = self.substrate.subscribe_block_headers(self.subscription_handler)
-            except:
-                sleep_time = 12 - (time.time() - start_time)
-                if sleep_time > 0:
-                    bt.logging.info(f"Sleeping for {sleep_time} seconds")
-                    await asyncio.sleep(sleep_time)
-        else:
-            time.sleep(1)
-    except Exception as e:
-        bt.logging.error(f"Error in forward: {e}")
-        time.sleep(12)
-        pass
+    total_request_size = await total_verifier_requests(self.database)
+    bt.logging.info(f"total verifier requests: {total_request_size}")
+    if not self.config.mock:
+        try:
+            block = self.substrate.subscribe_block_headers(self.subscription_handler)
+        except:
+            sleep_time = 12 - (time.time() - start_time)
+            if sleep_time > 0:
+                bt.logging.info(f"Sleeping for {sleep_time} seconds")
+                await asyncio.sleep(sleep_time)
+    else:
+        time.sleep(1)
+        
+    # except Exception as e:
+        # bt.logging.error(f"Error in forward: {e}")
+        # time.sleep(12)
+        # pass
 
 
 

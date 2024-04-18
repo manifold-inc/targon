@@ -63,6 +63,9 @@ class BaseVerifierNeuron(BaseNeuron):
 
         assert self.config.database.password is not None, "Database password must be set."
 
+        if self.config.mock:
+            self.block_number = 10000
+
         try:
             self.axon = bt.axon(wallet=self.wallet, config=self.config)
         except Exception as e:
