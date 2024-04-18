@@ -155,6 +155,8 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
                 response_tokens.append(token[0])
             elif isinstance(token, str):
                 response_tokens.append(token)
+            else:
+                output_synapse = token
         
         output = ''.join(response_tokens)
 
@@ -172,7 +174,7 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
             verified = False
 
         output_dict = (
-            output_cleaned,
+            output_synapse,
             uid
         )
         return verified, output_dict
