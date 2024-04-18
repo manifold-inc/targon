@@ -142,13 +142,21 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
             sampling_params=sampling_params,
         )
 
+        response_tokens = []
 
-        response = await self.dendrite(
+        async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
             deserialize=False,
             timeout=self.config.neuron.timeout,
-        )
+            streaming=True
+        ):
+            if isinstance(token, list):
+                response_tokens.append(token[0])
+            else:
+                response_tokens.append(token)
+        
+        response = ''.join(response_tokens)
 
         output = response.completion
 

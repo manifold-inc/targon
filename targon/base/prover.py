@@ -45,7 +45,7 @@ class BaseProverNeuron(BaseNeuron):
 
 
     def __init__(self, config=None):
-        super().__init__(config=config)
+        super(BaseProverNeuron, self).__init__(config=config)
 
         
         # Warn if allowing incoming requests from anyone.

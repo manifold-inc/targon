@@ -56,7 +56,7 @@ class BaseVerifierNeuron(BaseNeuron):
  
 
     def __init__(self, config=None):
-        super().__init__(config=config)
+        super(BaseVerifierNeuron, self).__init__(config=config)
 
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
