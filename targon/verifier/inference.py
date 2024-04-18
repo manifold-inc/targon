@@ -153,7 +153,7 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
         ):
             if isinstance(token, list):
                 response_tokens.append(token[0])
-            else:
+            elif isinstance(token, str):
                 response_tokens.append(token)
         
         response = ''.join(response_tokens)
