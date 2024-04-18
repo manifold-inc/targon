@@ -243,8 +243,8 @@ async def compute_tier(stats_key: str, database: aioredis.Redis, current_block: 
             )
         else:
             # set the tier to the new tier
-            bt.logging.debug(f"Setting tier to {new_tier_name} for {stats_key}")
             new_tier_name = list(TIER_CONFIG.keys())[new_tier_index]
+            bt.logging.debug(f"Setting tier to {new_tier_name} for {stats_key}")
             await database.hset(stats_key, "tier", new_tier_name)
             await database.hset(stats_key, "request_limit", TIER_CONFIG[new_tier_name]["request_limit"])
             await database.hset(stats_key, "last_interval_block", current_block)

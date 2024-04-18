@@ -21,6 +21,7 @@ import sys
 import copy
 import torch
 import signal
+import asyncio
 import bittensor as bt
 
 from abc import ABC, abstractmethod
@@ -124,10 +125,7 @@ class BaseNeuron(ABC):
 
 
     def stop(self):
-        pid = os.getpid()
-
-        # Kill the process
-        os.kill(pid, signal.SIGKILL)
+        sys.exit()
 
     def get_last_adjustment_block(self) -> int:
         with self.subtensor.substrate as substrate:
