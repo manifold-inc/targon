@@ -37,6 +37,8 @@ class Verifier(BaseVerifierNeuron):
     def __init__(self, config=None):
         super(Verifier, self).__init__(config=config)
 
+        self.restart_required = False
+
         bt.logging.info("load_state()")
         if not self.config.mock:
             self.load_state()
@@ -99,7 +101,5 @@ class Verifier(BaseVerifierNeuron):
 if __name__ == "__main__":
     with Verifier() as verifier:
         while True:
-            if verifier.restart_required:
-                os.execv(sys.executable, [sys.executable] + sys.argv)
             bt.logging.info("Verifier running...", time.time())
             time.sleep(5)
