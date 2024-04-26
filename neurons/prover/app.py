@@ -82,9 +82,9 @@ class Prover(BaseProverNeuron):
 
             prompt = create_prompt(prompt_input)
 
-
-            output = await self.client.text_generation(
-                prompt=prompt,
+            response_tokens = []
+            async for token in await self.client.text_generation(
+                prompt,
                 best_of=sampling_params.best_of,
                 max_new_tokens=sampling_params.max_new_tokens,
                 seed=sampling_params.seed,
@@ -98,22 +98,21 @@ class Prover(BaseProverNeuron):
                 watermark=sampling_params.watermark,
                 details=False,
                 stream=True
-                )
-        
-            buffer = ""
-            async for completion in output:
+            ):
+                response_tokens.append(token)
+            
+            
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": completion[0].encode("utf-8"),
+                        "body": token.encode("utf-8"),
                         "more_body": True,
                     }
                 )
-                buffer += completion
-            bt.logging.info(f"Streamed text: {output}")
+                bt.logging.info(f"Streamed text: {token}")
 
-            # # Send final message to close the stream
-            await send({"type": "http.response.body", "body": b'', "more_body": False})
+                # # Send final message to close the stream
+                await send({"type": "http.response.body", "body": b'', "more_body": False})
 
 
         token_streamer = partial(_prompt, synapse)
