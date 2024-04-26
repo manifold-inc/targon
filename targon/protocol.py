@@ -77,7 +77,7 @@ class InferenceSamplingParams(pydantic.BaseModel):
     )
 
     stop: List[str] = pydantic.Field(
-        ["photographer"],
+        [""],
         title="Stop",
         description="The stop words.",
     )
@@ -101,7 +101,7 @@ class InferenceSamplingParams(pydantic.BaseModel):
     )
 
     top_p: float = pydantic.Field(
-        0.9999999,
+        0.998,
         title="Top P",
         description="Nucleus sampling parameter, top_p probability mass.",
     )
@@ -208,7 +208,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     top_p: float = pydantic.Field(
-        0.9999999,
+        0.998,
         title="Top P",
         description="Nucleus sampling parameter, top_p probability mass.",
     )
