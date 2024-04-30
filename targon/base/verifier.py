@@ -67,7 +67,20 @@ class BaseVerifierNeuron(BaseNeuron):
             self.block_number = 10000
 
         try:
-            self.axon = bt.axon(wallet=self.wallet, config=self.config)
+            #self.axon = bt.axon(wallet=self.wallet, config=self.config)
+            if self.config.axon.external_ip is not None:
+                bt.logging.debug(
+                    f"Starting axon on port {self.config.axon.port} and external ip {self.config.axon.external_ip}"
+                )
+                self.axon = bt.axon(
+                    wallet=self.wallet,
+                    port=self.config.axon.port,
+                    external_ip=self.config.axon.external_ip,
+                )
+            else:
+                bt.logging.debug(f"Starting axon on port {self.config.axon.port}")
+                self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
+
         except Exception as e:
             bt.logging.error(
                 f"Failed to create Axon initialize with exception: {e}"
