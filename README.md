@@ -259,7 +259,7 @@ replace the wallet name and wallet hotkey with your wallet name and wallet hotke
 
 ```bash
 cd neurons/prover
-pm2 start app.py --name prover -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
+pm2 start app.py --name prover --interpreter python3 -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
 ```
 
 replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you perfer.
@@ -354,7 +354,7 @@ Run the following command to start the verifier with PM2:
 ```bash
 cd neurons/verifier
 
-pm2 start app.py --name verifier -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint
+pm2 start app.py --name verifier --interpreter python3 -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint
 0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
 ```
 
