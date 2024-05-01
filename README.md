@@ -215,17 +215,42 @@ To get started running a prover, you will need to run the docker containers for 
 cp neurons/prover/docker-compose.example.yml neurons/prover/docker-compose.yml
 ```
 
-This includes the following containers:
+This by default includes the following containers:
 - TGI Inference Node
 - Prover (optional)
 - ~~Subtensor (experimental)~~
 
-**experimental** Experimentally, you can attempt to have the docker container run a subtensor. It could also be set up locally on the host machine, external from the docker environment. For running an external subtensor instance, whether locally on the machine or remote, you will want to make sure the prover starts with the flag `--subtensor.chain_endpoint ws://the.subtensor.ip.addr:9944` while starting the prover to connect to the chain.
+**experimental** Experimentally, you can uncomment the subtensor service in the template. The subtensor could also be set up locally on the host machine, external from docker. Otherwise, for running an external subtensor instance, whether locally on the machine or remote, you will want to make sure the prover starts up with the flag `--subtensor.chain_endpoint ws://the.subtensor.ip.addr:9944` to connect to the chain.
+
+### GPU Sharding
+You can optionally shard the model across multiple GPUs. To do this, you will need to modify the docker template you copied above and include these flags at the end of the command within the service.
+
+```docker
+version: '3.8'
+services:
+  text-generation-service:
+    image: ghcr.io/huggingface/text-generation-inference:1.3
+    command: --model-id mlabonne/NeuralDaredevil-7B --max-input-length 3072 --max-total-tokens 4096 --sharded --num-shard 2
+    volumes:
+      - ./models:/data
+    ports:
+      - "127.0.0.1:8080:80"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ["0","1"]
+    shm_size: '1g'
+```
+NOTE: Sharding is not set by default in the template, so you will need to modify it accordingly prior to starting the container.
+
 
 ### Docker
 
 <details>
-<summary>Run with Docker</summary>
+<summary>Run prover with Docker</summary>
 
 By default, the docker template you copied above for TGI contains the prover. This is optional.
 
@@ -257,10 +282,11 @@ NOTE: Trace logging is very verbose. You can use `--logging.debug` instead for l
 
 </details>
 
+
 ### PM2
 
 <details>
-<summary> Run with PM2</summary>
+<summary> Run prover with PM2</summary>
 
 If you will go this route, remember you will need to have the TGI instance running (docker covers that above), and be sure to comment out the prover service in the docker template
 
