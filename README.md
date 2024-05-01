@@ -255,7 +255,7 @@ NOTE: Sharding is not set by default in the template, so you will need to modify
 
 By default, the docker template you copied above for TGI contains the prover. This is optional.
 
-**optionally** Optionally, you can edit the docker-compose.yml file to comment out the proving container, leaving the TGI service to run alone, but then you will need to run the prover with PM2.
+**optionally**, you can edit the docker-compose.yml file to comment out the proving container, leaving the TGI service to run alone, but then you will need to run the prover with PM2.
 
 If you will use the prover in the docker, here's an example of the prover service section of the docker template, which is also what exposes the axon port.
 
@@ -350,7 +350,7 @@ then replace the password with your new password:
       - "6379:6379"
 ```
 
-**experimental** optionally, you can edit the docker-compose.yml file to include the verifier container, but you will need to edit the docker-compose.yml file and uncomment out the verifier container. Otherwise you can run the verifier with PM2.
+**optionally**, you can edit the docker-compose.yml file to include the verifier container, but you will need to edit the docker-compose.yml file and uncomment the verifier container. Otherwise you can run the verifier with PM2, which is experimental.
 
 
 ### Docker
