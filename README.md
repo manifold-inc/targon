@@ -225,6 +225,7 @@ This by default includes the following containers:
 ### GPU Sharding
 You can optionally shard the model across multiple GPUs. To do this, you will need to modify the docker template you copied above and include these flags at the end of the command within the service.
 
+NOTE: Scroll horizontally to see the full command if this readme is truncated by the viewport.
 ```docker
 version: '3.8'
 services:
