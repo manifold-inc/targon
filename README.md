@@ -210,25 +210,26 @@ An inference request is a request sent by a verifier to a prover. The inference 
 # How to Run TARGON
 
 ## Run a Prover
-To get started running a prover, you will need to be running the docker containers for the requirements of the prover. To do this, run the following command:
+To get started running a prover, you will need to run the docker containers for the requirements of the prover. To do this, start with a template by runig the following command:
 ```bash
 cp neurons/prover/docker-compose.example.yml neurons/prover/docker-compose.yml
-docker compose -f neurons/prover/docker-compose.yml up -d
 ```
 
-this includes the following containers:
+This includes the following containers:
 - TGI Inference Node
-- Subtensor
 - Prover (optional)
+- ~~Subtensor (experimental)~~
 
-
-**experimental** optionally, you can edit the docker-compose.yml file to include the proving container, but you will need to edit the docker-compose.yml file and uncomment out the prover container. Otherwise you can run the prover with PM2.
-
+**experimental** Experimentally, you can attempt to have the docker container run a subtensor. It could also be set up locally on the host machine, external from the docker environment. For running an external subtensor instance, whether locally on the machine or remote, you will want to make sure the prover starts with the flag `--subtensor.chain_endpoint ws://the.subtensor.ip.addr:9944` while starting the prover to connect to the chain.
 
 ### Docker
 
 <details>
 <summary>Run with Docker</summary>
+
+By default, the docker template you copied above for TGI contains the prover. This is optional.
+
+Here is the section of the template with the prover service, which is also what defines the axon port.
 
 ```docker
   prover:
@@ -240,15 +241,22 @@ this includes the following containers:
     command: ./entrypoint.sh
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
-
 ```
-and then edit the entrypoint.sh file to include the args specific for your prover.
+
+If you required specific args like the subtensor, then be sure to edit the entrypoint.sh file to include those args specific to run along with your prover.
+
+NOTE: This prover should already exist in your template file.
+
+
+**optionally** Optionally, you can edit the docker-compose.yml file to comment out the proving container, leaving the TGI service to run alone, but then you will need to run the prover with PM2.
+
+Please replace the wallet name and hotkey with your own. If you prefer, you can also change the subtensor chain endpoint to your own chain endpoint.
 
 ```bash
-python3 app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
+python3 app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.trace --subtensor.chain_endpoint ws://0.0.0.0:9944
 ```
+NOTE: Trace logging is very verbose. You can use `--logging.debug` instead for less log bloat.
 
-replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you perfer.
 
 </details>
 
