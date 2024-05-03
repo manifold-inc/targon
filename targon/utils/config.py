@@ -79,7 +79,23 @@ def add_args(cls, parser):
         help="Device to run on.",
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-
+    
+    # Axon Port
+    parser.add_argument(
+        "--axon.port", 
+        type=int,
+        help="Port to run the axon on.",
+        default=8098
+    )
+    
+    # External IP 
+    parser.add_argument(
+        "--axon.external_ip", 
+        type=str,
+        help="IP for the metagraph",
+        default=bt.utils.networking.get_external_ip()
+    )
+    
     parser.add_argument(
         "--neuron.epoch_length",
         type=int,
