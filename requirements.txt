@@ -1,4 +1,4 @@
-bittensor==6.9.3
+bittensor>=6.9.3
 torch==2.0.1
 redis==5.0.1
 pycryptodome==3.18.0
