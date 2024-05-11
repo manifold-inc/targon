@@ -177,7 +177,8 @@ cd targon
 
 ### Install dependencies
 ```bash
-pip install -e .
+python3 -m pip install -r requirements.txt
+python3 -m pip install -e .
 ```
 
 You have now installed TARGON. You can now run a prover or verifier.
@@ -209,25 +210,54 @@ An inference request is a request sent by a verifier to a prover. The inference 
 # How to Run TARGON
 
 ## Run a Prover
-To get started running a prover, you will need to be running the docker containers for the requirements of the prover. To do this, run the following command:
+To get started running a prover, you will need to run the docker containers for the requirements of the prover. To do this, start with a template by runig the following command:
 ```bash
 cp neurons/prover/docker-compose.example.yml neurons/prover/docker-compose.yml
-docker compose -f neurons/prover/docker-compose.yml up -d
 ```
 
-this includes the following containers:
+This by default includes the following containers:
 - TGI Inference Node
-- Subtensor
 - Prover (optional)
+- ~~Subtensor (experimental)~~
 
+**experimental** Experimentally, you can uncomment the subtensor service in the template. The subtensor could also be set up locally on the host machine, external from docker. Otherwise, for running an external subtensor instance, whether locally on the machine or remote, you will want to make sure the prover starts up with the flag `--subtensor.chain_endpoint ws://the.subtensor.ip.addr:9944` to connect to the chain.
 
-**experimental** optionally, you can edit the docker-compose.yml file to include the proving container, but you will need to edit the docker-compose.yml file and uncomment out the prover container. Otherwise you can run the prover with PM2.
+### GPU Sharding
+You can optionally shard the model across multiple GPUs. To do this, you will need to modify the docker template you copied above and include these flags at the end of the command within the service.
+
+NOTE: Scroll horizontally to see the full command if this readme is truncated by the viewport.
+```docker
+version: '3.8'
+services:
+  text-generation-service:
+    image: ghcr.io/huggingface/text-generation-inference:1.3
+    command: --model-id mlabonne/NeuralDaredevil-7B --max-input-length 3072 --max-total-tokens 4096 --sharded --num-shard 2
+    volumes:
+      - ./models:/data
+    ports:
+      - "127.0.0.1:8080:80"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ["0","1"]
+    shm_size: '1g'
+```
+NOTE: Sharding is not set by default in the template, so you will need to modify it accordingly prior to starting the container.
 
 
 ### Docker
 
 <details>
-<summary>Run with Docker</summary>
+<summary>Run prover with Docker</summary>
+
+By default, the docker template you copied above for TGI contains the prover. This is optional.
+
+**optionally**, you can edit the docker-compose.yml file to comment out the proving container, leaving the TGI service to run alone, but then you will need to run the prover with PM2.
+
+If you will use the prover in the docker, here's an example of the prover service section of the docker template, which is also what exposes the axon port.
 
 ```docker
   prover:
@@ -239,31 +269,38 @@ this includes the following containers:
     command: ./entrypoint.sh
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
-
 ```
-and then edit the entrypoint.sh file to include the args specific for your prover.
+NOTE: This prover should already exist in your template file.
+
+
+
+In the entrypoint.sh, please replace the wallet name and hotkey with your own. If you prefer, you can also change the subtensor chain endpoint to your own chain endpoint.
 
 ```bash
-python app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
+python3 app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.trace --subtensor.chain_endpoint ws://0.0.0.0:9944
 ```
-
-replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you perfer.
+NOTE: Trace logging is very verbose. You can use `--logging.debug` instead for less log bloat.
 
 </details>
+
 
 ### PM2
 
 <details>
-<summary> Run with PM2</summary>
+<summary> Run prover with PM2</summary>
+
+If you will go this route, remember you will need to have the TGI instance running (docker covers that above), and be sure to comment out the prover service in the docker template
+
+Please replace the wallet name and hotkey with your own. If you prefer, you can also change the subtensor chain endpoint to your own chain endpoint.
 
 ```bash
 cd neurons/prover
-pm2 start app.py --name prover -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
+pm2 start app.py --name prover --interpreter python3 -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
 ```
-
-replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you perfer.
+NOTE: Trace logging is very verbose. You can use `--logging.debug` instead for less log bloat.
 
 </details>
+
 
 ### Options
 The add_prover_args function in the targon/utils/config.py file is used to add command-line arguments specific to the prover. Here are the options it provides:
@@ -283,7 +320,7 @@ To get started running a verifier, you will need to be running the docker contai
 ```bash
 cp neurons/verifier/docker-compose.example.yml neurons/verifier/docker-compose.yml
 ./scripts/generate_redis_password.sh
-vim neurons/verifier/docker-compose.yml # replace YOUR_PASSWORD_HERE with the password generated by the script
+nano neurons/verifier/docker-compose.yml # replace YOUR_PASSWORD_HERE with the password generated by the script
 docker compose -f neurons/verifier/docker-compose.yml up -d
 ```
 
@@ -299,9 +336,9 @@ this includes the following containers:
 ```
 this will output a secure password for you to use. You will then need to edit the docker-compose.yml file and replace the password with your new password.
 
-first use vim to edit the docker-compose.yml file:
+first, edit the docker-compose.yml file:
 ```bash
-vim neurons/verifier/docker-compose.yml
+nano neurons/verifier/docker-compose.yml
 ```
 then replace the password with your new password:
 
@@ -313,7 +350,7 @@ then replace the password with your new password:
       - "6379:6379"
 ```
 
-**experimental** optionally, you can edit the docker-compose.yml file to include the verifier container, but you will need to edit the docker-compose.yml file and uncomment out the verifier container. Otherwise you can run the verifier with PM2.
+**optionally**, you can edit the docker-compose.yml file to include the verifier container, but you will need to edit the docker-compose.yml file and uncomment the verifier container. Otherwise you can run the verifier with PM2, which is experimental.
 
 
 ### Docker
@@ -336,7 +373,7 @@ then replace the password with your new password:
 and then edit the entrypoint.sh file to include the args specific for your prover.
 
 ```bash
-python app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
+python3 app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
 ```
 
 replace the wallet name, wallet hotkey, and db pass with your wallet name, wallet hotkey and pass. You can also change the subtensor chain endpoint to your own chain endpoint if you perfer.
@@ -353,8 +390,8 @@ Run the following command to start the verifier with PM2:
 ```bash
 cd neurons/verifier
 
-pm2 start app.py --name verifier -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint
-0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
+pm2 start app.py --name verifier --interpreter python3 -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint
+ws://0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
 ```
 
 ### Options

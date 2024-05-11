@@ -59,7 +59,20 @@ class BaseProverNeuron(BaseNeuron):
             )
 
         # The axon handles request processing, allowing verifiers to send this prover requests.
-        self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        #self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        if self.config.axon.external_ip is not None:
+            bt.logging.debug(
+                f"Starting axon on port {self.config.axon.port} and external ip {self.config.axon.external_ip}"
+            )
+            self.axon = bt.axon(
+                wallet=self.wallet,
+                port=self.config.axon.port,
+                external_ip=self.config.axon.external_ip,
+            )
+        else:
+            bt.logging.debug(f"Starting axon on port {self.config.axon.port}")
+            self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
+            
 
         # Attach deterprovers which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to prover axon.")
