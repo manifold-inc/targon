@@ -231,13 +231,6 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.challenge_url",
-        type=str,
-        help="The url to use for the challenge server.",
-        default="https://challenge.sybil.com/",
-    )
-
-    parser.add_argument(
         "--neuron.challenge_probability",
         type=float,
         help="The probability of challenging a prover.",

@@ -21,19 +21,16 @@ import torch
 import random
 import typing
 import asyncio
-import httpx
 import bittensor as bt
+import string
 
 from targon import protocol
-from requests.auth import HTTPBasicAuth
 from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
-from targon.utils.misc import return_json_params
-from torch.nn.functional import cosine_similarity
 from targon.constants import CHALLENGE_FAILURE_REWARD
-from targon.verifier.uids import get_tiered_uids, get_random_uids
+from targon.verifier.uids import get_random_uids
 from targon.verifier.reward import hashing_function, apply_reward_scores
-from targon.verifier.bonding import update_statistics, get_tier_factor, get_similarity_threshold
+from targon.verifier.bonding import update_statistics, get_tier_factor
 
 
 def _filter_verified_responses(uids, responses):
@@ -59,15 +56,19 @@ def _filter_verified_responses(uids, responses):
     uids, responses = zip(*not_none_responses)
     return uids, responses
 
-def check_tokens( self, prover_output, ground_truth_output ):
-    
+
+def check_tokens(self, prover_output, ground_truth_output):
     # Tokenize the prover output and the ground truth output
-    prover_tokenized = self.embedding_tokenizer(prover_output, return_tensors="pt", padding=True, truncation=True)
-    ground_truth_tokenized = self.embedding_tokenizer(ground_truth_output, return_tensors="pt", padding=True, truncation=True)
+    prover_tokenized = self.embedding_tokenizer(
+        prover_output, return_tensors="pt", padding=True, truncation=True
+    )
+    ground_truth_tokenized = self.embedding_tokenizer(
+        ground_truth_output, return_tensors="pt", padding=True, truncation=True
+    )
 
     # Compare the list of tokens
-    prover_tokens = prover_tokenized['input_ids']
-    ground_truth_tokens = ground_truth_tokenized['input_ids']
+    prover_tokens = prover_tokenized["input_ids"]
+    ground_truth_tokens = ground_truth_tokenized["input_ids"]
 
     bt.logging.info(prover_tokens)
     bt.logging.info(ground_truth_tokens)
@@ -78,17 +79,20 @@ def check_tokens( self, prover_output, ground_truth_output ):
 
     # make the tokenized outputs the same length, perferring the ground truth output length
     if len(prover_tokens) > len(ground_truth_tokens):
-        prover_tokens = prover_tokens[:len(ground_truth_tokens)]
+        prover_tokens = prover_tokens[: len(ground_truth_tokens)]
     elif len(prover_tokens) < len(ground_truth_tokens):
         return 0
 
     # Calculate the score from 0 to 1
-    score = sum([1 for token in prover_tokens if token in ground_truth_tokens]) / len(prover_tokens)
+    score = sum([1 for token in prover_tokens if token in ground_truth_tokens]) / len(
+        prover_tokens
+    )
 
     bt.logging.info(score)
     return score
 
-def verify( self, prover_output, ground_truth_output, prover_ss58 ):
+
+def verify(self, prover_output, ground_truth_output, prover_ss58):
     """
     Verifies the prover's output against the ground truth output.
 
@@ -111,16 +115,22 @@ def verify( self, prover_output, ground_truth_output, prover_ss58 ):
 
         # check how t
 
-
         # return asyncio.run(embedding_check( self, prover_output, ground_truth_output, prover_ss58 ))
-        return check_tokens( self, prover_output, ground_truth_output )
-    
+        return check_tokens(self, prover_output, ground_truth_output)
+
     bt.logging.debug(
         f"Output hash {prover_output_hash} matches ground truth hash {ground_truth_hash}"
     )
     return True
 
-async def handle_inference( self, uid: int, private_input: typing.Dict, ground_truth_output: str, sampling_params: protocol.InferenceSamplingParams ) -> typing.Tuple[bool, protocol.Inference]:
+
+async def handle_inference(
+    self,
+    uid: int,
+    private_input: typing.Dict,
+    ground_truth_output: str,
+    sampling_params: protocol.InferenceSamplingParams,
+) -> typing.Tuple[bool, protocol.Inference]:
     """
     Handles a inference sent to a prover and verifies the response.
 
@@ -137,8 +147,8 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
 
     if not self.config.mock:
         synapse = protocol.Inference(
-            sources = [private_input["sources"]],
-            query = private_input["query"],
+            sources=[private_input["sources"]],
+            query=private_input["query"],
             sampling_params=sampling_params,
         )
 
@@ -149,7 +159,7 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
             synapse,
             deserialize=False,
             timeout=self.config.neuron.timeout,
-            streaming=True
+            streaming=True,
         ):
             if isinstance(token, list):
                 response_tokens.append(token[0])
@@ -157,34 +167,31 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
                 response_tokens.append(token)
             else:
                 output_synapse = token
-        
-        output = ''.join(response_tokens)
 
+        output = "".join(response_tokens)
 
         # output_encoded = output.encode('utf-8')
         if output is not None:
-            output_normalized = output.replace('\r\n', '\n')
-            output_cleaned = ' '.join(output_normalized.split())
+            output_normalized = output.replace("\r\n", "\n")
+            output_cleaned = " ".join(output_normalized.split())
 
-        
-            bt.logging.debug('output', output_cleaned)
-            verified = verify( self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid] )
-        
+            bt.logging.debug("output", output_cleaned)
+            verified = verify(
+                self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid]
+            )
+
         else:
             verified = False
 
-        output_dict = (
-            output_synapse,
-            uid
-        )
+        output_dict = (output_synapse, uid)
         return verified, output_dict
-    
+
     else:
         prompt = create_prompt(private_input)
 
         synapse = protocol.Inference(
-            sources = [private_input["sources"]],
-            query = private_input["query"],
+            sources=[private_input["sources"]],
+            query=private_input["query"],
             sampling_params=sampling_params,
         )
 
@@ -204,24 +211,23 @@ async def handle_inference( self, uid: int, private_input: typing.Dict, ground_t
             typical_p=sampling_params.typical_p,
             watermark=sampling_params.watermark,
             details=False,
-            stream=True
+            stream=True,
         ):
             response_tokens.append(token)
-        
-        response = ''.join(response_tokens)
+
+        response = "".join(response_tokens)
 
         synapse.completion = response
-        
 
-        verified = verify( self, response, ground_truth_output, self.metagraph.hotkeys[uid] )
-
-        output_dict = (
-            synapse,
-            uid
+        verified = verify(
+            self, response, ground_truth_output, self.metagraph.hotkeys[uid]
         )
+
+        output_dict = (synapse, uid)
         return verified, output_dict
 
-async def inference_data( self ):
+
+async def inference_data(self):
     """
     Orchestrates the inference process, from fetching inference data to applying rewards based on the verification results.
 
@@ -239,6 +245,7 @@ async def inference_data( self ):
     Returns:
     - EventSchema: An object containing detailed information about the inference, including which UIDs were successful, the rewards applied, and other metadata.
     """
+
     def remove_indices_from_tensor(tensor, indices_to_remove):
         # Sort indices in descending order to avoid index out of range error
         sorted_indices = sorted(indices_to_remove, reverse=True)
@@ -264,64 +271,65 @@ async def inference_data( self ):
         moving_averaged_scores=None,
     )
 
-    
-    bt.logging.info("Grabbing inference data")
-    url = self.config.neuron.challenge_url # inference data url
+    bt.logging.info("Generating challenge data")
+    challenge_data = {
+        "query": "".join(random.choice(string.ascii_letters) for _ in range(12)),
+        "sources": "".join(random.choice(string.ascii_letters) for _ in range(12)),
+    }
+    prompt = create_prompt(challenge_data)
 
-    hotkey = self.wallet.hotkey.ss58_address # get the hotkey address
-    signature = f"0x{self.wallet.hotkey.sign(hotkey).hex()}"
-
-    private_input = httpx.get(url, auth=HTTPBasicAuth(hotkey, signature)).json()
-    bt.logging.info(f"Inference data: {private_input}")
-    prompt = create_prompt(private_input)
-
-    bt.logging.info('prompt created')
+    bt.logging.info("prompt created")
     seed = random.randint(10000, 10000000)
 
-
-    sampling_params = protocol.InferenceSamplingParams(
-        seed=seed
-    )
-
+    sampling_params = protocol.InferenceSamplingParams(seed=seed)
 
     ground_truth_tokens = []
 
     async for token in await self.client.text_generation(
-		prompt,
-		best_of=sampling_params.best_of,
-		max_new_tokens=sampling_params.max_new_tokens,
-		seed=sampling_params.seed,
-		do_sample=sampling_params.do_sample,
-		repetition_penalty=sampling_params.repetition_penalty,
-		temperature=sampling_params.temperature,
-		top_k=sampling_params.top_k,
-		top_p=sampling_params.top_p,
-		truncate=sampling_params.truncate,
-		typical_p=sampling_params.typical_p,
-		watermark=sampling_params.watermark,
-		details=False,
-		stream=True
-	):
+        prompt,
+        best_of=sampling_params.best_of,
+        max_new_tokens=sampling_params.max_new_tokens,
+        seed=sampling_params.seed,
+        do_sample=sampling_params.do_sample,
+        repetition_penalty=sampling_params.repetition_penalty,
+        temperature=sampling_params.temperature,
+        top_k=sampling_params.top_k,
+        top_p=sampling_params.top_p,
+        truncate=sampling_params.truncate,
+        typical_p=sampling_params.typical_p,
+        watermark=sampling_params.watermark,
+        details=False,
+        stream=True,
+    ):
         ground_truth_tokens.append(token)
-    
-    ground_truth_output = ''.join(ground_truth_tokens)
+
+    ground_truth_output = "".join(ground_truth_tokens)
 
     # ground_truth_output_encoded = ground_truth_output.encode('utf-8')
-    ground_truth_output_normalized = ground_truth_output.replace('\r\n', '\n')
-    ground_truth_output_cleaned = ' '.join(ground_truth_output_normalized.split())
+    ground_truth_output_normalized = ground_truth_output.replace("\r\n", "\n")
+    ground_truth_output_cleaned = " ".join(ground_truth_output_normalized.split())
 
     # --- Get the uids to query
     start_time = time.time()
     tasks = []
     # uids = await get_tiered_uids( self, k=self.config.neuron.sample_size )
-    uids = get_random_uids( self, k=self.config.neuron.sample_size )
+    uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
     bt.logging.debug(f"inference uids {uids}")
     responses = []
     for uid in uids:
-        tasks.append(asyncio.create_task(handle_inference(self, uid, private_input, ground_truth_output_cleaned, sampling_params)))
+        tasks.append(
+            asyncio.create_task(
+                handle_inference(
+                    self,
+                    uid,
+                    private_input,
+                    ground_truth_output_cleaned,
+                    sampling_params,
+                )
+            )
+        )
     responses = await asyncio.gather(*tasks)
-
 
     rewards: torch.FloatTensor = torch.zeros(len(responses), dtype=torch.float32).to(
         self.device
@@ -350,12 +358,12 @@ async def inference_data( self ):
 
         if self.config.mock:
             event.uids.append(uid)
-            event.successful.append(verified)        
+            event.successful.append(verified)
             event.completion_times.append(0.0)
             event.task_status_messages.append("mock")
             event.task_status_codes.append(0)
             event.rewards.append(rewards[i].item())
-        else: 
+        else:
             event.uids.append(uid)
             event.successful.append(verified)
             event.completion_times.append(response.dendrite.process_time)
@@ -396,5 +404,5 @@ async def inference_data( self ):
         best_index = max(range(len(event.rewards)), key=event.rewards.__getitem__)
         event.best_uid = event.uids[best_index]
         event.best_hotkey = self.metagraph.hotkeys[event.best_uid]
-    
+
     return event
