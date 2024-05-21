@@ -323,7 +323,7 @@ async def inference_data(self):
                 handle_inference(
                     self,
                     uid,
-                    private_input,
+                    challenge_data,
                     ground_truth_output_cleaned,
                     sampling_params,
                 )

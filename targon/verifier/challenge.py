@@ -303,7 +303,7 @@ async def challenge_data(self):
                 handle_challenge(
                     self,
                     uid,
-                    private_input,
+                    challenge_data,
                     ground_truth_output_cleaned,
                     sampling_params,
                 )
