@@ -25,11 +25,10 @@ import bittensor as bt
 import string
 
 from targon import protocol
-from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_random_uids
-from targon.verifier.reward import hashing_function, apply_reward_scores
+from targon.verifier.reward import hashing_function
 
 
 # get highest incentive axons from metagraph
@@ -179,7 +178,6 @@ async def api_chat_completions(
         sampling_params=sampling_params,
     )
 
-    response_tokens = []
     start_time = time.time()
     token_count = 0
     uid = select_highest_n_peers(1)[0]
@@ -194,10 +192,9 @@ async def api_chat_completions(
             yield token[0]
         elif isinstance(token, str):
             yield token
-            token_count += 1
+        token_count += 1
     
     end_time = time.time()
-    output = "".join(response_tokens)
     elapsed_time = end_time - start_time
     tokens_per_second = token_count / elapsed_time
     bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
