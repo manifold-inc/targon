@@ -18,6 +18,7 @@
 
 import os
 import time
+from bittensor.axon import FastAPIThreadedServer
 import uvicorn
 import bittensor as bt
 
@@ -80,10 +81,14 @@ class Verifier(BaseVerifierNeuron):
 
         # inference client
         # --- Block
-        self.app = FastAPI()
+        fast_config = uvicorn.Config(
+            self.app, host="0.0.0.0", port=self.config.axon.port, loop="asyncio"
+        )
+        self.app = FastAPIThreadedServer(config=fast_config)
         self.app.router.add_api_route(
             "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
         )
+
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.executor.submit(
             uvicorn.run, self.app, host="0.0.0.0", port=self.config.neuron.proxy.port
