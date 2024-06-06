@@ -74,6 +74,8 @@ class Verifier(BaseVerifierNeuron):
                     self.metagraph, i, self.config.neuron.vpermit_tao_limit
                 )
 
+        
+
         # inference client
         # --- Block
         self.axon.router.add_api_route(

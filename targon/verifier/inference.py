@@ -417,4 +417,6 @@ async def inference_data(self):
             remove_reward_idxs.append(i)
 
     rewards[remove_reward_idxs] = CHALLENGE_FAILURE_REWARD
+    
+
 
