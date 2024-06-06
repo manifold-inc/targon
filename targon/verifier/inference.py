@@ -29,6 +29,7 @@ from targon.utils.prompt import create_prompt
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_random_uids
 from targon.verifier.reward import hashing_function
+from targon.verifier.state import EventSchema
 
 
 # get highest incentive axons from metagraph
@@ -333,7 +334,29 @@ async def inference_data(self):
     - EventSchema: An object containing detailed information about the inference, including which UIDs were successful, the rewards applied, and other metadata.
     """
 
+    def remove_indices_from_tensor(tensor, indices_to_remove):
+        # Sort indices in descending order to avoid index out of range error
+        sorted_indices = sorted(indices_to_remove, reverse=True)
+        for index in sorted_indices:
+            tensor = torch.cat([tensor[:index], tensor[index + 1 :]])
+        return tensor
+
     # --- Create the event
+    event = EventSchema(
+        task_name="inference",
+        successful=[],
+        completion_times=[],
+        task_status_messages=[],
+        task_status_codes=[],
+        block=self.subtensor.get_current_block(),
+        uids=[],
+        step_length=0.0,
+        best_uid=-1,
+        best_hotkey="",
+        rewards=[],
+        set_weights=None,
+        moving_averaged_scores=None,
+    )
 
 
     bt.logging.info("Generating challenge data")
@@ -351,7 +374,7 @@ async def inference_data(self):
     ground_truth_tokens = []
 
 
-
+    start_time = time.time()
     async for token in await self.client.text_generation(
         prompt,
         best_of=sampling_params.best_of,
@@ -379,12 +402,12 @@ async def inference_data(self):
     ground_truth_output_cleaned = " ".join(ground_truth_output_normalized.split())
 
     # --- Get the uids to query
-    start_time = time.time()
     tasks = []
     # uids = await get_tiered_uids( self, k=self.config.neuron.sample_size )
     uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
     bt.logging.debug(f"inference uids {uids}")
+    
     responses = []
     for uid in uids:
         tasks.append(
@@ -404,19 +427,78 @@ async def inference_data(self):
         self.device
     )
 
-    moving_averages = torch.zeros(len(responses), dtype=torch.float32).to(self.device)
-
     remove_reward_idxs = []
-    verified_tokens_per_second = []
-
     for i, (verified, (response, uid, tokens_per_second)) in enumerate(responses):
-        if verified:
-            moving_averages[i] = tokens_per_second
-            verified_tokens_per_second.append(tokens_per_second)
-        else:
-            remove_reward_idxs.append(i)
+        bt.logging.trace(
+            f"Inference iteration {i} uid {uid} response {str(response.completion if not self.config.mock else response)}"
+        )
 
-    rewards[remove_reward_idxs] = CHALLENGE_FAILURE_REWARD
-    
+        hotkey = self.metagraph.hotkeys[uid]
+
+        # Update the inference statistics
+        # await update_statistics(
+        #     ss58_address=hotkey,
+        #     success=verified,
+        #     task_type="inference",
+        #     database=self.database,
+        #     current_block=self.block,
+        # )
+
+        # Apply reward for this inference
+        # tier_factor = await get_tier_factor(hotkey, self.database)
+        tier_factor = 1.0
+        rewards[i] = 1.0 * tier_factor if verified else CHALLENGE_FAILURE_REWARD
+
+        if self.config.mock:
+            event.uids.append(uid)
+            event.successful.append(verified)
+            event.completion_times.append(0.0)
+            event.task_status_messages.append("mock")
+            event.task_status_codes.append(0)
+            event.rewards.append(rewards[i].item())
+        else:
+            event.uids.append(uid)
+            event.successful.append(verified)
+            event.completion_times.append(response.dendrite.process_time)
+            event.task_status_messages.append(response.dendrite.status_message)
+            event.task_status_codes.append(response.dendrite.status_code)
+            event.rewards.append(rewards[i].item())
+
+    bt.logging.debug(
+        f"inference_data() rewards: {rewards} | uids {uids} hotkeys {[self.metagraph.hotkeys[uid] for uid in uids]}"
+    )
+
+    event.step_length = time.time() - start_time
+
+    if len(responses) == 0:
+        bt.logging.debug(f"Received zero hashes from miners, returning event early.")
+        return event
+
+    # Remove UIDs without hashes (don't punish new miners that have no inferences yet)
+    uids, responses = _filter_verified_responses(uids, responses)
+    bt.logging.debug(
+        f"inference_data() full rewards: {rewards} | uids {uids} | uids to remove {remove_reward_idxs}"
+    )
+    rewards = remove_indices_from_tensor(rewards, remove_reward_idxs)
+    bt.logging.debug(f"inference_data() kept rewards: {rewards} | uids {uids}")
+
+    bt.logging.trace("Applying inference rewards")
+    apply_reward_scores(
+        self,
+        uids,
+        responses,
+        rewards,
+        timeout=self.config.neuron.timeout,
+        mode=self.config.neuron.reward_mode,
+    )
+
+    # Determine the best UID based on rewards
+    if event.rewards:
+        best_index = max(range(len(event.rewards)), key=event.rewards.__getitem__)
+        event.best_uid = event.uids[best_index]
+        event.best_hotkey = self.metagraph.hotkeys[event.best_uid]
+
+    return event
+
 
 

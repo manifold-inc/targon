@@ -90,6 +90,9 @@ class BaseVerifierNeuron(BaseNeuron):
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
 
+        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
+
+
         if not self.config.mock:
             self.substrate = SubstrateInterface(
                 ss58_format=bt.__ss58_format__,

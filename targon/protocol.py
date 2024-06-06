@@ -286,8 +286,8 @@ class Inference(bt.StreamingSynapse):
         description="The query to be sent to the Bittensor network.",
     )
 
-    sampling_params: ChallengeSamplingParams = pydantic.Field(
-        ChallengeSamplingParams(),
+    sampling_params: InferenceSamplingParams = pydantic.Field(
+        InferenceSamplingParams(),
         title="Sampling Params",
         description="The sampling parameters for the TGI model.",
     )
