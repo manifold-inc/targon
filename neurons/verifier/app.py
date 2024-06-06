@@ -18,11 +18,13 @@
 
 import os
 import time
+import uvicorn
 import bittensor as bt
-
 
 from targon import protocol
 from targon.verifier.forward import forward
+from concurrent.futures import ThreadPoolExecutor
+from fastapi import FastAPI, HTTPException, Depends
 from targon.base.verifier import BaseVerifierNeuron
 from targon.verifier.inference import api_chat_completions
 from targon.verifier.uids import check_uid_availability
@@ -78,8 +80,13 @@ class Verifier(BaseVerifierNeuron):
 
         # inference client
         # --- Block
-        self.axon.router.add_api_route(
+        self.app = FastAPI()
+        self.app.router.add_api_route(
             "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
+        )
+        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.executor.submit(
+            uvicorn.run, self.app, host="0.0.0.0", port=self.config.neuron.proxy.port
         )
         self.last_interval_block = self.get_last_adjustment_block()
         self.adjustment_interval = self.get_adjustment_interval()
@@ -95,7 +102,10 @@ class Verifier(BaseVerifierNeuron):
         - Updating the scores
         """
         print("forward()")
-
+        if self.config.neuron.api_only:
+            bt.logging.info("Running in API only mode, sleeping for 12 seconds.")
+            time.sleep(12)
+            return
         return await forward(self)
 
     def __enter__(self):

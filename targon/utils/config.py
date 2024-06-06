@@ -130,6 +130,13 @@ def add_args(cls, parser):
         default="main",
     )
 
+    parser.add_argument(
+        "--neuron.proxy.port",
+        type=int,
+        help="The port to serve the proxy on.",
+        default=8001,
+    )
+
 
 
 def add_prover_args(cls, parser):
@@ -228,6 +235,13 @@ def add_verifier_args(cls, parser):
         type=str,
         choices=["minmax", "sigmoid"],
         help="Reward mode for the validator.",
+    )
+
+    parser.add_argument(
+        "--neuron.api_only",
+        action="store_true",
+        help="If set, the verifier will only serve an API.",
+        default=False,
     )
 
     parser.add_argument(
