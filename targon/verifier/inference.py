@@ -122,6 +122,49 @@ def verify(self, prover_output, ground_truth_output, prover_ss58):
     )
     return True
 
+async def api_chat_completions(
+    self,
+    prompt: str,
+    sampling_params: protocol.InferenceSamplingParams,
+) -> typing.Tuple[bool, protocol.Inference]:
+    """
+    Handles a inference sent to a prover and verifies the response.
+
+    Returns:
+    - Tuple[bool, protocol.Inference]: A tuple containing the verification result and the inference.
+    """
+    synapse = protocol.Inference(
+        sources=[],
+        query=prompt,
+        sampling_params=sampling_params,
+    )
+
+    response_tokens = []
+    start_time = time.time()
+    token_count = 0
+    uid = 1 # @CARRO TODO
+    async for token in await self.dendrite(
+        self.metagraph.axons[uid],
+        synapse,
+        deserialize=False,
+        timeout=self.config.neuron.timeout,
+        streaming=True,
+    ):
+        if isinstance(token, list):
+            response_tokens.append(token[0])
+            token_count += 1
+        elif isinstance(token, str):
+            response_tokens.append(token)
+            token_count += 1
+        else:
+            output_synapse = token
+    
+    end_time = time.time()
+    output = "".join(response_tokens)
+    elapsed_time = end_time - start_time
+    tokens_per_second = token_count / elapsed_time
+    bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
+
 
 async def handle_inference(
     self,
@@ -139,9 +182,6 @@ async def handle_inference(
     Returns:
     - Tuple[bool, protocol.Inference]: A tuple containing the verification result and the inference.
     """
-
-
-
     if not self.config.mock:
         synapse = protocol.Inference(
             sources=[private_input["sources"]],
