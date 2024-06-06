@@ -86,18 +86,6 @@ class BaseVerifierNeuron(BaseNeuron):
                 f"Failed to create Axon initialize with exception: {e}"
             )
         
-        # Setup database
-        self.database = aioredis.StrictRedis(
-            host=self.config.database.host,
-            port=self.config.database.port,
-            db=self.config.database.index,
-            password=self.config.database.password,
-        )
-        self.db_semaphore = asyncio.Semaphore()
-
-        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
-
-
         self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 

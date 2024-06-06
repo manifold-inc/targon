@@ -30,7 +30,6 @@ from targon.utils.prompt import create_prompt
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_random_uids
 from targon.verifier.reward import hashing_function, apply_reward_scores
-from targon.verifier.bonding import update_statistics, get_tier_factor
 
 
 def _filter_verified_responses(uids, responses):
@@ -141,9 +140,7 @@ async def handle_inference(
     - Tuple[bool, protocol.Inference]: A tuple containing the verification result and the inference.
     """
 
-    hotkey = self.metagraph.hotkeys[uid]
-    keys = await self.database.hkeys(f"hotkey:{hotkey}")
-    bt.logging.trace(f"{len(keys)} stats pulled for hotkey {hotkey}")
+
 
     if not self.config.mock:
         synapse = protocol.Inference(
@@ -154,6 +151,8 @@ async def handle_inference(
 
         response_tokens = []
 
+        start_time = time.time()
+        token_count = 0
         async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
@@ -163,17 +162,31 @@ async def handle_inference(
         ):
             if isinstance(token, list):
                 response_tokens.append(token[0])
+                token_count += 1
             elif isinstance(token, str):
                 response_tokens.append(token)
+                token_count += 1
             else:
                 output_synapse = token
-
+        
+        end_time = time.time()
         output = "".join(response_tokens)
+
+
+        elapsed_time = end_time - start_time
+        tokens_per_second = len(token_count) / elapsed_time
+        bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
 
         # output_encoded = output.encode('utf-8')
         if output is not None:
+            start_time = time.time()
             output_normalized = output.replace("\r\n", "\n")
             output_cleaned = " ".join(output_normalized.split())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            bt.logging.info(f"Output normalization rate: {elapsed_time} seconds")
+            tokens_per_second = len(output_cleaned) / elapsed_time
+            bt.logging.info(f"Output normalization rate: {tokens_per_second} tokens/second")
 
             bt.logging.debug("output", output_cleaned)
             verified = verify(
@@ -183,7 +196,7 @@ async def handle_inference(
         else:
             verified = False
 
-        output_dict = (output_synapse, uid)
+        output_dict = (output_synapse, uid, tokens_per_second)
         return verified, output_dict
 
     else:
@@ -246,30 +259,8 @@ async def inference_data(self):
     - EventSchema: An object containing detailed information about the inference, including which UIDs were successful, the rewards applied, and other metadata.
     """
 
-    def remove_indices_from_tensor(tensor, indices_to_remove):
-        # Sort indices in descending order to avoid index out of range error
-        sorted_indices = sorted(indices_to_remove, reverse=True)
-        for index in sorted_indices:
-            tensor = torch.cat([tensor[:index], tensor[index + 1 :]])
-        return tensor
-
     # --- Create the event
 
-    event = EventSchema(
-        task_name="inference",
-        successful=[],
-        completion_times=[],
-        task_status_messages=[],
-        task_status_codes=[],
-        block=self.subtensor.get_current_block(),
-        uids=[],
-        step_length=0.0,
-        best_uid=-1,
-        best_hotkey="",
-        rewards=[],
-        set_weights=None,
-        moving_averaged_scores=None,
-    )
 
     bt.logging.info("Generating challenge data")
     challenge_data = {
@@ -284,6 +275,8 @@ async def inference_data(self):
     sampling_params = protocol.InferenceSamplingParams(seed=seed)
 
     ground_truth_tokens = []
+
+
 
     async for token in await self.client.text_generation(
         prompt,
@@ -302,6 +295,8 @@ async def inference_data(self):
         stream=True,
     ):
         ground_truth_tokens.append(token)
+    
+
 
     ground_truth_output = "".join(ground_truth_tokens)
 
@@ -335,74 +330,17 @@ async def inference_data(self):
         self.device
     )
 
+    moving_averages = torch.zeros(len(responses), dtype=torch.float32).to(self.device)
+
     remove_reward_idxs = []
-    for i, (verified, (response, uid)) in enumerate(responses):
-        bt.logging.trace(
-            f"Inference iteration {i} uid {uid} response {str(response.completion if not self.config.mock else response)}"
-        )
+    verified_tokens_per_second = []
 
-        hotkey = self.metagraph.hotkeys[uid]
-
-        # Update the inference statistics
-        await update_statistics(
-            ss58_address=hotkey,
-            success=verified,
-            task_type="inference",
-            database=self.database,
-            current_block=self.block,
-        )
-
-        # Apply reward for this inference
-        tier_factor = await get_tier_factor(hotkey, self.database)
-        rewards[i] = 1.0 * tier_factor if verified else CHALLENGE_FAILURE_REWARD
-
-        if self.config.mock:
-            event.uids.append(uid)
-            event.successful.append(verified)
-            event.completion_times.append(0.0)
-            event.task_status_messages.append("mock")
-            event.task_status_codes.append(0)
-            event.rewards.append(rewards[i].item())
+    for i, (verified, (response, uid, tokens_per_second)) in enumerate(responses):
+        if verified:
+            moving_averages[i] = tokens_per_second
+            verified_tokens_per_second.append(tokens_per_second)
         else:
-            event.uids.append(uid)
-            event.successful.append(verified)
-            event.completion_times.append(response.dendrite.process_time)
-            event.task_status_messages.append(response.dendrite.status_message)
-            event.task_status_codes.append(response.dendrite.status_code)
-            event.rewards.append(rewards[i].item())
+            remove_reward_idxs.append(i)
 
-    bt.logging.debug(
-        f"inference_data() rewards: {rewards} | uids {uids} hotkeys {[self.metagraph.hotkeys[uid] for uid in uids]}"
-    )
+    rewards[remove_reward_idxs] = CHALLENGE_FAILURE_REWARD
 
-    event.step_length = time.time() - start_time
-
-    if len(responses) == 0:
-        bt.logging.debug(f"Received zero hashes from miners, returning event early.")
-        return event
-
-    # Remove UIDs without hashes (don't punish new miners that have no inferences yet)
-    uids, responses = _filter_verified_responses(uids, responses)
-    bt.logging.debug(
-        f"inference_data() full rewards: {rewards} | uids {uids} | uids to remove {remove_reward_idxs}"
-    )
-    rewards = remove_indices_from_tensor(rewards, remove_reward_idxs)
-    bt.logging.debug(f"inference_data() kept rewards: {rewards} | uids {uids}")
-
-    bt.logging.trace("Applying inference rewards")
-    apply_reward_scores(
-        self,
-        uids,
-        responses,
-        rewards,
-        timeout=self.config.neuron.timeout,
-        mode=self.config.neuron.reward_mode,
-    )
-
-    # Determine the best UID based on rewards
-    if event.rewards:
-        best_index = max(range(len(event.rewards)), key=event.rewards.__getitem__)
-        event.best_uid = event.uids[best_index]
-        event.best_hotkey = self.metagraph.hotkeys[event.best_uid]
-
-    return event
