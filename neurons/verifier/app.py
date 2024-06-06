@@ -81,17 +81,14 @@ class Verifier(BaseVerifierNeuron):
 
         # inference client
         # --- Block
-        fast_config = uvicorn.Config(
-            self.app, host="0.0.0.0", port=self.config.axon.port, loop="asyncio"
-        )
-        self.app = FastAPIThreadedServer(config=fast_config)
+        self.app = FastAPI()
         self.app.router.add_api_route(
             "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
         )
 
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.executor.submit(
-            uvicorn.run, self.app, host="0.0.0.0", port=self.config.neuron.proxy.port
+            uvicorn.run, self.app, host="0.0.0.0", port=self.config.neuron.proxy.port, loop='asyncio'
         )
         self.last_interval_block = self.get_last_adjustment_block()
         self.adjustment_interval = self.get_adjustment_interval()
