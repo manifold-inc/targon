@@ -27,7 +27,10 @@ from targon.base.verifier import BaseVerifierNeuron
 from targon.verifier.inference import api_chat_completions
 from targon.verifier.uids import check_uid_availability
 from sse_starlette.sse import EventSourceResponse
+from dotenv import load_dotenv
 
+load_dotenv()
+TOKEN = os.getenv("HUB_SECRET_TOKEN")
 
 class Verifier(BaseVerifierNeuron):
     """
@@ -35,7 +38,6 @@ class Verifier(BaseVerifierNeuron):
     """
 
     def safeParseAndCall(self, data: dict):
-        TOKEN = os.getenv("HUB_SECRET_TOKEN")
 
         if data.get("api_key") != TOKEN and TOKEN is not None:
             return "", 401
@@ -47,12 +49,16 @@ class Verifier(BaseVerifierNeuron):
         prompt = "\n".join([p["role"] + ": " + p["contnet"] for p in prompt])
 
         # @CARRO TODO check this call, might need to change for async generator
-        return EventSourceResponse(api_chat_completions(
-            self,
-            prompt,
-            protocol.InferenceSamplingParams(max_new_tokens=data.get("max_tokens", 1024)),
-        ),
-        media_type="text/event-stream")
+        return EventSourceResponse(
+            api_chat_completions(
+                self,
+                prompt,
+                protocol.InferenceSamplingParams(
+                    max_new_tokens=data.get("max_tokens", 1024)
+                ),
+            ),
+            media_type="text/event-stream",
+        )
 
     def __init__(self, config=None):
         super(Verifier, self).__init__(config=config)
