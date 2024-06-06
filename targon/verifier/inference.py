@@ -32,6 +32,46 @@ from targon.verifier.uids import get_random_uids
 from targon.verifier.reward import hashing_function, apply_reward_scores
 
 
+# get highest incentive axons from metagraph
+def select_highest_n_peers(n: int, metagraph=None, return_all=False):
+    """
+    Selects the highest incentive peers from the metagraph.
+
+    Parameters:
+        n (int): number of top peers to return.
+
+    Returns:
+        int: uid of the selected peer from unique highest IPs.
+    """
+    assert metagraph is not None, "metagraph is None"
+    # Get the top n indices based on incentive
+    indices = torch.topk(metagraph.incentive, n).indices
+
+    # Get the corresponding uids
+    uids_with_highest_incentives = metagraph.uids[indices].tolist()
+
+
+    if return_all:
+        return uids_with_highest_incentives
+    
+    # get the axon of the uids
+    axons = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
+
+    # get the ip from the axons
+    ips = [axon.ip for axon in axons]
+
+    # get the coldkey from the axons
+    coldkeys = [axon.coldkey for axon in axons]
+
+    # Filter out the uids and ips whose coldkeys are in the blacklist
+    uids_with_highest_incentives, ips = zip(*[(uid, ip) for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)])
+    # axons_with_highest_incentives = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
+    # unique_ip_to_uid = {ip: uid for ip, uid in zip(ips, uids_with_highest_incentives)}
+    # uids = list(unique_ip_to_uid.values())
+    return uids_with_highest_incentives
+
+
+
 def _filter_verified_responses(uids, responses):
     """
     Filters out responses that have not been verified.
@@ -142,7 +182,7 @@ async def api_chat_completions(
     response_tokens = []
     start_time = time.time()
     token_count = 0
-    uid = 1 # @CARRO TODO
+    uid = select_highest_n_peers(1)[0]
     async for token in await self.dendrite(
         self.metagraph.axons[uid],
         synapse,
@@ -151,13 +191,10 @@ async def api_chat_completions(
         streaming=True,
     ):
         if isinstance(token, list):
-            response_tokens.append(token[0])
-            token_count += 1
+            yield token[0]
         elif isinstance(token, str):
-            response_tokens.append(token)
+            yield token
             token_count += 1
-        else:
-            output_synapse = token
     
     end_time = time.time()
     output = "".join(response_tokens)

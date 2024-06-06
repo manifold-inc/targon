@@ -30,7 +30,7 @@ from substrateinterface import SubstrateInterface
 from targon.base.verifier import BaseVerifierNeuron
 from targon.verifier.inference import api_chat_completions
 from targon.verifier.uids import check_uid_availability
-from targon.verifier.state import SimpleBlockSubscriber
+from sse_starlette.sse import EventSourceResponse
 
 
 class Verifier(BaseVerifierNeuron):
@@ -51,11 +51,12 @@ class Verifier(BaseVerifierNeuron):
         prompt = "\n".join([p["role"] + ": " + p["contnet"] for p in prompt])
 
         # @CARRO TODO check this call, might need to change for async generator
-        await api_chat_completions(
+        return await EventSourceResponse(api_chat_completions(
             self,
             prompt,
             protocol.InferenceSamplingParams(max_new_tokens=data.get("max_tokens", 1024)),
-        )
+        ),
+        media_type="text/event-stream")
 
     def __init__(self, config=None):
         super(Verifier, self).__init__(config=config)
