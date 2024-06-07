@@ -28,6 +28,7 @@ from fastapi import FastAPI
 from targon.base.verifier import BaseVerifierNeuron
 from targon.verifier.inference import api_chat_completions
 from targon.verifier.uids import check_uid_availability
+from fastapi import Request
 from sse_starlette.sse import EventSourceResponse
 from dotenv import load_dotenv
 
@@ -40,7 +41,8 @@ class Verifier(BaseVerifierNeuron):
     Text prompt verifier neuron.
     """
 
-    async def safeParseAndCall(self, data: dict):
+    async def safeParseAndCall(self, req: Request):
+        data = await req.json()
         if data.get("api_key") != TOKEN and TOKEN is not None:
             return "", 401
 
@@ -50,7 +52,7 @@ class Verifier(BaseVerifierNeuron):
             return "", 403
         prompt = "\n".join([msg["role"] + ": " + msg["content"] for msg in messages])
         try:
-            return await EventSourceResponse(
+            return EventSourceResponse(
                 api_chat_completions(
                     self,
                     prompt,
