@@ -40,17 +40,17 @@ class Verifier(BaseVerifierNeuron):
     Text prompt verifier neuron.
     """
 
-    def safeParseAndCall(self, data: dict):
+    async def safeParseAndCall(self, data: dict):
         if data.get("api_key") != TOKEN and TOKEN is not None:
             return "", 401
 
-        bt.logging.info("Received an organic request!")
+        print("Received an organic request!")
         messages = data.get("messages")
         if not isinstance(messages, list):
             return "", 403
         prompt = "\n".join([msg["role"] + ": " + msg["content"] for msg in messages])
         try:
-            return EventSourceResponse(
+            return await EventSourceResponse(
                 api_chat_completions(
                     self,
                     prompt,
@@ -61,7 +61,7 @@ class Verifier(BaseVerifierNeuron):
                 media_type="text/event-stream",
             )
         except Exception as e:
-            print(e)
+            print(f"Failed due to: {e}")
             return '', 500
 
     def __init__(self, config=None):
