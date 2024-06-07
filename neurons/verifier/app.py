@@ -18,6 +18,7 @@
 
 import os
 import time
+from bittensor.axon import FastAPIThreadedServer
 import uvicorn
 import bittensor as bt
 
@@ -64,7 +65,7 @@ class Verifier(BaseVerifierNeuron):
             )
         except Exception as e:
             print(f"Failed due to: {e}")
-            return '', 500
+            return "", 500
 
     def __init__(self, config=None):
         super(Verifier, self).__init__(config=config)
@@ -86,15 +87,12 @@ class Verifier(BaseVerifierNeuron):
         self.app.router.add_api_route(
             "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
         )
-
-        self.executor = ThreadPoolExecutor(max_workers=1)
-        self.executor.submit(
-            uvicorn.run,
-            self.app,
-            host="0.0.0.0",
-            port=self.config.neuron.proxy.port,
-            loop="asyncio",
+        self.fast_config = uvicorn.Config(
+            self.app, host="0.0.0.0", port=self.config.neuron.proxy.port, loop="asyncio"
         )
+        self.fast_server = FastAPIThreadedServer(config=self.fast_config)
+        self.fast_server.start()
+
         self.last_interval_block = self.get_last_adjustment_block()
         self.adjustment_interval = self.get_adjustment_interval()
         self.next_adjustment_block = self.last_interval_block + self.adjustment_interval
