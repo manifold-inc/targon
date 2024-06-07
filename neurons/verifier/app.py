@@ -18,14 +18,13 @@
 
 import os
 import time
-from bittensor.axon import FastAPIThreadedServer
 import uvicorn
 import bittensor as bt
 
 from targon import protocol
 from targon.verifier.forward import forward
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 from targon.base.verifier import BaseVerifierNeuron
 from targon.verifier.inference import api_chat_completions
 from targon.verifier.uids import check_uid_availability
@@ -35,33 +34,35 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("HUB_SECRET_TOKEN")
 
+
 class Verifier(BaseVerifierNeuron):
     """
     Text prompt verifier neuron.
     """
 
     def safeParseAndCall(self, data: dict):
-
         if data.get("api_key") != TOKEN and TOKEN is not None:
             return "", 401
 
         bt.logging.info("Received an organic request!")
-        prompt = data.get("messages")
-        if not isinstance(prompt, list):
+        messages = data.get("messages")
+        if not isinstance(messages, list):
             return "", 403
-        prompt = "\n".join([p["role"] + ": " + p["contnet"] for p in prompt])
-
-        # @CARRO TODO check this call, might need to change for async generator
-        return EventSourceResponse(
-            api_chat_completions(
-                self,
-                prompt,
-                protocol.InferenceSamplingParams(
-                    max_new_tokens=data.get("max_tokens", 1024)
+        prompt = "\n".join([msg["role"] + ": " + msg["content"] for msg in messages])
+        try:
+            return EventSourceResponse(
+                api_chat_completions(
+                    self,
+                    prompt,
+                    protocol.InferenceSamplingParams(
+                        max_new_tokens=data.get("max_tokens", 1024)
+                    ),
                 ),
-            ),
-            media_type="text/event-stream",
-        )
+                media_type="text/event-stream",
+            )
+        except Exception as e:
+            print(e)
+            return '', 500
 
     def __init__(self, config=None):
         super(Verifier, self).__init__(config=config)
@@ -77,8 +78,6 @@ class Verifier(BaseVerifierNeuron):
                     self.metagraph, i, self.config.neuron.vpermit_tao_limit
                 )
 
-        
-
         # inference client
         # --- Block
         self.app = FastAPI()
@@ -88,7 +87,11 @@ class Verifier(BaseVerifierNeuron):
 
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.executor.submit(
-            uvicorn.run, self.app, host="0.0.0.0", port=self.config.neuron.proxy.port, loop='asyncio'
+            uvicorn.run,
+            self.app,
+            host="0.0.0.0",
+            port=self.config.neuron.proxy.port,
+            loop="asyncio",
         )
         self.last_interval_block = self.get_last_adjustment_block()
         self.adjustment_interval = self.get_adjustment_interval()
