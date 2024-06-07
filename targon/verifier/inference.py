@@ -50,10 +50,9 @@ def select_highest_n_peers(n: int, metagraph=None, return_all=False):
     # Get the corresponding uids
     uids_with_highest_incentives = metagraph.uids[indices].tolist()
 
-
     if return_all:
         return uids_with_highest_incentives
-    
+
     # get the axon of the uids
     axons = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
 
@@ -64,12 +63,16 @@ def select_highest_n_peers(n: int, metagraph=None, return_all=False):
     coldkeys = [axon.coldkey for axon in axons]
 
     # Filter out the uids and ips whose coldkeys are in the blacklist
-    uids_with_highest_incentives, ips = zip(*[(uid, ip) for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)])
+    uids_with_highest_incentives, ips = zip(
+        *[
+            (uid, ip)
+            for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)
+        ]
+    )
     # axons_with_highest_incentives = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
     # unique_ip_to_uid = {ip: uid for ip, uid in zip(ips, uids_with_highest_incentives)}
     # uids = list(unique_ip_to_uid.values())
     return uids_with_highest_incentives
-
 
 
 def _filter_verified_responses(uids, responses):
@@ -162,6 +165,7 @@ def verify(self, prover_output, ground_truth_output, prover_ss58):
     )
     return True
 
+
 async def api_chat_completions(
     self,
     prompt: str,
@@ -181,22 +185,23 @@ async def api_chat_completions(
 
     start_time = time.time()
     token_count = 0
-    uid = select_highest_n_peers(1)[0]
-    print(f"New request to dendrite")
-    async for token in await self.dendrite(
-        self.metagraph.axons[uid],
-        synapse,
-        deserialize=False,
-        timeout=self.config.neuron.timeout,
-        streaming=True,
-    ):
-        print(f"TOKEN: {token} -------------------")
-        if isinstance(token, list):
-            yield token[0]
-        elif isinstance(token, str):
-            yield token
-        token_count += 1
-    
+    try:
+        uid = select_highest_n_peers(10, self.metagraph)
+        uid = random.choice(uid)
+        async for token in await self.dendrite.forward(
+            self.metagraph.axons[uid],
+            synapse,
+            deserialize=False,
+            streaming=True,
+        ):
+            if isinstance(token, list):
+                yield token[0]
+            elif isinstance(token, str):
+                yield token
+            token_count += 1
+    except Exception as e:
+        print(e)
+
     end_time = time.time()
     elapsed_time = end_time - start_time
     tokens_per_second = token_count / elapsed_time
@@ -245,10 +250,9 @@ async def handle_inference(
                 token_count += 1
             else:
                 output_synapse = token
-        
+
         end_time = time.time()
         output = "".join(response_tokens)
-
 
         elapsed_time = end_time - start_time
         tokens_per_second = len(token_count) / elapsed_time
@@ -263,7 +267,9 @@ async def handle_inference(
             elapsed_time = end_time - start_time
             bt.logging.info(f"Output normalization rate: {elapsed_time} seconds")
             tokens_per_second = len(output_cleaned) / elapsed_time
-            bt.logging.info(f"Output normalization rate: {tokens_per_second} tokens/second")
+            bt.logging.info(
+                f"Output normalization rate: {tokens_per_second} tokens/second"
+            )
 
             bt.logging.debug("output", output_cleaned)
             verified = verify(
@@ -360,7 +366,6 @@ async def inference_data(self):
         moving_averaged_scores=None,
     )
 
-
     bt.logging.info("Generating challenge data")
     challenge_data = {
         "query": "".join(random.choice(string.ascii_letters) for _ in range(12)),
@@ -374,7 +379,6 @@ async def inference_data(self):
     sampling_params = protocol.InferenceSamplingParams(seed=seed)
 
     ground_truth_tokens = []
-
 
     start_time = time.time()
     async for token in await self.client.text_generation(
@@ -394,8 +398,6 @@ async def inference_data(self):
         stream=True,
     ):
         ground_truth_tokens.append(token)
-    
-
 
     ground_truth_output = "".join(ground_truth_tokens)
 
@@ -409,7 +411,7 @@ async def inference_data(self):
     uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
     bt.logging.debug(f"inference uids {uids}")
-    
+
     responses = []
     for uid in uids:
         tasks.append(
@@ -501,6 +503,3 @@ async def inference_data(self):
         event.best_hotkey = self.metagraph.hotkeys[event.best_uid]
 
     return event
-
-
-

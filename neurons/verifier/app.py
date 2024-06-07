@@ -32,10 +32,10 @@ from targon.verifier.uids import check_uid_availability
 from fastapi import Request
 from sse_starlette.sse import EventSourceResponse
 from dotenv import load_dotenv
+import asyncio
 
 load_dotenv()
 TOKEN = os.getenv("HUB_SECRET_TOKEN")
-
 
 class Verifier(BaseVerifierNeuron):
     """
@@ -58,6 +58,8 @@ class Verifier(BaseVerifierNeuron):
                     self,
                     prompt,
                     protocol.InferenceSamplingParams(
+                        seed=1234,
+                        stream=True,
                         max_new_tokens=data.get("max_tokens", 1024)
                     ),
                 ),
