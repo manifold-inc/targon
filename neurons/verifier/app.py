@@ -88,7 +88,7 @@ class Verifier(BaseVerifierNeuron):
             "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
         )
         self.fast_config = uvicorn.Config(
-            self.app, host="0.0.0.0", port=self.config.neuron.proxy.port
+            self.app, host="0.0.0.0", port=self.config.neuron.proxy.port, loop='asyncio'
         )
         self.fast_server = FastAPIThreadedServer(config=self.fast_config)
         self.fast_server.start()
