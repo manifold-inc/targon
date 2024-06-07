@@ -182,6 +182,7 @@ async def api_chat_completions(
     start_time = time.time()
     token_count = 0
     uid = select_highest_n_peers(1)[0]
+    print(f"New request to dendrite")
     async for token in await self.dendrite(
         self.metagraph.axons[uid],
         synapse,
@@ -189,6 +190,7 @@ async def api_chat_completions(
         timeout=self.config.neuron.timeout,
         streaming=True,
     ):
+        print(f"TOKEN: {token} -------------------")
         if isinstance(token, list):
             yield token[0]
         elif isinstance(token, str):
