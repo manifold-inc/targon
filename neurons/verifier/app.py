@@ -44,8 +44,6 @@ class Verifier(BaseVerifierNeuron):
 
     async def safeParseAndCall(self, req: Request):
         data = await req.json()
-        if data.get("api_key") != TOKEN and TOKEN is not None:
-            return "", 401
 
         print("Received an organic request!")
         messages = data.get("messages")
