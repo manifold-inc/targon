@@ -91,7 +91,6 @@ class Verifier(BaseVerifierNeuron):
             self.app, host="0.0.0.0", port=self.config.neuron.proxy.port, loop="asyncio"
         )
         self.fast_server = FastAPIThreadedServer(config=self.fast_config)
-        self.fast_server.start()
 
         self.last_interval_block = self.get_last_adjustment_block()
         self.adjustment_interval = self.get_adjustment_interval()
