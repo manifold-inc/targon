@@ -49,19 +49,19 @@ class Verifier(BaseVerifierNeuron):
         messages = data.get("messages")
         if not isinstance(messages, list):
             return "", 403
-        prompt = "\n".join([msg["role"] + ": " + msg["content"] for msg in messages])
+        prompt = "\n".join([p["role"] + ": " + p["content"] for p in prompt])
+
+        # @CARRO TODO check this call, might need to change for async generator
         try:
             return EventSourceResponse(
                 api_chat_completions(
                     self,
                     prompt,
                     protocol.InferenceSamplingParams(
-                        seed=1234,
-                        stream=True,
                         max_new_tokens=data.get("max_tokens", 1024)
                     ),
-                ),
-                media_type="text/event-stream",
+                    media_type="text/event-stream",
+                )
             )
         except Exception as e:
             print(f"Failed due to: {e}")

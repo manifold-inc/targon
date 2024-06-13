@@ -293,6 +293,8 @@ async def handle_inference(
 
         response_tokens = []
 
+        start_time = time.time()
+        token_count = 0
         async for token in await self.client.text_generation(
             prompt,
             best_of=sampling_params.best_of,
@@ -310,6 +312,12 @@ async def handle_inference(
             stream=True,
         ):
             response_tokens.append(token)
+            token_count += 1
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        tokens_per_second = token_count / elapsed_time
+
 
         response = "".join(response_tokens)
 
@@ -319,7 +327,7 @@ async def handle_inference(
             self, response, ground_truth_output, self.metagraph.hotkeys[uid]
         )
 
-        output_dict = (synapse, uid)
+        output_dict = (synapse, uid, tokens_per_second)
         return verified, output_dict
 
 
@@ -438,68 +446,6 @@ async def inference_data(self):
         )
 
         hotkey = self.metagraph.hotkeys[uid]
-
-        # Update the inference statistics
-        # await update_statistics(
-        #     ss58_address=hotkey,
-        #     success=verified,
-        #     task_type="inference",
-        #     database=self.database,
-        #     current_block=self.block,
-        # )
-
-        # Apply reward for this inference
-        # tier_factor = await get_tier_factor(hotkey, self.database)
-        tier_factor = 1.0
-        rewards[i] = 1.0 * tier_factor if verified else CHALLENGE_FAILURE_REWARD
-
-        if self.config.mock:
-            event.uids.append(uid)
-            event.successful.append(verified)
-            event.completion_times.append(0.0)
-            event.task_status_messages.append("mock")
-            event.task_status_codes.append(0)
-            event.rewards.append(rewards[i].item())
-        else:
-            event.uids.append(uid)
-            event.successful.append(verified)
-            event.completion_times.append(response.dendrite.process_time)
-            event.task_status_messages.append(response.dendrite.status_message)
-            event.task_status_codes.append(response.dendrite.status_code)
-            event.rewards.append(rewards[i].item())
-
-    bt.logging.debug(
-        f"inference_data() rewards: {rewards} | uids {uids} hotkeys {[self.metagraph.hotkeys[uid] for uid in uids]}"
-    )
-
-    event.step_length = time.time() - start_time
-
-    if len(responses) == 0:
-        bt.logging.debug(f"Received zero hashes from miners, returning event early.")
-        return event
-
-    # Remove UIDs without hashes (don't punish new miners that have no inferences yet)
-    uids, responses = _filter_verified_responses(uids, responses)
-    bt.logging.debug(
-        f"inference_data() full rewards: {rewards} | uids {uids} | uids to remove {remove_reward_idxs}"
-    )
-    rewards = remove_indices_from_tensor(rewards, remove_reward_idxs)
-    bt.logging.debug(f"inference_data() kept rewards: {rewards} | uids {uids}")
-
-    bt.logging.trace("Applying inference rewards")
-    apply_reward_scores(
-        self,
-        uids,
-        responses,
-        rewards,
-        timeout=self.config.neuron.timeout,
-        mode=self.config.neuron.reward_mode,
-    )
-
-    # Determine the best UID based on rewards
-    if event.rewards:
-        best_index = max(range(len(event.rewards)), key=event.rewards.__getitem__)
-        event.best_uid = event.uids[best_index]
-        event.best_hotkey = self.metagraph.hotkeys[event.best_uid]
-
+    
+    bt.logging.info("event", event)
     return event
