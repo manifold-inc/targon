@@ -33,34 +33,15 @@ async def forward(self):
     - Rewarding the provers
     - Updating the scores
     """
-    # try:
-    start_time = time.time()
-    bt.logging.info(f"forward block: {self.block if not self.config.mock else self.block_number} step: {self.step}")
+    try:
+        start_time = time.time()
+        bt.logging.info(f"forward block: {self.block if not self.config.mock else self.block_number} step: {self.step}")
 
-    # --- Perform coin flip
+        # --- Perform coin flip
 
-        # --- Generate the query.
-    event = await inference_data(self)
-    
-
-    if not self.config.mock:
-        try:
-            block = self.substrate.subscribe_block_headers(self.subscription_handler)
-        except:
-            sleep_time = 12 - (time.time() - start_time)
-            if sleep_time > 0:
-                bt.logging.info(f"Sleeping for {sleep_time} seconds")
-                await asyncio.sleep(sleep_time)
-    else:
-        time.sleep(1)
+            # --- Generate the query.
+        event = await inference_data(self)
         
-<<<<<<< HEAD
-    # except Exception as e:
-    #     bt.logging.error(f"Error in forward: {e}")
-    #     time.sleep(12)
-    #     pass
-=======
-        # --- Log the event
 
         if not self.config.mock:
             try:
@@ -76,9 +57,7 @@ async def forward(self):
     except Exception as e:
         bt.logging.error(f"Error in forward: {e}")
         time.sleep(12)
-        self.thread.join()
         pass
->>>>>>> b27a27d (rewrite in progress)
 
 
 

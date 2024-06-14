@@ -444,109 +444,59 @@ async def inference_data(self):
     if not hasattr(self, 'moving_averages'):
         self.moving_averages = {uid: 0 for uid, _ in uid_tokens_pairs}
     
-    alpha = 0.1  # Smoothing factor for moving average, can be adjusted
     for uid, tokens_per_second in uid_tokens_pairs:
         if uid in self.moving_averages:
-            self.moving_averages[uid] = alpha * tokens_per_second + (1 - alpha) * self.moving_averages[uid]
+            self.moving_averages[uid] = self.config.neuron.moving_average_alpha * tokens_per_second + (1 - self.config.neuron.moving_average_alpha) * self.moving_averages[uid]
         else:
             self.moving_averages[uid] = tokens_per_second
 
     # Sort the list by tokens_per_second in descending order
     sorted_uid_tokens_pairs = sorted(uid_tokens_pairs, key=lambda x: x[1])
+    uids_sorted = [uid for uid, _ in sorted_uid_tokens_pairs]
 
     # Extract tokens_per_second for plotting
     tokens_per_second_sorted = [tokens_per_second for _, tokens_per_second in sorted_uid_tokens_pairs]
 
-<<<<<<< HEAD
-    # Initialize or update moving averages for tokens statistics
-    if not hasattr(self, 'moving_tokens_stats'):
-        self.moving_tokens_stats = {
-            'max_tokens': 0,
-            'min_tokens': float('inf'),
-            'range_tokens': 0,
-            'avg_tokens': 0
-        }
+    # rewards: torch.FloatTensor = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(
+    #     self.device
+    # )
 
-    current_max_tokens = max(tokens_per_second_sorted)
-    current_min_tokens = min(tokens_per_second_sorted)
-    current_range_tokens = current_max_tokens - current_min_tokens
-    current_avg_tokens = sum(tokens_per_second_sorted) / len(tokens_per_second_sorted)
+    # Calculate rewards based on the difference between the highest and lowest tokens_per_second using moving averages
+    self.max_tokens_per_second = max(tokens_per_second_sorted) if self.max_tokens_per_second < max(tokens_per_second_sorted) else self.max_tokens_per_second
+    self.min_tokens_per_second = min(tokens_per_second_sorted) if self.min_tokens_per_second > min(tokens_per_second_sorted) else self.min_tokens_per_second
+    self.range_tokens_per_second = self.max_tokens_per_second - self.min_tokens_per_second
+    # Calculate the current average tokens per second
+    current_average_tokens_per_second = sum(tokens_per_second_sorted) / len(tokens_per_second_sorted)
+    # Update the moving average for tokens per second
+    self.average_tokens_per_second = self.config.neuron.moving_average_alpha * current_average_tokens_per_second + (1 - self.config.neuron.moving_average_alpha) * self.average_tokens_per_second
+    # Initialize moving average for rewards
 
-    # Update moving averages for tokens statistics
-    self.moving_tokens_stats['max_tokens'] = alpha * current_max_tokens + (1 - alpha) * self.moving_tokens_stats['max_tokens']
-    self.moving_tokens_stats['min_tokens'] = alpha * current_min_tokens + (1 - alpha) * self.moving_tokens_stats['min_tokens']
-    self.moving_tokens_stats['range_tokens'] = alpha * current_range_tokens + (1 - alpha) * self.moving_tokens_stats['range_tokens']
-    self.moving_tokens_stats['avg_tokens'] = alpha * current_avg_tokens + (1 - alpha) * self.moving_tokens_stats['avg_tokens']
-=======
-    y = plt.scatter(tokens_per_second_sorted, color='red')  # Reduced marker size for a smaller plot
-    plt.title('Sorted Tokens per Second')
-    plt.xlabel('UID Index (sorted)')
-    plt.ylabel('Tokens per Second')
-    plt.plotsize(100, 20)
-    plt.show()
-    plt.clf()  # Clear the plot after showing
->>>>>>> b27a27d (rewrite in progress)
-
-    rewards: torch.FloatTensor = torch.zeros(len(responses), dtype=torch.float32).to(
-        self.device
-    )
-
-<<<<<<< HEAD
-    # Calculate rewards based on the difference between the highest and lowest tokens_per_second
-    if self.moving_tokens_stats['range_tokens'] > 0:
-        for i, (_, tokens_per_second) in enumerate(sorted_uid_tokens_pairs):
-            normalized_difference = (tokens_per_second - self.moving_tokens_stats['avg_tokens']) / self.moving_tokens_stats['range_tokens']
-            reward_multiplier = math.exp(normalized_difference * 10)  # Scale the difference to enhance reward disparity
-            rewards[i] = reward_multiplier * tokens_per_second
-    else:
-        rewards.fill_(1)  # Avoid division by zero if all tokens_per_second are the same
-=======
-    remove_reward_idxs = []
     for i, (uid, tokens_per_second) in enumerate(sorted_uid_tokens_pairs):
-        # Find the response associated with the current uid
-        response = next(res for _, (res, res_uid, _) in responses if res_uid == uid)
-        verified = next(ver for ver, (_, res_uid, _) in responses if res_uid == uid)
-
-        bt.logging.trace(
-            f"Inference iteration {i} uid {uid} response {str(response.completion if not self.config.mock else response)}"
-        )
-
-        hotkey = self.metagraph.hotkeys[uid]
-
-    # Calculate mean, median, and mode of moving averages
-    moving_averages_values = list(self.moving_averages.values())
-    if moving_averages_values:
-        mean_value = sum(moving_averages_values) / len(moving_averages_values)
-        median_value = sorted(moving_averages_values)[len(moving_averages_values) // 2]
-        mode_value = max(set(moving_averages_values), key=moving_averages_values.count)
-
-        bt.logging.debug(f"Mean of moving averages: {mean_value}")
-        bt.logging.debug(f"Median of moving averages: {median_value}")
-        bt.logging.debug(f"Mode of moving averages: {mode_value}")
-    else:
-        bt.logging.info("No moving averages data available to calculate mean, median, and mode.")
-    return event
->>>>>>> b27a27d (rewrite in progress)
-
-    # Initialize or update moving average for rewards
-    if not hasattr(self, 'moving_rewards'):
-        self.moving_rewards = torch.zeros(len(256), dtype=torch.float32).to(self.device)
-
-    for i, reward in enumerate(rewards):
-        self.moving_rewards[i] = alpha * reward + (1 - alpha) * self.moving_rewards[i]
+        if self.range_tokens_per_second > 0:
+            normalized_difference = (tokens_per_second - self.average_tokens_per_second) / self.range_tokens_per_second
+            reward_multiplier = math.exp(normalized_difference * 10)  # Scale the difference to enhance reward disparity
+        else:
+            reward_multiplier = 1  # Avoid division by zero if all tokens_per_second are the same
+        self.rewards[uid] = reward_multiplier * tokens_per_second
+        # Update moving average for rewards
+        self.moving_rewards[uid] = self.config.neuron.moving_average_alpha * self.rewards[uid] + (1 - self.config.neuron.moving_average_alpha) * self.moving_rewards[uid]
 
     # Print the highest UID and its corresponding tokens_per_second and reward score
-    highest_uid, highest_tokens_per_second = sorted_uid_tokens_pairs[-1]
-    highest_reward = rewards[0]
+    highest_uid = max(range(len(self.rewards)), key=lambda uid: self.rewards[uid])
+    highest_tokens_per_second = next(tps for uid, tps in uid_tokens_pairs if uid == highest_uid)
+    highest_reward = self.rewards.tolist()[highest_uid]
     print(f"Highest UID: {highest_uid}, Tokens/Second: {highest_tokens_per_second}, Reward: {highest_reward}")
-
+    print(f"Average Tokens/Second: {self.average_tokens_per_second}")
+    print(self.moving_rewards)
     # Plot moving average of rewards
-    y = plt.scatter(self.moving_rewards.numpy(), color='red')  # Reduced marker size for a smaller plot
+    y = plt.scatter(uids_sorted, self.moving_rewards.numpy(), color='red')  # Reduced marker size for a smaller plot
     plt.title('Sorted Tokens per Second')
     plt.xlabel('UID (sorted)')
     plt.ylabel('Reward Score')
     plt.plotsize(100, 20)
     plt.show()
     plt.clf()  # Clear the plot after showing
+
+
 
 

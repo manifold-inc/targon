@@ -89,6 +89,18 @@ class BaseVerifierNeuron(BaseNeuron):
         self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
+        # set up our stats
+        self.max_tokens_per_second = 0
+        self.min_tokens_per_second = 0
+        self.range_tokens_per_second = 0
+        self.average_tokens_per_second = 10
+
+        self.rewards: torch.FloatTensor = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(
+            self.device
+        )
+        self.moving_rewards = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(self.device)
+
+
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 

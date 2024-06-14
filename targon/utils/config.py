@@ -43,11 +43,8 @@ def check_config(cls, config: "bt.Config"):
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> b27a27d (rewrite in progress)
 
 def add_args(cls, parser):
     """
@@ -252,7 +249,7 @@ def add_verifier_args(cls, parser):
         "--neuron.moving_average_alpha",
         type=float,
         help="Moving average alpha parameter, how much to add of the new observation.",
-        default=0.05,
+        default=0.1,
     )
 
     parser.add_argument(
