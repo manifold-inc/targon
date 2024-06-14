@@ -61,7 +61,7 @@ class BaseVerifierNeuron(BaseNeuron):
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-        assert self.config.database.password is not None, "Database password must be set."
+        # assert self.config.database.password is not None, "Database password must be set."
 
         if self.config.mock:
             self.block_number = 10000
@@ -86,20 +86,23 @@ class BaseVerifierNeuron(BaseNeuron):
                 f"Failed to create Axon initialize with exception: {e}"
             )
         
-        # Setup database
-        self.database = aioredis.StrictRedis(
-            host=self.config.database.host,
-            port=self.config.database.port,
-            db=self.config.database.index,
-            password=self.config.database.password,
-        )
-        self.db_semaphore = asyncio.Semaphore()
-
-        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
-
-
         self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+
+        # set up our stats
+        self.max_tokens_per_second = 0
+        self.min_tokens_per_second = 0
+        self.range_tokens_per_second = 0
+        self.average_tokens_per_second = 10
+
+        self.rewards: torch.FloatTensor = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(
+            self.device
+        )
+        self.moving_rewards = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(self.device)
+
+
+
+        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
 
         if not self.config.mock:
@@ -295,16 +298,6 @@ class BaseVerifierNeuron(BaseNeuron):
             bt.logging.warning(
                 "Scores contain NaN values. This may be due to a lack of responses from provers, or a bug in your reward functions."
             )
-
-        # # Get the UIDs and their corresponding coldkeys
-        # uids = self.metagraph.uids
-        # coldkeys = [self.metagraph.axons[uid].coldkey for uid in uids]
-
-        # # Iterate through UIDs and set weights to 0 if coldkey is blacklisted
-        # for idx, coldkey in enumerate(coldkeys):
-        #     if coldkey in self.blacklisted_coldkeys:
-        #         self.scores[idx] = self.scores[idx] * 0.1 # testing
-        #         bt.logging.trace('blacklisted uid! weight reduced', uids[idx])
 
 
         # Calculate the average reward for each uid across non-zero values.

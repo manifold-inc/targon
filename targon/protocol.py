@@ -53,7 +53,7 @@ class InferenceSamplingParams(pydantic.BaseModel):
     )
 
     max_new_tokens: int = pydantic.Field(
-        32,
+        128,
         title="Max New Tokens",
         description="The maximum number of tokens to generate in the completion.",
     )
@@ -286,8 +286,8 @@ class Inference(bt.StreamingSynapse):
         description="The query to be sent to the Bittensor network.",
     )
 
-    sampling_params: ChallengeSamplingParams = pydantic.Field(
-        ChallengeSamplingParams(),
+    sampling_params: InferenceSamplingParams = pydantic.Field(
+        InferenceSamplingParams(),
         title="Sampling Params",
         description="The sampling parameters for the TGI model.",
     )

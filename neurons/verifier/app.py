@@ -17,22 +17,55 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import sys
 import time
-import torch
+from bittensor.axon import FastAPIThreadedServer
+import uvicorn
 import bittensor as bt
 
-
+from targon import protocol
 from targon.verifier.forward import forward
-from substrateinterface import SubstrateInterface
+from concurrent.futures import ThreadPoolExecutor
+from fastapi import FastAPI
 from targon.base.verifier import BaseVerifierNeuron
+from targon.verifier.inference import api_chat_completions
 from targon.verifier.uids import check_uid_availability
-from targon.verifier.state import SimpleBlockSubscriber
+from fastapi import Request
+from sse_starlette.sse import EventSourceResponse
+from dotenv import load_dotenv
+import asyncio
+
+load_dotenv()
+TOKEN = os.getenv("HUB_SECRET_TOKEN")
 
 class Verifier(BaseVerifierNeuron):
     """
     Text prompt verifier neuron.
     """
+
+    async def safeParseAndCall(self, req: Request):
+        data = await req.json()
+
+        print("Received an organic request!")
+        messages = data.get("messages")
+        if not isinstance(messages, list):
+            return "", 403
+        prompt = "\n".join([p["role"] + ": " + p["content"] for p in prompt])
+
+        # @CARRO TODO check this call, might need to change for async generator
+        try:
+            return EventSourceResponse(
+                api_chat_completions(
+                    self,
+                    prompt,
+                    protocol.InferenceSamplingParams(
+                        max_new_tokens=data.get("max_tokens", 1024)
+                    ),
+                    media_type="text/event-stream",
+                )
+            )
+        except Exception as e:
+            print(f"Failed due to: {e}")
+            return "", 500
 
     def __init__(self, config=None):
         super(Verifier, self).__init__(config=config)
@@ -44,15 +77,25 @@ class Verifier(BaseVerifierNeuron):
             self.load_state()
             for i, axon in enumerate(self.metagraph.axons):
                 bt.logging.info(f"axons[{i}]: {axon}")
-                check_uid_availability(self.metagraph, i, self.config.neuron.vpermit_tao_limit)
-                
+                check_uid_availability(
+                    self.metagraph, i, self.config.neuron.vpermit_tao_limit
+                )
+
         # inference client
-        # --- Block 
+        # --- Block
+        self.app = FastAPI()
+        self.app.router.add_api_route(
+            "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
+        )
+        self.fast_config = uvicorn.Config(
+            self.app, host="0.0.0.0", port=self.config.neuron.proxy.port, loop='asyncio'
+        )
+        self.fast_server = FastAPIThreadedServer(config=self.fast_config)
+        self.fast_server.start()
+
         self.last_interval_block = self.get_last_adjustment_block()
         self.adjustment_interval = self.get_adjustment_interval()
         self.next_adjustment_block = self.last_interval_block + self.adjustment_interval
-
-
 
     async def forward(self):
         """
@@ -64,17 +107,19 @@ class Verifier(BaseVerifierNeuron):
         - Updating the scores
         """
         print("forward()")
-    
+        if self.config.neuron.api_only:
+            bt.logging.info("Running in API only mode, sleeping for 12 seconds.")
+            time.sleep(12)
+            return
         return await forward(self)
 
     def __enter__(self):
-        
         if self.config.no_background_thread:
             bt.logging.warning("Running verifier in main thread.")
             self.run()
         else:
             self.run_in_background_thread()
-    
+
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -96,6 +141,7 @@ class Verifier(BaseVerifierNeuron):
             self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
+
 
 # The main function parses the configuration and runs the verifier.
 if __name__ == "__main__":

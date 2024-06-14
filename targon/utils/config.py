@@ -21,7 +21,6 @@ import os
 import torch
 import argparse
 import bittensor as bt
-from loguru import logger
 from typing import List
 
 #TODO: enable 4bit and 8bit precision llms via config
@@ -44,19 +43,7 @@ def check_config(cls, config: "bt.Config"):
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
-    if not config.neuron.dont_save_events:
-        # Add custom event logger for the events.
-        logger.level("EVENTS", no=38, icon="📝")
-        logger.add(
-            os.path.join(config.neuron.full_path, "events.log"),
-            rotation=config.neuron.events_retention_size,
-            serialize=True,
-            enqueue=True,
-            backtrace=False,
-            diagnose=False,
-            level="EVENTS",
-            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
-        )
+
 
 
 def add_args(cls, parser):
@@ -128,6 +115,13 @@ def add_args(cls, parser):
         type=str,
         help="The branch to auto-update from.",
         default="main",
+    )
+
+    parser.add_argument(
+        "--neuron.proxy.port",
+        type=int,
+        help="The port to serve the proxy on.",
+        default=8001,
     )
 
 
@@ -231,6 +225,13 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.api_only",
+        action="store_true",
+        help="If set, the verifier will only serve an API.",
+        default=False,
+    )
+
+    parser.add_argument(
         "--neuron.challenge_probability",
         type=float,
         help="The probability of challenging a prover.",
@@ -241,14 +242,14 @@ def add_verifier_args(cls, parser):
         "--neuron.sample_size",
         type=int,
         help="The number of provers to query in a single step.",
-        default=48,
+        default=192,
     )
 
     parser.add_argument(
         "--neuron.moving_average_alpha",
         type=float,
         help="Moving average alpha parameter, how much to add of the new observation.",
-        default=0.05,
+        default=0.1,
     )
 
     parser.add_argument(

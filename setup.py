@@ -20,5 +20,5 @@ setup(
         'License :: OSI Approved :: MIT License',  # Choose the appropriate license
         'Operating System :: OS Independent',  # Your package's OS compatibility
     ],
-    python_requires='>=3.9<=3.11',  # Minimum version requirement of the Python for your package
+    python_requires='>=3.9',  # Minimum version requirement of the Python for your package
 )

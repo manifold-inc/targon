@@ -17,20 +17,61 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
+import math
 import torch
 import random
 import typing
-import asyncio
-import bittensor as bt
 import string
+import asyncio
+import plotext as plt
+import bittensor as bt
 
 from targon import protocol
-from targon.verifier.event import EventSchema
 from targon.utils.prompt import create_prompt
 from targon.constants import CHALLENGE_FAILURE_REWARD
 from targon.verifier.uids import get_random_uids
-from targon.verifier.reward import hashing_function, apply_reward_scores
-from targon.verifier.bonding import update_statistics, get_tier_factor
+from targon.verifier.reward import hashing_function
+from targon.verifier.state import EventSchema
+
+
+# get highest incentive axons from metagraph
+def select_highest_n_peers(n: int, metagraph=None, return_all=False):
+    """
+    Selects the highest incentive peers from the metagraph.
+
+    Parameters:
+        n (int): number of top peers to return.
+
+    Returns:
+        int: uid of the selected peer from unique highest IPs.
+    """
+    assert metagraph is not None, "metagraph is None"
+    # Get the top n indices based on incentive
+    indices = torch.topk(metagraph.incentive, n).indices
+
+    # Get the corresponding uids
+    uids_with_highest_incentives = metagraph.uids[indices].tolist()
+
+
+    if return_all:
+        return uids_with_highest_incentives
+    
+    # get the axon of the uids
+    axons = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
+
+    # get the ip from the axons
+    ips = [axon.ip for axon in axons]
+
+    # get the coldkey from the axons
+    coldkeys = [axon.coldkey for axon in axons]
+
+    # Filter out the uids and ips whose coldkeys are in the blacklist
+    uids_with_highest_incentives, ips = zip(*[(uid, ip) for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)])
+    # axons_with_highest_incentives = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
+    # unique_ip_to_uid = {ip: uid for ip, uid in zip(ips, uids_with_highest_incentives)}
+    # uids = list(unique_ip_to_uid.values())
+    return uids_with_highest_incentives
+
 
 
 def _filter_verified_responses(uids, responses):
@@ -70,8 +111,8 @@ def check_tokens(self, prover_output, ground_truth_output):
     prover_tokens = prover_tokenized["input_ids"]
     ground_truth_tokens = ground_truth_tokenized["input_ids"]
 
-    bt.logging.info(prover_tokens)
-    bt.logging.info(ground_truth_tokens)
+    bt.logging.trace(prover_tokens)
+    bt.logging.trace(ground_truth_tokens)
 
     # convert to list
     prover_tokens = prover_tokens[0].tolist()
@@ -88,7 +129,7 @@ def check_tokens(self, prover_output, ground_truth_output):
         prover_tokens
     )
 
-    bt.logging.info(score)
+    bt.logging.trace(score)
     return score
 
 
@@ -108,20 +149,45 @@ def verify(self, prover_output, ground_truth_output, prover_ss58):
     prover_output_hash = hashing_function(prover_output)
     ground_truth_hash = hashing_function(ground_truth_output)
 
-    if not prover_output_hash == ground_truth_hash:
-        bt.logging.debug(
-            f"Output hash {prover_output_hash} does not match ground truth hash {ground_truth_hash}"
-        )
+    return check_tokens(self, prover_output, ground_truth_output)
 
-        # check how t
+async def api_chat_completions(
+    self,
+    prompt: str,
+    sampling_params: protocol.InferenceSamplingParams,
+) -> typing.Tuple[bool, protocol.Inference]:
+    """
+    Handles a inference sent to a prover and verifies the response.
 
-        # return asyncio.run(embedding_check( self, prover_output, ground_truth_output, prover_ss58 ))
-        return check_tokens(self, prover_output, ground_truth_output)
-
-    bt.logging.debug(
-        f"Output hash {prover_output_hash} matches ground truth hash {ground_truth_hash}"
+    Returns:
+    - Tuple[bool, protocol.Inference]: A tuple containing the verification result and the inference.
+    """
+    synapse = protocol.Inference(
+        sources=[],
+        query=prompt,
+        sampling_params=sampling_params,
     )
-    return True
+
+    start_time = time.time()
+    token_count = 0
+    uid = select_highest_n_peers(1)[0]
+    async for token in await self.dendrite(
+        self.metagraph.axons[uid],
+        synapse,
+        deserialize=False,
+        timeout=self.config.neuron.timeout,
+        streaming=True,
+    ):
+        if isinstance(token, list):
+            yield token[0]
+        elif isinstance(token, str):
+            yield token
+        token_count += 1
+    
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    tokens_per_second = token_count / elapsed_time
+    bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
 
 
 async def handle_inference(
@@ -140,11 +206,6 @@ async def handle_inference(
     Returns:
     - Tuple[bool, protocol.Inference]: A tuple containing the verification result and the inference.
     """
-
-    hotkey = self.metagraph.hotkeys[uid]
-    keys = await self.database.hkeys(f"hotkey:{hotkey}")
-    bt.logging.trace(f"{len(keys)} stats pulled for hotkey {hotkey}")
-
     if not self.config.mock:
         synapse = protocol.Inference(
             sources=[private_input["sources"]],
@@ -154,37 +215,57 @@ async def handle_inference(
 
         response_tokens = []
 
-        async for token in await self.dendrite(
-            self.metagraph.axons[uid],
-            synapse,
-            deserialize=False,
-            timeout=self.config.neuron.timeout,
-            streaming=True,
-        ):
-            if isinstance(token, list):
-                response_tokens.append(token[0])
-            elif isinstance(token, str):
-                response_tokens.append(token)
-            else:
-                output_synapse = token
+        try:
+            start_time = time.time()
+            token_count = 0
+            async for token in await self.dendrite(
+                self.metagraph.axons[uid],
+                synapse,
+                deserialize=False,
+                timeout=self.config.neuron.timeout,
+                streaming=True,
+            ):
+                if isinstance(token, list):
+                    response_tokens.append(token[0])
+                    token_count += 1
+                elif isinstance(token, str):
+                    response_tokens.append(token)
+                    token_count += 1
+                else:
+                    output_synapse = token
+            
+            end_time = time.time()
+            output = "".join(response_tokens)
 
-        output = "".join(response_tokens)
+
+            elapsed_time = end_time - start_time
+            tokens_per_second = token_count / (elapsed_time if elapsed_time > 0 else 1000)
+            bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
+
+        except Exception as e:
+            bt.logging.error(f"Error in handle_inference: {e}")
+            return False, (synapse, uid, 0)
 
         # output_encoded = output.encode('utf-8')
         if output is not None:
+            start_time = time.time()
             output_normalized = output.replace("\r\n", "\n")
             output_cleaned = " ".join(output_normalized.split())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            bt.logging.info(f"Output normalization rate: {elapsed_time} seconds")
+            bt.logging.info(f"Output normalization rate: {tokens_per_second} tokens/second")
 
             bt.logging.debug("output", output_cleaned)
-            verified = verify(
+            score = verify(
                 self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid]
             )
 
         else:
-            verified = False
+            score = 0
 
-        output_dict = (output_synapse, uid)
-        return verified, output_dict
+        output_dict = (output_synapse, uid, tokens_per_second)
+        return score, output_dict
 
     else:
         prompt = create_prompt(private_input)
@@ -197,6 +278,8 @@ async def handle_inference(
 
         response_tokens = []
 
+        start_time = time.time()
+        token_count = 0
         async for token in await self.client.text_generation(
             prompt,
             best_of=sampling_params.best_of,
@@ -214,6 +297,12 @@ async def handle_inference(
             stream=True,
         ):
             response_tokens.append(token)
+            token_count += 1
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        tokens_per_second = token_count / elapsed_time
+
 
         response = "".join(response_tokens)
 
@@ -223,7 +312,7 @@ async def handle_inference(
             self, response, ground_truth_output, self.metagraph.hotkeys[uid]
         )
 
-        output_dict = (synapse, uid)
+        output_dict = (synapse, uid, tokens_per_second)
         return verified, output_dict
 
 
@@ -254,7 +343,6 @@ async def inference_data(self):
         return tensor
 
     # --- Create the event
-
     event = EventSchema(
         task_name="inference",
         successful=[],
@@ -271,6 +359,7 @@ async def inference_data(self):
         moving_averaged_scores=None,
     )
 
+
     bt.logging.info("Generating challenge data")
     challenge_data = {
         "query": "".join(random.choice(string.ascii_letters) for _ in range(12)),
@@ -285,6 +374,8 @@ async def inference_data(self):
 
     ground_truth_tokens = []
 
+
+    start_time = time.time()
     async for token in await self.client.text_generation(
         prompt,
         best_of=sampling_params.best_of,
@@ -302,6 +393,8 @@ async def inference_data(self):
         stream=True,
     ):
         ground_truth_tokens.append(token)
+    
+
 
     ground_truth_output = "".join(ground_truth_tokens)
 
@@ -310,12 +403,12 @@ async def inference_data(self):
     ground_truth_output_cleaned = " ".join(ground_truth_output_normalized.split())
 
     # --- Get the uids to query
-    start_time = time.time()
     tasks = []
     # uids = await get_tiered_uids( self, k=self.config.neuron.sample_size )
     uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
     bt.logging.debug(f"inference uids {uids}")
+    
     responses = []
     for uid in uids:
         tasks.append(
@@ -331,78 +424,125 @@ async def inference_data(self):
         )
     responses = await asyncio.gather(*tasks)
 
-    rewards: torch.FloatTensor = torch.zeros(len(responses), dtype=torch.float32).to(
-        self.device
-    )
-
-    remove_reward_idxs = []
-    for i, (verified, (response, uid)) in enumerate(responses):
-        bt.logging.trace(
-            f"Inference iteration {i} uid {uid} response {str(response.completion if not self.config.mock else response)}"
-        )
-
-        hotkey = self.metagraph.hotkeys[uid]
-
-        # Update the inference statistics
-        await update_statistics(
-            ss58_address=hotkey,
-            success=verified,
-            task_type="inference",
-            database=self.database,
-            current_block=self.block,
-        )
-
-        # Apply reward for this inference
-        tier_factor = await get_tier_factor(hotkey, self.database)
-        rewards[i] = 1.0 * tier_factor if verified else CHALLENGE_FAILURE_REWARD
-
-        if self.config.mock:
-            event.uids.append(uid)
-            event.successful.append(verified)
-            event.completion_times.append(0.0)
-            event.task_status_messages.append("mock")
-            event.task_status_codes.append(0)
-            event.rewards.append(rewards[i].item())
+    # Create a list of tuples (uid, tokens_per_second) for sorting
+    uid_tokens_pairs = [(uid, tokens_per_second if verified >= 0.6 else 1e-7) for verified, (_, uid, tokens_per_second) in responses]
+    # Initialize or update moving averages dictionary
+    if not hasattr(self, 'moving_averages'):
+        self.moving_averages = {uid: 0 for uid, _ in uid_tokens_pairs}
+    
+    for uid, tokens_per_second in uid_tokens_pairs:
+        if uid in self.moving_averages:
+            self.moving_averages[uid] = self.config.neuron.moving_average_alpha * tokens_per_second + (1 - self.config.neuron.moving_average_alpha) * self.moving_averages[uid]
         else:
-            event.uids.append(uid)
-            event.successful.append(verified)
-            event.completion_times.append(response.dendrite.process_time)
-            event.task_status_messages.append(response.dendrite.status_message)
-            event.task_status_codes.append(response.dendrite.status_code)
-            event.rewards.append(rewards[i].item())
+            self.moving_averages[uid] = tokens_per_second
 
-    bt.logging.debug(
-        f"inference_data() rewards: {rewards} | uids {uids} hotkeys {[self.metagraph.hotkeys[uid] for uid in uids]}"
+    # Sort the list by tokens_per_second in descending order
+    sorted_uid_tokens_pairs = sorted(uid_tokens_pairs, key=lambda x: x[1])
+    uids_sorted = [uid for uid, _ in sorted_uid_tokens_pairs]
+
+    # Extract tokens_per_second for plotting
+    tokens_per_second_sorted = [tokens_per_second for _, tokens_per_second in sorted_uid_tokens_pairs]
+
+    # rewards: torch.FloatTensor = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(
+    #     self.device
+    # )
+
+    # Calculate rewards based on the difference between the highest and lowest tokens_per_second using moving averages
+    self.max_tokens_per_second = max(tokens_per_second_sorted) if self.max_tokens_per_second < max(tokens_per_second_sorted) else self.max_tokens_per_second
+    self.min_tokens_per_second = min(tokens_per_second_sorted) if self.min_tokens_per_second > min(tokens_per_second_sorted) else self.min_tokens_per_second
+    self.range_tokens_per_second = self.max_tokens_per_second - self.min_tokens_per_second
+    # Calculate the current average tokens per second
+    current_average_tokens_per_second = sum(tokens_per_second_sorted) / len(tokens_per_second_sorted)
+    # Update the moving average for tokens per second
+    self.average_tokens_per_second = self.config.neuron.moving_average_alpha * current_average_tokens_per_second + (1 - self.config.neuron.moving_average_alpha) * self.average_tokens_per_second
+    # Initialize moving average for rewards
+
+    for i, (uid, tokens_per_second) in enumerate(sorted_uid_tokens_pairs):
+        if self.range_tokens_per_second > 0:
+            normalized_difference = (tokens_per_second - self.average_tokens_per_second) / self.range_tokens_per_second
+            reward_multiplier = math.exp(normalized_difference * 10)  # Scale the difference to enhance reward disparity
+        else:
+            reward_multiplier = 1  # Avoid division by zero if all tokens_per_second are the same
+        self.rewards[uid] = reward_multiplier * tokens_per_second
+        # Update moving average for rewards
+        self.scores[uid] = self.config.neuron.moving_average_alpha * self.rewards[uid] + (1 - self.config.neuron.moving_average_alpha) * self.scores[uid]
+
+    # Print the highest UID and its corresponding tokens_per_second and reward score
+    # Find the highest UID and its corresponding tokens_per_second and reward score
+    highest_uid = max(range(len(self.rewards)), key=lambda uid: self.rewards[uid])
+    # Safely retrieve the tokens_per_second for the highest_uid
+    highest_tokens_per_second = next((tps for uid, tps in uid_tokens_pairs if uid == highest_uid), None)
+
+    if highest_tokens_per_second is None:
+        bt.logging.error(f"No tokens per second found for highest UID: {highest_uid}")
+        # Handle the case where no matching UID is found
+    else:
+        highest_reward = self.rewards.tolist()[highest_uid]
+
+        print(f"Highest UID: {highest_uid}, Tokens/Second: {highest_tokens_per_second}, Reward: {highest_reward}")
+        print(f"Highest UID: {highest_uid}, Tokens/Second: {highest_tokens_per_second}, Reward: {highest_reward}")
+        print(f"Average Tokens/Second: {self.average_tokens_per_second}")
+    print(self.scores)
+    # Plot moving average of rewards
+    y = plt.scatter(uids_sorted, self.scores.numpy(), color='red')  # Reduced marker size for a smaller plot
+    plt.title('Sorted Tokens per Second')
+    plt.xlabel('UID (sorted)')
+    plt.ylabel('Reward Score')
+    plt.plotsize(100, 20)
+    plt.show()
+    plt.clf()  # Clear the plot after showing
+    mock_weights_measurments(self)
+
+
+
+
+def mock_weights_measurments(self):
+    # if torch.isnan(self.scores).any():
+    #     bt.logging.warning(
+    #         "Scores contain NaN values. This may be due to a lack of responses from provers, or a bug in your reward functions."
+    #     )
+
+
+    # Calculate the average reward for each uid across non-zero values.
+    # Replace any NaN values with 0.
+    raw_weights = torch.nn.functional.normalize(
+        self.scores - self.scores.mean(dim=0), p=1, dim=0
     )
 
-    event.step_length = time.time() - start_time
 
-    if len(responses) == 0:
-        bt.logging.debug(f"Received zero hashes from miners, returning event early.")
-        return event
-
-    # Remove UIDs without hashes (don't punish new miners that have no inferences yet)
-    uids, responses = _filter_verified_responses(uids, responses)
-    bt.logging.debug(
-        f"inference_data() full rewards: {rewards} | uids {uids} | uids to remove {remove_reward_idxs}"
+    # bt.logging.debug("raw_weights", raw_weights)
+    # bt.logging.debug("raw_weight_uids", self.metagraph.uids)
+    # # Process the raw weights to final_weights via subtensor limitations.
+    (
+        processed_weight_uids,
+        processed_weights,
+    ) = bt.utils.weight_utils.process_weights_for_netuid(
+        uids=self.metagraph.uids,
+        weights=raw_weights,
+        netuid=self.config.netuid,
+        subtensor=self.subtensor,
+        metagraph=self.metagraph,
     )
-    rewards = remove_indices_from_tensor(rewards, remove_reward_idxs)
-    bt.logging.debug(f"inference_data() kept rewards: {rewards} | uids {uids}")
+    # bt.logging.debug("processed_weights", processed_weights)
+    # bt.logging.debug("processed_weight_uids", processed_weight_uids)
 
-    bt.logging.trace("Applying inference rewards")
-    apply_reward_scores(
-        self,
-        uids,
-        responses,
-        rewards,
-        timeout=self.config.neuron.timeout,
-        mode=self.config.neuron.reward_mode,
-    )
+    # # Convert to uint16 weights and uids.
+    # (
+    #     uint_uids,
+    #     uint_weights,
+    # ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
+    #     uids=processed_weight_uids, weights=processed_weights
+    # )
+    # bt.logging.debug("uint_weights", uint_weights)
+    # bt.logging.debug("uint_uids", uint_uids)
 
-    # Determine the best UID based on rewards
-    if event.rewards:
-        best_index = max(range(len(event.rewards)), key=event.rewards.__getitem__)
-        event.best_uid = event.uids[best_index]
-        event.best_hotkey = self.metagraph.hotkeys[event.best_uid]
+    # Plotting the graph of processed_weights against processed_weight_uids
+    plt.plotsize(100, 20)
+    plt.scatter(processed_weight_uids, processed_weights, color='red')
+    plt.title('Processed Weights vs UIDs')
+    plt.xlabel('UIDs')
+    plt.ylabel('Processed Weights')
+    plt.grid(True)
+    plt.show()
 
-    return event
+
