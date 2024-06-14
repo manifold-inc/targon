@@ -484,7 +484,7 @@ async def inference_data(self):
         print(f"Average Tokens/Second: {self.average_tokens_per_second}")
     print(self.scores)
     # Plot moving average of rewards
-    y = plt.scatter(uids_sorted, self.scores.numpy(), color='red')  # Reduced marker size for a smaller plot
+    y = plt.scatter(uids_sorted, self.scores.to('cpu').numpy(), color='red')  # Reduced marker size for a smaller plot
     plt.title('Sorted Tokens per Second')
     plt.xlabel('UID (sorted)')
     plt.ylabel('Reward Score')
