@@ -17,12 +17,14 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
+import math
 import torch
 import random
 import typing
-import asyncio
-import bittensor as bt
 import string
+import asyncio
+import plotext as plt
+import bittensor as bt
 
 from targon import protocol
 from targon.utils.prompt import create_prompt
@@ -50,9 +52,10 @@ def select_highest_n_peers(n: int, metagraph=None, return_all=False):
     # Get the corresponding uids
     uids_with_highest_incentives = metagraph.uids[indices].tolist()
 
+
     if return_all:
         return uids_with_highest_incentives
-
+    
     # get the axon of the uids
     axons = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
 
@@ -63,16 +66,12 @@ def select_highest_n_peers(n: int, metagraph=None, return_all=False):
     coldkeys = [axon.coldkey for axon in axons]
 
     # Filter out the uids and ips whose coldkeys are in the blacklist
-    uids_with_highest_incentives, ips = zip(
-        *[
-            (uid, ip)
-            for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)
-        ]
-    )
+    uids_with_highest_incentives, ips = zip(*[(uid, ip) for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)])
     # axons_with_highest_incentives = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
     # unique_ip_to_uid = {ip: uid for ip, uid in zip(ips, uids_with_highest_incentives)}
     # uids = list(unique_ip_to_uid.values())
     return uids_with_highest_incentives
+
 
 
 def _filter_verified_responses(uids, responses):
@@ -165,7 +164,6 @@ def verify(self, prover_output, ground_truth_output, prover_ss58):
     )
     return True
 
-
 async def api_chat_completions(
     self,
     prompt: str,
@@ -185,23 +183,20 @@ async def api_chat_completions(
 
     start_time = time.time()
     token_count = 0
-    try:
-        uid = select_highest_n_peers(10, self.metagraph)
-        uid = random.choice(uid)
-        async for token in await self.dendrite.forward(
-            self.metagraph.axons[uid],
-            synapse,
-            deserialize=False,
-            streaming=True,
-        ):
-            if isinstance(token, list):
-                yield token[0]
-            elif isinstance(token, str):
-                yield token
-            token_count += 1
-    except Exception as e:
-        print(e)
-
+    uid = select_highest_n_peers(1)[0]
+    async for token in await self.dendrite(
+        self.metagraph.axons[uid],
+        synapse,
+        deserialize=False,
+        timeout=self.config.neuron.timeout,
+        streaming=True,
+    ):
+        if isinstance(token, list):
+            yield token[0]
+        elif isinstance(token, str):
+            yield token
+        token_count += 1
+    
     end_time = time.time()
     elapsed_time = end_time - start_time
     tokens_per_second = token_count / elapsed_time
@@ -233,30 +228,36 @@ async def handle_inference(
 
         response_tokens = []
 
-        start_time = time.time()
-        token_count = 0
-        async for token in await self.dendrite(
-            self.metagraph.axons[uid],
-            synapse,
-            deserialize=False,
-            timeout=self.config.neuron.timeout,
-            streaming=True,
-        ):
-            if isinstance(token, list):
-                response_tokens.append(token[0])
-                token_count += 1
-            elif isinstance(token, str):
-                response_tokens.append(token)
-                token_count += 1
-            else:
-                output_synapse = token
+        try:
+            start_time = time.time()
+            token_count = 0
+            async for token in await self.dendrite(
+                self.metagraph.axons[uid],
+                synapse,
+                deserialize=False,
+                timeout=self.config.neuron.timeout,
+                streaming=True,
+            ):
+                if isinstance(token, list):
+                    response_tokens.append(token[0])
+                    token_count += 1
+                elif isinstance(token, str):
+                    response_tokens.append(token)
+                    token_count += 1
+                else:
+                    output_synapse = token
+            
+            end_time = time.time()
+            output = "".join(response_tokens)
 
-        end_time = time.time()
-        output = "".join(response_tokens)
 
-        elapsed_time = end_time - start_time
-        tokens_per_second = len(token_count) / elapsed_time
-        bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
+            elapsed_time = end_time - start_time
+            tokens_per_second = token_count / (elapsed_time if elapsed_time > 0 else 1000)
+            bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
+
+        except Exception as e:
+            bt.logging.error(f"Error in handle_inference: {e}")
+            return False, (synapse, uid, 0)
 
         # output_encoded = output.encode('utf-8')
         if output is not None:
@@ -266,10 +267,7 @@ async def handle_inference(
             end_time = time.time()
             elapsed_time = end_time - start_time
             bt.logging.info(f"Output normalization rate: {elapsed_time} seconds")
-            tokens_per_second = len(output_cleaned) / elapsed_time
-            bt.logging.info(
-                f"Output normalization rate: {tokens_per_second} tokens/second"
-            )
+            bt.logging.info(f"Output normalization rate: {tokens_per_second} tokens/second")
 
             bt.logging.debug("output", output_cleaned)
             verified = verify(
@@ -374,6 +372,7 @@ async def inference_data(self):
         moving_averaged_scores=None,
     )
 
+
     bt.logging.info("Generating challenge data")
     challenge_data = {
         "query": "".join(random.choice(string.ascii_letters) for _ in range(12)),
@@ -387,6 +386,7 @@ async def inference_data(self):
     sampling_params = protocol.InferenceSamplingParams(seed=seed)
 
     ground_truth_tokens = []
+
 
     start_time = time.time()
     async for token in await self.client.text_generation(
@@ -406,6 +406,8 @@ async def inference_data(self):
         stream=True,
     ):
         ground_truth_tokens.append(token)
+    
+
 
     ground_truth_output = "".join(ground_truth_tokens)
 
@@ -419,7 +421,7 @@ async def inference_data(self):
     uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
     bt.logging.debug(f"inference uids {uids}")
-
+    
     responses = []
     for uid in uids:
         tasks.append(
@@ -435,17 +437,78 @@ async def inference_data(self):
         )
     responses = await asyncio.gather(*tasks)
 
+    # Create a list of tuples (uid, tokens_per_second) for sorting
+    uid_tokens_pairs = [(uid, tokens_per_second) for _, (_, uid, tokens_per_second) in responses]
+
+    # Initialize or update moving averages dictionary
+    if not hasattr(self, 'moving_averages'):
+        self.moving_averages = {uid: 0 for uid, _ in uid_tokens_pairs}
+    
+    alpha = 0.1  # Smoothing factor for moving average, can be adjusted
+    for uid, tokens_per_second in uid_tokens_pairs:
+        if uid in self.moving_averages:
+            self.moving_averages[uid] = alpha * tokens_per_second + (1 - alpha) * self.moving_averages[uid]
+        else:
+            self.moving_averages[uid] = tokens_per_second
+
+    # Sort the list by tokens_per_second in descending order
+    sorted_uid_tokens_pairs = sorted(uid_tokens_pairs, key=lambda x: x[1])
+
+    # Extract tokens_per_second for plotting
+    tokens_per_second_sorted = [tokens_per_second for _, tokens_per_second in sorted_uid_tokens_pairs]
+
+    # Initialize or update moving averages for tokens statistics
+    if not hasattr(self, 'moving_tokens_stats'):
+        self.moving_tokens_stats = {
+            'max_tokens': 0,
+            'min_tokens': float('inf'),
+            'range_tokens': 0,
+            'avg_tokens': 0
+        }
+
+    current_max_tokens = max(tokens_per_second_sorted)
+    current_min_tokens = min(tokens_per_second_sorted)
+    current_range_tokens = current_max_tokens - current_min_tokens
+    current_avg_tokens = sum(tokens_per_second_sorted) / len(tokens_per_second_sorted)
+
+    # Update moving averages for tokens statistics
+    self.moving_tokens_stats['max_tokens'] = alpha * current_max_tokens + (1 - alpha) * self.moving_tokens_stats['max_tokens']
+    self.moving_tokens_stats['min_tokens'] = alpha * current_min_tokens + (1 - alpha) * self.moving_tokens_stats['min_tokens']
+    self.moving_tokens_stats['range_tokens'] = alpha * current_range_tokens + (1 - alpha) * self.moving_tokens_stats['range_tokens']
+    self.moving_tokens_stats['avg_tokens'] = alpha * current_avg_tokens + (1 - alpha) * self.moving_tokens_stats['avg_tokens']
+
     rewards: torch.FloatTensor = torch.zeros(len(responses), dtype=torch.float32).to(
         self.device
     )
 
-    remove_reward_idxs = []
-    for i, (verified, (response, uid, tokens_per_second)) in enumerate(responses):
-        bt.logging.trace(
-            f"Inference iteration {i} uid {uid} response {str(response.completion if not self.config.mock else response)}"
-        )
+    # Calculate rewards based on the difference between the highest and lowest tokens_per_second
+    if self.moving_tokens_stats['range_tokens'] > 0:
+        for i, (_, tokens_per_second) in enumerate(sorted_uid_tokens_pairs):
+            normalized_difference = (tokens_per_second - self.moving_tokens_stats['avg_tokens']) / self.moving_tokens_stats['range_tokens']
+            reward_multiplier = math.exp(normalized_difference * 10)  # Scale the difference to enhance reward disparity
+            rewards[i] = reward_multiplier * tokens_per_second
+    else:
+        rewards.fill_(1)  # Avoid division by zero if all tokens_per_second are the same
 
-        hotkey = self.metagraph.hotkeys[uid]
-    
-    bt.logging.info("event", event)
-    return event
+    # Initialize or update moving average for rewards
+    if not hasattr(self, 'moving_rewards'):
+        self.moving_rewards = torch.zeros(len(256), dtype=torch.float32).to(self.device)
+
+    for i, reward in enumerate(rewards):
+        self.moving_rewards[i] = alpha * reward + (1 - alpha) * self.moving_rewards[i]
+
+    # Print the highest UID and its corresponding tokens_per_second and reward score
+    highest_uid, highest_tokens_per_second = sorted_uid_tokens_pairs[-1]
+    highest_reward = rewards[0]
+    print(f"Highest UID: {highest_uid}, Tokens/Second: {highest_tokens_per_second}, Reward: {highest_reward}")
+
+    # Plot moving average of rewards
+    y = plt.scatter(self.moving_rewards.numpy(), color='red')  # Reduced marker size for a smaller plot
+    plt.title('Sorted Tokens per Second')
+    plt.xlabel('UID (sorted)')
+    plt.ylabel('Reward Score')
+    plt.plotsize(100, 20)
+    plt.show()
+    plt.clf()  # Clear the plot after showing
+
+

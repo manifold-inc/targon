@@ -20,7 +20,6 @@
 import threading
 import bittensor as bt
 
-from loguru import logger
 from dataclasses import dataclass
 from typing import List, Optional, Dict
 from substrateinterface import SubstrateInterface
@@ -96,7 +95,3 @@ class SimpleBlockSubscriber:
         print("Block subscription started in background thread.")
 
 
-def log_event(self, event):
-    # Log event
-    if not self.config.neuron.dont_save_events:
-        logger.log("EVENTS", "events", **event.__dict__)

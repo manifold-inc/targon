@@ -5,6 +5,8 @@ TARGON (Bittensor Subnet 4) is a redundant deterministic verification mechanism 
 
 NOTICE: Using this software, you must agree to the Terms and Agreements provided in the terms and conditions document. By downloading and running this software, you implicitly agree to these terms and conditions.
 
+> v1.9.9 - removed tier system, implemented exponential tok/s reward scaling
+
 > v1.0.6 - Runpod is now supported 🎉. Check out the runpod docs in docs/runpod/verifier.md and docs/runpod/prover.md for more information.
 
 > ~~v1.0.0 - Runpod is not currently supported on this version of TARGON for verifiers. An easy alternative can be found in the [Running on TensorDock](#running-on-tensordock) section.~~
@@ -27,13 +29,10 @@ Currently supporting python>=3.9,<3.11.
    - [Role of a Verifier](#role-of-a-verifier)
 1. [Features of TARGON](#features-of-targon)
     - [Challenge Request](#challenge-request)
-    - [Inference Request ](#inference-request))
+    - [Inference Request ](#inference-request)
 1. [How to Run TARGON](#how-to-run-targon)
     - [Run a Prover](#run-a-prover)
     - [Run a Verifier](#run-a-verifier)
-1. [Reward System](#reward-system)
-    - [Tier System](#tier-system)
-    - [Promotion/Relegation](#promotion/relegation)
 1. [How to Contribute](#how-to-contribute)
 
 
@@ -427,94 +426,6 @@ Refer to the code here:
 replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you perfer.
 
 </details>
-
-# Reward System
-Inspired by [FileTAO](https://github.com/ifrit98/storage-subnet)'s reputation system, the reward system is based on the complete correct answer being responded consistently over time. If a ground truth hash and the prover output hash are equal, then the reward is performing these challenges and inference requests over time will result in a multiplication of your reward based off the tier.
-
-## Tier System
-The tier system classifies miners into five distinct categories, each with specific requirements and request limits. These tiers are designed to reward miners based on their performance, reliability, and the total volume of requests they can fulfill.
-
-
-
-## New Tier System
-The updated tier system introduces a refined classification for miners, with expanded categories to more precisely reward performance, reliability, and the total volume of requests they can handle. Each tier now includes not only the request success rate and request limits but also incorporates a reward factor and a similarity threshold for more nuanced performance assessment.
-
-**V1.1.1 Tiers:**
-
-**1.) Challenger Tier** 
-- **Success Rate:** 98%
-- **Request Limit:** 25,000 
-- **Reward Factor:** 1.0
-- **Similarity Threshold:** 0.95
-
-**2.) Grandmaster Tier** 
-- **Success Rate:** 92%
-- **Request Limit:** 22,500 
-- **Reward Factor:** 0.980
-- **Similarity Threshold:** 0.92
-
-**3.) Master Tier** 
-- **Success Rate:** 88%
-- **Request Limit:** 20,000 
-- **Reward Factor:** 0.960
-- **Similarity Threshold:** 0.88
-
-**4.) Jade Tier** 
-- **Success Rate:** 84%
-- **Request Limit:** 17,500 
-- **Reward Factor:** 0.940
-- **Similarity Threshold:** 0.84
-
-**5.) Ruby Tier** 
-- **Success Rate:** 82%
-- **Request Limit:** 15,000 
-- **Reward Factor:** 0.920
-- **Similarity Threshold:** 0.82
-
-**6.) Emerald Tier** 
-- **Success Rate:** 80%
-- **Request Limit:** 12,500 
-- **Reward Factor:** 0.900
-- **Similarity Threshold:** 0.80
-
-**7.) Diamond Tier** 
-- **Success Rate:** 78%
-- **Request Limit:** 10,000 
-- **Reward Factor:** 0.888
-- **Similarity Threshold:** 0.78
-
-**8.) Platinum Tier** 
-- **Success Rate:** 76%
-- **Request Limit:** 7,500 
-- **Reward Factor:** 0.822
-- **Similarity Threshold:** 0.76
-
-**9.) Gold Tier** 
-- **Success Rate:** 74%
-- **Request Limit:** 5,000 
-- **Reward Factor:** 0.777
-- **Similarity Threshold:** 0.74
-
-**10.) Silver Tier** 
-- **Success Rate:** 72%
-- **Request Limit:** 1,000 
-- **Reward Factor:** 0.666
-- **Similarity Threshold:** 0.72
-
-**11.) Bronze Tier** 
-- **Success Rate:** 70%
-- **Request Limit:** 500 
-- **Reward Factor:** 0.555
-- **Similarity Threshold:** 0.70
-
-## Promotion/Relegation
-Miners will be promoted or relegated based on their performance over the last 360 blocks. The promotion/relegation computation will be done every 360 blocks. In order to be promoted to a tier, you must satisfy the tier success rate requirements and the minimum successful requests required. In order to be relegated to a tier, you must fail to satisfy the tier success rate requirements, leading to a demotion to the lower tier. 
-
-If you experience downtime as a challenger UID, you will be demoted down, however you will not have to satisfy the minimum successful requests required. You will be instantly promoted back to the tier if you satisfy the tier success rate requirements.
-
-## Periodic Statistics Rollover
-Statistics for inference_attempts/attempts, challenge_attempts/successes are reset every interval, while the total_successes are carried over for accurate tier computation. This "sliding window" of the previous 360 blocks of N successes vs M attempts effectively resets the N / Mratio. This facilitates a less punishing tier calculation for early failures that then have to be "outpaced", while simultaneously discouraging grandfathering in of older miners who were able to succeed early and cement their status in a higher tier. The net effect is greater mobility across the tiers, keeping the network competitive while incentivizing reliability and consistency.
-
 
 
 # How to Contribute
