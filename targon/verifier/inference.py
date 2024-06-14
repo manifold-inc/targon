@@ -111,8 +111,8 @@ def check_tokens(self, prover_output, ground_truth_output):
     prover_tokens = prover_tokenized["input_ids"]
     ground_truth_tokens = ground_truth_tokenized["input_ids"]
 
-    bt.logging.info(prover_tokens)
-    bt.logging.info(ground_truth_tokens)
+    bt.logging.trace(prover_tokens)
+    bt.logging.trace(ground_truth_tokens)
 
     # convert to list
     prover_tokens = prover_tokens[0].tolist()
@@ -129,7 +129,7 @@ def check_tokens(self, prover_output, ground_truth_output):
         prover_tokens
     )
 
-    bt.logging.info(score)
+    bt.logging.trace(score)
     return score
 
 
@@ -149,20 +149,7 @@ def verify(self, prover_output, ground_truth_output, prover_ss58):
     prover_output_hash = hashing_function(prover_output)
     ground_truth_hash = hashing_function(ground_truth_output)
 
-    if not prover_output_hash == ground_truth_hash:
-        bt.logging.debug(
-            f"Output hash {prover_output_hash} does not match ground truth hash {ground_truth_hash}"
-        )
-
-        # check how t
-
-        # return asyncio.run(embedding_check( self, prover_output, ground_truth_output, prover_ss58 ))
-        return check_tokens(self, prover_output, ground_truth_output)
-
-    bt.logging.debug(
-        f"Output hash {prover_output_hash} matches ground truth hash {ground_truth_hash}"
-    )
-    return True
+    return check_tokens(self, prover_output, ground_truth_output)
 
 async def api_chat_completions(
     self,
@@ -270,15 +257,15 @@ async def handle_inference(
             bt.logging.info(f"Output normalization rate: {tokens_per_second} tokens/second")
 
             bt.logging.debug("output", output_cleaned)
-            verified = verify(
+            score = verify(
                 self, output_cleaned, ground_truth_output, self.metagraph.hotkeys[uid]
             )
 
         else:
-            verified = False
+            score = 0
 
         output_dict = (output_synapse, uid, tokens_per_second)
-        return verified, output_dict
+        return score, output_dict
 
     else:
         prompt = create_prompt(private_input)
@@ -438,8 +425,7 @@ async def inference_data(self):
     responses = await asyncio.gather(*tasks)
 
     # Create a list of tuples (uid, tokens_per_second) for sorting
-    uid_tokens_pairs = [(uid, tokens_per_second) for _, (_, uid, tokens_per_second) in responses]
-
+    uid_tokens_pairs = [(uid, tokens_per_second if verified >= 0.6 else 1e-7) for verified, (_, uid, tokens_per_second) in responses]
     # Initialize or update moving averages dictionary
     if not hasattr(self, 'moving_averages'):
         self.moving_averages = {uid: 0 for uid, _ in uid_tokens_pairs}
@@ -479,24 +465,84 @@ async def inference_data(self):
             reward_multiplier = 1  # Avoid division by zero if all tokens_per_second are the same
         self.rewards[uid] = reward_multiplier * tokens_per_second
         # Update moving average for rewards
-        self.moving_rewards[uid] = self.config.neuron.moving_average_alpha * self.rewards[uid] + (1 - self.config.neuron.moving_average_alpha) * self.moving_rewards[uid]
+        self.scores[uid] = self.config.neuron.moving_average_alpha * self.rewards[uid] + (1 - self.config.neuron.moving_average_alpha) * self.scores[uid]
 
     # Print the highest UID and its corresponding tokens_per_second and reward score
+    # Find the highest UID and its corresponding tokens_per_second and reward score
     highest_uid = max(range(len(self.rewards)), key=lambda uid: self.rewards[uid])
-    highest_tokens_per_second = next(tps for uid, tps in uid_tokens_pairs if uid == highest_uid)
-    highest_reward = self.rewards.tolist()[highest_uid]
-    print(f"Highest UID: {highest_uid}, Tokens/Second: {highest_tokens_per_second}, Reward: {highest_reward}")
-    print(f"Average Tokens/Second: {self.average_tokens_per_second}")
-    print(self.moving_rewards)
+    # Safely retrieve the tokens_per_second for the highest_uid
+    highest_tokens_per_second = next((tps for uid, tps in uid_tokens_pairs if uid == highest_uid), None)
+
+    if highest_tokens_per_second is None:
+        bt.logging.error(f"No tokens per second found for highest UID: {highest_uid}")
+        # Handle the case where no matching UID is found
+    else:
+        highest_reward = self.rewards.tolist()[highest_uid]
+
+        print(f"Highest UID: {highest_uid}, Tokens/Second: {highest_tokens_per_second}, Reward: {highest_reward}")
+        print(f"Highest UID: {highest_uid}, Tokens/Second: {highest_tokens_per_second}, Reward: {highest_reward}")
+        print(f"Average Tokens/Second: {self.average_tokens_per_second}")
+    print(self.scores)
     # Plot moving average of rewards
-    y = plt.scatter(uids_sorted, self.moving_rewards.numpy(), color='red')  # Reduced marker size for a smaller plot
+    y = plt.scatter(uids_sorted, self.scores.numpy(), color='red')  # Reduced marker size for a smaller plot
     plt.title('Sorted Tokens per Second')
     plt.xlabel('UID (sorted)')
     plt.ylabel('Reward Score')
     plt.plotsize(100, 20)
     plt.show()
     plt.clf()  # Clear the plot after showing
+    mock_weights_measurments(self)
 
 
+
+
+def mock_weights_measurments(self):
+    # if torch.isnan(self.scores).any():
+    #     bt.logging.warning(
+    #         "Scores contain NaN values. This may be due to a lack of responses from provers, or a bug in your reward functions."
+    #     )
+
+
+    # Calculate the average reward for each uid across non-zero values.
+    # Replace any NaN values with 0.
+    raw_weights = torch.nn.functional.normalize(
+        self.scores - self.scores.mean(dim=0), p=1, dim=0
+    )
+
+
+    # bt.logging.debug("raw_weights", raw_weights)
+    # bt.logging.debug("raw_weight_uids", self.metagraph.uids)
+    # # Process the raw weights to final_weights via subtensor limitations.
+    (
+        processed_weight_uids,
+        processed_weights,
+    ) = bt.utils.weight_utils.process_weights_for_netuid(
+        uids=self.metagraph.uids,
+        weights=raw_weights,
+        netuid=self.config.netuid,
+        subtensor=self.subtensor,
+        metagraph=self.metagraph,
+    )
+    # bt.logging.debug("processed_weights", processed_weights)
+    # bt.logging.debug("processed_weight_uids", processed_weight_uids)
+
+    # # Convert to uint16 weights and uids.
+    # (
+    #     uint_uids,
+    #     uint_weights,
+    # ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
+    #     uids=processed_weight_uids, weights=processed_weights
+    # )
+    # bt.logging.debug("uint_weights", uint_weights)
+    # bt.logging.debug("uint_uids", uint_uids)
+
+    # Plotting the graph of processed_weights against processed_weight_uids
+    plt.plotsize(100, 20)
+    plt.scatter(processed_weight_uids, processed_weights, color='red')
+    plt.title('Processed Weights vs UIDs')
+    plt.xlabel('UIDs')
+    plt.ylabel('Processed Weights')
+    plt.grid(True)
+    plt.show()
 
 
