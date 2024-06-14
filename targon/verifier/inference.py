@@ -457,6 +457,7 @@ async def inference_data(self):
     # Extract tokens_per_second for plotting
     tokens_per_second_sorted = [tokens_per_second for _, tokens_per_second in sorted_uid_tokens_pairs]
 
+<<<<<<< HEAD
     # Initialize or update moving averages for tokens statistics
     if not hasattr(self, 'moving_tokens_stats'):
         self.moving_tokens_stats = {
@@ -476,11 +477,21 @@ async def inference_data(self):
     self.moving_tokens_stats['min_tokens'] = alpha * current_min_tokens + (1 - alpha) * self.moving_tokens_stats['min_tokens']
     self.moving_tokens_stats['range_tokens'] = alpha * current_range_tokens + (1 - alpha) * self.moving_tokens_stats['range_tokens']
     self.moving_tokens_stats['avg_tokens'] = alpha * current_avg_tokens + (1 - alpha) * self.moving_tokens_stats['avg_tokens']
+=======
+    y = plt.scatter(tokens_per_second_sorted, color='red')  # Reduced marker size for a smaller plot
+    plt.title('Sorted Tokens per Second')
+    plt.xlabel('UID Index (sorted)')
+    plt.ylabel('Tokens per Second')
+    plt.plotsize(100, 20)
+    plt.show()
+    plt.clf()  # Clear the plot after showing
+>>>>>>> b27a27d (rewrite in progress)
 
     rewards: torch.FloatTensor = torch.zeros(len(responses), dtype=torch.float32).to(
         self.device
     )
 
+<<<<<<< HEAD
     # Calculate rewards based on the difference between the highest and lowest tokens_per_second
     if self.moving_tokens_stats['range_tokens'] > 0:
         for i, (_, tokens_per_second) in enumerate(sorted_uid_tokens_pairs):
@@ -489,6 +500,33 @@ async def inference_data(self):
             rewards[i] = reward_multiplier * tokens_per_second
     else:
         rewards.fill_(1)  # Avoid division by zero if all tokens_per_second are the same
+=======
+    remove_reward_idxs = []
+    for i, (uid, tokens_per_second) in enumerate(sorted_uid_tokens_pairs):
+        # Find the response associated with the current uid
+        response = next(res for _, (res, res_uid, _) in responses if res_uid == uid)
+        verified = next(ver for ver, (_, res_uid, _) in responses if res_uid == uid)
+
+        bt.logging.trace(
+            f"Inference iteration {i} uid {uid} response {str(response.completion if not self.config.mock else response)}"
+        )
+
+        hotkey = self.metagraph.hotkeys[uid]
+
+    # Calculate mean, median, and mode of moving averages
+    moving_averages_values = list(self.moving_averages.values())
+    if moving_averages_values:
+        mean_value = sum(moving_averages_values) / len(moving_averages_values)
+        median_value = sorted(moving_averages_values)[len(moving_averages_values) // 2]
+        mode_value = max(set(moving_averages_values), key=moving_averages_values.count)
+
+        bt.logging.debug(f"Mean of moving averages: {mean_value}")
+        bt.logging.debug(f"Median of moving averages: {median_value}")
+        bt.logging.debug(f"Mode of moving averages: {mode_value}")
+    else:
+        bt.logging.info("No moving averages data available to calculate mean, median, and mode.")
+    return event
+>>>>>>> b27a27d (rewrite in progress)
 
     # Initialize or update moving average for rewards
     if not hasattr(self, 'moving_rewards'):
