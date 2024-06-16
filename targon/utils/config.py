@@ -232,6 +232,13 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.api_proxy",
+        action="store_true",
+        help="If set, the verifier will serve an API proxy.",
+        default=False,
+    )
+
+    parser.add_argument(
         "--neuron.challenge_probability",
         type=float,
         help="The probability of challenging a prover.",
