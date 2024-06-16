@@ -58,7 +58,3 @@ async def forward(self):
         bt.logging.error(f"Error in forward: {e}")
         time.sleep(12)
         pass
-
-
-
-
