@@ -59,7 +59,7 @@ class Verifier(BaseVerifierNeuron):
                     prompt,
                     protocol.InferenceSamplingParams(
                         max_new_tokens=data.get("max_tokens", 1024)
-                    ),
+                    )
                 ),
                 media_type="text/event-stream",
             )
