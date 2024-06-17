@@ -92,7 +92,7 @@ class Verifier(BaseVerifierNeuron):
                 self.app,
                 host="0.0.0.0",
                 port=self.config.neuron.proxy.port,
-                loop="asyncio",
+                loop="uvloop",
             )
             self.fast_server = FastAPIThreadedServer(config=self.fast_config)
             self.fast_server.start()
