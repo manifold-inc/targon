@@ -176,6 +176,7 @@ async def api_chat_completions(
         start_time = time.time()
         token_count = 0
         uid = select_highest_n_peers(1, self.metagraph)[0]
+        res = ''
         async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
@@ -184,8 +185,10 @@ async def api_chat_completions(
             streaming=True,
         ):
             if isinstance(token, list):
+                res += token[0]
                 yield token[0]
             elif isinstance(token, str):
+                res += token
                 yield token
             token_count += 1
 
@@ -193,6 +196,7 @@ async def api_chat_completions(
         elapsed_time = end_time - start_time
         tokens_per_second = token_count / elapsed_time
         bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
+        bt.logging.info(res)
     except Exception as e:
         bt.logging.error(e)
 
