@@ -35,6 +35,7 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("HUB_SECRET_TOKEN")
 
+
 class Verifier(BaseVerifierNeuron):
     """
     Text prompt verifier neuron.
@@ -59,8 +60,8 @@ class Verifier(BaseVerifierNeuron):
                     protocol.InferenceSamplingParams(
                         max_new_tokens=data.get("max_tokens", 1024)
                     ),
-                    media_type="text/event-stream",
-                )
+                ),
+                media_type="text/event-stream",
             )
         except Exception as e:
             bt.logging.error(f"Failed due to: {e}")
@@ -85,10 +86,13 @@ class Verifier(BaseVerifierNeuron):
         if self.config.neuron.api_proxy and TOKEN is not None:
             self.app = FastAPI()
             self.app.router.add_api_route(
-            "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
-        )
+                "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
+            )
             self.fast_config = uvicorn.Config(
-                self.app, host="0.0.0.0", port=self.config.neuron.proxy.port, loop='asyncio'
+                self.app,
+                host="0.0.0.0",
+                port=self.config.neuron.proxy.port,
+                loop="asyncio",
             )
             self.fast_server = FastAPIThreadedServer(config=self.fast_config)
             self.fast_server.start()
