@@ -24,7 +24,6 @@ import bittensor as bt
 
 from targon import protocol
 from targon.verifier.forward import forward
-from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI
 from targon.base.verifier import BaseVerifierNeuron
 from targon.verifier.inference import api_chat_completions
@@ -32,7 +31,6 @@ from targon.verifier.uids import check_uid_availability
 from fastapi import Request
 from sse_starlette.sse import EventSourceResponse
 from dotenv import load_dotenv
-import asyncio
 
 load_dotenv()
 TOKEN = os.getenv("HUB_SECRET_TOKEN")
@@ -44,14 +42,15 @@ class Verifier(BaseVerifierNeuron):
 
     async def safeParseAndCall(self, req: Request):
         data = await req.json()
+        if data.get("api_key") != TOKEN and TOKEN is not None:
+            return "", 401
 
-        print("Received an organic request!")
+        bt.logging.info("Received organic request")
         messages = data.get("messages")
         if not isinstance(messages, list):
             return "", 403
-        prompt = "\n".join([p["role"] + ": " + p["content"] for p in prompt])
+        prompt = "\n".join([p["role"] + ": " + p["content"] for p in messages])
 
-        # @CARRO TODO check this call, might need to change for async generator
         try:
             return EventSourceResponse(
                 api_chat_completions(
@@ -64,7 +63,7 @@ class Verifier(BaseVerifierNeuron):
                 )
             )
         except Exception as e:
-            print(f"Failed due to: {e}")
+            bt.logging.error(f"Failed due to: {e}")
             return "", 500
 
     def __init__(self, config=None):
@@ -83,7 +82,7 @@ class Verifier(BaseVerifierNeuron):
 
         # inference client
         # --- Block
-        if self.config.neuron.api_proxy:
+        if self.config.neuron.api_proxy and TOKEN is not None:
             self.app = FastAPI()
             self.app.router.add_api_route(
             "/api/chat/completions", self.safeParseAndCall, methods=["POST"]
