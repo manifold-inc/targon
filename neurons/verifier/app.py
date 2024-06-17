@@ -54,17 +54,17 @@ class Verifier(BaseVerifierNeuron):
         prompt = "\n".join([p["role"] + ": " + p["content"] for p in messages])
 
         try:
-            return asyncio.run(
-                EventSourceResponse(
+            return EventSourceResponse(
+                asyncio.run(
                     api_chat_completions(
                         self,
                         prompt,
                         protocol.InferenceSamplingParams(
                             max_new_tokens=data.get("max_tokens", 1024)
                         ),
-                    ),
-                    media_type="text/event-stream",
-                )
+                    )
+                ),
+                media_type="text/event-stream",
             )
         except Exception as e:
             bt.logging.error(f"Failed due to: {e}")
