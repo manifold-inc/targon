@@ -43,6 +43,8 @@ class Verifier(BaseVerifierNeuron):
     """
 
     async def safeParseAndCall(self, req: Request):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         data = await req.json()
         if data.get("api_key") != TOKEN and TOKEN is not None:
             return "", 401
@@ -93,7 +95,7 @@ class Verifier(BaseVerifierNeuron):
                 self.app,
                 host="0.0.0.0",
                 port=self.config.neuron.proxy.port,
-                loop="uvloop",
+                loop="asyncio",
             )
             self.fast_server = FastAPIThreadedServer(config=self.fast_config)
             self.fast_server.start()
