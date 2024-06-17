@@ -196,7 +196,7 @@ async def api_chat_completions(
         elapsed_time = end_time - start_time
         tokens_per_second = token_count / elapsed_time
         bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
-        bt.logging.info(res)
+        bt.logging.info(f"{res} | {token_count}")
     except Exception as e:
         bt.logging.error(e)
 
