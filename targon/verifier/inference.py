@@ -175,7 +175,7 @@ async def api_chat_completions(
 
         start_time = time.time()
         token_count = 0
-        uid = select_highest_n_peers(1)[0]
+        uid = select_highest_n_peers(1, self.metagraph)[0]
         async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
