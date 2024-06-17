@@ -16,6 +16,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import os
 import time
 from bittensor.axon import FastAPIThreadedServer
@@ -53,15 +54,17 @@ class Verifier(BaseVerifierNeuron):
         prompt = "\n".join([p["role"] + ": " + p["content"] for p in messages])
 
         try:
-            return EventSourceResponse(
-                api_chat_completions(
-                    self,
-                    prompt,
-                    protocol.InferenceSamplingParams(
-                        max_new_tokens=data.get("max_tokens", 1024)
-                    )
-                ),
-                media_type="text/event-stream",
+            return asyncio.run(
+                EventSourceResponse(
+                    api_chat_completions(
+                        self,
+                        prompt,
+                        protocol.InferenceSamplingParams(
+                            max_new_tokens=data.get("max_tokens", 1024)
+                        ),
+                    ),
+                    media_type="text/event-stream",
+                )
             )
         except Exception as e:
             bt.logging.error(f"Failed due to: {e}")
@@ -92,7 +95,7 @@ class Verifier(BaseVerifierNeuron):
                 self.app,
                 host="0.0.0.0",
                 port=self.config.neuron.proxy.port,
-                loop="uvloop",
+                loop="asyncio",
             )
             self.fast_server = FastAPIThreadedServer(config=self.fast_config)
             self.fast_server.start()
