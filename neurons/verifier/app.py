@@ -55,14 +55,12 @@ class Verifier(BaseVerifierNeuron):
 
         try:
             return EventSourceResponse(
-                asyncio.run(
-                    api_chat_completions(
-                        self,
-                        prompt,
-                        protocol.InferenceSamplingParams(
-                            max_new_tokens=data.get("max_tokens", 1024)
-                        ),
-                    )
+                api_chat_completions(
+                    self,
+                    prompt,
+                    protocol.InferenceSamplingParams(
+                        max_new_tokens=data.get("max_tokens", 1024)
+                    ),
                 ),
                 media_type="text/event-stream",
             )
@@ -95,7 +93,7 @@ class Verifier(BaseVerifierNeuron):
                 self.app,
                 host="0.0.0.0",
                 port=self.config.neuron.proxy.port,
-                loop="asyncio",
+                loop="uvloop",
             )
             self.fast_server = FastAPIThreadedServer(config=self.fast_config)
             self.fast_server.start()
