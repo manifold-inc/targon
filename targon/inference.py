@@ -149,9 +149,6 @@ def verify(self, prover_output, ground_truth_output, prover_ss58):
     Returns:
     - bool: True if the outputs match or if the embedding check passes, False otherwise.
     """
-    prover_output_hash = hashing_function(prover_output)
-    ground_truth_hash = hashing_function(ground_truth_output)
-
     return check_tokens(self, prover_output, ground_truth_output)
 
 

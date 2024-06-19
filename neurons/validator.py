@@ -69,8 +69,9 @@ class Validator:
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
 
 
-        ## SET STEPS
+        ## SET MISC PARAMS
         self.step = 0
+        self.should_exit = False
 
 
     async def forward(self):
@@ -94,7 +95,7 @@ class Validator:
             # --- Perform coin flip
 
             # --- Generate the query.
-            event = await inference_data(self)
+            # event = await inference_data(self)
             
 
             if not self.config.mock:
@@ -135,10 +136,6 @@ class Validator:
 
             # Run multiple forwards concurrently.
             self.loop.run_until_complete(self.concurrent_forward())
-
-            # Check if we should exit.
-            if self.should_exit:
-                break
 
             # Sync metagraph and potentially set weights.
             self.sync()
