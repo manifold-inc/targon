@@ -1,0 +1,103 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+
+	"github.com/aidarkhanov/nanoid"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+
+	"github.com/redis/go-redis/v9"
+)
+
+var (
+	HUB_SECRET_TOKEN string
+	HOTKEY           string
+	PUBLIC_KEY       string
+	PRIVATE_KEY      string
+	INSTANCE_UUID    string
+	DEBUG            bool
+
+	client *redis.Client
+)
+
+var Reset = "\033[0m"
+var Red = "\033[31m"
+var Green = "\033[32m"
+var Yellow = "\033[33m"
+var Blue = "\033[34m"
+var Purple = "\033[35m"
+var Cyan = "\033[36m"
+var Gray = "\033[37m"
+var White = "\033[97m"
+
+type Context struct {
+	echo.Context
+	Info *log.Logger
+	Warn *log.Logger
+	Err  *log.Logger
+}
+
+func main() {
+	HOTKEY = safeEnv("HOTKEY")
+	PUBLIC_KEY = safeEnv("PUBLIC_KEY")
+	PRIVATE_KEY = safeEnv("PRIVATE_KEY")
+	HUB_SECRET_TOKEN = safeEnv("HUB_SECRET_TOKEN")
+	INSTANCE_UUID = uuid.New().String()
+	debug, present := os.LookupEnv("DEBUG")
+
+	if !present {
+		DEBUG = false
+	} else {
+		DEBUG, _ = strconv.ParseBool(debug)
+	}
+
+	e := echo.New()
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			reqId, _ := nanoid.Generate("0123456789abcdefghijklmnopqrstuvwxyz", 12)
+			InfoLog := log.New(os.Stdout, fmt.Sprintf("%sINFO [%s]: %s", Green, reqId, Reset), log.Ldate|log.Ltime|log.Lshortfile)
+			WarnLog := log.New(os.Stdout, fmt.Sprintf("%sWARNING [%s]: %s", Yellow, reqId, Reset), log.Ldate|log.Ltime|log.Lshortfile)
+			ErrLog := log.New(os.Stdout, fmt.Sprintf("%sERROR [%s]: %s", Red, reqId, Reset), log.Ldate|log.Ltime|log.Lshortfile)
+			cc := &Context{c, InfoLog, WarnLog, ErrLog}
+			return next(cc)
+		}
+	})
+	client = redis.NewClient(&redis.Options{
+		Addr:     "cache:6379",
+		Password: "",
+		DB:       0,
+	})
+	var err error
+	defer client.Close()
+	e.POST("/api/chat/completions", func(c echo.Context) error {
+		cc := c.(*Context)
+		cc.Request().Header.Add("Content-Type", "application/json")
+		var req RequestBody
+		err = json.NewDecoder(c.Request().Body).Decode(&req)
+		if err != nil {
+			log.Println("Error decoding json")
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		if req.ApiKey != HUB_SECRET_TOKEN {
+			log.Println("Unauthorized request")
+			return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+		}
+		c.Response().Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+		c.Response().Header().Set("Cache-Control", "no-cache")
+		c.Response().Header().Set("Connection", "keep-alive")
+		c.Response().Header().Set("X-Accel-Buffering", "no")
+
+
+		cc.Info.Printf("/api/chat/completions\n")
+		res := queryMiners(cc, req)
+		return c.String(res, "")
+	})
+	e.Logger.Fatal(e.Start(":80"))
+}

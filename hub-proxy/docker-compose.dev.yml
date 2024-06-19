@@ -1,0 +1,18 @@
+services:
+  proxy:
+    scale: 1
+    environment:
+      - DEBUG=true
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.proxy.rule=Host(`localhost`)
+      - traefik.http.routers.proxy.tls=false
+      - traefik.http.routers.proxy.tls.certresolver=
+      - traefik.http.services.proxy.loadbalancer.server.port=80
+  traefik:
+    ports:
+      - 80:80
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - $PWD/traefik/traefik.dev.toml:/etc/traefik/traefik.toml

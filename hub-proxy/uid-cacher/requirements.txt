@@ -1,0 +1,4 @@
+bittensor==6.9.3
+redis
+urllib3==1.26.15
+torch

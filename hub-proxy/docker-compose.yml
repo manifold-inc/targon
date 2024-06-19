@@ -1,0 +1,49 @@
+services:
+  proxy:
+    scale: 3
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.proxy.rule=Host(`${PROXY_URL}`)
+      - traefik.http.routers.proxy.tls=true
+      - traefik.http.routers.proxy.tls.certresolver=letsencrypt
+      - traefik.http.services.proxy.loadbalancer.server.port=80
+    env_file: .env
+    build:
+      context: ./proxy
+    restart: always
+    depends_on:
+      cache:
+        condition: service_healthy
+
+  uid-cacher:
+    build:
+      context: ./uid-cacher
+    restart: always
+    depends_on:
+      cache:
+        condition: service_healthy
+
+  cache:
+    image: redis/redis-stack-server:latest
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: "3s"
+    volumes: 
+      - cache:/data
+
+  traefik:
+    image: traefik:v2.3
+    ports:
+      - 80:80
+      - 443:443
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.toml:/etc/traefik/traefik.toml
+      - traefik-public-certificates:/certificates
+
+volumes:
+  traefik-public-certificates:
+  cache:
+    driver: local
