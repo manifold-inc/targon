@@ -39,7 +39,7 @@ def autoupdate( self, branch: str = "main" ):
     - The function will restart the application using the same command-line arguments it was originally started with.
     - If the update fails, manual intervention is required to resolve the issue and restart the application.
     '''
-    bt.logging.info("Checking for updates...")
+    bt.logging.info(f"Checking for updates on branch {branch}...")
     try:
         response = requests.get(
             f"https://raw.githubusercontent.com/manifold-inc/targon/{branch}/VERSION",
