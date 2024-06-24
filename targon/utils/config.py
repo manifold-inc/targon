@@ -318,7 +318,12 @@ def add_verifier_args(cls, parser):
         default=360,
     )
 
-
+    parser.add_argument(
+        '--autoupdate.branch',
+        type=str,
+        help="The branch to auto-update from.",
+        default="main",
+    )
 
 
 def config(cls):
