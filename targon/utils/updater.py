@@ -68,7 +68,9 @@ def autoupdate( self, branch: str = "main" ):
 
                 if new_version == latest_version:
                     bt.logging.info("Targon updated successfully. Restarting...")
+                    self.restart_required = True
                     exit()
+                    
                 else:
                     bt.logging.error("Update failed. Manual update required.")
     except Exception as e:

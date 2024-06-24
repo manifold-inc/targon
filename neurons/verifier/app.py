@@ -154,5 +154,7 @@ class Verifier(BaseVerifierNeuron):
 if __name__ == "__main__":
     with Verifier() as verifier:
         while True:
+            if verifier.restart_required:
+                break
             bt.logging.info("Verifier running...", time.time())
             time.sleep(5)
