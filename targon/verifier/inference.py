@@ -391,18 +391,18 @@ async def inference_data(self):
         seed=seed,
     )
 
-    # sources = await self.client.text_generation(
-    #     prompt=f"Generate a random source based off this query: {query}",
-    #     max_new_tokens=12,
-    #     seed=seed,
-    # )
+    sources = await self.client.text_generation(
+        prompt=f"Generate a random source based off this query: {query}",
+        max_new_tokens=12,
+        seed=seed,
+    )
 
     bt.logging.debug(f"query: {query}")
     # bt.logging.debug(f"sources: {sources}")
 
     challenge_data = {
         "query": query,
-        "sources": [''],
+        "sources": sources,
     }
     prompt = create_prompt(challenge_data)
 
