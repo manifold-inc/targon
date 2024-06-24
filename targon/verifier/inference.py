@@ -613,3 +613,4 @@ def mock_weights_measurments(self):
     plt.ylabel("Processed Weights")
     plt.grid(True)
     plt.show()
+    plt.clf()
