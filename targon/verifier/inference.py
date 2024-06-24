@@ -373,16 +373,32 @@ async def inference_data(self):
     )
 
     bt.logging.info("Generating challenge data")
-    challenge_data = {
-        "query": "".join(random.choice(string.ascii_letters) for _ in range(12)),
-        "sources": "".join(random.choice(string.ascii_letters) for _ in range(12)),
-    }
-    prompt = create_prompt(challenge_data)
+    
 
     bt.logging.info("prompt created")
     seed = random.randint(10000, 10000000)
+    max_new_tokens = random.randint(16, 512)
 
-    sampling_params = protocol.InferenceSamplingParams(seed=seed)
+
+    sampling_params = protocol.InferenceSamplingParams(seed=seed, max_new_tokens=max_new_tokens)
+
+    query = await self.client.text_generation(
+        prompt="Generate a random query",
+        max_new_tokens=12,
+        seed=seed,
+    )
+
+    sources = await self.client.text_generation(
+        prompt=f"Generate a random source based off this query: {query}",
+        max_new_tokens=12,
+        seed=seed,
+    )
+
+    challenge_data = {
+        "query": query,
+        "sources": sources,
+    }
+    prompt = create_prompt(challenge_data)
 
     ground_truth_tokens = []
 
@@ -568,6 +584,7 @@ def mock_weights_measurments(self):
         netuid=self.config.netuid,
         subtensor=self.subtensor,
         metagraph=self.metagraph,
+        exclude_quantile=0.99
     )
     # bt.logging.debug("processed_weights", processed_weights)
     # bt.logging.debug("processed_weight_uids", processed_weight_uids)
