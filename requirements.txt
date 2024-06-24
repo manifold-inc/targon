@@ -11,3 +11,4 @@ sse_starlette==2.1.0
 plotext==5.2.8
 python-dotenv==1.0.1
 numpy==1.24.1
+pandas==2.2.2

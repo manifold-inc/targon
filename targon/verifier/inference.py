@@ -402,7 +402,7 @@ async def inference_data(self):
 
     challenge_data = {
         "query": query,
-        "sources": [],
+        "sources": [''],
     }
     prompt = create_prompt(challenge_data)
 
