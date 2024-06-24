@@ -25,8 +25,8 @@ import asyncio
 import argparse
 import threading
 import subprocess
+import pandas as pd
 import bittensor as bt
-
 from shlex import quote
 from typing import List
 from copy import deepcopy
@@ -100,7 +100,7 @@ class BaseVerifierNeuron(BaseNeuron):
         )
         self.moving_rewards = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(self.device)
 
-
+        self.data = pd.read_json("hf://datasets/pinecone/dl-doc-search/train.jsonl", lines=True)
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 

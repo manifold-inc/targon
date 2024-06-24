@@ -382,24 +382,27 @@ async def inference_data(self):
 
     sampling_params = protocol.InferenceSamplingParams(seed=seed, max_new_tokens=max_new_tokens)
 
+    random_row_text = self.data.sample(n=1)['text'].iloc[0]
+    bt.logging.info(f"Selected random text: {random_row_text}")
+
     query = await self.client.text_generation(
-        prompt="come up with a search query",
-        max_new_tokens=12,
+        prompt=f"come up with a similar search query to this: {random_row_text}",
+        max_new_tokens=32,
         seed=seed,
     )
 
-    sources = await self.client.text_generation(
-        prompt=f"Generate a random source based off this query: {query}",
-        max_new_tokens=12,
-        seed=seed,
-    )
+    # sources = await self.client.text_generation(
+    #     prompt=f"Generate a random source based off this query: {query}",
+    #     max_new_tokens=12,
+    #     seed=seed,
+    # )
 
     bt.logging.debug(f"query: {query}")
-    bt.logging.debug(f"sources: {sources}")
+    # bt.logging.debug(f"sources: {sources}")
 
     challenge_data = {
         "query": query,
-        "sources": sources,
+        "sources": [],
     }
     prompt = create_prompt(challenge_data)
 
