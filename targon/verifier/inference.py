@@ -383,7 +383,7 @@ async def inference_data(self):
     sampling_params = protocol.InferenceSamplingParams(seed=seed, max_new_tokens=max_new_tokens)
 
     query = await self.client.text_generation(
-        prompt="Generate a random query",
+        prompt="come up with a search query",
         max_new_tokens=12,
         seed=seed,
     )
@@ -393,6 +393,9 @@ async def inference_data(self):
         max_new_tokens=12,
         seed=seed,
     )
+
+    bt.logging.debug(f"query: {query}")
+    bt.logging.debug(f"sources: {sources}")
 
     challenge_data = {
         "query": query,
