@@ -590,7 +590,7 @@ def mock_weights_measurments(self):
         netuid=self.config.netuid,
         subtensor=self.subtensor,
         metagraph=self.metagraph,
-        exclude_quantile=0.99
+        exclude_quantile=0.80
     )
     # bt.logging.debug("processed_weights", processed_weights)
     # bt.logging.debug("processed_weight_uids", processed_weight_uids)
