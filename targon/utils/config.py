@@ -320,7 +320,6 @@ def add_verifier_args(cls, parser):
 
 
 
-
 def config(cls):
     """
     Returns the configuration object specific to this prover or verifier after adding relevant arguments.

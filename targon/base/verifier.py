@@ -25,8 +25,8 @@ import asyncio
 import argparse
 import threading
 import subprocess
+import pandas as pd
 import bittensor as bt
-
 from shlex import quote
 from typing import List
 from copy import deepcopy
@@ -100,7 +100,7 @@ class BaseVerifierNeuron(BaseNeuron):
         )
         self.moving_rewards = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(self.device)
 
-
+        self.data = pd.read_json("hf://datasets/pinecone/dl-doc-search/train.jsonl", lines=True)
 
         self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
@@ -319,6 +319,7 @@ class BaseVerifierNeuron(BaseNeuron):
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
+            exclude_quantile=0.99
         )
         bt.logging.debug("processed_weights", processed_weights)
         bt.logging.debug("processed_weight_uids", processed_weight_uids)
@@ -418,7 +419,7 @@ class BaseVerifierNeuron(BaseNeuron):
             self.config.neuron.full_path + "/state.pt",
         )
         if not self.config.disable_autoupdate:
-            autoupdate(self.config.autoupdate.branch)
+            autoupdate(self, self.config.autoupdate.branch)
 
     def load_state(self):
         """Loads the state of the verifier from a file."""
