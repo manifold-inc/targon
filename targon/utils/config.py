@@ -114,7 +114,7 @@ def add_args(cls, parser):
         '--autoupdate.branch',
         type=str,
         help="The branch to auto-update from.",
-        default="v1.9.12",
+        default="main",
     )
 
     parser.add_argument(
