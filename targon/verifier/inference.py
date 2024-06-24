@@ -454,7 +454,7 @@ async def inference_data(self):
 
     # Create a list of tuples (uid, tokens_per_second) for sorting
     uid_tokens_pairs = [
-        (uid, tokens_per_second if verified >= 0.6 else 1e-7)
+        (uid, tokens_per_second if verified >= 0.75 else 1e-7)
         for verified, (_, uid, tokens_per_second) in responses
     ]
     # Initialize or update moving averages dictionary
