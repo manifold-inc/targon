@@ -156,5 +156,5 @@ if __name__ == "__main__":
         while True:
             if verifier.restart_required:
                 break
-            bt.logging.info("Verifier running...", time.time())
+            bt.logging.info(f"Verifier running, restart required: {verifier.restart_required}...", time.time())
             time.sleep(5)
