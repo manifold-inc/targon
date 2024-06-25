@@ -8,7 +8,7 @@ import bittensor as bt
 
 from targon import config, check_config, add_args, add_verifier_args
 
-class Validator:
+class Verifier:
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -237,9 +237,9 @@ class Validator:
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser()
-    # Validator.add_args(parser)
+    # Verifier.add_args(parser)
     # args = parser.parse_args()
-    with Validator() as verifier:
+    with Verifier() as verifier:
         while True:
             bt.logging.info("Verifier running...", time.time())
             time.sleep(5)
