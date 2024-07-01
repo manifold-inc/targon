@@ -18,10 +18,8 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import torch
 import argparse
 import bittensor as bt
-from loguru import logger
 from typing import List
 
 #TODO: enable 4bit and 8bit precision llms via config
@@ -44,19 +42,6 @@ def check_config(cls, config: "bt.Config"):
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
-    if not config.neuron.dont_save_events:
-        # Add custom event logger for the events.
-        logger.level("EVENTS", no=38, icon="📝")
-        logger.add(
-            os.path.join(config.neuron.full_path, "events.log"),
-            rotation=config.neuron.events_retention_size,
-            serialize=True,
-            enqueue=True,
-            backtrace=False,
-            diagnose=False,
-            level="EVENTS",
-            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
-        )
 
 
 def add_args(cls, parser):
@@ -74,12 +59,12 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.device",
+        "--neuron.default_tokenizer",
         type=str,
-        help="Device to run on.",
-        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="The default model to use for the neuron.",
+        default="01-ai/Yi-1.5-9B-Chat-16K",
     )
-    
+
     parser.add_argument(
         "--neuron.epoch_length",
         type=int,

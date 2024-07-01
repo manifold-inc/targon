@@ -483,9 +483,6 @@ async def inference_data(self):
         tokens_per_second for _, tokens_per_second in sorted_uid_tokens_pairs
     ]
 
-    # rewards: torch.FloatTensor = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(
-    #     self.device
-    # )
 
     # Calculate rewards based on the difference between the highest and lowest tokens_per_second using moving averages
     self.max_tokens_per_second = (

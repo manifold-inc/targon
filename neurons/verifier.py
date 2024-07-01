@@ -1,10 +1,17 @@
 import sys
 import copy
 import time
+import random
 import asyncio
 import argparse
 import numpy as np
+import pandas as pd
 import bittensor as bt
+
+from typing import List
+from targon import generate_dataset
+from transformers import AutoTokenizer
+from huggingface_hub import AsyncInferenceClient
 
 from targon import config, check_config, add_args, add_verifier_args
 
@@ -74,7 +81,18 @@ class Verifier:
         self.should_exit = False
 
 
-    async def forward(self):
+        ## SET DATASET
+        self.dataset = pd.read_json("hf://datasets/pinecone/dl-doc-search/train.jsonl", lines=True)
+
+
+        ## SET TGI CLIENT
+        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
+
+
+        ## SET PROMPT TOKENIZER
+        self.prompt_tokenizer = AutoTokenizer.from_pretrained(self.config.neuron.default_tokenizer)
+
+    async def forward(self, uid):
         """
         Verifier forward pass. Consists of:
         - Generating the query
@@ -97,17 +115,21 @@ class Verifier:
             # --- Generate the query.
             # event = await inference_data(self)
             
+            prompt, sampling_params = await generate_dataset(self)
 
-            if not self.config.mock:
-                try:
-                    block = self.substrate.subscribe_block_headers(self.subscription_handler)
-                except:
-                    sleep_time = 12 - (time.time() - start_time)
-                    if sleep_time > 0:
-                        bt.logging.info(f"Sleeping for {sleep_time} seconds")
-                        await asyncio.sleep(sleep_time)
-            else:
-                time.sleep(1)
+            bt.logging.info(prompt)
+
+
+            # if not self.config.mock:
+            #     try:
+            #         block = self.substrate.subscribe_block_headers(self.subscription_handler)
+            #     except:
+            #         sleep_time = 12 - (time.time() - start_time)
+            #         if sleep_time > 0:
+            #             bt.logging.info(f"Sleeping for {sleep_time} seconds")
+            #             await asyncio.sleep(sleep_time)
+            # else:
+            #     time.sleep(1)
             
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
@@ -131,13 +153,24 @@ class Verifier:
         bt.logging.info(f"Verifier starting at block: {self.block}")
 
         # This loop maintains the verifier's operations until intentionally stopped.
-        while True:
-            bt.logging.info(f"step({self.step}) block({self.block})")
+        while not self.should_exit:
+
+            # get all miner uids
+            miner_uids = self.get_miner_uids()
+
+            bt.logging.info(f"number of uids to sample: {len(miner_uids)}")
+            
+            for uid in miner_uids:
+                bt.logging.info(f"miner uid: {uid}")
+
+                asyncio.run(self.forward(uid))
+   
+            # bt.logging.info(f"step({self.step}) block({self.block})")
 
             # Run multiple forwards concurrently.
-            self.loop.run_until_complete(self.concurrent_forward())
+            # self.loop.run_until_complete(self.concurrent_forward())
 
-            # Sync metagraph and potentially set weights.
+                # Sync metagraph and potentially set weights.
             self.sync()
 
             self.step += 1
@@ -233,6 +266,57 @@ class Verifier:
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
+    def check_uid_availability(
+        self, metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int, mock: bool = False
+    ) -> bool:
+        """Check if uid is available. The UID should be available if it is serving and has less than vpermit_tao_limit stake
+        Args:
+            metagraph (:obj: bt.metagraph.Metagraph): Metagraph object
+            uid (int): uid to be checked
+            vpermit_tao_limit (int): Verifier permit tao limit
+        Returns:
+            bool: True if uid is available, False otherwise
+        """
+        if not mock:
+        # Filter non serving axons.
+            if not metagraph.axons[uid].is_serving:
+                bt.logging.debug(f"uid: {uid} is not serving")
+                return False
+            # Filter verifier permit > 1024 stake.
+            if metagraph.validator_permit[uid]:
+                bt.logging.debug(f"uid: {uid} has verifier permit")
+                if metagraph.S[uid] > vpermit_tao_limit:
+                    bt.logging.debug(f"uid: {uid} has stake ({metagraph.S[uid]}) > {vpermit_tao_limit}")
+                    return False
+        else:
+            return True
+
+        # Available otherwise.
+        return True
+
+    def get_miner_uids(
+        self, exclude: List[int] = None
+    ) -> np.ndarray:
+        """Returns all available uids from the metagraph, excluding specified uids.
+        Args:
+            exclude (List[int]): List of uids to exclude from the result.
+        Returns:
+            uids (np.ndarray): Array of available uids not excluded.
+        """
+        available_uids = []
+
+        for uid in range(self.metagraph.n.item()):
+            if uid == self.uid:
+                continue
+            uid_is_available = self.check_uid_availability(
+                self.metagraph, uid, self.config.neuron.vpermit_tao_limit, self.config.mock
+            )
+            uid_is_not_excluded = exclude is None or uid not in exclude
+
+            if uid_is_available and uid_is_not_excluded:
+                available_uids.append(uid)
+
+        return available_uids
 
 
 if __name__ == "__main__":
