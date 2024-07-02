@@ -11,3 +11,4 @@ pandas==2.2.2
 numpy==1.26.4
 sentencepiece==0.2.0
 protobuf==5.27.2
+plotext==5.2.8

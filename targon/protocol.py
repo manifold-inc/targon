@@ -135,7 +135,7 @@ class InferenceSamplingParams(pydantic.BaseModel):
 import pydantic
 from typing import List, Dict, Optional
 
-class Inference(pydantic.BaseModel):
+class Inference(bt.StreamingSynapse):
     """
     Inference is a specialized implementation tailored for prompting functionalities within
     the Bittensor network or similar systems, designed to be compatible with the OpenAI API reference.
@@ -149,29 +149,36 @@ class Inference(pydantic.BaseModel):
     - `completion` (Optional[str]): Stores the processed result of the streaming tokens.
     """
 
-    model: str = pydantic.Field(
+
+    sources: List[str] = pydantic.Field(
         ...,
-        title="Model",
-        description="The ID of the model to use.",
+        title="Sources",
+        description="A list of sources related to the query.",
     )
 
-    messages: List[Dict[str, str]] = pydantic.Field(
+    query: str = pydantic.Field(
         ...,
-        title="Messages",
-        description="A list of messages, where each message is a dictionary with `role` and `content`.",
+        title="Query",
+        description="The query to be sent to the Bittensor network.",
     )
 
     sampling_params: InferenceSamplingParams = pydantic.Field(
         InferenceSamplingParams(),
         title="Sampling Params",
-        description="The sampling parameters for the inference.",
+        description="The sampling parameters for the TGI model.",
     )
-
-    completion: Optional[str] = pydantic.Field(
+    completion: str = pydantic.Field(
         None,
         title="Completion",
         description="The processed result of the streaming tokens.",
     )
+
+    required_hash_fields: List[str] = pydantic.Field(
+        ["sources", "query", "seed"],
+        title="Required Hash Fields",
+        description="A list of fields that are required for the hash.",
+    )
+
 
 
     async def process_streaming_response(self, response: StreamingResponse):

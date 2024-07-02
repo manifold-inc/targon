@@ -6,12 +6,13 @@ import asyncio
 import argparse
 import numpy as np
 import pandas as pd
+import plotext as plt
 import bittensor as bt
 
 from typing import List
-from targon import generate_dataset
 from transformers import AutoTokenizer
 from huggingface_hub import AsyncInferenceClient
+from targon import generate_dataset, create_ground_truth, handle_inference, InferenceStats
 
 from targon import config, check_config, add_args, add_verifier_args
 
@@ -91,6 +92,11 @@ class Verifier:
 
         ## SET PROMPT TOKENIZER
         self.prompt_tokenizer = AutoTokenizer.from_pretrained(self.config.neuron.default_tokenizer)
+        miners = self.get_miner_uids()
+        self.time_to_first_token = {miner: [] for miner in miners}
+        self.time_for_all_tokens = {miner: [] for miner in miners}
+        self.tokens_per_second = {miner: [] for miner in miners}
+
 
     async def forward(self, uid):
         """
@@ -107,40 +113,49 @@ class Verifier:
             time.sleep(12)
             return
         try:
-            start_time = time.time()
             bt.logging.info(f"forward block: {self.block if not self.config.mock else self.block_number} step: {self.step}")
 
-            # --- Perform coin flip
-
-            # --- Generate the query.
-            # event = await inference_data(self)
             
             prompt, sampling_params = await generate_dataset(self)
+            ground_truth = await create_ground_truth(self, prompt, sampling_params)
+            stats = await handle_inference(self, prompt, sampling_params, uid, ground_truth)
 
-            bt.logging.info(prompt)
+            await self.score(stats)
 
 
-            # if not self.config.mock:
-            #     try:
-            #         block = self.substrate.subscribe_block_headers(self.subscription_handler)
-            #     except:
-            #         sleep_time = 12 - (time.time() - start_time)
-            #         if sleep_time > 0:
-            #             bt.logging.info(f"Sleeping for {sleep_time} seconds")
-            #             await asyncio.sleep(sleep_time)
-            # else:
-            #     time.sleep(1)
             
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
             time.sleep(12)
             pass
 
+    async def score(self, stats):
+        if stats.verified:
+            self.time_to_first_token[stats.uid].append(stats.time_to_first_token)
+            self.time_for_all_tokens[stats.uid].append(stats.time_for_all_tokens)
+            self.tokens_per_second[stats.uid].append(stats.tokens_per_second)
 
-    async def concurrent_forward(self):
+        else:
+            self.time_to_first_token[stats.uid].append(0)
+            self.time_for_all_tokens[stats.uid].append(0)
+            self.tokens_per_second[stats.uid].append(0)
+        
+
+
+    def plot(self, data):
+        plt.scatter(data)
+        plt.title("Sorted Tokens per Second")
+        plt.xlabel("UID (sorted)")
+        plt.ylabel("Reward Score")
+        plt.plotsize(100, 20)
+        plt.show()
+        plt.clf()
+        
+
+    async def concurrent_forward(self, uid, concurrent_forwards):
         coroutines = [
-            self.forward()
-            for _ in range(self.config.neuron.num_concurrent_forwards)
+            self.forward(uid)
+            for _ in range(concurrent_forwards)
         ]
         await asyncio.gather(*coroutines)
 
@@ -158,17 +173,23 @@ class Verifier:
             # get all miner uids
             miner_uids = self.get_miner_uids()
 
+            # randomize miner_uids
+            random.shuffle(miner_uids)
+
             bt.logging.info(f"number of uids to sample: {len(miner_uids)}")
             
             for uid in miner_uids:
                 bt.logging.info(f"miner uid: {uid}")
+                
 
-                asyncio.run(self.forward(uid))
+                for i in [1,2,4,8]:
+                    self.loop.run_until_complete(self.concurrent_forward(uid, i))
+
+                self.plot(self.tokens_per_second[uid])
    
             # bt.logging.info(f"step({self.step}) block({self.block})")
 
             # Run multiple forwards concurrently.
-            # self.loop.run_until_complete(self.concurrent_forward())
 
                 # Sync metagraph and potentially set weights.
             self.sync()
@@ -262,6 +283,9 @@ class Verifier:
             min_len = min(len(self.hotkeys), len(self.scores))
             new_moving_average[:min_len] = self.scores[:min_len]
             self.scores = new_moving_average
+
+        
+
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)

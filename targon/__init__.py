@@ -1,4 +1,5 @@
 from .config import *
-from .dataset import generate_dataset
+from .dataset import *
+from .inference import *
 
 __version__ = "1.2.0"
