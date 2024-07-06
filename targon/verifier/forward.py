@@ -44,13 +44,10 @@ async def forward(self):
         
 
         if not self.config.mock:
-            try:
-                block = self.substrate.subscribe_block_headers(self.subscription_handler)
-            except:
-                sleep_time = 12 - (time.time() - start_time)
-                if sleep_time > 0:
-                    bt.logging.info(f"Sleeping for {sleep_time} seconds")
-                    await asyncio.sleep(sleep_time)
+            sleep_time = 12 - (time.time() - start_time)
+            if sleep_time > 0:
+                bt.logging.info(f"Sleeping for {sleep_time} seconds")
+                await asyncio.sleep(sleep_time)
         else:
             time.sleep(1)
         
