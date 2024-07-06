@@ -3,6 +3,7 @@ import copy
 import time
 import random
 import asyncio
+import uvicorn
 import argparse
 import numpy as np
 import pandas as pd
@@ -10,11 +11,13 @@ import plotext as plt
 import bittensor as bt
 
 from typing import List
+from fastapi import FastAPI
 from transformers import AutoTokenizer
+from bittensor.axon import FastAPIThreadedServer
 from huggingface_hub import AsyncInferenceClient
+from targon import config, check_config, add_args, add_verifier_args
 from targon import generate_dataset, create_ground_truth, handle_inference, InferenceStats
 
-from targon import config, check_config, add_args, add_verifier_args
 
 class Verifier:
     @classmethod
@@ -82,6 +85,31 @@ class Verifier:
         self.should_exit = False
 
 
+        ## STATS
+        miners = self.get_miner_uids()
+        self.time_to_first_token = {miner: [] for miner in miners}
+        self.time_for_all_tokens = {miner: [] for miner in miners}
+        self.tokens_per_second = {miner: [] for miner in miners}
+
+        self.verified_success = {miner: [] for miner in miners}
+
+        self.top_verified_tps = 0
+        self.top_unverified_tps = 0
+
+        ## STATS SERVER
+        self.app = FastAPI()
+        self.app.router.add_api_route(
+            "/api/stats", self.stats, methods=["GET"]
+        )
+        self.fast_config = uvicorn.Config(
+            self.app,
+            host="0.0.0.0",
+            port=self.config.neuron.proxy.port,
+            loop="asyncio",
+        )
+        self.fast_server = FastAPIThreadedServer(config=self.fast_config)
+        self.fast_server.start()
+
         ## SET DATASET
         self.dataset = pd.read_json("hf://datasets/pinecone/dl-doc-search/train.jsonl", lines=True)
 
@@ -92,13 +120,11 @@ class Verifier:
 
         ## SET PROMPT TOKENIZER
         self.prompt_tokenizer = AutoTokenizer.from_pretrained(self.config.neuron.default_tokenizer)
-        miners = self.get_miner_uids()
-        self.time_to_first_token = {miner: [] for miner in miners}
-        self.time_for_all_tokens = {miner: [] for miner in miners}
-        self.tokens_per_second = {miner: [] for miner in miners}
+        
 
 
-    async def forward(self, uid):
+
+    async def forward(self, uid, prompt, sampling_params, ground_truth):
         """
         Verifier forward pass. Consists of:
         - Generating the query
@@ -115,11 +141,10 @@ class Verifier:
         try:
             bt.logging.info(f"forward block: {self.block if not self.config.mock else self.block_number} step: {self.step}")
 
-            
-            prompt, sampling_params = await generate_dataset(self)
-            ground_truth = await create_ground_truth(self, prompt, sampling_params)
             stats = await handle_inference(self, prompt, sampling_params, uid, ground_truth)
 
+
+            bt.logging.info(stats)
             await self.score(stats)
 
 
@@ -135,12 +160,48 @@ class Verifier:
             self.time_for_all_tokens[stats.uid].append(stats.time_for_all_tokens)
             self.tokens_per_second[stats.uid].append(stats.tokens_per_second)
 
-        else:
-            self.time_to_first_token[stats.uid].append(0)
-            self.time_for_all_tokens[stats.uid].append(0)
-            self.tokens_per_second[stats.uid].append(0)
+            self.verified_success[stats.uid].append(stats.verified)
+
+            self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
+        
+        self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
+        # else:
+        #     self.time_to_first_token[stats.uid].append(0)
+        #     self.time_for_all_tokens[stats.uid].append(0)
+        #     self.tokens_per_second[stats.uid].append(0)
+
+        #     self.verified_success[stats.uid].append(False)
         
 
+
+    async def stats(self):
+        def safe_mean(data):
+            mean_value = np.mean(data)
+            if np.isnan(mean_value) or np.isinf(mean_value):
+                return 0.0
+            return float(mean_value)
+        
+        time_to_first_token_stats = {miner: safe_mean(self.time_to_first_token[miner]) for miner in self.time_to_first_token}
+        time_for_all_tokens_stats = {miner: safe_mean(self.time_for_all_tokens[miner]) for miner in self.time_for_all_tokens}
+        tokens_per_second_stats = {miner: safe_mean(self.tokens_per_second[miner]) for miner in self.tokens_per_second}
+        verified_success_stats = {miner: safe_mean(self.verified_success[miner]) for miner in self.verified_success}
+        
+        return {
+            "top_verified_tps": self.top_verified_tps,
+            "top_unverified_tps": self.top_unverified_tps,
+            "miners": {uid: 
+                        {
+                            "top_tps": max(self.tokens_per_second[uid]) if len(self.tokens_per_second[uid]) > 0 else 0,
+                            "mean_time_to_first_token": time_to_first_token_stats[uid], 
+                            "mean_time_for_all_tokens": time_for_all_tokens_stats[uid], 
+                            "mean_tokens_per_second": tokens_per_second_stats[uid], 
+                            "mean_verified_success": verified_success_stats[uid]
+                        } for uid in self.time_to_first_token}
+            # "time_to_first_token": time_to_first_token_stats,
+            # "time_for_all_tokens": time_for_all_tokens_stats,
+            # "tokens_per_second": tokens_per_second_stats,
+            # "verified_success": verified_success_stats
+        }
 
     def plot(self, data):
         plt.scatter(data)
@@ -159,6 +220,19 @@ class Verifier:
         ]
         await asyncio.gather(*coroutines)
 
+    async def process_uids(self, uids, batch_size):
+        for i in range(0, len(uids), batch_size):
+            batch = uids[i:i+batch_size]
+            await asyncio.gather(*(self.process_uid(uid) for uid in batch))
+
+    async def process_uid(self, uid):
+        bt.logging.info(f"miner uid: {uid}")
+        for i in [1, 2, 4]:
+            prompt, sampling_params = await generate_dataset(self)
+            ground_truth = await create_ground_truth(self, prompt, sampling_params)
+            await self.forward(uid, prompt, sampling_params, ground_truth)
+        self.plot(self.tokens_per_second[uid])
+
     def run(self):
         self.sync()
         bt.logging.info(
@@ -169,33 +243,19 @@ class Verifier:
 
         # This loop maintains the verifier's operations until intentionally stopped.
         while not self.should_exit:
-
             # get all miner uids
             miner_uids = self.get_miner_uids()
-
+            # miner_uids = [245]
             # randomize miner_uids
             random.shuffle(miner_uids)
 
             bt.logging.info(f"number of uids to sample: {len(miner_uids)}")
-            
-            for uid in miner_uids:
-                bt.logging.info(f"miner uid: {uid}")
-                
+            self.loop.run_until_complete(self.process_uids(miner_uids, batch_size=1))  # Adjust batch_size as needed
 
-                for i in [1,2,4,8]:
-                    self.loop.run_until_complete(self.concurrent_forward(uid, i))
-
-                self.plot(self.tokens_per_second[uid])
-   
-            # bt.logging.info(f"step({self.step}) block({self.block})")
-
-            # Run multiple forwards concurrently.
-
-                # Sync metagraph and potentially set weights.
+            # Sync metagraph and potentially set weights.
             self.sync()
 
             self.step += 1
-
 
     def __enter__(self):
         self.run()
@@ -283,9 +343,6 @@ class Verifier:
             min_len = min(len(self.hotkeys), len(self.scores))
             new_moving_average[:min_len] = self.scores[:min_len]
             self.scores = new_moving_average
-
-        
-
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)

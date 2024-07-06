@@ -115,6 +115,13 @@ def add_args(cls, parser):
         default="main",
     )
 
+    parser.add_argument(
+        "--neuron.proxy.port",
+        type=int,
+        help="The port to use for the proxy.",
+        default=8000,
+    )
+
 
 
 def add_prover_args(cls, parser):

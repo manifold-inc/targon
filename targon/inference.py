@@ -1,8 +1,9 @@
 import time
 
+import numpy as np
 import bittensor as bt
 
-from typing import List
+from typing import List, Tuple
 from targon import protocol
 from pydantic import BaseModel
 
@@ -85,7 +86,7 @@ async def handle_inference(self, prompt, sampling_params, uid, ground_truth):
     time_to_first_token = end_send_message_time - start_send_message_time
     time_for_all_tokens = end_token_time - start_token_time
 
-    tokens_per_second = token_count / time_for_all_tokens
+    tokens_per_second = token_count / time_for_all_tokens if token_count > 0 and time_for_all_tokens > 0 else 0
     bt.logging.info(f"Time to receive all tokens: {time_for_all_tokens}")
     bt.logging.info(f"Time to receive first token: {time_to_first_token}")
     bt.logging.info(f"Tokens per second: {tokens_per_second}")
@@ -139,7 +140,95 @@ def check_tokens(self, prover_output, ground_truth_output):
         prover_tokens
     )
 
-    if score < 0.75:
+    if score < 0.60:
         return False
 
     return True
+
+
+async def api_chat_completions(
+    self,
+    prompt: str,
+    sampling_params: protocol.InferenceSamplingParams,
+) -> Tuple[bool, protocol.Inference]:
+    """
+    Handles a inference sent to a prover and verifies the response.
+
+    Returns:
+    - Tuple[bool, protocol.Inference]: A tuple containing the verification result and the inference.
+    """
+    try:
+        synapse = protocol.Inference(
+            sources=[],
+            query=prompt,
+            sampling_params=sampling_params,
+        )
+
+        start_time = time.time()
+        token_count = 0
+        uid = select_highest_n_peers(1, self.metagraph)[0]
+        res = ''
+        async for token in await self.dendrite(
+            self.metagraph.axons[uid],
+            synapse,
+            deserialize=False,
+            timeout=self.config.neuron.timeout,
+            streaming=True,
+        ):
+            if isinstance(token, list):
+                res += token[0]
+                yield token[0]
+            elif isinstance(token, str):
+                res += token
+                yield token
+            token_count += 1
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        tokens_per_second = token_count / elapsed_time
+        bt.logging.info(f"Token generation rate: {tokens_per_second} tokens/second")
+        bt.logging.info(f"{res} | {token_count}")
+    except Exception as e:
+        bt.logging.error(e)
+
+
+# get highest incentive axons from metagraph
+def select_highest_n_peers(n: int, metagraph=None, return_all=False):
+    """
+    Selects the highest incentive peers from the metagraph.
+
+    Parameters:
+        n (int): number of top peers to return.
+
+    Returns:
+        int: uid of the selected peer from unique highest IPs.
+    """
+    assert metagraph is not None, "metagraph is None"
+    # Get the top n indices based on incentive
+    indices = np.argsort(metagraph.incentive)[-n:][::-1]
+    # Get the corresponding uids
+    uids_with_highest_incentives = metagraph.uids[indices].tolist()
+
+    if return_all:
+        return uids_with_highest_incentives
+
+    # get the axon of the uids
+    axons = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
+
+    # get the ip from the axons
+    ips = [axon.ip for axon in axons]
+
+    # get the coldkey from the axons
+    coldkeys = [axon.coldkey for axon in axons]
+
+    # Filter out the uids and ips whose coldkeys are in the blacklist
+    uids_with_highest_incentives, ips = zip(
+        *[
+            (uid, ip)
+            for uid, ip, coldkey in zip(uids_with_highest_incentives, ips, coldkeys)
+        ]
+    )
+    # axons_with_highest_incentives = [metagraph.axons[uid] for uid in uids_with_highest_incentives]
+    # unique_ip_to_uid = {ip: uid for ip, uid in zip(ips, uids_with_highest_incentives)}
+    # uids = list(unique_ip_to_uid.values())
+    return uids_with_highest_incentives
