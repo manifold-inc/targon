@@ -1,9 +1,11 @@
+import os
 import sys
 import copy
 import time
 import random
 import asyncio
 import uvicorn
+import sqlite3
 import argparse
 import numpy as np
 import pandas as pd
@@ -13,6 +15,7 @@ import bittensor as bt
 from typing import List
 from fastapi import FastAPI
 from transformers import AutoTokenizer
+from datetime import datetime, timedelta
 from bittensor.axon import FastAPIThreadedServer
 from huggingface_hub import AsyncInferenceClient
 from targon import config, check_config, add_args, add_verifier_args
@@ -20,6 +23,9 @@ from targon import generate_dataset, create_ground_truth, handle_inference, Infe
 
 
 class Verifier:
+
+    neuron_type = "VerifierNeuron"
+
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -83,6 +89,8 @@ class Verifier:
         ## SET MISC PARAMS
         self.step = 0
         self.should_exit = False
+        
+        self.hotkeys = self.metagraph.hotkeys
 
 
         ## STATS
@@ -122,9 +130,7 @@ class Verifier:
         self.prompt_tokenizer = AutoTokenizer.from_pretrained(self.config.neuron.default_tokenizer)
         
 
-
-
-    async def forward(self, uid, prompt, sampling_params, ground_truth):
+    async def forward(self, uids, prompt, sampling_params, ground_truth):
         """
         Verifier forward pass. Consists of:
         - Generating the query
@@ -140,12 +146,21 @@ class Verifier:
             return
         try:
             bt.logging.info(f"forward block: {self.block if not self.config.mock else self.block_number} step: {self.step}")
+            tasks = []
+            for uid in uids:
+                tasks.append(
+                    asyncio.create_task(
+                        handle_inference(self, prompt, sampling_params, uid, ground_truth)
+                    )
+            )
+            # stats = await handle_inference(self, prompt, sampling_params, uid, ground_truth)
+            stats = await asyncio.gather(*tasks)
 
-            stats = await handle_inference(self, prompt, sampling_params, uid, ground_truth)
-
+            for stat in stats:
+                await self.score(stat)
 
             bt.logging.info(stats)
-            await self.score(stats)
+            # await self.score(stats)
 
 
             
@@ -181,14 +196,20 @@ class Verifier:
                 return 0.0
             return float(mean_value)
         
-        time_to_first_token_stats = {miner: safe_mean(self.time_to_first_token[miner]) for miner in self.time_to_first_token}
-        time_for_all_tokens_stats = {miner: safe_mean(self.time_for_all_tokens[miner]) for miner in self.time_for_all_tokens}
-        tokens_per_second_stats = {miner: safe_mean(self.tokens_per_second[miner]) for miner in self.tokens_per_second}
-        verified_success_stats = {miner: safe_mean(self.verified_success[miner]) for miner in self.verified_success}
+
+
+        time_to_first_token_stats = {miner: safe_mean(self.time_to_first_token[miner][:30] if len(self.time_to_first_token[miner]) > 30 else self.time_to_first_token[miner]) for miner in self.time_to_first_token}
+        time_for_all_tokens_stats = {miner: safe_mean(self.time_for_all_tokens[miner][:30] if len(self.time_for_all_tokens[miner]) > 30 else self.time_for_all_tokens[miner]) for miner in self.time_for_all_tokens}
+        tokens_per_second_stats = {miner: safe_mean(self.tokens_per_second[miner][:30] if len(self.tokens_per_second[miner]) > 30 else self.tokens_per_second[miner]) for miner in self.tokens_per_second}
+        verified_success_stats = {miner: safe_mean(self.verified_success[miner][:30]) for miner in self.verified_success}
         
+        mean_tps_dict = {uid: safe_mean(self.tokens_per_second[uid][:30]) for uid in self.tokens_per_second}
+        mean_tps_dict = dict(sorted(mean_tps_dict.items(), key=lambda item: item[1], reverse=True))
+        top_20_uids = dict(list(mean_tps_dict.items())[:20])
         return {
             "top_verified_tps": self.top_verified_tps,
             "top_unverified_tps": self.top_unverified_tps,
+            "top_uids": top_20_uids,
             "miners": {uid: 
                         {
                             "top_tps": max(self.tokens_per_second[uid]) if len(self.tokens_per_second[uid]) > 0 else 0,
@@ -197,11 +218,8 @@ class Verifier:
                             "mean_tokens_per_second": tokens_per_second_stats[uid], 
                             "mean_verified_success": verified_success_stats[uid]
                         } for uid in self.time_to_first_token}
-            # "time_to_first_token": time_to_first_token_stats,
-            # "time_for_all_tokens": time_for_all_tokens_stats,
-            # "tokens_per_second": tokens_per_second_stats,
-            # "verified_success": verified_success_stats
         }
+
 
     def plot(self, data):
         plt.scatter(data)
@@ -220,18 +238,11 @@ class Verifier:
         ]
         await asyncio.gather(*coroutines)
 
-    async def process_uids(self, uids, batch_size):
-        for i in range(0, len(uids), batch_size):
-            batch = uids[i:i+batch_size]
-            await asyncio.gather(*(self.process_uid(uid) for uid in batch))
-
-    async def process_uid(self, uid):
-        bt.logging.info(f"miner uid: {uid}")
-        for i in [1, 2, 4]:
-            prompt, sampling_params = await generate_dataset(self)
-            ground_truth = await create_ground_truth(self, prompt, sampling_params)
-            await self.forward(uid, prompt, sampling_params, ground_truth)
-        self.plot(self.tokens_per_second[uid])
+    async def process_uids(self, uids, prompt, sampling_params, ground_truth):
+        try:
+            await self.forward(uids, prompt, sampling_params, ground_truth)
+        except Exception as e:
+            bt.logging.error(f"Error processing uids: {e}")
 
     def run(self):
         self.sync()
@@ -249,8 +260,18 @@ class Verifier:
             # randomize miner_uids
             random.shuffle(miner_uids)
 
+            # reduce down to 16 miners
+            miner_uids = miner_uids[:self.config.neuron.sample_size]
+            # miner_uids = [107, 122]
+            try:
+                prompt, sampling_params = asyncio.run(generate_dataset(self))
+                ground_truth = asyncio.run(create_ground_truth(self, prompt, sampling_params))
+            except Exception as e:
+                bt.logging.error(f"Error generating dataset: {e}")
+                time.sleep(12)
+                continue
             bt.logging.info(f"number of uids to sample: {len(miner_uids)}")
-            self.loop.run_until_complete(self.process_uids(miner_uids, batch_size=1))  # Adjust batch_size as needed
+            self.loop.run_until_complete(self.process_uids(miner_uids, prompt, sampling_params, ground_truth))  # Adjust batch_size as needed
 
             # Sync metagraph and potentially set weights.
             self.sync()
@@ -275,8 +296,8 @@ class Verifier:
         if self.should_sync_metagraph():
             self.resync_metagraph()
 
-        if self.should_set_weights():
-            self.set_weights()
+        # if self.should_set_weights():
+        #     self.set_weights()
 
 
     def check_registered(self):
@@ -333,16 +354,19 @@ class Verifier:
         # Zero out all hotkeys that have been replaced.
         for uid, hotkey in enumerate(self.hotkeys):
             if hotkey != self.metagraph.hotkeys[uid]:
-                self.scores[uid] = 0  # hotkey has been replaced
+                self.time_to_first_token[uid] = []
+                self.time_for_all_tokens[uid] = []
+                self.tokens_per_second[uid] = []
+                self.verified_success[uid] = []
 
         # Check to see if the metagraph has changed size.
         # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_moving_average = np.zeros((self.metagraph.n))
-            min_len = min(len(self.hotkeys), len(self.scores))
-            new_moving_average[:min_len] = self.scores[:min_len]
-            self.scores = new_moving_average
+        # if len(self.hotkeys) < len(self.metagraph.hotkeys):
+        #     # Update the size of the moving average scores.
+        #     new_moving_average = np.zeros((self.metagraph.n))
+        #     min_len = min(len(self.hotkeys), len(self.scores))
+        #     new_moving_average[:min_len] = self.scores[:min_len]
+        #     self.scores = new_moving_average
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
@@ -398,6 +422,44 @@ class Verifier:
                 available_uids.append(uid)
 
         return available_uids
+
+    def get_random_uids(
+        self, k: int, exclude: List[int] = None
+    ) -> np.ndarray:
+        """Returns k available random uids from the metagraph.
+        Args:
+            k (int): Number of uids to return.
+            exclude (List[int]): List of uids to exclude from the random sampling.
+        Returns:
+            uids (torch.LongTensor): Randomly sampled available uids.
+        Notes:
+            If `k` is larger than the number of available `uids`, set `k` to the number of available `uids`.
+        """
+        candidate_uids = []
+        avail_uids = []
+
+        for uid in range(self.metagraph.n.item()):
+            if uid == self.uid:
+                continue
+            uid_is_available = self.check_uid_availability(
+                self.metagraph, uid, self.config.neuron.vpermit_tao_limit, self.config.mock
+            )
+            uid_is_not_excluded = exclude is None or uid not in exclude
+
+            if uid_is_available:
+                avail_uids.append(uid)
+                if uid_is_not_excluded:
+                    candidate_uids.append(uid)
+
+        # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
+        available_uids = candidate_uids
+        if len(candidate_uids) < k:
+            available_uids += random.sample(
+                [uid for uid in avail_uids if uid not in candidate_uids],
+                k - len(candidate_uids),
+            )
+            uids = np.array(random.sample(available_uids, k))
+            return uids
 
 
 if __name__ == "__main__":

@@ -85,8 +85,12 @@ async def handle_inference(self, prompt, sampling_params, uid, ground_truth):
 
     time_to_first_token = end_send_message_time - start_send_message_time
     time_for_all_tokens = end_token_time - start_token_time
+    total_time = start_send_message_time - end_token_time
 
-    tokens_per_second = token_count / time_for_all_tokens if token_count > 0 and time_for_all_tokens > 0 else 0
+    tokens_per_second_partial = token_count / time_for_all_tokens if token_count > 0 and time_for_all_tokens > 0 else 0
+    tokens_per_second_full = token_count / total_time if token_count > 0 and total_time > 0 else 0
+    tokens_per_second = tokens_per_second_partial
+
     bt.logging.info(f"Time to receive all tokens: {time_for_all_tokens}")
     bt.logging.info(f"Time to receive first token: {time_to_first_token}")
     bt.logging.info(f"Tokens per second: {tokens_per_second}")
@@ -95,6 +99,12 @@ async def handle_inference(self, prompt, sampling_params, uid, ground_truth):
     
     verified = check_tokens(self, response, ground_truth)
 
+    # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
+    if time_to_first_token > 1.8 * time_for_all_tokens:
+        verified = False
+        tokens_per_second = 0
+
+    
     stats = InferenceStats(
         time_to_first_token=time_to_first_token,
         time_for_all_tokens=time_for_all_tokens,
