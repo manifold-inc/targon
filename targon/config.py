@@ -18,33 +18,29 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import argparse
 import bittensor as bt
-from typing import List
 
-#TODO: enable 4bit and 8bit precision llms via config
+# TODO: enable 4bit and 8bit precision llms via config
 
-def check_config(cls, config: "bt.Config"):
+def validate_config_and_neuron_path(config):
     r"""Checks/validates the config namespace object."""
-    bt.logging.check_config(config)
-
     full_path = os.path.expanduser(
         "{}/{}/{}/netuid{}/{}".format(
-            config.logging.logging_dir,  # TODO: change from ~/.bittensor/provers to ~/.bittensor/neurons
+            config.logging.logging_dir,
             config.wallet.name,
             config.wallet.hotkey,
             config.netuid,
             config.neuron.name,
         )
     )
-    bt.logging.info(f'Logging path: {full_path}')
+    bt.logging.info(f"Logging path: {full_path}")
     config.neuron.full_path = os.path.expanduser(full_path)
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
+    return config
 
 
-
-def add_args(cls, parser):
+def add_args(parser):
     """
     Adds relevant arguments to the parser for operation.
     """
@@ -92,7 +88,7 @@ def add_args(cls, parser):
         help="If set, we dont save events to a log file.",
         default=False,
     )
-    
+
     parser.add_argument(
         "--neuron.log_full",
         action="store_true",
@@ -107,9 +103,8 @@ def add_args(cls, parser):
         default=False,
     )
 
-
     parser.add_argument(
-        '--autoupdate.branch',
+        "--autoupdate.branch",
         type=str,
         help="The branch to auto-update from.",
         default="main",
@@ -123,15 +118,14 @@ def add_args(cls, parser):
     )
 
 
-
-def add_prover_args(cls, parser):
+def add_prover_args(parser):
     """Add prover specific arguments to the parser."""
 
     parser.add_argument(
         "--neuron.name",
         type=str,
         help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default='prover',
+        default="prover",
     )
 
     parser.add_argument(
@@ -156,20 +150,21 @@ def add_prover_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.tgi_endpoint",
+        "--neuron.model_endpoint",
         type=str,
         help="The endpoint to use for the TGI client.",
         default="http://127.0.0.1:8080",
     )
 
-def add_verifier_args(cls, parser):
+
+def add_verifier_args(parser):
     """Add verifier specific arguments to the parser."""
 
     parser.add_argument(
         "--neuron.name",
         type=str,
         help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default='verifier',
+        default="verifier",
     )
 
     parser.add_argument(
@@ -257,16 +252,16 @@ def add_verifier_args(cls, parser):
         "--neuron.vpermit_tao_limit",
         type=int,
         help="The maximum number of TAO allowed to query a verifier with a vpermit.",
-            default=4096,
-        )
-    
+        default=4096,
+    )
+
     parser.add_argument(
         "--neuron.tgi_endpoint",
         type=str,
         help="The endpoint to use for the TGI client.",
         default="http://localhost:8080",
     )
-    
+
     parser.add_argument(
         "--database.host",
         type=str,
@@ -301,18 +296,3 @@ def add_verifier_args(cls, parser):
         help="The interval at which to compute statistics.",
         default=360,
     )
-
-
-
-
-def config(cls):
-    """
-    Returns the configuration object specific to this prover or verifier after adding relevant arguments.
-    """
-    parser = argparse.ArgumentParser()
-    bt.wallet.add_args(parser)
-    bt.subtensor.add_args(parser)
-    bt.logging.add_args(parser)
-    bt.axon.add_args(parser)
-    cls.add_args(parser)
-    return bt.config(parser)

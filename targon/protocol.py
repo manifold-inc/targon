@@ -17,123 +17,119 @@
 # DEALINGS IN THE SOFTWARE.
 
 
+from bittensor.stream import ClientResponse
 import pydantic
 import bittensor as bt
 
-from typing import List
+from typing import List, Optional
 from starlette.responses import StreamingResponse
 
-
 class InferenceSamplingParams(pydantic.BaseModel):
-    '''
+    """
     SamplingParams is a pydantic model that represents the sampling parameters for the TGI model.
-    '''
-    best_of: int = pydantic.Field(
-        1,
-        title="Best of",
-        description="The number of samples to generate.",
-    )
-
-    decoder_input_details: bool = pydantic.Field(
-        True,
-        title="Decoder Input Details",
-        description="Whether to return the decoder input details.",
-    )
-
-    details: bool = pydantic.Field(
-        False,
-        title="Details",
-        description="Whether to return the details.",
-    )
-
-    do_sample: bool = pydantic.Field(
-        True,
-        title="Do Sample",
-        description="Whether to sample.",
-    )
-
-    max_new_tokens: int = pydantic.Field(
-        32,
-        title="Max New Tokens",
-        description="The maximum number of tokens to generate in the completion.",
-    )
-
-    repetition_penalty: float = pydantic.Field(
-        1.0,
-        title="Repetition Penalty",
-        description="The repetition penalty.",
-    )
-
-    return_full_text: bool = pydantic.Field(
-        False,
-        title="Return Full Text",
-        description="Whether to return the full text.",
-    )
+    """
 
     seed: int = pydantic.Field(
-        None,
         title="Seed",
         description="The seed used to generate the output.",
     )
 
-    stop: List[str] = pydantic.Field(
-        [""],
+    best_of: Optional[int] = pydantic.Field(
+        default=1,
+        title="Best of",
+        description="The number of samples to generate.",
+    )
+
+    decoder_input_details: Optional[bool] = pydantic.Field(
+        default=True,
+        title="Decoder Input Details",
+        description="Whether to return the decoder input details.",
+    )
+
+    details: Optional[bool] = pydantic.Field(
+        default=False,
+        title="Details",
+        description="Whether to return the details.",
+    )
+
+    do_sample: Optional[bool] = pydantic.Field(
+        default=True,
+        title="Do Sample",
+        description="Whether to sample.",
+    )
+
+    max_new_tokens: Optional[int] = pydantic.Field(
+        default=32,
+        title="Max New Tokens",
+        description="The maximum number of tokens to generate in the completion.",
+    )
+
+    repetition_penalty: Optional[float] = pydantic.Field(
+        default=1.0,
+        title="Repetition Penalty",
+        description="The repetition penalty.",
+    )
+
+    return_full_text: Optional[bool] = pydantic.Field(
+        default=False,
+        title="Return Full Text",
+        description="Whether to return the full text.",
+    )
+
+    stop: Optional[List[str]] = pydantic.Field(
+        default=[""],
         title="Stop",
         description="The stop words.",
     )
 
-    temperature: float = pydantic.Field(
-        0.01,
+    temperature: Optional[float] = pydantic.Field(
+        default=0.01,
         title="Temperature",
         description="Sampling temperature to use, between 0 and 2.",
     )
 
-    top_k: int = pydantic.Field(
-        10,
+    top_k: Optional[int] = pydantic.Field(
+        default=10,
         title="Top K",
         description="Nucleus sampling parameter, top_p probability mass.",
     )
 
-    top_n_tokens: int = pydantic.Field(
-        5,
+    top_n_tokens: Optional[int] = pydantic.Field(
+        default=5,
         title="Top N Tokens",
         description="The number of tokens to return.",
     )
 
-    top_p: float = pydantic.Field(
-        0.998,
+    top_p: Optional[float] = pydantic.Field(
+        default=0.998,
         title="Top P",
         description="Nucleus sampling parameter, top_p probability mass.",
     )
 
-    truncate: int = pydantic.Field(
-        None,
+    truncate: Optional[int] = pydantic.Field(
+        default=None,
         title="Truncate",
         description="The truncation length.",
     )
 
-    typical_p: float = pydantic.Field(
-        0.9999999,
+    typical_p: Optional[float] = pydantic.Field(
+        default=0.9999999,
         title="Typical P",
         description="The typical probability.",
     )
 
-    watermark: bool = pydantic.Field(
-        False,
+    watermark: Optional[bool] = pydantic.Field(
+        default=False,
         title="Watermark",
         description="Whether to watermark.",
     )
 
-    stream: bool = pydantic.Field(
-        False,
+    stream: Optional[bool] = pydantic.Field(
+        default=False,
         title="Stream",
         description="Whether to stream.",
     )
 
-
-
-import pydantic
-from typing import List, Dict, Optional
 
 class Inference(bt.StreamingSynapse):
     """
@@ -149,39 +145,29 @@ class Inference(bt.StreamingSynapse):
     - `completion` (Optional[str]): Stores the processed result of the streaming tokens.
     """
 
-
-    sources: List[str] = pydantic.Field(
-        ...,
-        title="Sources",
-        description="A list of sources related to the query.",
-    )
-
     query: str = pydantic.Field(
-        ...,
         title="Query",
         description="The query to be sent to the Bittensor network.",
     )
 
-    sampling_params: InferenceSamplingParams = pydantic.Field(
-        InferenceSamplingParams(),
+    sampling_params: Optional[InferenceSamplingParams] = pydantic.Field(
+        default=InferenceSamplingParams(seed=333),
         title="Sampling Params",
         description="The sampling parameters for the TGI model.",
     )
-    completion: str = pydantic.Field(
-        None,
+    completion: Optional[str] = pydantic.Field(
+        default=None,
         title="Completion",
         description="The processed result of the streaming tokens.",
     )
 
-    required_hash_fields: List[str] = pydantic.Field(
-        ["sources", "query", "seed"],
-        title="Required Hash Fields",
-        description="A list of fields that are required for the hash.",
-    )
+    #required_hash_fields: List[str] = pydantic.Field(
+    #    default=["sources", "query", "seed"],
+    #    title="Required Hash Fields",
+    #    description="A list of fields that are required for the hash.",
+    #)
 
-
-
-    async def process_streaming_response(self, response: StreamingResponse):
+    async def process_streaming_response(self, response: ClientResponse):
         """
         `process_streaming_response` is an asynchronous method designed to process the incoming streaming response from the
         Bittensor network. It's the heart of the Challenge class, ensuring that streaming tokens, which represent
@@ -203,15 +189,6 @@ class Inference(bt.StreamingSynapse):
                 if token:
                     self.completion += token
             yield tokens
-
-    def deserialize(self) -> str:
-        """
-        Deserializes the response by returning the completion attribute.
-
-        Returns:
-            str: The completion result.
-        """
-        return self.completion
 
     def extract_response_json(self, response: StreamingResponse) -> dict:
         """
@@ -258,6 +235,3 @@ class Inference(bt.StreamingSynapse):
             "query": self.query,
             "completion": self.completion,
         }
-
-
-
