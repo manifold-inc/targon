@@ -24,7 +24,7 @@ from typing import List
 from starlette.responses import StreamingResponse
 
 
-class InferenceeSamplingParams(pydantic.BaseModel):
+class InferenceSamplingParams(pydantic.BaseModel):
     '''
     SamplingParams is a pydantic model that represents the sampling parameters for the TGI model.
     '''
@@ -53,7 +53,7 @@ class InferenceeSamplingParams(pydantic.BaseModel):
     )
 
     max_new_tokens: int = pydantic.Field(
-        16,
+        128,
         title="Max New Tokens",
         description="The maximum number of tokens to generate in the completion.",
     )
@@ -77,7 +77,7 @@ class InferenceeSamplingParams(pydantic.BaseModel):
     )
 
     stop: List[str] = pydantic.Field(
-        ["photographer"],
+        [""],
         title="Stop",
         description="The stop words.",
     )
@@ -101,7 +101,7 @@ class InferenceeSamplingParams(pydantic.BaseModel):
     )
 
     top_p: float = pydantic.Field(
-        0.9999999,
+        0.998,
         title="Top P",
         description="Nucleus sampling parameter, top_p probability mass.",
     )
@@ -160,7 +160,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     max_new_tokens: int = pydantic.Field(
-        16,
+        32,
         title="Max New Tokens",
         description="The maximum number of tokens to generate in the completion.",
     )
@@ -208,7 +208,7 @@ class ChallengeSamplingParams(pydantic.BaseModel):
     )
 
     top_p: float = pydantic.Field(
-        0.9999999,
+        0.998,
         title="Top P",
         description="Nucleus sampling parameter, top_p probability mass.",
     )
@@ -286,8 +286,8 @@ class Inference(bt.StreamingSynapse):
         description="The query to be sent to the Bittensor network.",
     )
 
-    sampling_params: ChallengeSamplingParams = pydantic.Field(
-        ChallengeSamplingParams(),
+    sampling_params: InferenceSamplingParams = pydantic.Field(
+        InferenceSamplingParams(),
         title="Sampling Params",
         description="The sampling parameters for the TGI model.",
     )

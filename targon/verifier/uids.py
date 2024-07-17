@@ -24,7 +24,6 @@ import asyncio
 import bittensor as bt
 from typing import List
 
-from targon.verifier.bonding import get_uid_tier_mapping, get_remaining_requests
 
 
 def check_uid_availability(
@@ -105,50 +104,3 @@ def determine_verifier_count(
     '''
 
     return metagraph.validator_permit.sum().item()
-
-async def get_tiered_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
-    """
-    Returns k uids from the metagraph, sampled based on their need for more queries and tier.
-    Uids in higher tiers are given priority.
-    
-    Args:
-        k (int): Number of uids to return.
-        exclude (List[int], optional): List of uids to exclude from the sampling. Defaults to None.
-    
-    Returns:
-        torch.LongTensor: Sampled uids.
-    """
-
-    if exclude is None:
-        exclude = set()
-    else:
-        exclude = set(exclude)
-
-    uid_tier_mapping = await get_uid_tier_mapping(self.database)  # Assume this method exists to map uids to their tiers
-    print(uid_tier_mapping)
-    tiered_uids = {"CHALLENGER": [], "GRANDMASTER": [], "GOLD": [], "SILVER": [], "BRONZE": []}
-    for uid in range(self.metagraph.n.item()):
-        if uid in exclude or uid == self.uid:
-            continue
-
-        if check_uid_availability(self.metagraph, uid, self.config.neuron.vpermit_tao_limit, self.config.mock):
-            tier = uid_tier_mapping.get(uid)
-            if tier:
-                tiered_uids[tier].append(uid)
-
-    async def remaining_requests(uid):
-        return await get_remaining_requests(self.metagraph.hotkeys[uid], self.database)  # Assume this method exists
-
-    for tier in tiered_uids:
-        uids_with_requests = await asyncio.gather(*[(uid, remaining_requests(uid)) for uid in tiered_uids[tier]])
-        tiered_uids[tier] = [uid for uid, requests in sorted(uids_with_requests, key=lambda x: x[1], reverse=True) if requests > 0]
-
-    selected_uids = []
-    for tier in ["CHALLENGER", "GRANDMASTER", "GOLD", "SILVER", "BRONZE"]:
-        for uid in tiered_uids[tier]:
-            if len(selected_uids) < k:
-                selected_uids.append(uid)
-            else:
-                break
-
-    return torch.tensor(selected_uids, dtype=torch.long)

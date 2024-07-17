@@ -220,5 +220,9 @@ def apply_reward_scores(
     self.scores: torch.FloatTensor = alpha * scattered_rewards + (
         1 - alpha
     ) * self.scores.to(self.device)
+
+    self.scores = (self.scores - self.config.neuron.decay_alpha).clamp(min=0)
+    # Get the UIDs and their corresponding coldkeys
+
     bt.logging.trace(f"Updated moving avg scores: {self.scores}")
 

@@ -1,6 +1,10 @@
 *.egg-info
 __pycache__/
 test.py
+test_stream.py
+.env
 
 docker-compose.yml
 .DS_Store
+
+.bt-venv/

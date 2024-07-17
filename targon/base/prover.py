@@ -25,6 +25,7 @@ import argparse
 import threading
 import traceback
 import bittensor as bt
+from targon import protocol
 from targon.base.neuron import BaseNeuron
 from targon.utils.updater import autoupdate
 from targon.utils.config import add_prover_args
@@ -35,6 +36,8 @@ class BaseProverNeuron(BaseNeuron):
     """
     Base class for Bittensor provers.
     """
+    neuron_type: str = "ProverNeuron"
+
     @classmethod
     def add_args(cls, parser: argparse.ArgumentParser):
         super().add_args(parser)  
@@ -42,7 +45,7 @@ class BaseProverNeuron(BaseNeuron):
 
 
     def __init__(self, config=None):
-        super().__init__(config=config)
+        super(BaseProverNeuron, self).__init__(config=config)
 
         
         # Warn if allowing incoming requests from anyone.
@@ -56,14 +59,31 @@ class BaseProverNeuron(BaseNeuron):
             )
 
         # The axon handles request processing, allowing verifiers to send this prover requests.
-        self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        #self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        if self.config.axon.external_ip is not None:
+            bt.logging.debug(
+                f"Starting axon on port {self.config.axon.port} and external ip {self.config.axon.external_ip}"
+            )
+            self.axon = bt.axon(
+                wallet=self.wallet,
+                port=self.config.axon.port,
+                external_ip=self.config.axon.external_ip,
+            )
+        else:
+            bt.logging.debug(f"Starting axon on port {self.config.axon.port}")
+            self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
+            
 
         # Attach deterprovers which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to prover axon.")
         self.axon.attach(
-            forward_fn=self.forward,
+            forward_fn=self.challenge,
             blacklist_fn=self.blacklist,
             priority_fn=self.priority,
+        ).attach(
+            forward_fn=self.inference,
+            blacklist_fn=self.inference_blacklist,
+            priority_fn=self.inference_priority,
         )
         bt.logging.info(f"Axon created: {self.axon}")      
 
@@ -82,6 +102,30 @@ class BaseProverNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
+
+    async def challenge(self, synapse: protocol.Challenge):
+        """
+        Prover's challenge function. This function is called by the verifier to request a response to a challenge.
+
+        Args:
+            synapse (protocol.Challenge): The challenge sent by the verifier.
+
+        Returns:
+            protocol.Response: The response to the challenge.
+        """
+        return await self.forward(synapse)
+    
+    async def inference(self, synapse: protocol.Inference):
+        """
+        Prover's inference function. This function is called by the verifier to request a response to an inference.
+
+        Args:
+            synapse (protocol.Inference): The inference sent by the verifier.
+
+        Returns:
+            protocol.Response: The response to the inference.
+        """
+        return await self.forward(synapse)
 
     def run(self):
         """
@@ -247,7 +291,7 @@ class BaseProverNeuron(BaseNeuron):
 
     def save_state(self):
         if not self.config.disable_autoupdate:
-            autoupdate("main")
+            autoupdate(self, self.config.autoupdate.branch)
         return True
     
     def load_state(self):

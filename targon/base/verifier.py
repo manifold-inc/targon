@@ -22,17 +22,17 @@ import sys
 import copy
 import torch
 import asyncio
-import aioredis
 import argparse
 import threading
 import subprocess
+import pandas as pd
 import bittensor as bt
-
 from shlex import quote
 from typing import List
 from copy import deepcopy
 from pprint import pformat
 from targon.mock import MockDendrite
+from redis import asyncio as aioredis
 from traceback import print_exception
 from targon.base.neuron import BaseNeuron
 from targon.utils.updater import autoupdate
@@ -47,6 +47,8 @@ class BaseVerifierNeuron(BaseNeuron):
     Base class for Bittensor verifiers. Your verifier should inherit from this class.
     """
     
+    neuron_type: str = "VerifierNeuron"
+
     @classmethod
     def add_args(cls, parser: argparse.ArgumentParser):
         super().add_args(parser)
@@ -54,27 +56,53 @@ class BaseVerifierNeuron(BaseNeuron):
  
 
     def __init__(self, config=None):
-        super().__init__(config=config)
+        super(BaseVerifierNeuron, self).__init__(config=config)
 
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-        assert self.config.database.password is not None, "Database password must be set."
+        # assert self.config.database.password is not None, "Database password must be set."
 
-        # Setup database
-        self.database = aioredis.StrictRedis(
-            host=self.config.database.host,
-            port=self.config.database.port,
-            db=self.config.database.index,
-            password=self.config.database.password,
-        )
-        self.db_semaphore = asyncio.Semaphore()
+        if self.config.mock:
+            self.block_number = 10000
 
-        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
+        try:
+            #self.axon = bt.axon(wallet=self.wallet, config=self.config)
+            if self.config.axon.external_ip is not None:
+                bt.logging.debug(
+                    f"Starting axon on port {self.config.axon.port} and external ip {self.config.axon.external_ip}"
+                )
+                self.axon = bt.axon(
+                    wallet=self.wallet,
+                    port=self.config.axon.port,
+                    external_ip=self.config.axon.external_ip,
+                )
+            else:
+                bt.logging.debug(f"Starting axon on port {self.config.axon.port}")
+                self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
 
-
+        except Exception as e:
+            bt.logging.error(
+                f"Failed to create Axon initialize with exception: {e}"
+            )
+        
         self.embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
         self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+
+        # set up our stats
+        self.max_tokens_per_second = 0
+        self.min_tokens_per_second = 0
+        self.range_tokens_per_second = 0
+        self.average_tokens_per_second = 10
+
+        self.rewards: torch.FloatTensor = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(
+            self.device
+        )
+        self.moving_rewards = torch.zeros(len(self.metagraph.uids), dtype=torch.float32).to(self.device)
+
+        self.data = pd.read_json("hf://datasets/pinecone/dl-doc-search/train.jsonl", lines=True)
+
+        self.client = AsyncInferenceClient(self.config.neuron.tgi_endpoint)
 
 
         if not self.config.mock:
@@ -137,22 +165,16 @@ class BaseVerifierNeuron(BaseNeuron):
         """Serve axon to enable external connections."""
 
         bt.logging.info("serving ip to chain...")
+        
         try:
-            self.axon = bt.axon(wallet=self.wallet, config=self.config)
-
-            try:
-                self.subtensor.serve_axon(
-                    netuid=self.config.netuid,
-                    axon=self.axon,
-                )
-            except Exception as e:
-                bt.logging.error(f"Failed to serve Axon with exception: {e}")
-
-        except Exception as e:
-            bt.logging.error(
-                f"Failed to create Axon initialize with exception: {e}"
+            self.subtensor.serve_axon(
+                netuid=self.config.netuid,
+                axon=self.axon,
             )
+        except Exception as e:
+            bt.logging.error(f"Failed to serve Axon with exception: {e}")
 
+       
     async def concurrent_forward(self):
         coroutines = [
             self.forward()
@@ -210,7 +232,7 @@ class BaseVerifierNeuron(BaseNeuron):
         except KeyboardInterrupt:
             self.axon.stop()
             bt.logging.success("Verifier killed by keyboard interrupt.")
-            sys.exit()
+            self.restart_required = True
 
         # In case of unforeseen errors, the verifier will log the error and continue operations.
         except Exception as err:
@@ -261,6 +283,7 @@ class BaseVerifierNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping verifier in background thread.")
             self.should_exit = True
+            self.restart_required = True
             self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
@@ -276,11 +299,13 @@ class BaseVerifierNeuron(BaseNeuron):
                 "Scores contain NaN values. This may be due to a lack of responses from provers, or a bug in your reward functions."
             )
 
+
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(
             self.scores, p=1, dim=0
         )
+
 
         bt.logging.debug("raw_weights", raw_weights)
         bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
@@ -294,6 +319,7 @@ class BaseVerifierNeuron(BaseNeuron):
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
+            exclude_quantile=0.99
         )
         bt.logging.debug("processed_weights", processed_weights)
         bt.logging.debug("processed_weight_uids", processed_weight_uids)
@@ -393,7 +419,7 @@ class BaseVerifierNeuron(BaseNeuron):
             self.config.neuron.full_path + "/state.pt",
         )
         if not self.config.disable_autoupdate:
-            autoupdate("main")
+            autoupdate(self, self.config.autoupdate.branch)
 
     def load_state(self):
         """Loads the state of the verifier from a file."""

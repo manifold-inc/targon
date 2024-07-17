@@ -5,6 +5,8 @@ TARGON (Bittensor Subnet 4) is a redundant deterministic verification mechanism 
 
 NOTICE: Using this software, you must agree to the Terms and Agreements provided in the terms and conditions document. By downloading and running this software, you implicitly agree to these terms and conditions.
 
+> v1.9.9 - removed tier system, implemented exponential tok/s reward scaling
+
 > v1.0.6 - Runpod is now supported 🎉. Check out the runpod docs in docs/runpod/verifier.md and docs/runpod/prover.md for more information.
 
 > ~~v1.0.0 - Runpod is not currently supported on this version of TARGON for verifiers. An easy alternative can be found in the [Running on TensorDock](#running-on-tensordock) section.~~
@@ -27,13 +29,10 @@ Currently supporting python>=3.9,<3.11.
    - [Role of a Verifier](#role-of-a-verifier)
 1. [Features of TARGON](#features-of-targon)
     - [Challenge Request](#challenge-request)
-    - [Inference Request (IN PROGRESS) ](#inference-request-(IN-PROGRESS))
+    - [Inference Request ](#inference-request)
 1. [How to Run TARGON](#how-to-run-targon)
     - [Run a Prover](#run-a-prover)
     - [Run a Verifier](#run-a-verifier)
-1. [Reward System](#reward-system)
-    - [Tier System](#tier-system)
-    - [Promotion/Relegation](#promotion/relegation)
 1. [How to Contribute](#how-to-contribute)
 
 
@@ -41,15 +40,15 @@ Currently supporting python>=3.9,<3.11.
 The following table shows the VRAM, Storage, RAM, and CPU minimum requirements for running a verifier or prover.
 
 GPU - A100
-| Provider   | VRAM  | Storage |   RAM   | CPU  |
-|------------|-------|---------|---------|------|
-| TensorDock | 40GB  | 100GB   | 16GB    | 4    |
-| Latitude   | 40GB  | 100GB   | 16GB    | 4    |
-| Paperspace | 40GB  | 100GB   | 16GB    | 4    |
-| GCP        | 40GB  | 100GB   | 16GB    | 4    |
-| Azure      | 40GB  | 100GB   | 16GB    | 4    |
-| AWS        | 40GB  | 100GB   | 16GB    | 4    |
-| Runpod     | 40GB  | 100GB   | 16GB    | 4    |
+| Provider   | VRAM   | Storage |   RAM   | CPU  |
+|------------|--------|---------|---------|------|
+| TensorDock |  80GB  | 200GB   |   16GB  | 4    |
+| Latitude   |  80GB  | 200GB   |   16GB  | 4    |
+| Paperspace |  80GB  | 200GB   |   16GB  | 4    |
+| GCP        |  80GB  | 200GB   |   16GB  | 4    |
+| Azure      |  80GB  | 200GB   |   16GB  | 4    |
+| AWS        |  80GB  | 200GB   |   16GB  | 4    |
+| Runpod     |  80GB  | 200GB   |   16GB  | 4    |
 
 
 # Recommended Compute Providers
@@ -76,14 +75,14 @@ The following table shows the suggested compute providers for running a verifier
 - [x] Database
 - [x] Auto Update
 - [x] Forwarding
+- [x] Tiered Requests to match throughput
+- [x] Inference Request
 
 </details>
 
 <details>
 <summary>In Progress</summary>
 
-- [] Tiered Requests to match throughput
-- [] Inference Request
 - [] Metapool
 - [] flashbots' style block space for verifier bandwidth
 - [] metrics dashboard
@@ -177,7 +176,8 @@ cd targon
 
 ### Install dependencies
 ```bash
-pip install -e .
+python3 -m pip install -r requirements.txt
+python3 -m pip install -e .
 ```
 
 You have now installed TARGON. You can now run a prover or verifier.
@@ -201,7 +201,7 @@ A verifier is a node that is responsible for verifying a prover's output. The ve
 ## Challenge Request
 A challenge request is a request sent by a verifier to a prover. The challenge request contains a query, private input, and deterministic sampling params. The prover will then generate an output from the query, private input, and deterministic sampling params. The prover will then send the output back to the verifier.
 
-## Inference Request (IN PROGRESS)
+## Inference Request
 An inference request is a request sent by a verifier to a prover. The inference request contains a query, private input, and inference sampling params. The prover will then generate an output from the query, private input, and deterministic sampling params. The prover will then stream the output back to the verifier.
 > *CAVEAT:* Every Interval (360 blocks) there will be a random amount of inference samples by the verifier. The verifier will then compare the outputs to the ground truth outputs. The cosine similarity of the outputs will be used to determine the reward for the prover. Failing to do an inference request will result in a 5x penalty.
 
@@ -209,25 +209,54 @@ An inference request is a request sent by a verifier to a prover. The inference 
 # How to Run TARGON
 
 ## Run a Prover
-To get started running a prover, you will need to be running the docker containers for the requirements of the prover. To do this, run the following command:
+To get started running a prover, you will need to run the docker containers for the requirements of the prover. To do this, start with a template by runig the following command:
 ```bash
 cp neurons/prover/docker-compose.example.yml neurons/prover/docker-compose.yml
-docker compose -f neurons/prover/docker-compose.yml up -d
 ```
 
-this includes the following containers:
+This by default includes the following containers:
 - TGI Inference Node
-- Subtensor
 - Prover (optional)
+- ~~Subtensor (experimental)~~
 
+**experimental** Experimentally, you can uncomment the subtensor service in the template. The subtensor could also be set up locally on the host machine, external from docker. Otherwise, for running an external subtensor instance, whether locally on the machine or remote, you will want to make sure the prover starts up with the flag `--subtensor.chain_endpoint ws://the.subtensor.ip.addr:9944` to connect to the chain.
 
-**experimental** optionally, you can edit the docker-compose.yml file to include the proving container, but you will need to edit the docker-compose.yml file and uncomment out the prover container. Otherwise you can run the prover with PM2.
+### GPU Sharding
+You can optionally shard the model across multiple GPUs. To do this, you will need to modify the docker template you copied above and include these flags at the end of the command within the service.
+
+NOTE: Scroll horizontally to see the full command if this readme is truncated by the viewport.
+```docker
+version: '3.8'
+services:
+  text-generation-service:
+    image: ghcr.io/huggingface/text-generation-inference:1.3
+    command: --model-id mlabonne/NeuralDaredevil-7B --max-input-length 3072 --max-total-tokens 4096 --sharded --num-shard 2
+    volumes:
+      - ./models:/data
+    ports:
+      - "127.0.0.1:8080:80"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ["0","1"]
+    shm_size: '1g'
+```
+NOTE: Sharding is not set by default in the template, so you will need to modify it accordingly prior to starting the container.
 
 
 ### Docker
 
 <details>
-<summary>Run with Docker</summary>
+<summary>Run prover with Docker</summary>
+
+By default, the docker template you copied above for TGI contains the prover. This is optional.
+
+**optionally**, you can edit the docker-compose.yml file to comment out the proving container, leaving the TGI service to run alone, but then you will need to run the prover with PM2.
+
+If you will use the prover in the docker, here's an example of the prover service section of the docker template, which is also what exposes the axon port.
 
 ```docker
   prover:
@@ -239,31 +268,43 @@ this includes the following containers:
     command: ./entrypoint.sh
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
-
 ```
-and then edit the entrypoint.sh file to include the args specific for your prover.
+NOTE: This prover should already exist in your template file.
+
+
+
+In the entrypoint.sh, please replace the wallet name and hotkey with your own. If you prefer, you can also change the subtensor chain endpoint to your own chain endpoint.
 
 ```bash
-python app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
+python3 app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.trace --subtensor.chain_endpoint ws://0.0.0.0:9944
 ```
-
+  
 replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you prefer.
 
+NOTE: Trace logging is very verbose. You can use `--logging.debug` instead for less log bloat.
 </details>
+
 
 ### PM2
 
 <details>
-<summary> Run with PM2</summary>
+<summary> Run prover with PM2</summary>
+
+If you will go this route, remember you will need to have the TGI instance running (docker covers that above), and be sure to comment out the prover service in the docker template
+
+Please replace the wallet name and hotkey with your own. If you prefer, you can also change the subtensor chain endpoint to your own chain endpoint.
 
 ```bash
 cd neurons/prover
-pm2 start app.py --name prover -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
+pm2 start app.py --name prover --interpreter python3 -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944
 ```
 
 replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you prefer.
 
+NOTE: Trace logging is very verbose. You can use `--logging.debug` instead for less log bloat.
+
 </details>
+
 
 ### Options
 The add_prover_args function in the targon/utils/config.py file is used to add command-line arguments specific to the prover. Here are the options it provides:
@@ -283,7 +324,7 @@ To get started running a verifier, you will need to be running the docker contai
 ```bash
 cp neurons/verifier/docker-compose.example.yml neurons/verifier/docker-compose.yml
 ./scripts/generate_redis_password.sh
-vim neurons/verifier/docker-compose.yml # replace YOUR_PASSWORD_HERE with the password generated by the script
+nano neurons/verifier/docker-compose.yml # replace YOUR_PASSWORD_HERE with the password generated by the script
 docker compose -f neurons/verifier/docker-compose.yml up -d
 ```
 
@@ -299,9 +340,9 @@ this includes the following containers:
 ```
 this will output a secure password for you to use. You will then need to edit the docker-compose.yml file and replace the password with your new password.
 
-first use vim to edit the docker-compose.yml file:
+first, edit the docker-compose.yml file:
 ```bash
-vim neurons/verifier/docker-compose.yml
+nano neurons/verifier/docker-compose.yml
 ```
 then replace the password with your new password:
 
@@ -313,7 +354,7 @@ then replace the password with your new password:
       - "6379:6379"
 ```
 
-**experimental** optionally, you can edit the docker-compose.yml file to include the verifier container, but you will need to edit the docker-compose.yml file and uncomment out the verifier container. Otherwise you can run the verifier with PM2.
+**optionally**, you can edit the docker-compose.yml file to include the verifier container, but you will need to edit the docker-compose.yml file and uncomment the verifier container. Otherwise you can run the verifier with PM2, which is experimental.
 
 
 ### Docker
@@ -336,7 +377,7 @@ then replace the password with your new password:
 and then edit the entrypoint.sh file to include the args specific for your prover.
 
 ```bash
-python app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
+python3 app.py --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint 0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
 ```
 
 replace the wallet name, wallet hotkey, and db pass with your wallet name, wallet hotkey and pass. You can also change the subtensor chain endpoint to your own chain endpoint if you prefer.
@@ -353,8 +394,8 @@ Run the following command to start the verifier with PM2:
 ```bash
 cd neurons/verifier
 
-pm2 start app.py --name verifier -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint
-0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
+pm2 start app.py --name verifier --interpreter python3 -- --wallet.name WALLET_NAME --wallet.hotkey WALLET_HOTKEY --logging.debug --logging.trace --subtensor.chain_endpoint
+ws://0.0.0.0:9944 --database.password YOUR_PASSWORD_HERE
 ```
 
 ### Options
@@ -389,60 +430,7 @@ Refer to the code here:
 
 replace the wallet name and wallet hotkey with your wallet name and wallet hotkey. You can also change the subtensor chain endpoint to your own chain endpoint if you prefer.
 
-# Reward System
-Inspired by [FileTAO](https://github.com/ifrit98/storage-subnet)'s reputation system, the reward system is based on the complete correct answer being responded consistently over time. If a ground truth hash and the prover output hash are equal, then the reward is 1. Performing these challenges and inference requests over time will result in a multiplication of your reward based off the tier.
-
-## Tier System
-The tier system classifies miners into five distinct categories, each with specific requirements and request limits. These tiers are designed to reward miners based on their performance, reliability, and the total volume of requests they can fulfill.
-
-
-
-**1.) Challenger Tier** 
-- **Request Success Rate:** 99.9% (1/1000 chance of failure)
-- **Validation Success Rate:** 99.9% (1/1000 chance of failure)
-**- Minimum Successful Requests Required:** 2,000,000 Required
-- **Reward Factor:** 1.0 (100% rewards)
-- **Requests Limit (per interval):** 100,000 per interval
-
-**2.) Grandmaster Tier** 
-- **Request Success Rate:** 99.9% (1/1000 chance of failure)
-- **Validation Success Rate:** 99.9% (1/1000 chance of failure)
-**- Minimum Successful Requests Required:** 700,000 Required
-- **Reward Factor:** 0.85 (85% rewards)
-- **Requests Limit (per interval):** 25,000 per interval
-
-
-**3.) Gold Tier** 
-- **Request Success Rate:** 94.9% 
-- **Validation Success Rate:** 94.9% 
-**- Minimum Successful Requests Required:** 14,000 Required
-- **Reward Factor:** 0.72 (70% rewards)
-- **Requests Limit (per interval):** 14,000 per interval
-
-
-**4.) Silver Tier** 
-- **Request Success Rate:** 94.9%
-- **Validation Success Rate:** 94.9% 
-**- Minimum Successful Requests Required:** 3,500 Required
-- **Reward Factor:** 0.55 (95% rewards)
-- **Requests Limit (per interval):** 3,500 per interval
-
-5.**) Bronze Tier** 
-- **Request Success Rate:** Not defined
-- **Validation Success Rate:** Not defined
-**- Minimum Successful Requests Required:** Not defined
-- **Reward Factor:** 0.45 (33% rewards)
-- **Requests Limit (per interval):** 500 per interval
-
-
-## Promotion/Relegation
-Miners will be promoted or relegated based on their performance over the last 360 blocks. The promotion/relegation computation will be done every 360 blocks. In order to be promoted to a tier, you must satisfy the tier success rate requirements and the minimum successful requests required. In order to be relegated to a tier, you must fail to satisfy the tier success rate requirements, leading to a demotion to the lower tier. 
-
-If you experience downtime as a challenger UID, you will be demoted down, however you will not have to satisfy the minimum successful requests required. You will be instantly promoted back to the tier if you satisfy the tier success rate requirements.
-
-## Periodic Statistics Rollover
-Statistics for inference_attempts/attempts, challenge_attempts/successes are reset every interval, while the total_successes are carried over for accurate tier computation. This "sliding window" of the previous 360 blocks of N successes vs M attempts effectively resets the N / Mratio. This facilitates a less punishing tier calculation for early failures that then have to be "outpaced", while simultaneously discouraging grandfathering in of older miners who were able to succeed early and cement their status in a higher tier. The net effect is greater mobility across the tiers, keeping the network competitive while incentivizing reliability and consistency.
-
+</details>
 
 
 # How to Contribute

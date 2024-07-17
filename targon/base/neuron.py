@@ -16,10 +16,12 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
+import os
 import sys
 import copy
 import torch
+import signal
+import asyncio
 import bittensor as bt
 
 from abc import ABC, abstractmethod
@@ -39,6 +41,7 @@ class BaseNeuron(ABC):
     In addition to creating a wallet, subtensor, and metagraph, this class also handles the synchronization of the network state via a basic checkpointing mechanism based on epoch length.
     """
 
+    neuron_type: str = "BaseNeuron"
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -70,12 +73,14 @@ class BaseNeuron(ABC):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
 
         if not self.config.disable_autoupdate:
-            autoupdate("main")
+            autoupdate(self, self.config.autoupdate.branch)
 
         # Log the configuration for reference.
         bt.logging.info(self.config)
         
         self.device = torch.device(self.config.neuron.device)
+
+        self.restart_required = False
 
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
@@ -118,6 +123,9 @@ class BaseNeuron(ABC):
     def run(self):
         ...
 
+
+    def stop(self):
+        sys.exit()
 
     def get_last_adjustment_block(self) -> int:
         with self.subtensor.substrate as substrate:
@@ -176,7 +184,7 @@ class BaseNeuron(ABC):
         # Define appropriate logic for when set weights.
         return (
             self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length
+        ) > self.config.neuron.epoch_length and self.neuron_type != "ProverNeuron"
 
     def save_state(self):
         bt.logging.warning(

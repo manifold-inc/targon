@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
-
+from targon import __version__
 setup(
     name='targon',  # Replace with your package's name
-    version='1.0.0',  # Replace with your package's version
+    version=__version__,  # Replace with your package's version
     author='Manifold Labs',  # Replace with your name
     author_email='robert@manifold.inc',  # Replace with your email
     description='The code for SN4 on bittensor',  # Replace with a brief description of your package
@@ -20,5 +20,5 @@ setup(
         'License :: OSI Approved :: MIT License',  # Choose the appropriate license
         'Operating System :: OS Independent',  # Your package's OS compatibility
     ],
-    python_requires='>=3.6',  # Minimum version requirement of the Python for your package
+    python_requires='>=3.9',  # Minimum version requirement of the Python for your package
 )

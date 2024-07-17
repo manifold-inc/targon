@@ -21,7 +21,7 @@ import os
 import torch
 import argparse
 import bittensor as bt
-from loguru import logger
+from typing import List
 
 #TODO: enable 4bit and 8bit precision llms via config
 
@@ -43,19 +43,7 @@ def check_config(cls, config: "bt.Config"):
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
-    if not config.neuron.dont_save_events:
-        # Add custom event logger for the events.
-        logger.level("EVENTS", no=38, icon="📝")
-        logger.add(
-            os.path.join(config.neuron.full_path, "events.log"),
-            rotation=config.neuron.events_retention_size,
-            serialize=True,
-            enqueue=True,
-            backtrace=False,
-            diagnose=False,
-            level="EVENTS",
-            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
-        )
+
 
 
 def add_args(cls, parser):
@@ -66,12 +54,19 @@ def add_args(cls, parser):
     parser.add_argument("--netuid", type=int, help="Subnet netuid", default=4)
 
     parser.add_argument(
+        "--neuron.disable_set_weights",
+        action="store_true",
+        help="Disables setting weights.",
+        default=False,
+    )
+
+    parser.add_argument(
         "--neuron.device",
         type=str,
         help="Device to run on.",
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-
+    
     parser.add_argument(
         "--neuron.epoch_length",
         type=int,
@@ -115,6 +110,22 @@ def add_args(cls, parser):
     )
 
 
+    parser.add_argument(
+        '--autoupdate.branch',
+        type=str,
+        help="The branch to auto-update from.",
+        default="main",
+    )
+
+    parser.add_argument(
+        "--neuron.proxy.port",
+        type=int,
+        help="The port to serve the proxy on.",
+        default=8001,
+    )
+
+
+
 def add_prover_args(cls, parser):
     """Add prover specific arguments to the parser."""
 
@@ -127,9 +138,9 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.force_verifier_permit",
-        action="store_true",
+        action="store_false",
         help="If set, we will force incoming requests to have a permit.",
-        default=False,
+        default=True,
     )
 
     parser.add_argument(
@@ -141,9 +152,9 @@ def add_prover_args(cls, parser):
 
     parser.add_argument(
         "--blacklist.allow_non_registered",
-        action="store_true",
+        action="store_false",
         help="If set, provers will accept queries from non registered entities. (Dangerous!)",
-        default=False,
+        default=True,
     )
 
     parser.add_argument(
@@ -178,6 +189,13 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.decay_alpha",
+        type=float,
+        help="The decay alpha for the verifier.",
+        default=0.001,
+    )
+
+    parser.add_argument(
         "--neuron.max_tokens",
         type=int,
         help="The maximum number of tokens in generated responses.",
@@ -207,31 +225,38 @@ def add_verifier_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.challenge_url",
-        type=str,
-        help="The url to use for the challenge server.",
-        default="https://challenge.sybil.com/",
+        "--neuron.api_only",
+        action="store_true",
+        help="If set, the verifier will only serve an API.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.api_proxy",
+        action="store_true",
+        help="If set, the verifier will serve an API proxy.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.challenge_probability",
+        type=float,
+        help="The probability of challenging a prover.",
+        default=0.5,
     )
 
     parser.add_argument(
         "--neuron.sample_size",
         type=int,
         help="The number of provers to query in a single step.",
-        default=48,
-    )
-
-    parser.add_argument(
-        "--neuron.disable_set_weights",
-        action="store_true",
-        help="Disables setting weights.",
-        default=False,
+        default=192,
     )
 
     parser.add_argument(
         "--neuron.moving_average_alpha",
         type=float,
         help="Moving average alpha parameter, how much to add of the new observation.",
-        default=0.05,
+        default=0.1,
     )
 
     parser.add_argument(
@@ -292,7 +317,6 @@ def add_verifier_args(cls, parser):
         help="The interval at which to compute statistics.",
         default=360,
     )
-
 
 
 
