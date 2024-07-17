@@ -21,8 +21,9 @@ from bittensor.stream import ClientResponse
 import pydantic
 import bittensor as bt
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 from starlette.responses import StreamingResponse
+
 
 class InferenceSamplingParams(pydantic.BaseModel):
     """
@@ -145,9 +146,9 @@ class Inference(bt.StreamingSynapse):
     - `completion` (Optional[str]): Stores the processed result of the streaming tokens.
     """
 
-    query: str = pydantic.Field(
-        title="Query",
-        description="The query to be sent to the Bittensor network.",
+    messages: List[Dict[str, str]] = pydantic.Field(
+        title="Message",
+        description="The messages to be sent to the Bittensor network.",
     )
 
     sampling_params: Optional[InferenceSamplingParams] = pydantic.Field(
@@ -161,11 +162,11 @@ class Inference(bt.StreamingSynapse):
         description="The processed result of the streaming tokens.",
     )
 
-    #required_hash_fields: List[str] = pydantic.Field(
+    # required_hash_fields: List[str] = pydantic.Field(
     #    default=["sources", "query", "seed"],
     #    title="Required Hash Fields",
     #    description="A list of fields that are required for the hash.",
-    #)
+    # )
 
     async def process_streaming_response(self, response: ClientResponse):
         """

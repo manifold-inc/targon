@@ -17,9 +17,10 @@ class InferenceStats(BaseModel):
     uid: int
 
 
-async def create_ground_truth(self, prompt, sampling_params):
+async def create_ground_truth(self, messages, sampling_params):
     ground_truth_tokens = []
 
+    prompt = self.prompt_tokenizer.apply_chat_template(messages, tokenize=False)
     async for token in await self.client.text_generation(
         **sampling_params,
         prompt,
@@ -33,10 +34,9 @@ async def create_ground_truth(self, prompt, sampling_params):
     return ground_truth_output
 
 
-async def handle_inference(self, prompt, sampling_params, uid, ground_truth):
-
+async def handle_inference(self, messages, sampling_params, uid, ground_truth):
     synapse = protocol.Inference(
-        query=prompt,
+        messages=messages,
         sampling_params=sampling_params,
     )
 

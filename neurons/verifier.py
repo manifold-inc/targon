@@ -134,7 +134,7 @@ class Verifier:
             self.config.neuron.default_tokenizer
         )
 
-    async def forward(self, uids, prompt, sampling_params, ground_truth):
+    async def forward(self, uids, messages, sampling_params, ground_truth):
         """
         Verifier forward pass. Consists of:
         - Generating the query
@@ -156,7 +156,7 @@ class Verifier:
                 tasks.append(
                     asyncio.create_task(
                         handle_inference(
-                            self, prompt, sampling_params, uid, ground_truth
+                            self, messages, sampling_params, uid, ground_truth
                         )
                     )
                 )
@@ -255,9 +255,9 @@ class Verifier:
             },
         }
 
-    async def process_uids(self, uids, prompt, sampling_params, ground_truth):
+    async def process_uids(self, uids, messages, sampling_params, ground_truth):
         try:
-            await self.forward(uids, prompt, sampling_params, ground_truth)
+            await self.forward(uids, messages, sampling_params, ground_truth)
         except Exception as e:
             bt.logging.error(f"Error processing uids: {e}")
 
@@ -275,17 +275,16 @@ class Verifier:
         while not self.should_exit:
             # get all miner uids
             miner_uids = self.get_miner_uids()
-            # miner_uids = [245]
+
             # randomize miner_uids
             random.shuffle(miner_uids)
 
             # reduce down to 16 miners
             miner_uids = miner_uids[: self.config.neuron.sample_size]
-            # miner_uids = [107, 122]
             try:
-                prompt, sampling_params = asyncio.run(generate_dataset(self))
+                messages, sampling_params = asyncio.run(generate_dataset(self))
                 ground_truth = asyncio.run(
-                    create_ground_truth(self, prompt, sampling_params)
+                    create_ground_truth(self, messages, sampling_params)
                 )
             except Exception as e:
                 bt.logging.error(f"Error generating dataset: {e}")
@@ -293,7 +292,7 @@ class Verifier:
                 continue
             bt.logging.info(f"number of uids to sample: {len(miner_uids)}")
             self.loop.run_until_complete(
-                self.process_uids(miner_uids, prompt, sampling_params, ground_truth)
+                self.process_uids(miner_uids, messages, sampling_params, ground_truth)
             )  # Adjust batch_size as needed
 
             # Sync metagraph and potentially set weights.

@@ -11,14 +11,14 @@ async def generate_dataset(self):
     generating query prompts, and sourcing additional text generation based on these prompts.
 
     Returns:
-        tuple: A tuple containing the final prompt and the sampling parameters.
+        tuple: A tuple containing the final messages and the sampling parameters.
     """
     # Generate a random seed for reproducibility in sampling and text generation
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
 
     # Determine the maximum number of new tokens to generate
-    max_new_tokens = random.randint(16, 512)
+    max_new_tokens = random.randint(16, 1024)
 
     # Create sampling parameters using the generated seed and token limit
     sampling_params = protocol.InferenceSamplingParams(
@@ -28,29 +28,22 @@ async def generate_dataset(self):
     # Sample a random row from the dataset and extract the text
     random_row_text = self.dataset.sample(n=1)["text"].iloc[0]
 
-    # Generate a query prompt from the sampled text and perform text generation
-    query_prompt = create_query_prompt(self, random_row_text)
+    # Generate a query from the sampled text and perform text generation
+    query_messages = create_query_prompt(random_row_text)
+    prompt = self.prompt_tokenizer.apply_chat_template(query_messages, tokenize=False)
     query = await self.client.text_generation(
-        prompt=query_prompt,
-        max_new_tokens=32,
-        seed=seed,
-    )
-
-    # Generate a source prompt from the query and perform text generation
-    source_prompt = create_sources_prompt(self, query)
-    sources = await self.client.text_generation(
-        prompt=source_prompt,
-        max_new_tokens=128,
+        prompt=prompt,
+        max_new_tokens=max_new_tokens,
         seed=seed,
     )
 
     # Create a final search prompt using the query and sources
-    prompt = create_search_prompt(self, query, sources)
+    prompt = create_search_prompt(query)
 
     return prompt, sampling_params
 
 
-def create_search_prompt(self, query: str, sources: str):
+def create_search_prompt(query: str):
     """
     Creates a formatted search prompt for the verifier based on the provided query and sources.
 
@@ -70,8 +63,7 @@ def create_search_prompt(self, query: str, sources: str):
 ### Instruction: 
 You are Sybil.com, an expert language model tasked with performing a search over the given query and search results.
 You are running the text generation on Subnet 4, a bittensor subnet developed by Manifold Labs.
-Your answer should be short, two paragraphs exactly, and should be relevant to the query and search results.
-### {sources}
+Your answer should be short, two paragraphs exactly, and should be relevant to the query.
 """
 
     # Compile the chat components into a structured format
@@ -81,10 +73,10 @@ Your answer should be short, two paragraphs exactly, and should be relevant to t
     ]
 
     # Apply the chat template without tokenization
-    return self.prompt_tokenizer.apply_chat_template(chats, tokenize=False)
+    return chats
 
 
-def create_query_prompt(self, query: str):
+def create_query_prompt(query: str):
     """
     Creates a query prompt for the verifier based on the provided text.
 
@@ -113,10 +105,10 @@ Assistant should always start the response with "Search query: "
     ]
 
     # Apply the chat template without tokenization
-    return self.prompt_tokenizer.apply_chat_template(chats, tokenize=False)
+    return chats
 
 
-def create_sources_prompt(self, query: str):
+def create_sources_prompt(query: str):
     """
     Creates a source prompt for the verifier based on the provided query.
 
@@ -145,5 +137,5 @@ Assistant should always start the response with "Search source: "
     ]
 
     # Apply the chat template without tokenization
-    return self.prompt_tokenizer.apply_chat_template(chats, tokenize=False)
+    return chats
 
