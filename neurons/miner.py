@@ -41,13 +41,12 @@ class Miner:
         print(self.config)
 
         ## Typesafety
-        assert self.config.full_path
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.logging
 
         ## LOGGING
-        bt.logging(config=self.config, logging_dir=self.config.full_path)
+        bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
         bt.logging.on()
         if self.config.logging.debug:
             bt.logging.set_debug(True)
