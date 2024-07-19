@@ -17,6 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 
+from bittensor.stream import ClientResponse
 import json
 import pydantic
 import bittensor as bt
