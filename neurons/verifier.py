@@ -15,7 +15,6 @@ from fastapi import FastAPI
 from transformers import AutoTokenizer
 from bittensor.axon import FastAPIThreadedServer
 from bittensor.utils.weight_utils import (
-    NDArray,
     convert_weights_and_uids_for_emit,
     process_weights_for_netuid,
 )
@@ -27,17 +26,19 @@ from targon import (
     add_args,
     add_verifier_args,
     validate_config_and_neuron_path,
+    __spec_version__ as spec_version
 )
-from targon import __spec_version__ as spec_version
+
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
     norm_arr = []
     diff = t_max - t_min
     diff_arr = max(arr) - min(arr)
     for i in arr:
-        temp = (((i - min(arr))*diff)/diff_arr) + t_min
+        temp = (((i - min(arr)) * diff) / diff_arr) + t_min
         norm_arr.append(temp)
     return norm_arr
+
 
 def safe_mean(data):
     if len(data) == 0:
