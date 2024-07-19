@@ -502,7 +502,7 @@ class Verifier:
         """
         available_uids = []
         assert self.config.neuron
-        assert self.config.mock
+
 
         for uid in range(int(self.metagraph.n.item())):
             if uid == self.uid:
@@ -511,7 +511,7 @@ class Verifier:
                 self.metagraph,
                 uid,
                 self.config.neuron.vpermit_tao_limit,
-                self.config.mock,
+                self.config.mock if self.config.mock else False,
             )
             if uid_is_available:
                 available_uids.append(uid)
