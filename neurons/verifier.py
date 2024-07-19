@@ -145,7 +145,7 @@ class Verifier:
         )
 
         ## SET CLIENT
-        self.client = OpenAI(base_url=self.config.neuron.model_endpoint)
+        self.client = OpenAI(base_url=self.config.neuron.model_endpoint, api_key='')
 
         ## SET PROMPT TOKENIZER
         self.prompt_tokenizer = AutoTokenizer.from_pretrained(
