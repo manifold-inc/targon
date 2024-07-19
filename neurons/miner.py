@@ -85,7 +85,7 @@ class Miner:
         self.should_exit = False
 
         ## Open AI init
-        self.client = OpenAI(base_url=self.config.neuron.model_endpoint)
+        self.client = OpenAI(base_url=self.config.neuron.model_endpoint, api_key=self.config.neuron.api_key)
 
     async def blacklist(self, synapse: Inference) -> Tuple[bool, str]:
         """
