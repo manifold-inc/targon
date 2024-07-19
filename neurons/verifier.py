@@ -9,6 +9,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import bittensor as bt
+from openai import OpenAI
 
 from typing import List
 from fastapi import FastAPI
@@ -18,7 +19,6 @@ from bittensor.utils.weight_utils import (
     convert_weights_and_uids_for_emit,
     process_weights_for_netuid,
 )
-from huggingface_hub import AsyncInferenceClient
 from targon import (
     generate_dataset,
     create_ground_truth,
@@ -145,7 +145,7 @@ class Verifier:
         )
 
         ## SET CLIENT
-        self.client = AsyncInferenceClient(self.config.neuron.model_endpoint)
+        self.client = OpenAI(base_url=self.config.neuron.model_endpoint)
 
         ## SET PROMPT TOKENIZER
         self.prompt_tokenizer = AutoTokenizer.from_pretrained(
