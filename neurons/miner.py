@@ -44,6 +44,7 @@ class Miner:
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.logging
+        assert self.config.axon
 
         ## LOGGING
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
@@ -59,7 +60,12 @@ class Miner:
         self.subtensor = bt.subtensor(config=self.config)
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.loop = asyncio.get_event_loop()
-        self.axon = bt.axon(config=self.config)
+        self.axon = bt.axon(
+                wallet=self.wallet,
+                port=self.config.axon.port,
+                external_ip=self.config.axon.external_ip,
+                config=self.config
+                )
         self.axon.attach(
             forward_fn=self.forward,
             blacklist_fn=self.blacklist,
