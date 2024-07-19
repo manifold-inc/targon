@@ -354,6 +354,10 @@ class Verifier:
 
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
+        # TODO
+        if(sum(rewards) == 0):
+            bt.logging.warning("No one gave responses worth scoring")
+            return
         raw_weights = normalize(rewards)
 
         bt.logging.debug("raw_weights", str(raw_weights))
