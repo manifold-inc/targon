@@ -317,14 +317,18 @@ class Miner:
             )
             sys.exit()
 
+    # TODO: Make sure this works
     def should_sync_metagraph(self):
         """
         Check if enough epoch blocks have elapsed since the last checkpoint to sync.
         """
         assert self.config.neuron
+        if self.step == 0:
+            return True
+
         return (
-            self.subtensor.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length
+            self.subtensor.block % 180 == 0
+        )
 
     def __exit__(self, *_):
         pass
