@@ -422,13 +422,16 @@ class Verifier:
         assert self.config.neuron
         # Don't set weights on initialization.
         if self.step == 0:
+            bt.logging.warning("Skipping weight for 0 step")
             return False
 
         # Check if enough epoch blocks have elapsed since the last epoch.
         if self.config.neuron.disable_set_weights:
+            bt.logging.warning("Skipping weight setting due to config")
             return False
 
         # Define appropriate logic for when set weights.
+        print(self.block, self.metagraph.last_update[self.uid], self.config.neuron.epoch_length)
         return (
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length and self.neuron_type != "ProverNeuron"
