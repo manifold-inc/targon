@@ -2,6 +2,8 @@ import random
 
 from os import urandom
 from datetime import datetime
+
+from openai.types.chat import ChatCompletion
 from targon import protocol
 
 
@@ -29,16 +31,24 @@ async def generate_dataset(self):
     random_row_text = self.dataset.sample(n=1)["text"].iloc[0]
 
     # Generate a query from the sampled text and perform text generation
-    query_messages = create_query_prompt(random_row_text)
-    prompt = self.prompt_tokenizer.apply_chat_template(query_messages, tokenize=False)
-    query = await self.client.text_generation(
-        prompt=prompt,
-        max_new_tokens=max_new_tokens,
-        seed=seed,
+    messages = create_query_prompt(random_row_text)
+
+    res: ChatCompletion
+    res = self.client.chat.completions.create(
+        model=self.config.neuron.model_name,
+        messages=messages,
+        stream=False,
+        temperature=sampling_params.temperature,
+        top_p=sampling_params.top_p,
+        seed=sampling_params.seed,
     )
 
     # Create a final search prompt using the query and sources
-    prompt = create_search_prompt(query)
+    completion = res.choices[0].message.content
+    if completion is None:
+        print(res)
+        raise Exception("No completion")
+    prompt = create_search_prompt(completion)
 
     return prompt, sampling_params
 
