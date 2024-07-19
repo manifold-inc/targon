@@ -26,7 +26,7 @@ from targon import (
     add_args,
     add_verifier_args,
     validate_config_and_neuron_path,
-    __spec_version__ as spec_version
+    __spec_version__ as spec_version,
 )
 
 
@@ -78,6 +78,7 @@ class Verifier:
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.logging
+        assert self.config.axon
 
         ## LOGGING
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
@@ -94,7 +95,12 @@ class Verifier:
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.loop = asyncio.get_event_loop()
-        self.axon = bt.axon(config=self.config)
+        self.axon = bt.axon(
+            wallet=self.wallet,
+            port=self.config.axon.port,
+            external_ip=self.config.axon.external_ip,
+            config=self.config
+        )
 
         bt.logging.debug(f"Wallet: {self.wallet}")
         bt.logging.debug(f"Subtensor: {self.subtensor}")
@@ -502,7 +508,6 @@ class Verifier:
         """
         available_uids = []
         assert self.config.neuron
-
 
         for uid in range(int(self.metagraph.n.item())):
             if uid == self.uid:
