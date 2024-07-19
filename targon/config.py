@@ -20,8 +20,6 @@
 import os
 import bittensor as bt
 
-# TODO: enable 4bit and 8bit precision llms via config
-
 def validate_config_and_neuron_path(config):
     r"""Checks/validates the config namespace object."""
     full_path = os.path.expanduser(
@@ -118,14 +116,14 @@ def add_args(parser):
     )
 
 
-def add_prover_args(parser):
-    """Add prover specific arguments to the parser."""
+def add_miner_args(parser):
+    """Add miner specific arguments to the parser."""
 
     parser.add_argument(
         "--neuron.name",
         type=str,
         help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default="prover",
+        default="miner",
     )
 
     parser.add_argument(
@@ -154,6 +152,13 @@ def add_prover_args(parser):
         type=str,
         help="The endpoint to use for the TGI client.",
         default="http://127.0.0.1:8080",
+    )
+
+    parser.add_argument(
+        "--neuron.model_name",
+        type=str,
+        help="The name of the model used for completion",
+        default="mlabonne/NeuralDaredevil-7B",
     )
 
 

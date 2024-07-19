@@ -4,6 +4,7 @@ import time
 import random
 import asyncio
 import uvicorn
+import math
 import argparse
 import numpy as np
 import pandas as pd
@@ -13,6 +14,11 @@ from typing import List
 from fastapi import FastAPI
 from transformers import AutoTokenizer
 from bittensor.axon import FastAPIThreadedServer
+from bittensor.utils.weight_utils import (
+    NDArray,
+    convert_weights_and_uids_for_emit,
+    process_weights_for_netuid,
+)
 from huggingface_hub import AsyncInferenceClient
 from targon import (
     generate_dataset,
@@ -22,6 +28,24 @@ from targon import (
     add_verifier_args,
     validate_config_and_neuron_path,
 )
+from targon import __spec_version__ as spec_version
+
+def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
+    norm_arr = []
+    diff = t_max - t_min
+    diff_arr = max(arr) - min(arr)
+    for i in arr:
+        temp = (((i - min(arr))*diff)/diff_arr) + t_min
+        norm_arr.append(temp)
+    return norm_arr
+
+def safe_mean(data):
+    if len(data) == 0:
+        return 0.0
+    mean_value = np.mean(data)
+    if np.isnan(mean_value) or np.isinf(mean_value):
+        return 0.0
+    return float(mean_value)
 
 
 class Verifier:
@@ -174,54 +198,30 @@ class Verifier:
             time.sleep(12)
 
     def score(self, stats):
-        if stats.verified:
-            self.time_to_first_token[stats.uid].append(stats.time_to_first_token)
-            self.time_for_all_tokens[stats.uid].append(stats.time_for_all_tokens)
-            self.tokens_per_second[stats.uid].append(stats.tokens_per_second)
+        self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
 
-            self.verified_success[stats.uid].append(stats.verified)
+        if not stats.verified:
+            return
 
-            self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
+        self.time_to_first_token[stats.uid].append(stats.time_to_first_token)
+        self.time_for_all_tokens[stats.uid].append(stats.time_for_all_tokens)
+        self.tokens_per_second[stats.uid].append(stats.tokens_per_second)
 
-        else:
-            self.time_to_first_token[stats.uid].append(0)
-            self.time_for_all_tokens[stats.uid].append(0)
-            self.tokens_per_second[stats.uid].append(0)
+        self.verified_success[stats.uid].append(stats.verified)
 
-            self.verified_success[stats.uid].append(False)
-            self.top_unverified_tps = max(
-                self.top_unverified_tps, stats.tokens_per_second
-            )
+        self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
 
     def stats(self):
-        def safe_mean(data):
-            mean_value = np.mean(data)
-            if np.isnan(mean_value) or np.isinf(mean_value):
-                return 0.0
-            return float(mean_value)
-
         time_to_first_token_stats = {
-            miner: safe_mean(
-                self.time_to_first_token[miner][:30]
-                if len(self.time_to_first_token[miner]) > 30
-                else self.time_to_first_token[miner]
-            )
+            miner: safe_mean(self.time_to_first_token[miner][:30])
             for miner in self.time_to_first_token
         }
         time_for_all_tokens_stats = {
-            miner: safe_mean(
-                self.time_for_all_tokens[miner][:30]
-                if len(self.time_for_all_tokens[miner]) > 30
-                else self.time_for_all_tokens[miner]
-            )
+            miner: safe_mean(self.time_for_all_tokens[miner][:30])
             for miner in self.time_for_all_tokens
         }
         tokens_per_second_stats = {
-            miner: safe_mean(
-                self.tokens_per_second[miner][:30]
-                if len(self.tokens_per_second[miner]) > 30
-                else self.tokens_per_second[miner]
-            )
+            miner: safe_mean(self.tokens_per_second[miner][:30])
             for miner in self.tokens_per_second
         }
         verified_success_stats = {
@@ -316,8 +316,89 @@ class Verifier:
         if self.should_sync_metagraph():
             self.resync_metagraph()
 
-        # if self.should_set_weights():
-        #     self.set_weights()
+        if self.should_set_weights():
+            self.set_weights()
+
+    def set_weights(self):
+        """
+        Sets the verifier weights to the metagraph hotkeys based on the scores it has received from the provers. The weights determine the trust and incentive level the verifier assigns to prover nodes on the network.
+        """
+        assert self.config.neuron
+        assert self.config.netuid
+
+        tokens_per_second = {
+            miner: safe_mean(self.tokens_per_second[miner][:30])
+            for miner in self.tokens_per_second
+        }
+
+        tps_list = list(tokens_per_second.values())
+        top_tps = max(tps_list)
+        percentile_threshold = top_tps * 0.8
+        for i, v in enumerate(tps_list):
+            if v < percentile_threshold:
+                tps_list[i] = 0
+
+        range_tps = top_tps - min(tps_list)
+        avg_tps = np.average(tps_list)
+
+        rewards = {}
+        for uid, tps in tokens_per_second.items():
+            reward_multiplier = 1
+            if tps < percentile_threshold:
+                tps = 0
+            if tps > 0:
+                normalized_difference = (tps - avg_tps) / range_tps
+                reward_multiplier = math.exp(
+                    normalized_difference * 10
+                )  # Scale the difference to enhance reward disparity
+
+            rewards[uid] = reward_multiplier * tps
+        rewards = sorted(rewards.values())
+
+        # Calculate the average reward for each uid across non-zero values.
+        # Replace any NaN values with 0.
+        raw_weights = normalize(rewards)
+
+        bt.logging.debug("raw_weights", str(raw_weights))
+        # Process the raw weights to final_weights via subtensor limitations.
+        (
+            processed_weight_uids,
+            processed_weights,
+        ) = process_weights_for_netuid(
+            uids=self.metagraph.uids,
+            weights=np.asarray(raw_weights),
+            netuid=self.config.netuid,
+            subtensor=self.subtensor,
+            metagraph=self.metagraph,
+        )
+        bt.logging.debug("processed_weights", str(processed_weights))
+        bt.logging.debug("processed_weight_uids", str(processed_weight_uids))
+
+        # Type Safety
+        processed_weight_uids = np.asarray(processed_weight_uids)
+        (
+            uint_uids,
+            uint_weights,
+        ) = convert_weights_and_uids_for_emit(
+            uids=processed_weight_uids, weights=processed_weights
+        )
+        bt.logging.debug("uint_weights", str(uint_weights))
+        bt.logging.debug("uint_uids", str(uint_uids))
+
+        # Set the weights on chain via our subtensor connection.
+        result = self.subtensor.set_weights(
+            wallet=self.wallet,
+            netuid=self.config.netuid,
+            uids=uint_uids,
+            weights=uint_weights,
+            wait_for_finalization=False,
+            wait_for_inclusion=False,
+            version_key=spec_version,
+        )
+        if result is True:
+            bt.logging.info("set_weights on chain successfully!")
+        else:
+            bt.logging.error("set_weights failed")
 
     def check_registered(self):
         # --- Check for registration.
@@ -382,12 +463,12 @@ class Verifier:
 
         # Check to see if the metagraph has changed size.
         # If so, we need to add new hotkeys and moving averages.
-        # if len(self.hotkeys) < len(self.metagraph.hotkeys):
-        #     # Update the size of the moving average scores.
-        #     new_moving_average = np.zeros((self.metagraph.n))
-        #     min_len = min(len(self.hotkeys), len(self.scores))
-        #     new_moving_average[:min_len] = self.scores[:min_len]
-        #     self.scores = new_moving_average
+        if len(self.hotkeys) < len(self.metagraph.hotkeys):
+            # Update the size of the moving average scores.
+            new_moving_average = np.zeros((self.metagraph.n))
+            min_len = min(len(self.hotkeys), len(self.scores))
+            new_moving_average[:min_len] = self.scores[:min_len]
+            self.scores = new_moving_average
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
