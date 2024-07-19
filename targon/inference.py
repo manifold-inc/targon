@@ -19,8 +19,8 @@ async def create_ground_truth(self, messages, sampling_params):
 
     prompt = self.prompt_tokenizer.apply_chat_template(messages, tokenize=False)
     async for token in await self.client.text_generation(
-        **sampling_params,
         prompt,
+        **sampling_params,
         details=False,
         stream=True,
     ):
