@@ -53,47 +53,34 @@ class Verifier:
     neuron_type = "VerifierNeuron"
     config: "bt.config"
 
-    @classmethod
-    def check_config(cls, config):
-        validate_config_and_neuron_path(config)
-
-    @classmethod
-    def add_args(cls, parser):
-        add_args(parser)
-        add_verifier_args(parser)
-
-    @classmethod
-    def _config(cls):
-        parser = argparse.ArgumentParser()
-        bt.wallet.add_args(parser)
-        bt.subtensor.add_args(parser)
-        bt.logging.add_args(parser)
-        bt.axon.add_args(parser)
-        cls.add_args(parser)
-        config = bt.config(parser)
-        return config
-
     @property
     def block(self):
         return self.subtensor.block
 
     def __init__(self, config=None):
         ## ADD CONFIG
-        self.config = self._config()
+
+        parser = argparse.ArgumentParser()
+        bt.wallet.add_args(parser)
+        bt.subtensor.add_args(parser)
+        bt.logging.add_args(parser)
+        bt.axon.add_args(parser)
+        add_args(parser)
+        add_verifier_args(parser)
+        self.config = bt.config(parser)
         if config:
             base_config = copy.deepcopy(config)
             self.config.merge(base_config)
-        self.check_config(self.config)
+        validate_config_and_neuron_path(self.config)
         print(self.config)
 
         ## Typesafety
-        assert self.config.full_path
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.logging
 
         ## LOGGING
-        bt.logging(config=self.config, logging_dir=self.config.full_path)
+        bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
         bt.logging.on()
         if self.config.logging.debug:
             bt.logging.set_debug(True)
