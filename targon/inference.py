@@ -3,6 +3,7 @@ import bittensor as bt
 from typing import List
 from targon import protocol
 from pydantic import BaseModel
+import json
 import traceback
 
 class InferenceStats(BaseModel):
@@ -40,7 +41,7 @@ async def create_ground_truth(self, messages, sampling_params):
 async def handle_inference(self, messages, sampling_params, uid, ground_truth):
     try:
         synapse = protocol.Inference(
-            messages=messages,
+            messages=json.dumps(messages),
             sampling_params=sampling_params,
         )
 
@@ -54,7 +55,7 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
-            deserialize=False,
+            deserialize=True,
             timeout=self.config.neuron.timeout,
             streaming=True,
         ):

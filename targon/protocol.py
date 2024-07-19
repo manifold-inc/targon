@@ -17,12 +17,11 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from bittensor.stream import ClientResponse, StreamingSynapse
-from openai.types.chat import ChatCompletionMessageParam
+import json
 import pydantic
 import bittensor as bt
 
-from typing import Iterable, List, Optional
+from typing import List, Optional
 from starlette.responses import StreamingResponse
 
 
@@ -147,7 +146,7 @@ class Inference(bt.StreamingSynapse):
     - `completion` (Optional[str]): Stores the processed result of the streaming tokens.
     """
 
-    messages: Iterable[ChatCompletionMessageParam] = pydantic.Field(
+    messages: str = pydantic.Field(
         title="Message",
         description="The messages to be sent to the Bittensor network.",
     )
@@ -185,6 +184,9 @@ class Inference(bt.StreamingSynapse):
                 if token:
                     self.completion += token
             yield tokens
+
+    def deserialize(self):
+        return json.loads(self.messages)
 
     def extract_response_json(self, response: StreamingResponse) -> dict:
         """
