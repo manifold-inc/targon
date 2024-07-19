@@ -22,3 +22,8 @@ Where a patch set proposes to change the TARGON subnet, it must have been discus
 
 ## Finding Reviewers
 As most reviewers are themselves developers with their own projects, the review process can be quite lengthy, and some amount of patience is required. If you find that you've been waiting for a pull request to be given attention for several months, there may be a number of reasons for this, some of which you can do something about:
+
+```
+Miner:
+py neurons/miner.py --wallet.name miner --netuid 40 --wallet.hotkey new-miner0 --subtensor.network test --neuron.model_endpoint http://localhost:8000/v1 --neuron.proxy.port 8081 --nueron.api_key 1234
+```
