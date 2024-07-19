@@ -115,6 +115,20 @@ def add_args(parser):
         default=8000,
     )
 
+    parser.add_argument(
+        "--neuron.model_endpoint",
+        type=str,
+        help="The endpoint to use for the TGI client.",
+        default="http://127.0.0.1:8080",
+    )
+
+    parser.add_argument(
+        "--neuron.model_name",
+        type=str,
+        help="The name of the model used for completion",
+        default="mlabonne/NeuralDaredevil-7B",
+    )
+
 
 def add_miner_args(parser):
     """Add miner specific arguments to the parser."""
@@ -147,19 +161,6 @@ def add_miner_args(parser):
         default=True,
     )
 
-    parser.add_argument(
-        "--neuron.model_endpoint",
-        type=str,
-        help="The endpoint to use for the TGI client.",
-        default="http://127.0.0.1:8080",
-    )
-
-    parser.add_argument(
-        "--neuron.model_name",
-        type=str,
-        help="The name of the model used for completion",
-        default="mlabonne/NeuralDaredevil-7B",
-    )
 
 
 def add_verifier_args(parser):
