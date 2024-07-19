@@ -326,6 +326,9 @@ class Verifier:
         }
 
         tps_list = list(tokens_per_second.values())
+        if(len(tps_list) == 0):
+            bt.logging.warning("Not setting weights, no responses from miners")
+            return
         top_tps = max(tps_list)
         percentile_threshold = top_tps * 0.8
         for i, v in enumerate(tps_list):
