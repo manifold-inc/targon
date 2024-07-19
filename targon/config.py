@@ -128,6 +128,12 @@ def add_args(parser):
         help="The name of the model used for completion",
         default="mlabonne/NeuralDaredevil-7B",
     )
+    parser.add_argument(
+        "--neuron.api_key",
+        type=str,
+        help="API key for openai compatable api",
+        default="12345",
+    )
 
 
 def add_miner_args(parser):
