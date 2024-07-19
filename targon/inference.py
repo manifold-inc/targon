@@ -63,6 +63,7 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
                 end_send_message_time = time.time()
                 start_token_time = time.time()
             if isinstance(token, list):
+                print(token)
                 response_tokens.append(token[0])
                 token_count += 1
             elif isinstance(token, str):
