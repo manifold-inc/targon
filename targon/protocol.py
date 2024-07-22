@@ -22,8 +22,7 @@ import json
 import pydantic
 import bittensor as bt
 
-from typing import List, Optional
-from starlette.responses import StreamingResponse
+from typing import Any, List, Optional
 
 
 class InferenceSamplingParams(pydantic.BaseModel):
@@ -163,7 +162,7 @@ class Inference(bt.StreamingSynapse):
         description="The processed result of the streaming tokens.",
     )
 
-    async def process_streaming_response(self, response: ClientResponse):
+    async def process_streaming_response(self, response: ClientResponse) -> Any:
         """
         `process_streaming_response` is an asynchronous method designed to process the incoming streaming response from the
         Bittensor network. It's the heart of the Challenge class, ensuring that streaming tokens, which represent
@@ -177,10 +176,10 @@ class Inference(bt.StreamingSynapse):
             response: The streaming response object containing the content chunks to be processed. Each chunk in this
                       response is expected to be a set of tokens that can be decoded and split into individual messages or prompts.
         """
-        if self.completion is None:
-            self.completion = ""
         async for chunk in response.content.iter_any():
-            tokens = chunk.decode("utf-8").split("\n")
+            if self.completion is None:
+                self.completion = ""
+            tokens = chunk.decode("utf-8")
             for token in tokens:
                 if token:
                     self.completion += token
@@ -189,7 +188,7 @@ class Inference(bt.StreamingSynapse):
     def deserialize(self):
         return json.loads(self.messages)
 
-    def extract_response_json(self, response: StreamingResponse) -> dict:
+    def extract_response_json(self, response: ClientResponse) -> dict:
         """
         `extract_response_json` is a method that performs the crucial task of extracting pertinent JSON data from the given
         response. The method is especially useful when you need a detailed insight into the streaming response's metadata

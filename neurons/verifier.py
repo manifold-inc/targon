@@ -9,6 +9,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import bittensor as bt
+import signal
 from openai import OpenAI
 
 from typing import List
@@ -57,6 +58,13 @@ class Verifier:
     def block(self):
         return self.subtensor.block
 
+    def exit_gracefully(self, *_):
+        if self.should_exit:
+            bt.logging.info("Focefully exiting")
+            exit()
+        bt.logging.info("Exiting Gracefully at end of cycle")
+        self.should_exit = True
+
     def __init__(self, config=None):
         ## ADD CONFIG
 
@@ -80,6 +88,10 @@ class Verifier:
         assert self.config.logging
         assert self.config.axon
 
+        ## Add kill signals
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
         ## LOGGING
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
         bt.logging.on()
@@ -99,7 +111,7 @@ class Verifier:
             wallet=self.wallet,
             port=self.config.axon.port,
             external_ip=self.config.axon.external_ip,
-            config=self.config
+            config=self.config,
         )
 
         bt.logging.debug(f"Wallet: {self.wallet}")
@@ -145,7 +157,10 @@ class Verifier:
         )
 
         ## SET CLIENT
-        self.client = OpenAI(base_url=self.config.neuron.model_endpoint, api_key=self.config.neuron.api_key)
+        self.client = OpenAI(
+            base_url=self.config.neuron.model_endpoint,
+            api_key=self.config.neuron.api_key,
+        )
 
         ## SET PROMPT TOKENIZER
         self.prompt_tokenizer = AutoTokenizer.from_pretrained(
@@ -178,20 +193,20 @@ class Verifier:
                         )
                     )
                 )
-            # stats = await handle_inference(self, prompt, sampling_params, uid, ground_truth)
             stats = await asyncio.gather(*tasks)
 
             for stat in stats:
                 self.score(stat)
 
             bt.logging.info(str(stats))
-            # await self.score(stats)
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
             time.sleep(12)
 
     def score(self, stats):
+        if stats is None:
+            return
         self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
 
         if not stats.verified:
@@ -268,7 +283,7 @@ class Verifier:
         # This loop maintains the verifier's operations until intentionally stopped.
         while not self.should_exit:
             # get all miner uids
-            bt.logging.info('Getting miners')
+            bt.logging.info("Getting miners")
             miner_uids = self.get_miner_uids()
 
             # randomize miner_uids
@@ -276,13 +291,12 @@ class Verifier:
 
             # reduce down to 16 miners
             miner_uids = miner_uids[: self.config.neuron.sample_size]
-            bt.logging.info(f'Miners: {miner_uids}')
+            bt.logging.info(f"Miners: {miner_uids}")
             try:
                 messages, sampling_params = asyncio.run(generate_dataset(self))
                 ground_truth = asyncio.run(
                     create_ground_truth(self, messages, sampling_params)
                 )
-                bt.logging.info(f"ground truth: {ground_truth}")
             except Exception as e:
                 bt.logging.error(f"Error generating dataset: {e}")
                 time.sleep(12)
@@ -296,12 +310,6 @@ class Verifier:
             self.sync()
 
             self.step += 1
-
-    def __enter__(self):
-        self.run()
-
-    def __exit__(self, *_):
-        pass
 
     def sync(self):
         """
@@ -329,7 +337,7 @@ class Verifier:
         }
 
         tps_list = list(tokens_per_second.values())
-        if(len(tps_list) == 0):
+        if len(tps_list) == 0:
             bt.logging.warning("Not setting weights, no responses from miners")
             return
         top_tps = max(tps_list)
@@ -358,7 +366,7 @@ class Verifier:
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         # TODO
-        if(sum(rewards) == 0):
+        if sum(rewards) == 0:
             bt.logging.warning("No one gave responses worth scoring")
             return
         raw_weights = normalize(rewards)
@@ -536,10 +544,6 @@ class Verifier:
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser()
-    # Verifier.add_args(parser)
-    # args = parser.parse_args()
-    with Verifier() as verifier:
-        while True:
-            bt.logging.info("Verifier running...", str(time.time()))
-            time.sleep(5)
+    verifier = Verifier()
+    verifier.run()
+    exit()

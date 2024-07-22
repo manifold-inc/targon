@@ -6,9 +6,11 @@ import sys
 import asyncio
 from typing import Tuple
 from starlette.types import Send
+import json
 import uvicorn
 import argparse
 import bittensor as bt
+import signal
 from openai import OpenAI
 
 from bittensor.axon import FastAPIThreadedServer
@@ -23,6 +25,13 @@ from targon.protocol import Inference
 class Miner:
     neuron_type = "VerifierNeuron"
     config: "bt.config"
+
+    def exit_gracefully(self, *_):
+        if(self.should_exit):
+            bt.logging.info("Focefully exiting")
+            exit()
+        bt.logging.info("Exiting Gracefully at end of cycle")
+        self.should_exit = True
 
     def __init__(self, config=None):
         ## ADD CONFIG
@@ -45,6 +54,10 @@ class Miner:
         assert self.config.neuron
         assert self.config.logging
         assert self.config.axon
+
+        ## Add kill signals
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
 
         ## LOGGING
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
@@ -79,6 +92,7 @@ class Miner:
         ## CHECK IF REGG'D
         self.check_registered()
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+        bt.logging.info(f"Miner uid: {self.uid}")
 
         ## SET MISC PARAMS
         self.step = 0
@@ -167,13 +181,15 @@ class Miner:
         async def _prompt(synapse: Inference, send: Send) -> None:
             assert self.config.neuron
             assert synapse.sampling_params
+            messages = json.loads(synapse.messages)
             stream = self.client.chat.completions.create(
                 model=self.config.neuron.model_name,
-                messages=synapse.messages,
+                messages=messages,
                 stream=True,
                 temperature=synapse.sampling_params.temperature,
                 top_p=synapse.sampling_params.top_p,
                 seed=synapse.sampling_params.seed,
+                timeout=5
             )
             full_text = ""
             for chunk in stream:
@@ -187,11 +203,6 @@ class Miner:
                             "more_body": True,
                         }
                     )
-            bt.logging.info(f"Streamed text: {full_text}")
-
-            # # Send final message to close the stream
-            await send({"type": "http.response.body", "body": b"", "more_body": False})
-
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
 
@@ -284,26 +295,8 @@ class Miner:
         self.check_registered()
 
         if self.should_sync_metagraph():
-            self.resync_metagraph()
-
-        # if self.should_set_weights():
-        #     self.set_weights()
-
-    def resync_metagraph(self):
-        """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
-        bt.logging.info("resync_metagraph()")
-
-        # Copies state of metagraph before syncing.
-        previous_metagraph = copy.deepcopy(self.metagraph)
-
-        # Sync the metagraph.
-        self.metagraph.sync(subtensor=self.subtensor)
-
-        # Check if the metagraph axon info has changed.
-        if previous_metagraph.axons == self.metagraph.axons:
-            return
-
-        bt.logging.info("Metagraph updated")
+            bt.logging.info("resync_metagraph()")
+            self.metagraph.sync(subtensor=self.subtensor)
 
     def check_registered(self):
         # --- Check for registration.

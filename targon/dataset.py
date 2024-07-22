@@ -41,6 +41,7 @@ async def generate_dataset(self):
         temperature=sampling_params.temperature,
         top_p=sampling_params.top_p,
         seed=sampling_params.seed,
+        timeout=5
     )
 
     # Create a final search prompt using the query and sources

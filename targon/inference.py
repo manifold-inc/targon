@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import json
 import traceback
 
+
 class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
@@ -26,6 +27,7 @@ async def create_ground_truth(self, messages, sampling_params):
         temperature=sampling_params.temperature,
         top_p=sampling_params.top_p,
         seed=sampling_params.seed,
+        timeout=5,
     )
     for chunk in stream:
         token = chunk.choices[0].delta.content
@@ -62,15 +64,15 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
             if token_count == 1:
                 end_send_message_time = time.time()
                 start_token_time = time.time()
-            if isinstance(token, list):
-                if(isinstance(token[0], dict)):
-                    raise Exception(token[0])
-                response_tokens.append(token[0])
-                token_count += 1
-            elif isinstance(token, str):
-                response_tokens.append(token)
-                token_count += 1
-        
+            if isinstance(token, protocol.Inference):
+                continue
+            for t in token:
+                response_tokens.append(t)
+            token_count += 1
+
+        if token_count <= 1 or len(response_tokens) <= 1:
+            return None
+
         if end_send_message_time is None:
             end_send_message_time = time.time()
             start_token_time = end_send_message_time
@@ -80,7 +82,11 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         time_to_first_token = end_send_message_time - start_send_message_time
         time_for_all_tokens = end_token_time - start_token_time
 
-        tokens_per_second_partial = token_count / time_for_all_tokens if token_count > 0 and time_for_all_tokens > 0 else 0
+        tokens_per_second_partial = (
+            token_count / time_for_all_tokens
+            if token_count > 0 and time_for_all_tokens > 0
+            else 0
+        )
         tokens_per_second = tokens_per_second_partial
 
         bt.logging.info(f"Time to receive all tokens: {time_for_all_tokens}")
@@ -88,14 +94,14 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         bt.logging.info(f"Tokens per second: {tokens_per_second}")
 
         response = "".join(response_tokens)
-        
+
         verified = check_tokens(self, response, ground_truth)
 
         # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
         if time_to_first_token > 1.8 * time_for_all_tokens:
             verified = False
             tokens_per_second = 0
-        
+
         stats = InferenceStats(
             time_to_first_token=time_to_first_token,
             time_for_all_tokens=time_for_all_tokens,
@@ -111,7 +117,6 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         bt.logging.error(f"Error in forward: {e}")
         bt.logging.error(traceback.format_exc())
         time.sleep(12)
-
 
 
 def check_tokens(self, prover_output, ground_truth_output):
