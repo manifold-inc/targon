@@ -2,6 +2,7 @@
 __pycache__/
 test.py
 test_stream.py
+.venv
 .env
 
 !hub-proxy/docker-compose.yml
