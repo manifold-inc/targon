@@ -268,6 +268,7 @@ class Verifier:
         # This loop maintains the verifier's operations until intentionally stopped.
         while not self.should_exit:
             # get all miner uids
+            bt.logging.info('Getting miners')
             miner_uids = self.get_miner_uids()
 
             # randomize miner_uids
@@ -275,11 +276,13 @@ class Verifier:
 
             # reduce down to 16 miners
             miner_uids = miner_uids[: self.config.neuron.sample_size]
+            bt.logging.info(f'Miners: {miner_uids}')
             try:
                 messages, sampling_params = asyncio.run(generate_dataset(self))
                 ground_truth = asyncio.run(
                     create_ground_truth(self, messages, sampling_params)
                 )
+                bt.logging.info(f"ground truth: {ground_truth}")
             except Exception as e:
                 bt.logging.error(f"Error generating dataset: {e}")
                 time.sleep(12)
