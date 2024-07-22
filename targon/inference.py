@@ -55,7 +55,7 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
-            deserialize=True,
+            deserialize=False,
             timeout=self.config.neuron.timeout,
             streaming=True,
         ):
