@@ -88,13 +88,7 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
             else 0
         )
         tokens_per_second = tokens_per_second_partial
-
-        bt.logging.info(f"Time to receive all tokens: {time_for_all_tokens}")
-        bt.logging.info(f"Time to receive first token: {time_to_first_token}")
-        bt.logging.info(f"Tokens per second: {tokens_per_second}")
-
         response = "".join(response_tokens)
-
         verified = check_tokens(self, response, ground_truth)
 
         # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
