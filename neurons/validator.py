@@ -494,8 +494,10 @@ class Validator:
             uids=processed_weight_uids, weights=processed_weights
         )
         bt.logging.info("Setting weights")
-        bt.logging.info("uint_weights", str(uint_weights))
-        bt.logging.info("uint_uids", str(uint_uids))
+        bt.logging.info("Processed Weights: " + str(uids))
+        bt.logging.info("Processed Weight Uids: " + str(raw_weights))
+        bt.logging.info("uint weights: " + str(uint_weights))
+        bt.logging.info("uint uids: " + str(uint_uids))
 
         # Set the weights on chain via our subtensor connection.
         result, message = self.subtensor.set_weights(
