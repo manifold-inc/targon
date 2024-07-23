@@ -423,12 +423,7 @@ class Validator:
         assert self.config.neuron
         # Don't set weights on initialization.
         if self.step == 0:
-            bt.logging.warning("Skipping weight for 0 step")
-            return False
-
-        # Check if enough epoch blocks have elapsed since the last epoch.
-        if self.config.neuron.disable_set_weights:
-            bt.logging.warning("Skipping weight setting due to config")
+            bt.logging.info("Skipping weight for 0 step")
             return False
 
         # Define appropriate logic for when set weights.
