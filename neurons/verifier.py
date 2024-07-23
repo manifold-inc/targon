@@ -494,7 +494,6 @@ class Verifier:
 
     def check_uid_availability(
         self,
-        metagraph: "bt.metagraph",
         uid: int,
         vpermit_tao_limit: int,
         mock: bool = False,
@@ -509,15 +508,15 @@ class Verifier:
         """
         if not mock:
             # Filter non serving axons.
-            if not metagraph.axons[uid].is_serving:
+            if not self.metagraph.axons[uid].is_serving:
                 bt.logging.debug(f"uid: {uid} is not serving")
                 return False
             # Filter verifier permit > 1024 stake.
-            if metagraph.validator_permit[uid]:
+            if self.metagraph.validator_permit[uid]:
                 bt.logging.debug(f"uid: {uid} has verifier permit")
-                if metagraph.S[uid] > vpermit_tao_limit:
+                if self.metagraph.S[uid] > vpermit_tao_limit:
                     bt.logging.debug(
-                        f"uid: {uid} has stake ({metagraph.S[uid]}) > {vpermit_tao_limit}"
+                        f"uid: {uid} has stake ({self.metagraph.S[uid]}) > {vpermit_tao_limit}"
                     )
                     return False
         else:
@@ -538,7 +537,6 @@ class Verifier:
             if uid == self.uid:
                 continue
             uid_is_available = self.check_uid_availability(
-                self.metagraph,
                 uid,
                 self.config.neuron.vpermit_tao_limit,
                 self.config.mock if self.config.mock else False,
