@@ -193,6 +193,7 @@ class Miner:
                 seed=synapse.sampling_params.seed,
                 timeout=5
             )
+            bt.logging.info("Stream has been created");
             full_text = ""
             for chunk in stream:
                 token = chunk.choices[0].delta.content
@@ -205,6 +206,7 @@ class Miner:
                             "more_body": True,
                         }
                     )
+                    bt.logging.info("Tokens sent.")
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
 
