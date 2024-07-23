@@ -3,6 +3,7 @@ import copy
 import time
 import random
 import asyncio
+from targon.utils import vali_print_info
 import uvicorn
 import math
 import argparse
@@ -284,6 +285,9 @@ class Verifier:
 
         # This loop maintains the verifier's operations until intentionally stopped.
         while not self.should_exit:
+            # Print Vali Info every few blocks
+            if self.subtensor.block % 4 == 0:
+                bt.logging.info(vali_print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block))
             # get all miner uids
             bt.logging.info("Getting miners")
             miner_uids = self.get_miner_uids()

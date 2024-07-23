@@ -7,7 +7,7 @@ import asyncio
 from typing import Tuple
 from starlette.types import Send
 import json
-from targon.utils import print_info
+from targon.utils import miner_print_info
 import uvicorn
 import argparse
 import bittensor as bt
@@ -272,7 +272,7 @@ class Miner:
                     < self.config.neuron.epoch_length
                 ):
                     # Print Logs for Miner
-                    print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block)
+                    bt.logging.info(miner_print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block))
                     # Wait before checking again.
                     time.sleep(1)
 
