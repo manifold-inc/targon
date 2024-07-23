@@ -28,7 +28,7 @@ class Miner:
     config: "bt.config"
 
     def exit_gracefully(self, *_):
-        if(self.should_exit):
+        if self.should_exit:
             bt.logging.info("Focefully exiting")
             exit()
         bt.logging.info("Exiting Gracefully at end of cycle")
@@ -48,7 +48,6 @@ class Miner:
             base_config = copy.deepcopy(config)
             self.config.merge(base_config)
         validate_config_and_neuron_path(self.config)
-        print(self.config)
 
         ## Typesafety
         assert self.config.netuid
@@ -75,11 +74,11 @@ class Miner:
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.loop = asyncio.get_event_loop()
         self.axon = bt.axon(
-                wallet=self.wallet,
-                port=self.config.axon.port,
-                external_ip=self.config.axon.external_ip,
-                config=self.config
-                )
+            wallet=self.wallet,
+            port=self.config.axon.port,
+            external_ip=self.config.axon.external_ip,
+            config=self.config,
+        )
         self.axon.attach(
             forward_fn=self.forward,
             blacklist_fn=self.blacklist,
@@ -101,7 +100,10 @@ class Miner:
         self.last_synced_block = None
 
         ## Open AI init
-        self.client = OpenAI(base_url=self.config.neuron.model_endpoint, api_key=self.config.neuron.api_key)
+        self.client = OpenAI(
+            base_url=self.config.neuron.model_endpoint,
+            api_key=self.config.neuron.api_key,
+        )
 
     async def blacklist(self, synapse: Inference) -> Tuple[bool, str]:
         """
@@ -181,6 +183,7 @@ class Miner:
 
     async def forward(self, synapse: Inference):
         bt.logging.info("Getting Inference request!")
+
         async def _prompt(synapse: Inference, send: Send) -> None:
             assert self.config.neuron
             assert synapse.sampling_params
@@ -192,9 +195,9 @@ class Miner:
                 temperature=synapse.sampling_params.temperature,
                 top_p=synapse.sampling_params.top_p,
                 seed=synapse.sampling_params.seed,
-                timeout=5
+                timeout=5,
             )
-            bt.logging.info("Stream has been created");
+            bt.logging.info("Stream has been created")
             full_text = ""
             for chunk in stream:
                 token = chunk.choices[0].delta.content
@@ -207,6 +210,7 @@ class Miner:
                             "more_body": True,
                         }
                     )
+
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
 
@@ -268,7 +272,14 @@ class Miner:
         try:
             while not self.should_exit:
                 # Print Logs for Miner
-                bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block))
+                bt.logging.info(
+                    print_info(
+                        self.metagraph,
+                        self.wallet.hotkey.ss58_address,
+                        self.step,
+                        self.subtensor.block,
+                    )
+                )
                 # Wait before checking again.
                 time.sleep(12)
 
@@ -318,12 +329,13 @@ class Miner:
             self.last_synced_block = self.subtensor.block
             return True
 
-        if(self.subtensor.block % 90 != 0):
+        if self.subtensor.block % 90 != 0:
             return False
         if self.last_synced_block == self.subtensor.block:
             return False
         self.last_synced_block = self.subtensor.block
         return True
+
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser()

@@ -3,7 +3,7 @@ import copy
 import time
 import random
 import asyncio
-from targon.utils import vali_print_info
+from targon.utils import print_info
 import uvicorn
 import math
 import argparse
@@ -81,7 +81,6 @@ class Verifier:
             base_config = copy.deepcopy(config)
             self.config.merge(base_config)
         validate_config_and_neuron_path(self.config)
-        print(self.config)
 
         ## Typesafety
         assert self.config.netuid
@@ -181,7 +180,6 @@ class Verifier:
         - Rewarding the provers
         - Updating the scores
         """
-        print("forward()")
         assert self.config.neuron
         if self.config.neuron.api_only:
             bt.logging.info("Running in API only mode, sleeping for 12 seconds.")
@@ -287,7 +285,7 @@ class Verifier:
         while not self.should_exit:
             # Print Vali Info every few blocks
             if self.subtensor.block % 4 == 0:
-                bt.logging.info(vali_print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block))
+                bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block, isMiner=False))
             # get all miner uids
             bt.logging.info("Getting miners")
             miner_uids = self.get_miner_uids()
