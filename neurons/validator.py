@@ -4,7 +4,6 @@ import time
 import random
 import asyncio
 from targon.utils import print_info
-import uvicorn
 import math
 import argparse
 import numpy as np
@@ -14,9 +13,7 @@ import signal
 from openai import OpenAI
 
 from typing import List
-from fastapi import FastAPI
 from transformers import AutoTokenizer
-from bittensor.axon import FastAPIThreadedServer
 from bittensor.utils.weight_utils import (
     convert_weights_and_uids_for_emit,
     process_weights_for_netuid,
@@ -141,18 +138,6 @@ class Validator:
 
         self.top_verified_tps = 0
         self.top_unverified_tps = 0
-
-        ## STATS SERVER
-        self.app = FastAPI()
-        self.app.router.add_api_route("/api/stats", self.stats, methods=["GET"])
-        self.fast_config = uvicorn.Config(
-            self.app,
-            host="0.0.0.0",
-            port=self.config.neuron.proxy.port,
-            loop="asyncio",
-        )
-        self.fast_server = FastAPIThreadedServer(config=self.fast_config)
-        self.fast_server.start()
 
         ## SET DATASET
         self.dataset = pd.read_json(

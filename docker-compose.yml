@@ -4,11 +4,6 @@ services:
     runtime: nvidia
     command: --model mlabonne/NeuralDaredevil-7B --dtype auto
     ipc: host
-
-    # TODO: Remove after miner is dockerized
-    network_mode: host
-    ports:
-      - 8000:8000
     volumes:
       - hf_cache:/root/.cache/huggingface
     deploy:
