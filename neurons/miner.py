@@ -178,6 +178,7 @@ class Miner:
         return priority
 
     async def forward(self, synapse: Inference):
+        bt.logging.info("Getting Inference request!")
         async def _prompt(synapse: Inference, send: Send) -> None:
             assert self.config.neuron
             assert synapse.sampling_params

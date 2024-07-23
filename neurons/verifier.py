@@ -114,6 +114,10 @@ class Verifier:
             config=self.config,
         )
 
+        if not self.metagraph.validator_permit[self.uid]:
+            bt.logging.error("Validator does not have vpermit")
+        bt.logging.info(f"Miner uid: {self.uid}")
+
         bt.logging.debug(f"Wallet: {self.wallet}")
         bt.logging.debug(f"Subtensor: {self.subtensor}")
         bt.logging.debug(f"Metagraph: {self.metagraph}")
@@ -197,8 +201,6 @@ class Verifier:
 
             for stat in stats:
                 self.score(stat)
-
-            bt.logging.info(str(stats))
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
@@ -361,7 +363,8 @@ class Verifier:
                 )  # Scale the difference to enhance reward disparity
 
             rewards[uid] = reward_multiplier * tps
-        rewards = sorted(rewards.values())
+        uids: List[int] = sorted(rewards.keys())
+        rewards = [rewards[uid] for uid in uids]
 
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
@@ -377,14 +380,14 @@ class Verifier:
             processed_weight_uids,
             processed_weights,
         ) = process_weights_for_netuid(
-            uids=self.metagraph.uids,
+            uids=np.asarray(uids),
             weights=np.asarray(raw_weights),
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
         )
-        bt.logging.debug("processed_weights", str(processed_weights))
-        bt.logging.debug("processed_weight_uids", str(processed_weight_uids))
+        bt.logging.info("processed_weights", str(processed_weights))
+        bt.logging.info("processed_weight_uids", str(processed_weight_uids))
 
         # Type Safety
         processed_weight_uids = np.asarray(processed_weight_uids)
@@ -394,8 +397,8 @@ class Verifier:
         ) = convert_weights_and_uids_for_emit(
             uids=processed_weight_uids, weights=processed_weights
         )
-        bt.logging.debug("uint_weights", str(uint_weights))
-        bt.logging.debug("uint_uids", str(uint_uids))
+        bt.logging.info("uint_weights", str(uint_weights))
+        bt.logging.info("uint_uids", str(uint_uids))
 
         # Set the weights on chain via our subtensor connection.
         result = self.subtensor.set_weights(
