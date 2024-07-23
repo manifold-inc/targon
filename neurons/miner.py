@@ -7,7 +7,7 @@ import asyncio
 from typing import Tuple
 from starlette.types import Send
 import json
-from targon.utils import miner_print_info
+from targon.utils import print_info
 import uvicorn
 import argparse
 import bittensor as bt
@@ -98,6 +98,7 @@ class Miner:
         ## SET MISC PARAMS
         self.step = 0
         self.should_exit = False
+        self.last_synced_block = None
 
         ## Open AI init
         self.client = OpenAI(base_url=self.config.neuron.model_endpoint, api_key=self.config.neuron.api_key)
@@ -267,21 +268,14 @@ class Miner:
         # This loop maintains the prover's operations until intentionally stopped.
         try:
             while not self.should_exit:
-                while (
-                    self.subtensor.block - self.metagraph.last_update[self.uid]
-                    < self.config.neuron.epoch_length
-                ):
-                    # Print Logs for Miner
-                    bt.logging.info(miner_print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block))
-                    # Wait before checking again.
-                    time.sleep(1)
-
-                    # Check if we should exit.
-                    if self.should_exit:
-                        break
+                # Print Logs for Miner
+                bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block))
+                # Wait before checking again.
+                time.sleep(12)
 
                 # Sync metagraph and potentially set weights.
                 self.sync()
+                bt.logging.info("After sync")
                 self.step += 1
         # If someone intentionally stops the prover, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -301,7 +295,7 @@ class Miner:
         self.check_registered()
 
         if self.should_sync_metagraph():
-            bt.logging.info("resync_metagraph()")
+            bt.logging.info("Resyncing metagraph")
             self.metagraph.sync(subtensor=self.subtensor)
 
     def check_registered(self):
@@ -316,31 +310,26 @@ class Miner:
             )
             sys.exit()
 
-    # TODO: Make sure this works
     def should_sync_metagraph(self):
         """
         Check if enough epoch blocks have elapsed since the last checkpoint to sync.
         """
         assert self.config.neuron
         if self.step == 0:
+            self.last_synced_block = self.subtensor.block
             return True
 
-        return (
-            self.subtensor.block % 180 == 0
-        )
-
-    def __exit__(self, *_):
-        pass
-
-    def __enter__(self):
-        self.run()
-
+        if(self.subtensor.block % 90 != 0):
+            return False
+        if self.last_synced_block == self.subtensor.block:
+            return False
+        self.last_synced_block = self.subtensor.block
+        return True
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser()
     # Verifier.add_args(parser)
     # args = parser.parse_args()
-    with Miner() as miner:
-        while True:
-            bt.logging.info("Miner running...", str(time.time()))
-            time.sleep(5)
+    miner = Miner()
+    miner.run()
+    exit()
