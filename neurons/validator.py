@@ -26,7 +26,7 @@ from targon import (
     create_ground_truth,
     handle_inference,
     add_args,
-    add_verifier_args,
+    add_validator_args,
     validate_config_and_neuron_path,
     __spec_version__ as spec_version,
 )
@@ -51,8 +51,8 @@ def safe_mean(data):
     return float(mean_value)
 
 
-class Verifier:
-    neuron_type = "VerifierNeuron"
+class Validator:
+    neuron_type = "ValidatorNeuron"
     config: "bt.config"
 
     @property
@@ -61,7 +61,7 @@ class Verifier:
 
     def exit_gracefully(self, *_):
         if self.should_exit:
-            bt.logging.info("Focefully exiting")
+            bt.logging.info("Forcefully exiting")
             exit()
         bt.logging.info("Exiting Gracefully at end of cycle")
         self.should_exit = True
@@ -75,7 +75,7 @@ class Verifier:
         bt.logging.add_args(parser)
         bt.axon.add_args(parser)
         add_args(parser)
-        add_verifier_args(parser)
+        add_validator_args(parser)
         self.config = bt.config(parser)
         if config:
             base_config = copy.deepcopy(config)
@@ -123,7 +123,6 @@ class Verifier:
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         if not self.metagraph.validator_permit[self.uid]:
             bt.logging.error("Validator does not have vpermit")
-        bt.logging.info(f"Miner uid: {self.uid}")
 
 
         ## SET MISC PARAMS
@@ -171,13 +170,15 @@ class Verifier:
             self.config.neuron.default_tokenizer
         )
 
+        bt.logging.info("\N{grinning face with smiling eyes}", "Successfully Initialized!")
+
     async def forward(self, uids, messages, sampling_params, ground_truth):
         """
-        Verifier forward pass. Consists of:
+        Validator forward pass. Consists of:
         - Generating the query
-        - Querying the provers
+        - Querying the miners
         - Getting the responses
-        - Rewarding the provers
+        - Rewarding the miners
         - Updating the scores
         """
         assert self.config.neuron
@@ -276,18 +277,17 @@ class Verifier:
         assert self.config.neuron
         self.sync()
         bt.logging.info(
-            f"Running verifier {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
 
-        bt.logging.info(f"Verifier starting at block: {self.block}")
+        bt.logging.info(f"Validator starting at block: {self.block}")
 
-        # This loop maintains the verifier's operations until intentionally stopped.
+        # This loop maintains the validator's operations until intentionally stopped.
         while not self.should_exit:
             # Print Vali Info every few blocks
             if self.subtensor.block % 4 == 0:
                 bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block, isMiner=False))
             # get all miner uids
-            bt.logging.info("Getting miners")
             miner_uids = self.get_miner_uids()
 
             # randomize miner_uids
@@ -295,7 +295,6 @@ class Verifier:
 
             # reduce down to 16 miners
             miner_uids = miner_uids[: self.config.neuron.sample_size]
-            bt.logging.info(f"Miners: {miner_uids}")
             try:
                 messages, sampling_params = asyncio.run(generate_dataset(self))
                 ground_truth = asyncio.run(
@@ -305,7 +304,6 @@ class Verifier:
                 bt.logging.error(f"Error generating dataset: {e}")
                 time.sleep(12)
                 continue
-            bt.logging.info(f"number of uids to sample: {len(miner_uids)}")
             self.loop.run_until_complete(
                 self.process_uids(miner_uids, messages, sampling_params, ground_truth)
             )  # Adjust batch_size as needed
@@ -317,9 +315,9 @@ class Verifier:
 
     def sync(self):
         """
-        Wrapper for synchronizing the state of the network for the given prover or verifier.
+        Wrapper for synchronizing the state of the network for the given miner or validator.
         """
-        # Ensure prover or verifier hotkey is still registered on the network.
+        # Ensure miner or validator hotkey is still registered on the network.
         self.check_registered()
 
         if self.should_sync_metagraph():
@@ -330,7 +328,7 @@ class Verifier:
 
     def set_weights(self):
         """
-        Sets the verifier weights to the metagraph hotkeys based on the scores it has received from the provers. The weights determine the trust and incentive level the verifier assigns to prover nodes on the network.
+        Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miner. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
         """
         assert self.config.neuron
         assert self.config.netuid
@@ -453,7 +451,7 @@ class Verifier:
         # Define appropriate logic for when set weights.
         return (
             self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length and self.neuron_type != "ProverNeuron"
+        ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
@@ -502,7 +500,7 @@ class Verifier:
         Args:
             metagraph (:obj: bt.metagraph.Metagraph): Metagraph object
             uid (int): uid to be checked
-            vpermit_tao_limit (int): Verifier permit tao limit
+            vpermit_tao_limit (int): Validator permit tao limit
         Returns:
             bool: True if uid is available, False otherwise
         """
@@ -511,9 +509,9 @@ class Verifier:
             if not self.metagraph.axons[uid].is_serving:
                 bt.logging.debug(f"uid: {uid} is not serving")
                 return False
-            # Filter verifier permit > 1024 stake.
+            # Filter validator permit > 1024 stake.
             if self.metagraph.validator_permit[uid]:
-                bt.logging.debug(f"uid: {uid} has verifier permit")
+                bt.logging.debug(f"uid: {uid} has validator permit")
                 if self.metagraph.S[uid] > vpermit_tao_limit:
                     bt.logging.debug(
                         f"uid: {uid} has stake ({self.metagraph.S[uid]}) > {vpermit_tao_limit}"
@@ -547,6 +545,6 @@ class Verifier:
 
 
 if __name__ == "__main__":
-    verifier = Verifier()
-    verifier.run()
+    validator = Validator()
+    validator.run()
     exit()

@@ -9,7 +9,7 @@ from targon import protocol
 
 async def generate_dataset(self):
     """
-    Asynchronously generates a dataset for the verifier by sampling from the existing dataset,
+    Asynchronously generates a dataset for the validator by sampling from the existing dataset,
     generating query prompts, and sourcing additional text generation based on these prompts.
 
     Returns:
@@ -56,7 +56,7 @@ async def generate_dataset(self):
 
 def create_search_prompt(query: str):
     """
-    Creates a formatted search prompt for the verifier based on the provided query and sources.
+    Creates a formatted search prompt for the validator based on the provided query and sources.
 
     Args:
         query (str): The generated query text.
@@ -89,7 +89,7 @@ Your answer should be short, two paragraphs exactly, and should be relevant to t
 
 def create_query_prompt(query: str):
     """
-    Creates a query prompt for the verifier based on the provided text.
+    Creates a query prompt for the validator based on the provided text.
 
     Args:
         query (str): The text to base the query prompt on.
@@ -121,7 +121,7 @@ Assistant should always start the response with "Search query: "
 
 def create_sources_prompt(query: str):
     """
-    Creates a source prompt for the verifier based on the provided query.
+    Creates a source prompt for the validator based on the provided query.
 
     Args:
         query (str): The query text to base the source prompt on.

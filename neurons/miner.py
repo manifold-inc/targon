@@ -24,12 +24,12 @@ from targon.protocol import Inference
 
 
 class Miner:
-    neuron_type = "VerifierNeuron"
+    neuron_type = "ValidatorNeuron"
     config: "bt.config"
 
     def exit_gracefully(self, *_):
         if self.should_exit:
-            bt.logging.info("Focefully exiting")
+            bt.logging.info("Forcefully exiting")
             exit()
         bt.logging.info("Exiting Gracefully at end of cycle")
         self.should_exit = True
@@ -92,7 +92,6 @@ class Miner:
         ## CHECK IF REGG'D
         self.check_registered()
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
-        bt.logging.info(f"Miner uid: {self.uid}")
 
         ## SET MISC PARAMS
         self.step = 0
@@ -104,6 +103,7 @@ class Miner:
             base_url=self.config.neuron.model_endpoint,
             api_key=self.config.neuron.api_key,
         )
+        bt.logging.info("\N{grinning face with smiling eyes}", "Successfully Initialized!")
 
     async def blacklist(self, synapse: Inference) -> Tuple[bool, str]:
         """
@@ -161,7 +161,7 @@ class Miner:
         Returns:
             float: A priority score derived from the stake of the calling entity.
 
-        Provers may recieve messages from multiple entities at once. This function determines which request should be
+        Miners may recieve messages from multiple entities at once. This function determines which request should be
         processed first. Higher values indicate that the request should be processed first. Lower values indicate
         that the request should be processed later.
 
@@ -182,7 +182,7 @@ class Miner:
         return priority
 
     async def forward(self, synapse: Inference):
-        bt.logging.info("Getting Inference request!")
+        bt.logging.info(u'\u2713' ,"Getting Inference request!")
 
         async def _prompt(synapse: Inference, send: Send) -> None:
             assert self.config.neuron
@@ -209,48 +209,49 @@ class Miner:
                             "more_body": True,
                         }
                     )
+            bt.logging.info("\N{grinning face}" , "Successful Prompt");
 
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
 
     def run(self):
         """
-        Initiates and manages the main loop for the prover on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
+        Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
 
         This function performs the following primary tasks:
         1. Check for registration on the Bittensor network.
-        2. Starts the prover's axon, making it active on the network.
+        2. Starts the miner's axon, making it active on the network.
         3. Periodically resynchronizes with the chain; updating the metagraph with the latest network state and setting weights.
 
-        The prover continues its operations until `should_exit` is set to True or an external interruption occurs.
-        During each epoch of its operation, the prover waits for new blocks on the Bittensor network, updates its
-        knowledge of the network (metagraph), and sets its weights. This process ensures the prover remains active
+        The miner continues its operations until `should_exit` is set to True or an external interruption occurs.
+        During each epoch of its operation, the miner waits for new blocks on the Bittensor network, updates its
+        knowledge of the network (metagraph), and sets its weights. This process ensures the miner remains active
         and up-to-date with the network's latest state.
 
         Note:
-            - The function leverages the global configurations set during the initialization of the prover.
-            - The prover's axon serves as its interface to the Bittensor network, handling incoming and outgoing requests.
+            - The function leverages the global configurations set during the initialization of the miner.
+            - The miner's axon serves as its interface to the Bittensor network, handling incoming and outgoing requests.
 
         Raises:
-            KeyboardInterrupt: If the prover is stopped by a manual interruption.
-            Exception: For unforeseen errors during the prover's operation, which are logged for diagnosis.
+            KeyboardInterrupt: If the miner is stopped by a manual interruption.
+            Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
         """
 
         assert self.config.netuid
         assert self.config.subtensor
         assert self.config.axon
         assert self.config.neuron
-        # Check that prover is registered on the network.
+        # Check that miner is registered on the network.
         self.sync()
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
         bt.logging.info(
-            f"Serving prover axon {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Serving miner axon {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
-        # Start  starts the prover's axon, making it active on the network.
+        # Start  starts the miner's axon, making it active on the network.
 
         # change the config in the axon
         log_level = "trace" if bt.logging.__trace_on__ else "critical"
@@ -265,9 +266,9 @@ class Miner:
 
         self.axon.start()
 
-        bt.logging.info(f"Prover starting at block: {self.subtensor.block}")
+        bt.logging.info(f"Miner starting at block: {self.subtensor.block}")
 
-        # This loop maintains the prover's operations until intentionally stopped.
+        # This loop maintains the miner's operations until intentionally stopped.
         try:
             while not self.should_exit:
                 # Print Logs for Miner
@@ -284,27 +285,26 @@ class Miner:
 
                 # Sync metagraph and potentially set weights.
                 self.sync()
-                bt.logging.info("After sync")
                 self.step += 1
-        # If someone intentionally stops the prover, it'll safely terminate operations.
+        # If someone intentionally stops the miner, it'll safely terminate operations.
         except KeyboardInterrupt:
             self.axon.stop()
-            bt.logging.success("Prover killed by keyboard interrupt.")
+            bt.logging.success("Miner killed by keyboard interrupt.")
             exit()
 
-        # In case of unforeseen errors, the prover will log the error and continue operations.
+        # In case of unforeseen errors, the miner will log the error and continue operations.
         except Exception:
             bt.logging.error(traceback.format_exc())
 
     def sync(self):
         """
-        Wrapper for synchronizing the state of the network for the given prover or verifier.
+        Wrapper for synchronizing the state of the network for the given miner or validator.
         """
-        # Ensure prover or verifier hotkey is still registered on the network.
+        # Ensure miner or validator hotkey is still registered on the network.
         self.check_registered()
 
         if self.should_sync_metagraph():
-            bt.logging.info("Resyncing metagraph")
+            bt.logging.info("Resyncing Metagraph")
             self.metagraph.sync(subtensor=self.subtensor)
 
     def check_registered(self):
@@ -337,9 +337,6 @@ class Miner:
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser()
-    # Verifier.add_args(parser)
-    # args = parser.parse_args()
     miner = Miner()
     miner.run()
     exit()

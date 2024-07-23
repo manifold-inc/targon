@@ -119,35 +119,35 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         time.sleep(12)
 
 
-def check_tokens(self, prover_output, ground_truth_output):
-    # Tokenize the prover output and the ground truth output
-    prover_tokenized = self.prompt_tokenizer(
-        prover_output, return_tensors="pt", padding=True, truncation=True
+def check_tokens(self, miner_output, ground_truth_output):
+    # Tokenize the miner output and the ground truth output
+    miner_tokenized = self.prompt_tokenizer(
+        miner_output, return_tensors="pt", padding=True, truncation=True
     )
     ground_truth_tokenized = self.prompt_tokenizer(
         ground_truth_output, return_tensors="pt", padding=True, truncation=True
     )
 
     # Compare the list of tokens
-    prover_tokens = prover_tokenized["input_ids"]
+    miner_tokens = miner_tokenized["input_ids"]
     ground_truth_tokens = ground_truth_tokenized["input_ids"]
 
-    bt.logging.trace(prover_tokens)
+    bt.logging.trace(miner_tokens)
     bt.logging.trace(ground_truth_tokens)
 
     # convert to list
-    prover_tokens = prover_tokens[0].tolist()
+    miner_tokens = miner_tokens[0].tolist()
     ground_truth_tokens = ground_truth_tokens[0].tolist()
 
     # make the tokenized outputs the same length, perferring the ground truth output length
-    if len(prover_tokens) > len(ground_truth_tokens):
-        prover_tokens = prover_tokens[: len(ground_truth_tokens)]
-    elif len(prover_tokens) < len(ground_truth_tokens):
+    if len(miner_tokens) > len(ground_truth_tokens):
+        miner_tokens = miner_tokens[: len(ground_truth_tokens)]
+    elif len(miner_tokens) < len(ground_truth_tokens):
         return False
 
     # Calculate the score from 0 to 1
-    score = sum([1 for token in prover_tokens if token in ground_truth_tokens]) / len(
-        prover_tokens
+    score = sum([1 for token in miner_tokens if token in ground_truth_tokens]) / len(
+        miner_tokens
     )
 
     if score < 0.60:

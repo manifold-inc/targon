@@ -147,7 +147,7 @@ def add_miner_args(parser):
     )
 
     parser.add_argument(
-        "--blacklist.force_verifier_permit",
+        "--blacklist.force_validator_permit",
         action="store_false",
         help="If set, we will force incoming requests to have a permit.",
         default=True,
@@ -163,20 +163,20 @@ def add_miner_args(parser):
     parser.add_argument(
         "--blacklist.allow_non_registered",
         action="store_false",
-        help="If set, provers will accept queries from non registered entities. (Dangerous!)",
+        help="If set, miners will accept queries from non registered entities. (Dangerous!)",
         default=True,
     )
 
 
 
-def add_verifier_args(parser):
-    """Add verifier specific arguments to the parser."""
+def add_validator_args(parser):
+    """Add validator specific arguments to the parser."""
 
     parser.add_argument(
         "--neuron.name",
         type=str,
         help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default="verifier",
+        default="validator",
     )
 
     parser.add_argument(
@@ -196,7 +196,7 @@ def add_verifier_args(parser):
     parser.add_argument(
         "--neuron.decay_alpha",
         type=float,
-        help="The decay alpha for the verifier.",
+        help="The decay alpha for the validator.",
         default=0.001,
     )
 
@@ -232,14 +232,14 @@ def add_verifier_args(parser):
     parser.add_argument(
         "--neuron.challenge_probability",
         type=float,
-        help="The probability of challenging a prover.",
+        help="The probability of challenging a miner.",
         default=0.5,
     )
 
     parser.add_argument(
         "--neuron.sample_size",
         type=int,
-        help="The number of provers to query in a single step.",
+        help="The number of miners to query in a single step.",
         default=48,
     )
 
@@ -254,7 +254,7 @@ def add_verifier_args(parser):
         "--neuron.axon_off",
         "--axon_off",
         action="store_true",
-        # Note: the verifier needs to serve an Axon with their IP or they may
+        # Note: the validator needs to serve an Axon with their IP or they may
         #   be blacklisted by the firewall of serving peers on the network.
         help="Set this flag to not attempt to serve an Axon.",
         default=False,
@@ -263,7 +263,7 @@ def add_verifier_args(parser):
     parser.add_argument(
         "--neuron.vpermit_tao_limit",
         type=int,
-        help="The maximum number of TAO allowed to query a verifier with a vpermit.",
+        help="The maximum number of TAO allowed to query a validator with a vpermit.",
         default=4096,
     )
 
