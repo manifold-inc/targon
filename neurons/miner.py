@@ -182,6 +182,17 @@ class Miner:
         return priority
 
     async def forward(self, synapse: Inference):
+        """
+        Handles the forwarding of an inference request by initiating a streaming chat completion
+        using the specified model and sampling parameters. The response is streamed back to the client
+        as it is generated.
+
+        Args:
+        synapse (Inference): The inference request containing the messages and sampling parameters.
+
+        Returns:
+        A streaming response with the generated chat completion.
+        """
         bt.logging.info(u'\u2713' ,"Getting Inference request!")
 
         async def _prompt(synapse: Inference, send: Send) -> None:
@@ -308,6 +319,19 @@ class Miner:
             self.metagraph.sync(subtensor=self.subtensor)
 
     def check_registered(self):
+        """
+        Checks if the wallet's hotkey is registered on the specified subnet (netuid).
+        If the hotkey is not registered, an error message is logged, and the program exits.
+
+        This method is used to ensure that the hotkey required for operations is properly registered
+        before proceeding with any further actions.
+
+        Args:
+        None
+
+        Returns:
+        None
+        """
         # --- Check for registration.
         if not self.subtensor.is_hotkey_registered(
             netuid=self.config.netuid,
@@ -321,7 +345,17 @@ class Miner:
 
     def should_sync_metagraph(self):
         """
-        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
+        Determines if the metagraph should be synchronized based on the number of epoch blocks 
+        that have elapsed since the last checkpoint.
+
+        This method checks whether enough blocks have passed to warrant a sync and updates
+        the last synced block accordingly.
+
+        Args:
+        None
+
+        Returns:
+        bool: True if the metagraph should be synchronized, False otherwise.
         """
         assert self.config.neuron
         if self.step == 0:

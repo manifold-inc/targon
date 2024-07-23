@@ -30,6 +30,21 @@ from targon import (
 
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
+    """
+    Normalizes a list of floats to a specified range [t_min, t_max].
+
+    This function scales the input list of floats such that the minimum value in the list
+    is mapped to t_min and the maximum value in the list is mapped to t_max. The values
+    in between are scaled proportionally.
+
+    Args:
+    arr (List[float]): The list of floats to be normalized.
+    t_min (float): The minimum value of the target range. Default is 0.
+    t_max (float): The maximum value of the target range. Default is 1.
+
+    Returns:
+    List[float]: A new list containing the normalized values.
+    """
     norm_arr = []
     diff = t_max - t_min
     diff_arr = max(arr) - min(arr)
@@ -40,6 +55,19 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
 
 
 def safe_mean(data):
+    """
+    Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the 
+    computed mean is NaN or infinite.
+
+    This function ensures that the mean calculation is safe by handling edge cases where
+    the input list is empty or the mean is not a finite number.
+
+    Args:
+    data (list): A list of numbers to compute the mean of.
+
+    Returns:
+    float: The mean of the list if it's a valid number, otherwise 0.0.
+    """
     if len(data) == 0:
         return 0.0
     mean_value = np.mean(data)
@@ -159,12 +187,21 @@ class Validator:
 
     async def forward(self, uids, messages, sampling_params, ground_truth):
         """
-        Validator forward pass. Consists of:
+        Performs the forward pass of the validator, which includes the following steps:
         - Generating the query
         - Querying the miners
         - Getting the responses
         - Rewarding the miners
         - Updating the scores
+
+        Args:
+        uids (list): A list of user IDs to query.
+        messages (list): A list of messages to send in the queries.
+        sampling_params (dict): Parameters for sampling during inference.
+        ground_truth (list): Ground truth data for validating responses.
+
+        Returns:
+        None
         """
         assert self.config.neuron
         if self.config.neuron.api_only:
@@ -192,6 +229,20 @@ class Validator:
             time.sleep(12)
 
     def score(self, stats):
+        """
+        Updates various statistics based on the provided stats object. This includes:
+        - Updating the top unverified tokens per second
+        - Appending times to lists for first token and all tokens
+        - Appending tokens per second
+        - Appending verification success
+        - Updating the top verified tokens per second
+
+        Args:
+        stats (object): An object containing various statistics to update.
+
+        Returns:
+        None
+        """
         if stats is None:
             return
         self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
@@ -208,6 +259,22 @@ class Validator:
         self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
 
     def stats(self):
+        """
+        Computes and returns various statistics for the miners, including:
+        - Mean times to the first token and for all tokens
+        - Mean tokens per second
+        - Mean verification success rates
+        - Top verified and unverified tokens per second
+        - Top 20 UIDs based on mean tokens per second
+
+        The statistics are calculated using the most recent 30 entries for each miner.
+
+        Args:
+        None
+
+        Returns:
+        dict: A dictionary containing the computed statistics.
+        """
         time_to_first_token_stats = {
             miner: safe_mean(self.time_to_first_token[miner][:30])
             for miner in self.time_to_first_token
@@ -252,12 +319,44 @@ class Validator:
         }
 
     async def process_uids(self, uids, messages, sampling_params, ground_truth):
+        """
+        Processes a list of user IDs by performing a forward pass of the validator.
+
+        This function attempts to perform the forward pass with the given parameters.
+        If an exception occurs during the process, it logs the error.
+
+        Args:
+        uids (list): A list of user IDs to be processed.
+        messages (list): A list of messages to be sent in the queries.
+        sampling_params (dict): Parameters for sampling during inference.
+        ground_truth (list): Ground truth data for validating responses.
+
+        Returns:
+        None
+        """
         try:
             await self.forward(uids, messages, sampling_params, ground_truth)
         except Exception as e:
             bt.logging.error(f"Error processing uids: {e}")
 
     def run(self):
+        """
+        Runs the validator, performing the following steps:
+        - Asserts necessary configurations are set.
+        - Synchronizes the initial state.
+        - Logs the validator's startup information.
+        - Enters a loop to maintain operations until intentionally stopped.
+        - Logs validator information every few blocks.
+        - Retrieves and shuffles miner UIDs.
+        - Reduces the list of miner UIDs to a sample size.
+        - Generates messages and sampling parameters.
+        - Creates ground truth data.
+        - Processes the UIDs asynchronously.
+        - Synchronizes the metagraph and updates weights.
+        - Increments the step counter.
+
+        The loop continues until the `should_exit` flag is set to True.
+        """
         assert self.config.subtensor
         assert self.config.neuron
         self.sync()
@@ -313,7 +412,22 @@ class Validator:
 
     def set_weights(self):
         """
-        Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miner. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
+        Sets the validator weights to the metagraph hotkeys based on the scores received from the miners.
+        The weights determine the trust and incentive levels the validator assigns to miner nodes on the network.
+
+        This function calculates the weights by:
+        - Computing the mean tokens per second for each miner.
+        - Identifying the top tokens per second and setting a threshold for valid responses.
+        - Normalizing the rewards based on the performance of the miners.
+        - Processing the raw weights according to subtensor limitations.
+        - Converting the weights and UIDs to the appropriate format.
+        - Setting the weights on the chain via the subtensor connection.
+
+        Args:
+        None
+
+        Returns:
+        None
         """
         assert self.config.neuron
         assert self.config.netuid
@@ -399,7 +513,19 @@ class Validator:
             bt.logging.error("set_weights failed")
 
     def check_registered(self):
-        # --- Check for registration.
+        """
+        Checks if the wallet's hotkey is registered on the specified subnet (netuid).
+        If the hotkey is not registered, an error message is logged, and the program exits.
+
+        This method is used to ensure that the hotkey required for operations is properly registered
+        before proceeding with any further actions.
+
+        Args:
+        None
+
+        Returns:
+        None
+        """
         if not self.subtensor.is_hotkey_registered(
             netuid=self.config.netuid,
             hotkey_ss58=self.wallet.hotkey.ss58_address,
@@ -412,7 +538,17 @@ class Validator:
 
     def should_sync_metagraph(self):
         """
-        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
+        Determines if the metagraph should be synchronized based on the number of epoch blocks 
+        that have elapsed since the last checkpoint.
+
+        This method checks whether enough blocks have passed to warrant a sync and updates
+        the last synced block accordingly.
+
+        Args:
+        None
+
+        Returns:
+        bool: True if the metagraph should be synchronized, False otherwise.
         """
         assert self.config.neuron
         return (
@@ -420,6 +556,20 @@ class Validator:
         ) > self.config.neuron.epoch_length
 
     def should_set_weights(self) -> bool:
+        """
+        Determines whether the validator should set the weights based on the current step,
+        block number, and the epoch length defined in the configuration.
+
+        This function ensures that weights are not set during initialization and that the
+        appropriate number of blocks have passed since the last weight update before
+        setting new weights.
+
+        Args:
+        None
+
+        Returns:
+        bool: True if weights should be set, False otherwise.
+        """
         assert self.config.neuron
         # Don't set weights on initialization.
         if self.step == 0:
@@ -434,7 +584,25 @@ class Validator:
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"
 
     def resync_metagraph(self):
-        """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
+        """
+        Resynchronizes the metagraph by copying its state, syncing it with the subtensor, 
+        and updating hotkeys and moving averages if there are changes.
+
+        This function performs the following steps:
+        - Logs the start of the resynchronization process.
+        - Copies the current state of the metagraph.
+        - Syncs the metagraph with the subtensor.
+        - Checks if there are any changes in the axon information of the metagraph.
+        - If there are changes, it zeroes out all hotkeys that have been replaced and updates
+        the hotkeys and moving averages accordingly.
+        - Ensures that new hotkeys and moving averages are added if the metagraph size has changed.
+
+        Args:
+        None
+
+        Returns:
+        None
+        """
         bt.logging.info("resync_metagraph()")
 
         # Copies state of metagraph before syncing.

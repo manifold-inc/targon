@@ -30,7 +30,7 @@ def autoupdate( branch: str = "main" ):
     If the local version is older than the remote version, it performs a git pull to update the local codebase to the latest version.
     After successfully updating, it restarts the application with the updated code.
 
-    Parameters:
+    Args:
     - branch (str): The name of the branch to check for updates. Defaults to "main".
 
     Note:

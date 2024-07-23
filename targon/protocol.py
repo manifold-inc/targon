@@ -154,7 +154,7 @@ class Inference(bt.StreamingSynapse):
     sampling_params: Optional[InferenceSamplingParams] = pydantic.Field(
         default=InferenceSamplingParams(seed=333),
         title="Sampling Params",
-        description="The sampling parameters for the TGI model.",
+        description="The sampling parameters for the OpenAI Compatible model.",
     )
     completion: Optional[str] = pydantic.Field(
         default=None,

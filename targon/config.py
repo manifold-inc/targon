@@ -69,7 +69,7 @@ def add_args(parser):
     parser.add_argument(
         "--neuron.model_endpoint",
         type=str,
-        help="The endpoint to use for the TGI client.",
+        help="The endpoint to use for the OpenAI Compatible client.",
         default="http://127.0.0.1:8080",
     )
 
