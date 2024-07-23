@@ -46,13 +46,6 @@ def add_args(parser):
     parser.add_argument("--netuid", type=int, help="Subnet netuid", default=4)
 
     parser.add_argument(
-        "--neuron.disable_set_weights",
-        action="store_true",
-        help="Disables setting weights.",
-        default=False,
-    )
-
-    parser.add_argument(
         "--neuron.default_tokenizer",
         type=str,
         help="The default model to use for the neuron.",
@@ -74,38 +67,17 @@ def add_args(parser):
     )
 
     parser.add_argument(
-        "--neuron.events_retention_size",
-        type=str,
-        help="Events retention size.",
-        default="2 GB",
+        "--neuron.proxy.port",
+        type=int,
+        help="The port to use for the proxy.",
+        default=8000,
     )
 
     parser.add_argument(
-        "--neuron.dont_save_events",
-        action="store_true",
-        help="If set, we dont save events to a log file.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--neuron.log_full",
-        action="store_true",
-        help="If set, logs more information.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--no_background_thread",
-        action="store_true",
-        help="If set, we dont run the neuron in a background thread.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--autoupdate.branch",
-        type=str,
-        help="The branch to auto-update from.",
-        default="main",
+        "--neuron.proxy.port",
+        type=int,
+        help="The port to use for the proxy.",
+        default=8000,
     )
 
     parser.add_argument(
@@ -146,21 +118,6 @@ def add_miner_args(parser):
         default=True,
     )
 
-    parser.add_argument(
-        "--disable_auto_update",
-        action="store_true",
-        help="If true, the validator will disable auto-update of its software from the repository.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--blacklist.allow_non_registered",
-        action="store_false",
-        help="If set, miners will accept queries from non registered entities. (Dangerous!)",
-        default=True,
-    )
-
-
 
 def add_validator_args(parser):
     """Add validator specific arguments to the parser."""
@@ -173,60 +130,10 @@ def add_validator_args(parser):
     )
 
     parser.add_argument(
-        "--disable_auto_update",
-        action="store_true",
-        help="If true, the validator will disable auto-update of its software from the repository.",
-        default=False,
-    )
-
-    parser.add_argument(
         "--neuron.timeout",
         type=float,
         help="The timeout for each forward call in seconds.",
         default=12,
-    )
-
-    parser.add_argument(
-        "--neuron.decay_alpha",
-        type=float,
-        help="The decay alpha for the validator.",
-        default=0.001,
-    )
-
-    parser.add_argument(
-        "--neuron.max_tokens",
-        type=int,
-        help="The maximum number of tokens in generated responses.",
-        default=256,
-    )
-
-    parser.add_argument(
-        "--neuron.num_concurrent_forwards",
-        type=int,
-        help="The number of concurrent forwards running at any time.",
-        default=1,
-    )
-
-    parser.add_argument(
-        "--neuron.verbose",
-        action="store_true",
-        help="If set, we will print more information.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--neuron.reward_mode",
-        default="sigmoid",
-        type=str,
-        choices=["minmax", "sigmoid"],
-        help="Reward mode for the validator.",
-    )
-
-    parser.add_argument(
-        "--neuron.challenge_probability",
-        type=float,
-        help="The probability of challenging a miner.",
-        default=0.5,
     )
 
     parser.add_argument(
@@ -237,67 +144,8 @@ def add_validator_args(parser):
     )
 
     parser.add_argument(
-        "--neuron.moving_average_alpha",
-        type=float,
-        help="Moving average alpha parameter, how much to add of the new observation.",
-        default=0.05,
-    )
-
-    parser.add_argument(
-        "--neuron.axon_off",
-        "--axon_off",
-        action="store_true",
-        # Note: the validator needs to serve an Axon with their IP or they may
-        #   be blacklisted by the firewall of serving peers on the network.
-        help="Set this flag to not attempt to serve an Axon.",
-        default=False,
-    )
-
-    parser.add_argument(
         "--neuron.vpermit_tao_limit",
         type=int,
         help="The maximum number of TAO allowed to query a validator with a vpermit.",
         default=4096,
-    )
-
-    parser.add_argument(
-        "--neuron.tgi_endpoint",
-        type=str,
-        help="The endpoint to use for the TGI client.",
-        default="http://localhost:8080",
-    )
-
-    parser.add_argument(
-        "--database.host",
-        type=str,
-        help="The path to write debug logs to.",
-        default="127.0.0.1",
-    )
-
-    parser.add_argument(
-        "--database.port",
-        type=int,
-        help="The path to write debug logs to.",
-        default=6379,
-    )
-
-    parser.add_argument(
-        "--database.index",
-        type=int,
-        help="The path to write debug logs to.",
-        default=1,
-    )
-
-    parser.add_argument(
-        "--database.password",
-        type=str,
-        help="the password to use for the redis database.",
-        default=None,
-    )
-
-    parser.add_argument(
-        "--neuron.compute_stats_interval",
-        type=int,
-        help="The interval at which to compute statistics.",
-        default=360,
     )

@@ -27,7 +27,7 @@ from typing import Any, List, Optional
 
 class InferenceSamplingParams(pydantic.BaseModel):
     """
-    SamplingParams is a pydantic model that represents the sampling parameters for the TGI model.
+    SamplingParams is a pydantic model that represents the sampling parameters for the OpenAI Compabtable API model.
     """
 
     seed: int = pydantic.Field(
