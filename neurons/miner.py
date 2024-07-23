@@ -197,7 +197,6 @@ class Miner:
                 seed=synapse.sampling_params.seed,
                 timeout=5,
             )
-            bt.logging.info("Stream has been created")
             full_text = ""
             for chunk in stream:
                 token = chunk.choices[0].delta.content
