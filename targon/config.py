@@ -67,20 +67,6 @@ def add_args(parser):
     )
 
     parser.add_argument(
-        "--neuron.proxy.port",
-        type=int,
-        help="The port to use for the proxy.",
-        default=8000,
-    )
-
-    parser.add_argument(
-        "--neuron.proxy.port",
-        type=int,
-        help="The port to use for the proxy.",
-        default=8000,
-    )
-
-    parser.add_argument(
         "--neuron.model_endpoint",
         type=str,
         help="The endpoint to use for the TGI client.",
