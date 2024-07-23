@@ -114,10 +114,6 @@ class Verifier:
             config=self.config,
         )
 
-        if not self.metagraph.validator_permit[self.uid]:
-            bt.logging.error("Validator does not have vpermit")
-        bt.logging.info(f"Miner uid: {self.uid}")
-
         bt.logging.debug(f"Wallet: {self.wallet}")
         bt.logging.debug(f"Subtensor: {self.subtensor}")
         bt.logging.debug(f"Metagraph: {self.metagraph}")
@@ -125,6 +121,10 @@ class Verifier:
         ## CHECK IF REGG'D
         self.check_registered()
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+        if not self.metagraph.validator_permit[self.uid]:
+            bt.logging.error("Validator does not have vpermit")
+        bt.logging.info(f"Miner uid: {self.uid}")
+
 
         ## SET MISC PARAMS
         self.step = 0
