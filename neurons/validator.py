@@ -371,9 +371,6 @@ class Validator:
             subtensor=self.subtensor,
             metagraph=self.metagraph,
         )
-        bt.logging.info("processed_weights", str(processed_weights))
-        bt.logging.info("processed_weight_uids", str(processed_weight_uids))
-
         # Type Safety
         processed_weight_uids = np.asarray(processed_weight_uids)
         (
@@ -382,6 +379,7 @@ class Validator:
         ) = convert_weights_and_uids_for_emit(
             uids=processed_weight_uids, weights=processed_weights
         )
+        bt.logging.info("Setting weights")
         bt.logging.info("uint_weights", str(uint_weights))
         bt.logging.info("uint_uids", str(uint_uids))
 
