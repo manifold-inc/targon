@@ -207,7 +207,6 @@ class Miner:
                             "more_body": True,
                         }
                     )
-                    bt.logging.info("Tokens sent.")
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
 
