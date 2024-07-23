@@ -209,7 +209,7 @@ class Validator:
             time.sleep(12)
             return
         try:
-            bt.logging.info(f"forward block: {self.block} step: {self.step}")
+            bt.logging.info(f"Forward Block: {self.block} | Step: {self.step} | Blocks till Set Weights: { abs((self.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length) }")
             tasks = []
             for uid in uids:
                 tasks.append(
@@ -579,8 +579,6 @@ class Validator:
             return False
 
         # Define appropriate logic for when set weights.
-        blocks_till_weightset=(self.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length
-        bt.logging.info(f"Blocks till setting weights: {abs(blocks_till_weightset)}")
         return (
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"
