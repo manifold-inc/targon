@@ -363,9 +363,9 @@ class Validator:
         while not self.should_exit:
             # Print Vali Info every few blocks
             if self.last_forward_block == self.subtensor.block:
-                return
+                continue
             if not self.subtensor.block % 12 == 0:
-                return
+                continue
             bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block, isMiner=False))
             self.last_forward_block = self.subtensor.block
             # get all miner uids
