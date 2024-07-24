@@ -52,7 +52,7 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
 
 def safe_mean(data):
     """
-    Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the 
+    Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the
     computed mean is NaN or infinite.
 
     This function ensures that the mean calculation is safe by handling edge cases where
@@ -145,13 +145,12 @@ class Validator:
         if not self.metagraph.validator_permit[self.uid]:
             bt.logging.error("Validator does not have vpermit")
 
-
         ## SET MISC PARAMS
-        self.step = 0
         self.should_exit = False
         self.last_synced_block = None
         self.hotkeys = self.metagraph.hotkeys
         self.last_forward_block = None
+        self.last_posted_weights = self.subtensor.block
 
         ## STATS
         miners = self.get_miner_uids()
@@ -180,7 +179,9 @@ class Validator:
             self.config.neuron.default_tokenizer
         )
 
-        bt.logging.info("\N{grinning face with smiling eyes}", "Successfully Initialized!")
+        bt.logging.info(
+            "\N{grinning face with smiling eyes}", "Successfully Initialized!"
+        )
 
     async def forward(self, uids, messages, sampling_params, ground_truth):
         """
@@ -202,7 +203,9 @@ class Validator:
         """
         assert self.config.neuron
         try:
-            bt.logging.info(f"Forward Block: {self.block} | Step: {self.step} | Blocks till Set Weights: { abs((self.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length) }")
+            bt.logging.info(
+                f"Forward Block: {self.block} |  Blocks till Set Weights: { abs((self.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length) }"
+            )
             tasks = []
             for uid in uids:
                 tasks.append(
@@ -366,7 +369,14 @@ class Validator:
                 continue
             if not self.subtensor.block % 12 == 0:
                 continue
-            bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block, isMiner=False))
+            bt.logging.info(
+                print_info(
+                    self.metagraph,
+                    self.wallet.hotkey.ss58_address,
+                    self.subtensor.block,
+                    isMiner=False,
+                )
+            )
             self.last_forward_block = self.subtensor.block
             # get all miner uids
             miner_uids = self.get_miner_uids()
@@ -391,8 +401,6 @@ class Validator:
 
             # Sync metagraph and potentially set weights.
             self.sync()
-
-            self.step += 1
 
     def sync(self):
         """
@@ -515,7 +523,7 @@ class Validator:
 
     def should_sync_metagraph(self):
         """
-        Determines if the metagraph should be synchronized based on the number of epoch blocks 
+        Determines if the metagraph should be synchronized based on the number of epoch blocks
         that have elapsed since the last checkpoint.
 
         This method checks whether enough blocks have passed to warrant a sync and updates
@@ -528,7 +536,7 @@ class Validator:
         bool: True if the metagraph should be synchronized, False otherwise.
         """
         assert self.config.neuron
-        if self.step == 0:
+        if self.last_synced_block is None:
             self.last_synced_block = self.subtensor.block
             return True
 
@@ -555,19 +563,18 @@ class Validator:
         bool: True if weights should be set, False otherwise.
         """
         assert self.config.neuron
-        # Don't set weights on initialization.
-        if self.step == 0:
-            bt.logging.info("Skipping weight for 0 step")
-            return False
 
         # Define appropriate logic for when set weights.
         return (
-            self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"
+            (self.block - self.metagraph.last_update[self.uid])
+            > self.config.neuron.epoch_length
+            and self.neuron_type != "MinerNeuron"
+            and self.last_posted_weights + 20 < self.subtensor.block
+        )
 
     def resync_metagraph(self):
         """
-        Resynchronizes the metagraph by copying its state, syncing it with the subtensor, 
+        Resynchronizes the metagraph by copying its state, syncing it with the subtensor,
         and updating hotkeys and moving averages if there are changes.
 
         This function performs the following steps:

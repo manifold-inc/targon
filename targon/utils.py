@@ -1,6 +1,6 @@
-def print_info(metagraph, hotkey, step, block, isMiner=True):
+def print_info(metagraph, hotkey, block, isMiner=True):
     uid = metagraph.hotkeys.index(hotkey)
-    log = f"Step:{step} | UID:{uid} | Block:{block} | Consensus:{metagraph.C[uid]} | "
+    log = f"UID:{uid} | Block:{block} | Consensus:{metagraph.C[uid]} | "
     if isMiner:
         return (
             log
