@@ -14,10 +14,6 @@ from openai import OpenAI
 
 from typing import List
 from transformers import AutoTokenizer
-from bittensor.utils.weight_utils import (
-    convert_weights_and_uids_for_emit,
-    process_weights_for_netuid,
-)
 from targon import (
     generate_dataset,
     create_ground_truth,
@@ -153,8 +149,9 @@ class Validator:
         ## SET MISC PARAMS
         self.step = 0
         self.should_exit = False
-
+        self.last_synced_block = None
         self.hotkeys = self.metagraph.hotkeys
+        self.last_forward_block = None
 
         ## STATS
         miners = self.get_miner_uids()
@@ -204,10 +201,6 @@ class Validator:
         None
         """
         assert self.config.neuron
-        if self.config.neuron.api_only:
-            bt.logging.info("Running in API only mode, sleeping for 12 seconds.")
-            time.sleep(12)
-            return
         try:
             bt.logging.info(f"Forward Block: {self.block} | Step: {self.step} | Blocks till Set Weights: { abs((self.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length) }")
             tasks = []
@@ -369,8 +362,12 @@ class Validator:
         # This loop maintains the validator's operations until intentionally stopped.
         while not self.should_exit:
             # Print Vali Info every few blocks
-            if self.subtensor.block % 4 == 0:
-                bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block, isMiner=False))
+            if self.last_forward_block == self.subtensor.block:
+                return
+            if not self.subtensor.block % 12 == 0:
+                return
+            bt.logging.info(print_info(self.metagraph, self.wallet.hotkey.ss58_address, self.step, self.subtensor.block, isMiner=False))
+            self.last_forward_block = self.subtensor.block
             # get all miner uids
             miner_uids = self.get_miner_uids()
 
@@ -531,9 +528,16 @@ class Validator:
         bool: True if the metagraph should be synchronized, False otherwise.
         """
         assert self.config.neuron
-        return (
-            self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length
+        if self.step == 0:
+            self.last_synced_block = self.subtensor.block
+            return True
+
+        if self.subtensor.block % 90 != 0:
+            return False
+        if self.last_synced_block == self.subtensor.block:
+            return False
+        self.last_synced_block = self.subtensor.block
+        return True
 
     def should_set_weights(self) -> bool:
         """
