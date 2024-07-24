@@ -64,8 +64,6 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
             timeout=self.config.neuron.timeout,
             streaming=True,
         ):
-            if(uid == 6 or uid == 5):
-                bt.logging.info(" What is happening here")
             if token_count == 1:
                 end_send_message_time = time.time()
                 start_token_time = time.time()
@@ -74,14 +72,13 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
             for t in token:
                 response_tokens.append(t)
                 if (uid == 6 or uid == 5):
-                    bt.logging.info("Appending the response tokens.  for 5 or 6")
             token_count += 1
 
         if token_count <= 1 or len(response_tokens) <= 1:
+            if(uid == 5 or uid == 6):
+                bt.logging.info("are the tokens count empty")
             return None
 
-        if(uid == 6 or uid == 5):
-            bt.logging.info("Yo 5 and 6 return tokens are not empty")
 
         if end_send_message_time is None:
             end_send_message_time = time.time()
@@ -103,6 +100,8 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
 
         # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
         if time_to_first_token > 1.8 * time_for_all_tokens:
+            if(uid == 5 or uid == 6):
+                bt.logging.info("responses pregenerated?")
             verified = False
             tokens_per_second = 0
 
