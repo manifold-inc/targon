@@ -265,12 +265,11 @@ class Miner:
         # Start  starts the miner's axon, making it active on the network.
 
         # change the config in the axon
-        log_level = "trace" if bt.logging.__trace_on__ else "critical"
         fast_config = uvicorn.Config(
             self.axon.app,
             host="0.0.0.0",
             port=self.config.axon.port,
-            log_level=log_level,
+            log_level='info',
             loop="asyncio",
         )
         self.axon.fast_server = FastAPIThreadedServer(config=fast_config)
@@ -287,7 +286,6 @@ class Miner:
                     print_info(
                         self.metagraph,
                         self.wallet.hotkey.ss58_address,
-                        self.step,
                         self.subtensor.block,
                     )
                 )

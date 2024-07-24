@@ -128,13 +128,6 @@ class Validator:
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.loop = asyncio.get_event_loop()
-        self.axon = bt.axon(
-            wallet=self.wallet,
-            port=self.config.axon.port,
-            external_ip=self.config.axon.external_ip,
-            config=self.config,
-        )
-
         bt.logging.debug(f"Wallet: {self.wallet}")
         bt.logging.debug(f"Subtensor: {self.subtensor}")
         bt.logging.debug(f"Metagraph: {self.metagraph}")
@@ -357,7 +350,7 @@ class Validator:
         assert self.config.neuron
         self.sync()
         bt.logging.info(
-            f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Running validator on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
 
         bt.logging.info(f"Validator starting at block: {self.block}")
