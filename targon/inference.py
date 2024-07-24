@@ -64,6 +64,8 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
             timeout=self.config.neuron.timeout,
             streaming=True,
         ):
+            if(uid == 6 or uid == 5):
+                bt.logging.info(" What is happening here")
             if token_count == 1:
                 end_send_message_time = time.time()
                 start_token_time = time.time()
@@ -71,6 +73,8 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
                 continue
             for t in token:
                 response_tokens.append(t)
+                if (uid == 6 or uid == 5):
+                    bt.logging.ind("Appending the response tokens.  for 5 or 6")
             token_count += 1
 
         if token_count <= 1 or len(response_tokens) <= 1:
