@@ -71,7 +71,6 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
                 continue
             for t in token:
                 response_tokens.append(t)
-                if (uid == 6 or uid == 5):
             token_count += 1
 
         if token_count <= 1 or len(response_tokens) <= 1:
