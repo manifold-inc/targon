@@ -23,6 +23,9 @@ from targon import (
     validate_config_and_neuron_path,
     __spec_version__ as spec_version,
 )
+from bittensor.utils.weight_utils import (
+    process_weights_for_netuid,
+)
 
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
@@ -406,8 +409,8 @@ class Validator:
         if self.should_sync_metagraph():
             self.resync_metagraph()
 
-        if self.should_set_weights():
-            self.set_weights()
+        #if self.should_set_weights():
+        self.set_weights()
 
     def set_weights(self):
         """
@@ -472,11 +475,20 @@ class Validator:
             return
         raw_weights = normalize(rewards)
 
-        bt.logging.info("Setting weights")
-        bt.logging.info("Processed Weights: " + str(raw_weights))
-        bt.logging.info("Processed Weight Uids: " + str(uids))
-
         # Set the weights on chain via our subtensor connection.
+        (
+            processed_weight_uids,
+            processed_weights,
+        ) = process_weights_for_netuid(
+            uids=np.asarray(uids),
+            weights=np.asarray(raw_weights),
+            netuid=self.config.netuid,
+            subtensor=self.subtensor,
+            metagraph=self.metagraph,
+        )
+
+        bt.logging.info("Setting Weights: " + str(processed_weights))
+        bt.logging.info("Weight Uids: " + str(processed_weight_uids))
         result, message = self.subtensor.set_weights(
             wallet=self.wallet,
             netuid=self.config.netuid,
