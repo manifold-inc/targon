@@ -386,6 +386,7 @@ class Validator:
 
             # reduce down to 16 miners
             miner_uids = miner_uids[: self.config.neuron.sample_size]
+            bt.logging.info(f"Subset Miner UIDs: {miner_uids}")
             try:
                 messages, sampling_params = asyncio.run(generate_dataset(self))
                 ground_truth = asyncio.run(
