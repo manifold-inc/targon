@@ -473,38 +473,16 @@ class Validator:
             return
         raw_weights = normalize(rewards)
 
-        bt.logging.debug("raw_weights", str(raw_weights))
-        # Process the raw weights to final_weights via subtensor limitations.
-        (
-            processed_weight_uids,
-            processed_weights,
-        ) = process_weights_for_netuid(
-            uids=np.asarray(uids),
-            weights=np.asarray(raw_weights),
-            netuid=self.config.netuid,
-            subtensor=self.subtensor,
-            metagraph=self.metagraph,
-        )
-        # Type Safety
-        processed_weight_uids = np.asarray(processed_weight_uids)
-        (
-            uint_uids,
-            uint_weights,
-        ) = convert_weights_and_uids_for_emit(
-            uids=processed_weight_uids, weights=processed_weights
-        )
         bt.logging.info("Setting weights")
         bt.logging.info("Processed Weights: " + str(uids))
         bt.logging.info("Processed Weight Uids: " + str(raw_weights))
-        bt.logging.info("uint weights: " + str(uint_weights))
-        bt.logging.info("uint uids: " + str(uint_uids))
 
         # Set the weights on chain via our subtensor connection.
         result, message = self.subtensor.set_weights(
             wallet=self.wallet,
             netuid=self.config.netuid,
-            uids=uint_uids,
-            weights=uint_weights,
+            uids=uids,
+            weights=raw_weights,
             wait_for_finalization=True,
             wait_for_inclusion=True,
             version_key=spec_version,
