@@ -54,6 +54,9 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         end_send_message_time = None
         start_token_time = 0
 
+        if(uid == 6 or uid == 5):
+            bt.logging.info("Hey, 5 and 6 are about to handle inference")
+
         async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
@@ -72,6 +75,9 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
 
         if token_count <= 1 or len(response_tokens) <= 1:
             return None
+
+        if(uid == 6 or uid == 5):
+            bt.logging.info("Yo 5 and 6 return tokens are not empty")
 
         if end_send_message_time is None:
             end_send_message_time = time.time()
