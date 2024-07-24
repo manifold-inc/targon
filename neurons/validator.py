@@ -410,6 +410,7 @@ class Validator:
 
         if self.should_set_weights():
             self.set_weights()
+            self.resync_metagraph()
 
     def set_weights(self):
         """
