@@ -54,9 +54,6 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         end_send_message_time = None
         start_token_time = 0
 
-        if(uid == 6 or uid == 5):
-            bt.logging.info("Hey, 5 and 6 are about to handle inference")
-
         async for token in await self.dendrite(
             self.metagraph.axons[uid],
             synapse,
@@ -74,8 +71,6 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
             token_count += 1
 
         if token_count <= 1 or len(response_tokens) <= 1:
-            if(uid == 5 or uid == 6):
-                bt.logging.info("are the tokens count empty")
             return None
 
 
@@ -99,8 +94,6 @@ async def handle_inference(self, messages, sampling_params, uid, ground_truth):
 
         # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
         if time_to_first_token > 1.8 * time_for_all_tokens:
-            if(uid == 5 or uid == 6):
-                bt.logging.info("responses pregenerated?")
             verified = False
             tokens_per_second = 0
 
