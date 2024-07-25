@@ -46,13 +46,6 @@ def add_args(parser):
     parser.add_argument("--netuid", type=int, help="Subnet netuid", default=4)
 
     parser.add_argument(
-        "--neuron.default_tokenizer",
-        type=str,
-        help="The default model to use for the neuron.",
-        default="01-ai/Yi-1.5-9B-Chat-16K",
-    )
-
-    parser.add_argument(
         "--neuron.epoch_length",
         type=int,
         help="The default epoch length (how often we set weights, measured in 12 second blocks).",

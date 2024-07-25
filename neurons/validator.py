@@ -15,7 +15,6 @@ import signal
 from openai import OpenAI
 
 from typing import List
-from transformers import AutoTokenizer
 from targon import (
     generate_dataset,
     add_args,
@@ -116,11 +115,6 @@ class Validator:
         self.client = OpenAI(
             base_url=self.config.neuron.model_endpoint,
             api_key=self.config.neuron.api_key,
-        )
-
-        ## SET PROMPT TOKENIZER
-        self.prompt_tokenizer = AutoTokenizer.from_pretrained(
-            self.config.neuron.default_tokenizer
         )
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
