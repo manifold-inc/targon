@@ -21,7 +21,7 @@ services:
     runtime: nvidia
     command: --model mlabonne/NeuralDaredevil-7B --dtype auto
     ports:
-      - 8000:8001
+      - 8001:8000
     ipc: host
     volumes:
       - hf_cache:/root/.cache/huggingface
