@@ -2,8 +2,9 @@ import random
 
 from os import urandom
 from datetime import datetime
+from typing import Iterable
 
-from openai.types.chat import ChatCompletion
+from openai.types.chat import ChatCompletionMessageParam
 from targon import protocol
 
 
@@ -33,12 +34,11 @@ async def generate_dataset(self):
     # Generate a query from the sampled text and perform text generation
     messages = create_query_prompt(random_row_text)
 
-    res: ChatCompletion
     res = self.client.chat.completions.create(
         model=self.config.neuron.model_name,
         messages=messages,
         stream=False,
-        temperature=sampling_params.temperature,
+        temperature=1.5,
         top_p=sampling_params.top_p,
         seed=sampling_params.seed,
         timeout=5
@@ -54,7 +54,7 @@ async def generate_dataset(self):
     return prompt, sampling_params
 
 
-def create_search_prompt(query: str):
+def create_search_prompt(query: str) ->  Iterable[ChatCompletionMessageParam]:
     """
     Creates a formatted search prompt for the validator based on the provided query and sources.
 
@@ -78,7 +78,7 @@ Your answer should be short, two paragraphs exactly, and should be relevant to t
 """
 
     # Compile the chat components into a structured format
-    chats = [
+    chats: Iterable[ChatCompletionMessageParam] = [
         {"role": "system", "content": system_message},
         {"role": "user", "content": query},
     ]

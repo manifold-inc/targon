@@ -1,9 +1,11 @@
 import sys
+import json
 import copy
 import time
 import random
 import asyncio
-from targon.utils import print_info
+from targon.utils import normalize, print_info, safe_mean, InferenceStats, check_tokens
+import traceback
 import math
 import argparse
 import numpy as np
@@ -16,10 +18,9 @@ from typing import List
 from transformers import AutoTokenizer
 from targon import (
     generate_dataset,
-    create_ground_truth,
-    handle_inference,
     add_args,
     add_validator_args,
+    protocol,
     validate_config_and_neuron_path,
     __spec_version__ as spec_version,
 )
@@ -28,60 +29,9 @@ from bittensor.utils.weight_utils import (
 )
 
 
-def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
-    """
-    Normalizes a list of floats to a specified range [t_min, t_max].
-
-    This function scales the input list of floats such that the minimum value in the list
-    is mapped to t_min and the maximum value in the list is mapped to t_max. The values
-    in between are scaled proportionally.
-
-    Args:
-    arr (List[float]): The list of floats to be normalized.
-    t_min (float): The minimum value of the target range. Default is 0.
-    t_max (float): The maximum value of the target range. Default is 1.
-
-    Returns:
-    List[float]: A new list containing the normalized values.
-    """
-    norm_arr = []
-    diff = t_max - t_min
-    diff_arr = max(arr) - min(arr)
-    for i in arr:
-        temp = (((i - min(arr)) * diff) / diff_arr) + t_min
-        norm_arr.append(temp)
-    return norm_arr
-
-
-def safe_mean(data):
-    """
-    Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the
-    computed mean is NaN or infinite.
-
-    This function ensures that the mean calculation is safe by handling edge cases where
-    the input list is empty or the mean is not a finite number.
-
-    Args:
-    data (list): A list of numbers to compute the mean of.
-
-    Returns:
-    float: The mean of the list if it's a valid number, otherwise 0.0.
-    """
-    if len(data) == 0:
-        return 0.0
-    mean_value = np.mean(data)
-    if np.isnan(mean_value) or np.isinf(mean_value):
-        return 0.0
-    return float(mean_value)
-
-
 class Validator:
     neuron_type = "ValidatorNeuron"
     config: "bt.config"
-
-    @property
-    def block(self):
-        return self.subtensor.block
 
     def exit_gracefully(self, *_):
         if self.should_exit:
@@ -153,9 +103,7 @@ class Validator:
         self.time_to_first_token = {miner: [] for miner in miners}
         self.time_for_all_tokens = {miner: [] for miner in miners}
         self.tokens_per_second = {miner: [] for miner in miners}
-
         self.verified_success = {miner: [] for miner in miners}
-
         self.top_verified_tps = 0
         self.top_unverified_tps = 0
 
@@ -174,99 +122,108 @@ class Validator:
         self.prompt_tokenizer = AutoTokenizer.from_pretrained(
             self.config.neuron.default_tokenizer
         )
-
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-    async def forward(self, uids, messages, sampling_params, ground_truth):
-        """
-        Performs the forward pass of the validator, which includes the following steps:
-        - Generating the query
-        - Querying the miners
-        - Getting the responses
-        - Rewarding the miners
-        - Updating the scores
+    def create_ground_truth(self, messages, sampling_params):
+        assert self.config.neuron
+        ground_truth_tokens = []
+        stream = self.client.chat.completions.create(
+            model=self.config.neuron.model_name,
+            messages=messages,
+            stream=True,
+            temperature=sampling_params.temperature,
+            top_p=sampling_params.top_p,
+            seed=sampling_params.seed,
+            timeout=5,
+        )
+        for chunk in stream:
+            token = chunk.choices[0].delta.content
+            if not token:
+                continue
+            ground_truth_tokens.append(token)
+        ground_truth_output = "".join(ground_truth_tokens)
+        return ground_truth_output
 
-        Args:
-        uids (list): A list of user IDs to query.
-        messages (list): A list of messages to send in the queries.
-        sampling_params (dict): Parameters for sampling during inference.
-        ground_truth (list): Ground truth data for validating responses.
-
-        Returns:
-        None
-        """
+    async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         assert self.config.neuron
         try:
-            bt.logging.info(
-                f"Forward Block: {self.block} |  Blocks till Set Weights: { abs((self.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length) }"
+            synapse = protocol.Inference(
+                messages=json.dumps(messages),
+                sampling_params=sampling_params,
             )
-            tasks = []
-            for uid in uids:
-                tasks.append(
-                    asyncio.create_task(
-                        handle_inference(
-                            self, messages, sampling_params, uid, ground_truth
-                        )
-                    )
-                )
-            stats = await asyncio.gather(*tasks)
+            response_tokens = []
+            token_count = 0
+            start_send_message_time = time.time()
+            end_send_message_time = None
+            start_token_time = 0
+            async for token in await self.dendrite(
+                self.metagraph.axons[uid],
+                synapse,
+                deserialize=False,
+                timeout=self.config.neuron.timeout,
+                streaming=True,
+            ):
+                if token_count == 1:
+                    end_send_message_time = time.time()
+                    start_token_time = time.time()
+                if isinstance(token, protocol.Inference):
+                    continue
+                for t in token:
+                    response_tokens.append(t)
+                token_count += 1
+            if token_count <= 1 or len(response_tokens) <= 1:
+                return None
+            if end_send_message_time is None:
+                end_send_message_time = time.time()
+                start_token_time = end_send_message_time
+            end_token_time = time.time()
+            time_to_first_token = end_send_message_time - start_send_message_time
+            time_for_all_tokens = end_token_time - start_token_time
+            tokens_per_second_partial = (
+                token_count / time_for_all_tokens
+                if token_count > 0 and time_for_all_tokens > 0
+                else 0
+            )
+            tokens_per_second = tokens_per_second_partial
+            response = "".join(response_tokens)
 
-            for stat in stats:
-                self.score(stat)
-
+            # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
+            verified = True
+            if time_to_first_token > 1.8 * time_for_all_tokens:
+                verified = False
+                tokens_per_second = 0
+            if verified:
+                verified = check_tokens(response, ground_truth)
+            stats = InferenceStats(
+                time_to_first_token=time_to_first_token,
+                time_for_all_tokens=time_for_all_tokens,
+                tokens_per_second=tokens_per_second,
+                tokens=response_tokens,
+                response=response,
+                verified=verified,
+                uid=uid,
+            )
+            return stats
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
-            time.sleep(12)
+            bt.logging.error(traceback.format_exc())
+            return None
 
     def score(self, stats):
-        """
-        Updates various statistics based on the provided stats object. This includes:
-        - Updating the top unverified tokens per second
-        - Appending times to lists for first token and all tokens
-        - Appending tokens per second
-        - Appending verification success
-        - Updating the top verified tokens per second
-
-        Args:
-        stats (object): An object containing various statistics to update.
-
-        Returns:
-        None
-        """
         if stats is None:
             return
         self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
-
         if not stats.verified:
             return
-
         self.time_to_first_token[stats.uid].append(stats.time_to_first_token)
         self.time_for_all_tokens[stats.uid].append(stats.time_for_all_tokens)
         self.tokens_per_second[stats.uid].append(stats.tokens_per_second)
-
         self.verified_success[stats.uid].append(stats.verified)
-
         self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
 
     def stats(self):
-        """
-        Computes and returns various statistics for the miners, including:
-        - Mean times to the first token and for all tokens
-        - Mean tokens per second
-        - Mean verification success rates
-        - Top verified and unverified tokens per second
-        - Top 20 UIDs based on mean tokens per second
-
-        The statistics are calculated using the most recent 30 entries for each miner.
-
-        Args:
-        None
-
-        Returns:
-        dict: A dictionary containing the computed statistics.
-        """
         time_to_first_token_stats = {
             miner: safe_mean(self.time_to_first_token[miner][:30])
             for miner in self.time_to_first_token
@@ -311,44 +268,30 @@ class Validator:
         }
 
     async def process_uids(self, uids, messages, sampling_params, ground_truth):
-        """
-        Processes a list of user IDs by performing a forward pass of the validator.
-
-        This function attempts to perform the forward pass with the given parameters.
-        If an exception occurs during the process, it logs the error.
-
-        Args:
-        uids (list): A list of user IDs to be processed.
-        messages (list): A list of messages to be sent in the queries.
-        sampling_params (dict): Parameters for sampling during inference.
-        ground_truth (list): Ground truth data for validating responses.
-
-        Returns:
-        None
-        """
+        assert self.config.neuron
         try:
-            await self.forward(uids, messages, sampling_params, ground_truth)
+            bt.logging.info(
+                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { abs((self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length) }"
+            )
+            tasks = []
+            for uid in uids:
+                tasks.append(
+                    asyncio.create_task(
+                        self.handle_inference(
+                            messages, sampling_params, uid, ground_truth
+                        )
+                    )
+                )
+            stats = await asyncio.gather(*tasks)
+
+            for stat in stats:
+                self.score(stat)
+
         except Exception as e:
-            bt.logging.error(f"Error processing uids: {e}")
+            bt.logging.error(f"Error in forward: {e}")
+            time.sleep(12)
 
     def run(self):
-        """
-        Runs the validator, performing the following steps:
-        - Asserts necessary configurations are set.
-        - Synchronizes the initial state.
-        - Logs the validator's startup information.
-        - Enters a loop to maintain operations until intentionally stopped.
-        - Logs validator information every few blocks.
-        - Retrieves and shuffles miner UIDs.
-        - Reduces the list of miner UIDs to a sample size.
-        - Generates messages and sampling parameters.
-        - Creates ground truth data.
-        - Processes the UIDs asynchronously.
-        - Synchronizes the metagraph and updates weights.
-        - Increments the step counter.
-
-        The loop continues until the `should_exit` flag is set to True.
-        """
         assert self.config.subtensor
         assert self.config.neuron
         self.sync()
@@ -356,7 +299,7 @@ class Validator:
             f"Running validator on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
 
-        bt.logging.info(f"Validator starting at block: {self.block}")
+        bt.logging.info(f"Validator starting at block: {self.subtensor.block}")
 
         # This loop maintains the validator's operations until intentionally stopped.
         while not self.should_exit:
@@ -384,9 +327,23 @@ class Validator:
             miner_uids = miner_uids[: self.config.neuron.sample_size]
             try:
                 messages, sampling_params = asyncio.run(generate_dataset(self))
-                ground_truth = asyncio.run(
-                    create_ground_truth(self, messages, sampling_params)
+                ground_truth_tokens = []
+                stream = self.client.chat.completions.create(
+                    model=self.config.neuron.model_name,
+                    messages=messages,
+                    stream=True,
+                    temperature=sampling_params.temperature,
+                    top_p=sampling_params.top_p,
+                    seed=sampling_params.seed,
+                    timeout=5,
                 )
+                for chunk in stream:
+                    token = chunk.choices[0].delta.content
+                    if not token:
+                        continue
+                    ground_truth_tokens.append(token)
+
+                ground_truth = "".join(ground_truth_tokens)
             except Exception as e:
                 bt.logging.error(f"Error generating dataset: {e}")
                 time.sleep(12)
@@ -398,39 +355,41 @@ class Validator:
             # Sync metagraph and potentially set weights.
             self.sync()
 
+    def should_sync_metagraph(self):
+        assert self.config.neuron
+        if self.last_synced_block is None:
+            self.last_synced_block = self.subtensor.block
+            return True
+
+        if self.subtensor.block % 90 != 0:
+            return False
+        if self.last_synced_block == self.subtensor.block:
+            return False
+        self.last_synced_block = self.subtensor.block
+        return True
+
     def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
         """
         # Ensure miner or validator hotkey is still registered on the network.
+        assert self.config.neuron
         self.check_registered()
 
         if self.should_sync_metagraph():
             self.resync_metagraph()
 
-        if self.should_set_weights():
+        # If metagraph is out of date
+        if (
+            (self.subtensor.block - self.metagraph.last_update[self.uid])
+            > self.config.neuron.epoch_length
+            and self.neuron_type != "MinerNeuron"
+            and self.last_posted_weights + 20 < self.subtensor.block
+        ):
             self.set_weights()
             self.resync_metagraph()
 
     def set_weights(self):
-        """
-        Sets the validator weights to the metagraph hotkeys based on the scores received from the miners.
-        The weights determine the trust and incentive levels the validator assigns to miner nodes on the network.
-
-        This function calculates the weights by:
-        - Computing the mean tokens per second for each miner.
-        - Identifying the top tokens per second and setting a threshold for valid responses.
-        - Normalizing the rewards based on the performance of the miners.
-        - Processing the raw weights according to subtensor limitations.
-        - Converting the weights and UIDs to the appropriate format.
-        - Setting the weights on the chain via the subtensor connection.
-
-        Args:
-        None
-
-        Returns:
-        None
-        """
         assert self.config.neuron
         assert self.config.netuid
 
@@ -504,19 +463,6 @@ class Validator:
             bt.logging.error(f"set_weights failed {message}")
 
     def check_registered(self):
-        """
-        Checks if the wallet's hotkey is registered on the specified subnet (netuid).
-        If the hotkey is not registered, an error message is logged, and the program exits.
-
-        This method is used to ensure that the hotkey required for operations is properly registered
-        before proceeding with any further actions.
-
-        Args:
-        None
-
-        Returns:
-        None
-        """
         if not self.subtensor.is_hotkey_registered(
             netuid=self.config.netuid,
             hotkey_ss58=self.wallet.hotkey.ss58_address,
@@ -527,77 +473,7 @@ class Validator:
             )
             sys.exit()
 
-    def should_sync_metagraph(self):
-        """
-        Determines if the metagraph should be synchronized based on the number of epoch blocks
-        that have elapsed since the last checkpoint.
-
-        This method checks whether enough blocks have passed to warrant a sync and updates
-        the last synced block accordingly.
-
-        Args:
-        None
-
-        Returns:
-        bool: True if the metagraph should be synchronized, False otherwise.
-        """
-        assert self.config.neuron
-        if self.last_synced_block is None:
-            self.last_synced_block = self.subtensor.block
-            return True
-
-        if self.subtensor.block % 90 != 0:
-            return False
-        if self.last_synced_block == self.subtensor.block:
-            return False
-        self.last_synced_block = self.subtensor.block
-        return True
-
-    def should_set_weights(self) -> bool:
-        """
-        Determines whether the validator should set the weights based on the current step,
-        block number, and the epoch length defined in the configuration.
-
-        This function ensures that weights are not set during initialization and that the
-        appropriate number of blocks have passed since the last weight update before
-        setting new weights.
-
-        Args:
-        None
-
-        Returns:
-        bool: True if weights should be set, False otherwise.
-        """
-        assert self.config.neuron
-
-        # Define appropriate logic for when set weights.
-        return (
-            (self.block - self.metagraph.last_update[self.uid])
-            > self.config.neuron.epoch_length
-            and self.neuron_type != "MinerNeuron"
-            and self.last_posted_weights + 20 < self.subtensor.block
-        )
-
     def resync_metagraph(self):
-        """
-        Resynchronizes the metagraph by copying its state, syncing it with the subtensor,
-        and updating hotkeys and moving averages if there are changes.
-
-        This function performs the following steps:
-        - Logs the start of the resynchronization process.
-        - Copies the current state of the metagraph.
-        - Syncs the metagraph with the subtensor.
-        - Checks if there are any changes in the axon information of the metagraph.
-        - If there are changes, it zeroes out all hotkeys that have been replaced and updates
-        the hotkeys and moving averages accordingly.
-        - Ensures that new hotkeys and moving averages are added if the metagraph size has changed.
-
-        Args:
-        None
-
-        Returns:
-        None
-        """
         bt.logging.info("resync_metagraph()")
 
         # Copies state of metagraph before syncing.
@@ -633,39 +509,6 @@ class Validator:
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-    def check_uid_availability(
-        self,
-        uid: int,
-        vpermit_tao_limit: int,
-        mock: bool = False,
-    ) -> bool:
-        """Check if uid is available. The UID should be available if it is serving and has less than vpermit_tao_limit stake
-        Args:
-            metagraph (:obj: bt.metagraph.Metagraph): Metagraph object
-            uid (int): uid to be checked
-            vpermit_tao_limit (int): Validator permit tao limit
-        Returns:
-            bool: True if uid is available, False otherwise
-        """
-        if not mock:
-            # Filter non serving axons.
-            if not self.metagraph.axons[uid].is_serving:
-                bt.logging.debug(f"uid: {uid} is not serving")
-                return False
-            # Filter validator permit > 1024 stake.
-            if self.metagraph.validator_permit[uid]:
-                bt.logging.debug(f"uid: {uid} has validator permit")
-                if self.metagraph.S[uid] > vpermit_tao_limit:
-                    bt.logging.debug(
-                        f"uid: {uid} has stake ({self.metagraph.S[uid]}) > {vpermit_tao_limit}"
-                    )
-                    return False
-        else:
-            return True
-
-        # Available otherwise.
-        return True
-
     def get_miner_uids(self) -> List[int]:
         """Returns all available uids from the metagraph
         Returns:
@@ -677,13 +520,21 @@ class Validator:
         for uid in range(int(self.metagraph.n.item())):
             if uid == self.uid:
                 continue
-            uid_is_available = self.check_uid_availability(
-                uid,
-                self.config.neuron.vpermit_tao_limit,
-                self.config.mock if self.config.mock else False,
-            )
-            if uid_is_available:
-                available_uids.append(uid)
+
+            # Filter non serving axons.
+            if not self.metagraph.axons[uid].is_serving:
+                bt.logging.debug(f"uid: {uid} is not serving")
+                continue
+            # Filter validator permit > 1024 stake.
+            if self.metagraph.validator_permit[uid]:
+                bt.logging.debug(f"uid: {uid} has validator permit")
+                if self.metagraph.S[uid] > self.config.neuron.vpermit_tao_limit:
+                    bt.logging.debug(
+                        f"uid: {uid} has stake ({self.metagraph.S[uid]}) > {self.config.neuron.vpermit_tao_limit}"
+                    )
+                    continue
+            available_uids.append(uid)
+            continue
         return available_uids
 
 
