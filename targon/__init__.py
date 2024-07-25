@@ -1,8 +1,7 @@
 from .config import *
 from .dataset import *
-from .inference import *
 
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 
 version_split = __version__.split(".")
 __spec_version__ = (
