@@ -271,7 +271,7 @@ class Validator:
         assert self.config.neuron
         try:
             bt.logging.info(
-                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { abs((self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length) }"
+                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length }"
             )
             tasks = []
             for uid in uids:
@@ -451,8 +451,8 @@ class Validator:
         result, message = self.subtensor.set_weights(
             wallet=self.wallet,
             netuid=self.config.netuid,
-            uids=uids,
-            weights=raw_weights,
+            uids=processed_weight_uids, #type: ignore
+            weights=processed_weights,
             wait_for_finalization=True,
             wait_for_inclusion=True,
             version_key=spec_version,
