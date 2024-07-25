@@ -1,8 +1,10 @@
 services:
-  vllm:
+  vllm-1:
     image: vllm/vllm-openai:latest
     runtime: nvidia
     command: --model mlabonne/NeuralDaredevil-7B --dtype auto
+    ports:
+      - 8000:8000
     ipc: host
     volumes:
       - hf_cache:/root/.cache/huggingface
@@ -11,7 +13,25 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              device_ids:
+                - "0"
+              capabilities: [gpu]
+  vllm-2:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    command: --model mlabonne/NeuralDaredevil-7B --dtype auto
+    ports:
+      - 8001:8001
+    ipc: host
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids:
+                - "1"
               capabilities: [gpu]
 volumes:
   hf_cache:
