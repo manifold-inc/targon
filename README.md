@@ -84,7 +84,6 @@ cd targon
 #### Install dependencies
 
 ```bash
-python3 -m pip install -r requirements.txt
 python3 -m pip install -e .
 ```
 
@@ -93,8 +92,8 @@ You have now installed Targon. You can now run a validator or a miner.
 # What is a Redundant Deterministic Verification Network?
 
 The query and a deterministic seed are used to generate a ground truth output with the specified model, which can be run by the validator
-or as a light client. The validator then sends requests to miners with the query and deterministic seed. The miner output
-are compared to the ground truth output. If the tokens are equal in reference to Jaro-Winkler Similarity, the miner has successfully completed the challenge.
+or as a light client. The validator then sends requests to miners with the query and deterministic seed. The miner's responses are scored 
+based on Tokens Per Second only if they pass a Jaro-Winkler Similarity test given a predefined threshold.
 
 ## Role of a Miner
 
@@ -104,18 +103,20 @@ A miner is a node that is responsible for generating a output from a query and a
 
 A validator is a node that is responsible for verifying a miner's output. The validator will send a request to a miner with a query and 
 deterministic sampling params. The miner will then send back a response with the output. The validator will then compare the output to the ground truth
-output. If the outputs are equal in reference to Jaro Winkley Similarity, then the miner has completed the challenge.
+output. If the outputs are *similar enough* in respect to Jaro Winkler Similarity, then the miner has completed the challenge.
 
 # Features of Targon
 
 ## Inference Request
 
 An inference request is a request sent by a validator to a miner. The inference request contains a query and inference sampling params. 
-The miner will then generate an output from the query and deterministic sampling params. The miner will then stream the output back to
+The miner will then generate an output from the query and deterministic sampling params that is then streamed back to
 the validator.
 
-> *CAVEAT:* Every Interval (360 blocks) there will be a random amount of inference samples by the validator. The validator will then compare the outputs to
-the ground truth outputs. The Jaro-Winkler Simalrity of the outputs will be used to determine the reward for the miner. If the miner fails verification, their score will be 0.
+> *CAVEAT:* 
+> Every Interval (360 blocks) there will be a random amount of inference samples by the validator. The validator will then compare the outputs to
+> the ground truth outputs. The Jaro-Winkler Simalarity of the outputs will be used to determine the reward for the miner if the miner is running an appropriate model.
+> If the miner fails verification, their score will be 0.
 
 ## Jaro-Winkler Similarity
 
@@ -123,7 +124,7 @@ The Jaro-Winkler Similarity is a string metric measuring edit distance between t
 ```math
 S_w = S_j + P * L * (1 - S_j)
 ```
-```Bash
+```bash
 where: 
 S_w = Jaro-Winkler Similarity
 S_j = Jaro Similarity
@@ -132,9 +133,10 @@ L = Length of the matching prefix up to a max of 4 characters
 
 ```
 
-Jaro similarity is the measure of similarity between two strings. The value of Jaro distance ranged from 0 to 1 where 0 means no similarity and 1 means equality.
+Jaro Similarity is the measure of similarity between two strings. The value of Jaro distance ranged from 0 to 1 where 0 means no similarity and 1 means very similar.
 
-The Jaro similarity is calculated using the following formula 
+The Jaro Similarity is calculated using the following formula:
+
 ```math
 S_j = 1/3((m/abs(s1)) + (m/abs(s2)) + (m-t)/m))
 
@@ -150,6 +152,10 @@ s2 = length of second string
 ```
 
 In the context of Targon, the scaling factor for our Jaro-Winkler calculation was set to 0.25.
+
+> *Note:*
+> Jaro-Winkler Similarity is not a mathematical metric, as it fails the Triangle Inequality.
+> [https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance]
 
 # How to Run Targon
 
