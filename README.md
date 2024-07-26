@@ -122,7 +122,8 @@ the ground truth outputs. The Jaro-Winkler Simalrity of the outputs will be used
 The Jaro-Winkler Similarity is a string metric measuring edit distance between two strings. Jaro-Winkler Similarity is defined as:
 ```math
 S_w = S_j + P * L * (1 - S_j)
-
+```
+```Bash
 where: 
 S_w = Jaro-Winkler Similarity
 S_j = Jaro Similarity
@@ -137,6 +138,8 @@ The Jaro similarity is calculated using the following formula
 ```math
 S_j = 1/3((m/abs(s1)) + (m/abs(s2)) + (m-t)/m))
 
+```
+```bash
 where:
 S_j = Jaro Similarity
 m = number of matching characters
@@ -196,22 +199,22 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 ## Explanation of Args
 
 ### Shared Args
-1.) **--netuid** ==> Subnet Netuid. *Defaults to 4*
-2.) **--neuron.epoch_length** ==> Default epoch length (how often we set weights, measured in 12 second blocks). *Defaults to 360*
-3.) **--mock** ==> Mock neuron and all network components. *Defaults to False*
-4.) **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi CompatibleClient. *Defaults to "http://127.0.0.1:8080"*
-5.) **--neuron.model_name** ==> Name of the model used for completion. *Defaults to "mlabonne/NeuralDaredevil-7B"*
-6.) **--neuront.api_key** ==> API key for OpenAi Compatible API. *Defaults to "12345"*
+1. **--netuid** ==> Subnet Netuid. *Defaults to 4*
+2. **--neuron.epoch_length** ==> Default epoch length (how often we set weights, measured in 12 second blocks). *Defaults to 360*
+3. **--mock** ==> Mock neuron and all network components. *Defaults to False*
+4. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi CompatibleClient. *Defaults to "http://127.0.0.1:8080"*
+5. **--neuron.model_name** ==> Name of the model used for completion. *Defaults to "mlabonne/NeuralDaredevil-7B"*
+6. **--neuront.api_key** ==> API key for OpenAi Compatible API. *Defaults to "12345"*
 
 ### Miner Args
-1.) **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold - wallet-hot) / neuron.name. *Defaults to miner*
-2.) **--blacklist.force_validator.permit** ==> If set, forces incoming requests to have a permit. *Defaults to True*
+1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold - wallet-hot) / neuron.name. *Defaults to miner*
+2. **--blacklist.force_validator.permit** ==> If set, forces incoming requests to have a permit. *Defaults to True*
 
 ### Validator Args
-1.) **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold - wallet-hot) / neuron.name. *Defaults to validator*
-2.) **--neuron.timeout** ==> The timeout for each forward call in seconds. *Defaults to 12*
-3.) **--neuron.sample_size** ==> The number of miners to query in a single step. *Defaults to 48*
-4.) **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query a validator with a permit. *Defaults to 4096*
+1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold - wallet-hot) / neuron.name. *Defaults to validator*
+2. **--neuron.timeout** ==> The timeout for each forward call in seconds. *Defaults to 12*
+3. **--neuron.sample_size** ==> The number of miners to query in a single step. *Defaults to 48*
+4. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query a validator with a permit. *Defaults to 4096*
 
 # How to Contribute
 
