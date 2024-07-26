@@ -10,7 +10,7 @@ def print_info(metagraph, hotkey, block, isMiner=True):
     if isMiner:
         return (
             log
-            + f"Stake:{metagraph.S[uid]} | Trust:{metagraph.T[uid]} | Dividend:{metagraph.D[uid]} | Emission:{metagraph.E[uid]}"
+            + f"Stake:{metagraph.S[uid]} | Trust:{metagraph.T[uid]} | Incentive:{metagraph.I[uid]} | Emission:{metagraph.E[uid]}"
         )
     return log + f"VTrust:{metagraph.Tv[uid]} | "
 

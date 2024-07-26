@@ -16,7 +16,7 @@ import signal
 
 class NeuronType(Enum):
     Validator = 'VALIDATOR'
-    Miner = "Miner"
+    Miner = "MINER"
 
 class BaseNeuron:
     config: "bt.config"
