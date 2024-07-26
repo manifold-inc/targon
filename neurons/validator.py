@@ -1,26 +1,21 @@
-import sys
+from os import urandom
 import json
 import copy
 import time
 import random
 import asyncio
+from neurons.base import BaseNeuron, NeuronType
+from targon.dataset import create_query_prompt, create_search_prompt
 from targon.utils import normalize, print_info, safe_mean, InferenceStats, check_tokens
 import traceback
 import math
-import argparse
 import numpy as np
 import pandas as pd
 import bittensor as bt
-import signal
-from openai import OpenAI
 
 from typing import List
 from targon import (
-    generate_dataset,
-    add_args,
-    add_validator_args,
     protocol,
-    validate_config_and_neuron_path,
     __spec_version__ as spec_version,
 )
 from bittensor.utils.weight_utils import (
@@ -28,73 +23,27 @@ from bittensor.utils.weight_utils import (
 )
 
 
-class Validator:
-    neuron_type = "ValidatorNeuron"
-    config: "bt.config"
-
-    def exit_gracefully(self, *_):
-        if self.should_exit:
-            bt.logging.info("Forcefully exiting")
-            exit()
-        bt.logging.info("Exiting Gracefully at end of cycle")
-        self.should_exit = True
+class Validator(BaseNeuron):
+    neuron_type = NeuronType.Validator
 
     def __init__(self, config=None):
-        ## ADD CONFIG
-
-        parser = argparse.ArgumentParser()
-        bt.wallet.add_args(parser)
-        bt.subtensor.add_args(parser)
-        bt.logging.add_args(parser)
-        bt.axon.add_args(parser)
-        add_args(parser)
-        add_validator_args(parser)
-        self.config = bt.config(parser)
-        if config:
-            base_config = copy.deepcopy(config)
-            self.config.merge(base_config)
-        validate_config_and_neuron_path(self.config)
-
+        super().__init__(config)
         ## Typesafety
         assert self.config.netuid
         assert self.config.neuron
-        assert self.config.logging
         assert self.config.axon
 
-        ## Add kill signals
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
-
-        ## LOGGING
-        bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
-        bt.logging.on()
-        if self.config.logging.debug:
-            bt.logging.set_debug(True)
-        if self.config.logging.trace:
-            bt.logging.set_trace(True)
-        bt.turn_console_on()
-
         ## BITTENSOR INITIALIZATION
-        self.wallet = bt.wallet(config=self.config)
-        self.subtensor = bt.subtensor(config=self.config)
-        self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.dendrite = bt.dendrite(wallet=self.wallet)
-        self.loop = asyncio.get_event_loop()
-        bt.logging.debug(f"Wallet: {self.wallet}")
-        bt.logging.debug(f"Subtensor: {self.subtensor}")
-        bt.logging.debug(f"Metagraph: {self.metagraph}")
 
         ## CHECK IF REGG'D
-        self.check_registered()
-        self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         if not self.metagraph.validator_permit[self.uid]:
             bt.logging.error("Validator does not have vpermit")
+            exit()
 
         ## SET MISC PARAMS
-        self.should_exit = False
-        self.last_synced_block = None
         self.hotkeys = self.metagraph.hotkeys
-        self.last_forward_block = None
+        self.next_forward_block = None
         self.last_posted_weights = self.subtensor.block
 
         ## STATS
@@ -109,12 +58,6 @@ class Validator:
         ## SET DATASET
         self.dataset = pd.read_json(
             "hf://datasets/pinecone/dl-doc-search/train.jsonl", lines=True
-        )
-
-        ## SET CLIENT
-        self.client = OpenAI(
-            base_url=self.config.neuron.model_endpoint,
-            api_key=self.config.neuron.api_key,
         )
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
@@ -288,7 +231,8 @@ class Validator:
     def run(self):
         assert self.config.subtensor
         assert self.config.neuron
-        self.sync()
+        if self.sync_metagraph():
+            self.resync_hotkeys()
         bt.logging.info(
             f"Running validator on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
@@ -297,11 +241,17 @@ class Validator:
 
         # This loop maintains the validator's operations until intentionally stopped.
         while not self.should_exit:
-            # Print Vali Info every few blocks
-            if self.last_forward_block == self.subtensor.block:
+            # If startup / first loop
+            if not self.next_forward_block:
+                self.next_forward_block = self.subtensor.block
+
+            # Wait random amount
+            if self.next_forward_block > self.subtensor.block:
                 continue
-            if not self.subtensor.block % 12 == 0:
-                continue
+
+            # Declare next forward block a random time in the future so that not all valis query at the same time
+            self.next_forward_block = random.randint(12, 36) + self.subtensor.block
+
             bt.logging.info(
                 print_info(
                     self.metagraph,
@@ -310,7 +260,6 @@ class Validator:
                     isMiner=False,
                 )
             )
-            self.last_forward_block = self.subtensor.block
             # get all miner uids
             miner_uids = self.get_miner_uids()
 
@@ -320,7 +269,7 @@ class Validator:
             # reduce down to 16 miners
             miner_uids = miner_uids[: self.config.neuron.sample_size]
             try:
-                messages, sampling_params = asyncio.run(generate_dataset(self))
+                messages, sampling_params = asyncio.run(self.generate_question())
                 ground_truth_tokens = []
                 stream = self.client.chat.completions.create(
                     model=self.config.neuron.model_name,
@@ -340,51 +289,65 @@ class Validator:
                 ground_truth = "".join(ground_truth_tokens)
             except Exception as e:
                 bt.logging.error(f"Error generating dataset: {e}")
-                time.sleep(12)
+                bt.logging.error(traceback.format_exc())
                 continue
             self.loop.run_until_complete(
                 self.process_uids(miner_uids, messages, sampling_params, ground_truth)
             )  # Adjust batch_size as needed
 
             # Sync metagraph and potentially set weights.
-            self.sync()
+            if self.sync_metagraph():
+                self.resync_hotkeys()
 
-    def should_sync_metagraph(self):
+            # Check if we should set weights
+            if (
+                (self.subtensor.block - self.metagraph.last_update[self.uid])
+                > self.config.neuron.epoch_length
+                and self.last_posted_weights + 20 < self.subtensor.block
+            ):
+                self.set_weights()
+
+
+    async def generate_question(self):
         assert self.config.neuron
-        if self.last_synced_block is None:
-            self.last_synced_block = self.subtensor.block
-            return True
+        # Generate a random seed for reproducibility in sampling and text generation
+        random.seed(urandom(100))
+        seed = random.randint(10000, 10000000)
 
-        if self.subtensor.block % 90 != 0:
-            return False
-        if self.last_synced_block == self.subtensor.block:
-            return False
-        self.last_synced_block = self.subtensor.block
-        return True
+        # Determine the maximum number of new tokens to generate
+        max_new_tokens = random.randint(16, 1024)
 
-    def sync(self):
-        """
-        Wrapper for synchronizing the state of the network for the given miner or validator.
-        """
-        # Ensure miner or validator hotkey is still registered on the network.
-        assert self.config.neuron
-        self.check_registered()
+        # Create sampling parameters using the generated seed and token limit
+        sampling_params = protocol.InferenceSamplingParams(
+            seed=seed, max_new_tokens=max_new_tokens
+        )
 
-        if self.should_sync_metagraph():
-            self.resync_metagraph()
+        # Sample a random row from the dataset and extract the text
+        random_row_text = self.dataset.sample(n=1)["text"].iloc[0]
 
-        # If metagraph is out of date
-        if (
-            (self.subtensor.block - self.metagraph.last_update[self.uid])
-            > self.config.neuron.epoch_length
-            and self.neuron_type != "MinerNeuron"
-            and self.last_posted_weights + 20 < self.subtensor.block
-        ):
-            self.set_weights()
-            self.resync_metagraph()
+        # Generate a query from the sampled text and perform text generation
+        messages = create_query_prompt(random_row_text)
+
+        res = self.client.chat.completions.create(
+            model=self.config.neuron.model_name,
+            messages=messages,
+            stream=False,
+            temperature=0.5,
+            top_p=sampling_params.top_p,
+            seed=sampling_params.seed,
+            timeout=5,
+        )
+
+        # Create a final search prompt using the query and sources
+        completion = res.choices[0].message.content
+        if completion is None:
+            print(res)
+            raise Exception("No completion")
+        prompt = create_search_prompt(completion)
+
+        return prompt, sampling_params
 
     def set_weights(self):
-        assert self.config.neuron
         assert self.config.netuid
 
         tokens_per_second = {
@@ -445,7 +408,7 @@ class Validator:
         result, message = self.subtensor.set_weights(
             wallet=self.wallet,
             netuid=self.config.netuid,
-            uids=processed_weight_uids, #type: ignore
+            uids=processed_weight_uids,  # type: ignore
             weights=processed_weights,
             wait_for_finalization=True,
             wait_for_inclusion=True,
@@ -456,30 +419,7 @@ class Validator:
         else:
             bt.logging.error(f"set_weights failed {message}")
 
-    def check_registered(self):
-        if not self.subtensor.is_hotkey_registered(
-            netuid=self.config.netuid,
-            hotkey_ss58=self.wallet.hotkey.ss58_address,
-        ):
-            bt.logging.error(
-                f"Wallet: {self.wallet} is not registered on netuid {self.config.netuid}."
-                f" Please register the hotkey using `btcli subnets register` before trying again"
-            )
-            sys.exit()
-
-    def resync_metagraph(self):
-        bt.logging.info("resync_metagraph()")
-
-        # Copies state of metagraph before syncing.
-        previous_metagraph = copy.deepcopy(self.metagraph)
-
-        # Sync the metagraph.
-        self.metagraph.sync(subtensor=self.subtensor)
-
-        # Check if the metagraph axon info has changed.
-        if previous_metagraph.axons == self.metagraph.axons:
-            return
-
+    def resync_hotkeys(self):
         bt.logging.info(
             "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
         )
@@ -533,6 +473,10 @@ class Validator:
 
 
 if __name__ == "__main__":
-    validator = Validator()
-    validator.run()
+    try:
+        validator = Validator()
+        validator.run()
+    except Exception as e:
+        bt.logging.error(str(e))
+        bt.logging.error(traceback.format_exc())
     exit()
