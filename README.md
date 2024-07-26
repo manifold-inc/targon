@@ -8,37 +8,23 @@ in the terms and conditions document. By downloading and running this software,
 you implicitly agree to these terms and conditions.
 
 # Table of Contents
-1.) [Compute Requirements](#compute-requirements)
-2.) [Installation](#installation)
+1. [Compute Requirements](#recommended-compute-requirements)
+2. [Installation](#installation)
     - [Install PM2](#install-pm2)
     - [Install Targon](#install-targon)
-3.) [What is a Redundant Deterministic Verification Network?](#what-is-a-redundent-determinsitic-verfification-network)
+3. [What is a Redundant Deterministic Verification Network?](#what-is-a-redundent-determinsitic-verfification-network)
     - [Role of a Miner](#role-of-a-miner)
     - [Role of a Validator](#role-of-a-validator)
-4.) [Features of Targon](#features-of-targon)
+4. [Features of Targon](#features-of-targon)
     - [Infenrence Request](#inference-request)
     - [Jaro-Winkler Scoring](#jaro-winkler-scoring)
-5.) [How to Run Targon](#how-to-run-targon)
+5. [How to Run Targon](#how-to-run-targon)
     - [How to run a Miner](#how-to-run-a-miner)
     - [How to run a Validator](#how-to-run-a-validator)
-6.) [How to Contribute](#how-to-contribute)
-
-# Compute Requirements
-The following table shows the VRAM, Storage, RAM, and CPU minimum requirements for running a validator or miner.
-
-GPU - A100
-| Provider   | VRAM   | Storage |   RAM   | CPU  |
-|------------|--------|---------|---------|------|
-| TensorDock |  80GB  | 200GB   |   16GB  | 4    |
-| Latitude   |  80GB  | 200GB   |   16GB  | 4    |
-| Paperspace |  80GB  | 200GB   |   16GB  | 4    |
-| GCP        |  80GB  | 200GB   |   16GB  | 4    |
-| Azure      |  80GB  | 200GB   |   16GB  | 4    |
-| AWS        |  80GB  | 200GB   |   16GB  | 4    |
-| Runpod     |  80GB  | 200GB   |   16GB  | 4    |
+6. [How to Contribute](#how-to-contribute)
 
 
-# Recommended 
+# Recommended Compute Requirements
 The following table shows the suggested compute providers for running a validator or miner.
 
 | Provider   | Cost  | Location |   Machine Type   | Rating |
@@ -65,7 +51,7 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 ```
 #### Add NVM to bash profile
 
-Running either of the above commands downloads a script and runs it. The script clones the nvm repository to ~/.nvm, and attempts to add the source lines from the snippet below to the correct
+Running either of the above commands downloads a script and runs it. The script clones the nvm repository to \~/.nvm, and attempts to add the source lines from the snippet below to the correct
 profile file (~/.bash_profile, ~/.zshrc, ~/.profile, or ~/.bashrc).
 
 ```bash
