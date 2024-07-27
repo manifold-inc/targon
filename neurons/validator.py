@@ -107,8 +107,8 @@ class Validator(BaseNeuron):
                     start_token_time = time.time()
                 if isinstance(token, protocol.Inference):
                     continue
-                for t in token:
-                    response_tokens.append(t)
+                response_tokens.append(token)
+                bt.logging.info(token)
                 token_count += 1
             if token_count <= 1 or len(response_tokens) <= 1:
                 return None
