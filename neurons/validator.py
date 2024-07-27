@@ -383,11 +383,6 @@ class Validator(BaseNeuron):
         uids: List[int] = sorted(rewards.keys())
         rewards = [rewards[uid] for uid in uids]
 
-        bt.logging.info(f"{tokens_per_second}")
-        bt.logging.info(f'{rewards}')
-        bt.logging.info(f'{uids}')
-        bt.logging.info(f'{avg_tps}')
-        bt.logging.info(f'{avg_tps}')
 
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
@@ -396,6 +391,12 @@ class Validator(BaseNeuron):
             bt.logging.warning("No one gave responses worth scoring")
             return
         raw_weights = normalize(rewards)
+        bt.logging.info(f"{tokens_per_second}")
+        bt.logging.info(f'{rewards}')
+        bt.logging.info(f'{uids}')
+        bt.logging.info(f"{raw_weights}")
+        bt.logging.info(f'{avg_tps}')
+        bt.logging.info(f'{avg_tps}')
 
         # Set the weights on chain via our subtensor connection.
         (
