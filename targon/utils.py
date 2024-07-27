@@ -119,8 +119,6 @@ class InferenceStats(BaseModel):
     tokens: List[str]
     response: str
     verified: bool
-    uid: int
-
 
 def check_tokens(miner_output, ground_truth_output):
     if len(miner_output) < (len(ground_truth_output) * 0.8):

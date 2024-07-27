@@ -111,7 +111,7 @@ class Validator(BaseNeuron):
                 bt.logging.info(token)
                 token_count += 1
             if token_count <= 1 or len(response_tokens) <= 1:
-                return None
+                return uid, None
             if end_send_message_time is None:
                 end_send_message_time = time.time()
                 start_token_time = end_send_message_time
@@ -140,27 +140,28 @@ class Validator(BaseNeuron):
                 tokens=response_tokens,
                 response=response,
                 verified=verified,
-                uid=uid,
             )
-            return stats
+            return uid, stats
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
             bt.logging.error(traceback.format_exc())
-            return None
+            return uid, None
 
-    def score(self, stats: InferenceStats):
+    def score(self, uid, stats: InferenceStats):
         # TODO: return UID's for failed requests. Should probably mark them as 0
         if stats is None:
             bt.logging.info("No stats for this uid")
             return
-        bt.logging.info(f"{stats.uid} {stats.verified} {stats.tokens_per_second} {stats.time_to_first_token} {stats.time_for_all_tokens}")
+        bt.logging.info(
+            f"{uid} {stats.verified} {stats.tokens_per_second} {stats.time_to_first_token} {stats.time_for_all_tokens}"
+        )
         self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
         if not stats.verified:
             return
-        self.time_to_first_token[stats.uid].append(stats.time_to_first_token)
-        self.time_for_all_tokens[stats.uid].append(stats.time_for_all_tokens)
-        self.tokens_per_second[stats.uid].append(stats.tokens_per_second)
-        self.verified_success[stats.uid].append(stats.verified)
+        self.time_to_first_token[uid].append(stats.time_to_first_token)
+        self.time_for_all_tokens[uid].append(stats.time_for_all_tokens)
+        self.tokens_per_second[uid].append(stats.tokens_per_second)
+        self.verified_success[uid].append(stats.verified)
         self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
 
     def stats(self):
@@ -224,8 +225,8 @@ class Validator(BaseNeuron):
                 )
             stats = await asyncio.gather(*tasks)
 
-            for stat in stats:
-                self.score(stat)
+            for uid, stat in stats:
+                self.score(uid, stat)
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
