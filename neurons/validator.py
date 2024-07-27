@@ -147,7 +147,7 @@ class Validator(BaseNeuron):
             return uid, None
 
     def score(self, uid, stats: InferenceStats):
-        # TODO: return UID's for failed requests. Should probably mark them as 0
+        # TODO: UID's for failed requests. Should probably mark them as 0
         if stats is None:
             bt.logging.info("No stats for this uid")
             return
@@ -355,7 +355,6 @@ class Validator(BaseNeuron):
             miner: safe_mean(self.tokens_per_second[miner][:30])
             for miner in self.tokens_per_second
         }
-
         tps_list = list(tokens_per_second.values())
         if len(tps_list) == 0:
             bt.logging.warning("Not setting weights, no responses from miners")
@@ -383,6 +382,12 @@ class Validator(BaseNeuron):
             rewards[uid] = reward_multiplier * tps
         uids: List[int] = sorted(rewards.keys())
         rewards = [rewards[uid] for uid in uids]
+
+        bt.logging.info(f"{tokens_per_second}")
+        bt.logging.info(f'{rewards}')
+        bt.logging.info(f'{uids}')
+        bt.logging.info(f'{avg_tps}')
+        bt.logging.info(f'{avg_tps}')
 
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
