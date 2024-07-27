@@ -334,7 +334,6 @@ class Validator(BaseNeuron):
             temperature=0.5,
             top_p=sampling_params.top_p,
             seed=sampling_params.seed,
-            timeout=5,
         )
 
         # Create a final search prompt using the query and sources
