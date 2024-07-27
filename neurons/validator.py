@@ -149,6 +149,7 @@ class Validator(BaseNeuron):
             return None
 
     def score(self, stats):
+        bt.logging.info(stats)
         if stats is None:
             return
         self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
