@@ -154,7 +154,6 @@ class Validator(BaseNeuron):
             bt.logging.info("No stats for this uid")
             return
         bt.logging.info(f"{stats.uid} {stats.verified} {stats.tokens_per_second} {stats.time_to_first_token} {stats.time_for_all_tokens}")
-        bt.logging.info(str(stats.tokens), str(stats.response))
         self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
         if not stats.verified:
             return

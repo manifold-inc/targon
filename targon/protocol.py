@@ -180,7 +180,10 @@ class Inference(bt.StreamingSynapse):
             if self.completion is None:
                 self.completion = ""
             tokens = chunk.decode("utf-8")
-            self.completion += tokens
+            bt.logging.info(f"Tokens: {tokens}")
+            for token in tokens:
+                if token:
+                    self.completion += token
             yield tokens
 
     def deserialize(self):
