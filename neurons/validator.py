@@ -44,7 +44,7 @@ class Validator(BaseNeuron):
         ## SET MISC PARAMS
         self.hotkeys = self.metagraph.hotkeys
         self.next_forward_block = None
-        self.last_posted_weights = self.subtensor.block
+        self.last_posted_weights = self.metagraph.last_update[self.uid]
 
         ## STATS
         miners = self.get_miner_uids()
@@ -301,12 +301,11 @@ class Validator(BaseNeuron):
 
             # Check if we should set weights
             if (
-                (self.subtensor.block - self.metagraph.last_update[self.uid])
-                > self.config.neuron.epoch_length
-                and self.last_posted_weights + 20 < self.subtensor.block
+                self.last_posted_weights + self.config.neuron.epoch_length
+                < self.subtensor.block
             ):
+                self.last_posted_weights = self.subtensor.block
                 self.set_weights()
-
 
     async def generate_question(self):
         assert self.config.neuron
