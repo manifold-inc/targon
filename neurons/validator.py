@@ -148,10 +148,13 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return None
 
-    def score(self, stats):
-        bt.logging.info(stats)
+    def score(self, stats: InferenceStats):
+        # TODO: return UID's for failed requests. Should probably mark them as 0
         if stats is None:
+            bt.logging.info("No stats for this uid")
             return
+        bt.logging.info(f"{stats.uid} {stats.verified} {stats.tokens_per_second} {stats.time_to_first_token} {stats.time_for_all_tokens}")
+        bt.logging.info(str(stats.tokens), str(stats.response))
         self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
         if not stats.verified:
             return
@@ -429,15 +432,6 @@ class Validator(BaseNeuron):
                 self.time_for_all_tokens[uid] = []
                 self.tokens_per_second[uid] = []
                 self.verified_success[uid] = []
-
-        # Check to see if the metagraph has changed size.
-        # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_moving_average = np.zeros((self.metagraph.n))
-            min_len = min(len(self.hotkeys), len(self.scores))
-            new_moving_average[:min_len] = self.scores[:min_len]
-            self.scores = new_moving_average
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
