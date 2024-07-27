@@ -108,7 +108,6 @@ class Validator(BaseNeuron):
                 if isinstance(token, protocol.Inference):
                     continue
                 response_tokens.append(token)
-                bt.logging.info(token)
                 token_count += 1
             if token_count <= 1 or len(response_tokens) <= 1:
                 return uid, None
