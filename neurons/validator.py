@@ -52,6 +52,7 @@ class Validator(BaseNeuron):
         self.time_for_all_tokens = {miner: [] for miner in miners}
         self.tokens_per_second = {miner: [] for miner in miners}
         self.verified_success = {miner: [] for miner in miners}
+        self.tokens_per_second_if_verified = {miner: [] for miner in miners}
         self.top_verified_tps = 0
         self.top_unverified_tps = 0
 
@@ -85,6 +86,14 @@ class Validator(BaseNeuron):
 
     async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         assert self.config.neuron
+        stats = InferenceStats(
+            time_to_first_token=0,
+            time_for_all_tokens=0,
+            tokens_per_second=0,
+            tokens=[],
+            response="",
+            verified=False,
+        )
         try:
             synapse = protocol.Inference(
                 messages=json.dumps(messages),
@@ -109,8 +118,7 @@ class Validator(BaseNeuron):
                     continue
                 response_tokens.append(token)
                 token_count += 1
-            if token_count <= 1 or len(response_tokens) <= 1:
-                return uid, None
+
             if end_send_message_time is None:
                 end_send_message_time = time.time()
                 start_token_time = end_send_message_time
@@ -125,64 +133,47 @@ class Validator(BaseNeuron):
             tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
+            stats.time_to_first_token = time_to_first_token
+            stats.time_for_all_tokens = time_for_all_tokens
+            stats.response = response
+            stats.tokens = response_tokens
+            if token_count <= 1 or len(response_tokens) <= 1:
+                # Dont set tps, but set everything else
+                return uid, stats
+
             # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
-            verified = True
             if time_to_first_token > 1.8 * time_for_all_tokens:
-                verified = False
+                stats.verified = False
                 tokens_per_second = 0
-            if verified:
-                verified = check_tokens(response, ground_truth)
-            stats = InferenceStats(
-                time_to_first_token=time_to_first_token,
-                time_for_all_tokens=time_for_all_tokens,
-                tokens_per_second=tokens_per_second,
-                tokens=response_tokens,
-                response=response,
-                verified=verified,
-            )
+            if stats.verified:
+                stats.verified = check_tokens(response, ground_truth)
+            stats.tokens_per_second = tokens_per_second
             return uid, stats
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
             bt.logging.error(traceback.format_exc())
-            return uid, None
-
-    def score(self, uid, stats: InferenceStats):
-        # TODO: UID's for failed requests. Should probably mark them as 0
-        if stats is None:
-            bt.logging.info("No stats for this uid")
-            return
-        bt.logging.info(
-            f"{uid} {stats.verified} {stats.tokens_per_second} {stats.time_to_first_token} {stats.time_for_all_tokens}"
-        )
-        self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
-        if not stats.verified:
-            return
-        self.time_to_first_token[uid].append(stats.time_to_first_token)
-        self.time_for_all_tokens[uid].append(stats.time_for_all_tokens)
-        self.tokens_per_second[uid].append(stats.tokens_per_second)
-        self.verified_success[uid].append(stats.verified)
-        self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
+            return uid, stats
 
     def stats(self):
         time_to_first_token_stats = {
-            miner: safe_mean(self.time_to_first_token[miner][:30])
+            miner: safe_mean(self.time_to_first_token[miner][-30:])
             for miner in self.time_to_first_token
         }
         time_for_all_tokens_stats = {
-            miner: safe_mean(self.time_for_all_tokens[miner][:30])
+            miner: safe_mean(self.time_for_all_tokens[miner][-30:])
             for miner in self.time_for_all_tokens
         }
         tokens_per_second_stats = {
-            miner: safe_mean(self.tokens_per_second[miner][:30])
+            miner: safe_mean(self.tokens_per_second[miner][-30:])
             for miner in self.tokens_per_second
         }
         verified_success_stats = {
-            miner: safe_mean(self.verified_success[miner][:30])
+            miner: safe_mean(self.verified_success[miner][-30:])
             for miner in self.verified_success
         }
 
         mean_tps_dict = {
-            uid: safe_mean(self.tokens_per_second[uid][:30])
+            uid: safe_mean(self.tokens_per_second[uid][-30:])
             for uid in self.tokens_per_second
         }
         mean_tps_dict = dict(
@@ -206,6 +197,20 @@ class Validator(BaseNeuron):
                 for uid in self.time_to_first_token
             },
         }
+
+    def score(self, uid, stats: InferenceStats):
+        self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
+        if stats.time_to_first_token != 0:
+            self.time_to_first_token[uid].append(stats.time_to_first_token)
+        if stats.time_for_all_tokens != 0:
+            self.time_for_all_tokens[uid].append(stats.time_for_all_tokens)
+        self.verified_success[uid].append(stats.verified)
+        self.tokens_per_second[uid].append(stats.tokens_per_second)
+        if stats.verified:
+            self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
+            self.tokens_per_second_if_verified[uid].append(stats.tokens_per_second)
+        else:
+            self.tokens_per_second_if_verified[uid].append(0)
 
     async def process_uids(self, uids, messages, sampling_params, ground_truth):
         assert self.config.neuron
@@ -352,7 +357,7 @@ class Validator(BaseNeuron):
         assert self.config.netuid
 
         tokens_per_second = {
-            miner: safe_mean(self.tokens_per_second[miner][:30])
+            miner: safe_mean(self.tokens_per_second[miner][-30:])
             for miner in self.tokens_per_second
         }
         tps_list = list(tokens_per_second.values())
@@ -383,7 +388,6 @@ class Validator(BaseNeuron):
         uids: List[int] = sorted(rewards.keys())
         rewards = [rewards[uid] for uid in uids]
 
-
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         # TODO
@@ -391,12 +395,6 @@ class Validator(BaseNeuron):
             bt.logging.warning("No one gave responses worth scoring")
             return
         raw_weights = normalize(rewards)
-        bt.logging.info(f"{tokens_per_second}")
-        bt.logging.info(f'{rewards}')
-        bt.logging.info(f'{uids}')
-        bt.logging.info(f"{raw_weights}")
-        bt.logging.info(f'{avg_tps}')
-        bt.logging.info(f'{avg_tps}')
 
         # Set the weights on chain via our subtensor connection.
         (
@@ -410,6 +408,8 @@ class Validator(BaseNeuron):
             metagraph=self.metagraph,
         )
 
+        bt.logging.info(f"All tps: {tokens_per_second}")
+        bt.logging.info(f"Raw Weights: {raw_weights}")
         bt.logging.info("Setting Weights: " + str(processed_weights))
         bt.logging.info("Weight Uids: " + str(processed_weight_uids))
         result, message = self.subtensor.set_weights(

@@ -44,12 +44,12 @@ class BaseNeuron:
 
     def should_sync_metagraph(self):
         if self.next_sync_block is None:
-            self.next_sync_block = self.subtensor.block + 90
+            self.next_sync_block = self.subtensor.block + 30
             return True
 
         if self.next_sync_block > self.subtensor.block:
             return False
-        self.next_sync_block = self.subtensor.block + 90
+        self.next_sync_block = self.subtensor.block + 30
         return True
 
     def sync_metagraph(self):
