@@ -165,15 +165,16 @@ In the context of Targon, the scaling factor for our Jaro-Winkler calculation wa
 ### PM2
 In order to run Targon, you must have a VLLM instance up and running. 
 
+First, install VLLM and JSON Schema on your machin
 ```bash
-pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key --port [8000] [some-secret-you-also-pass-to-validator]
+pip install vllm jsonschema
+```
+Now you are ready to server your VLLM instance to PM2
+
+```bash
+pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key --port 8000 [some-secret-you-also-pass-to-validator]
 ```
 
->Note:
->If you get a JSON Schema Error, do 
->```bash
->pip install vllm jsonschema
->```
 
 ## Running a Miner
 
