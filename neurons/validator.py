@@ -58,26 +58,6 @@ class Validator(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-    def create_ground_truth(self, messages, sampling_params):
-        assert self.config.neuron
-        ground_truth_tokens = []
-        stream = self.client.chat.completions.create(
-            model=self.config.neuron.model_name,
-            messages=messages,
-            stream=True,
-            temperature=sampling_params.temperature,
-            top_p=sampling_params.top_p,
-            seed=sampling_params.seed,
-            timeout=5,
-        )
-        for chunk in stream:
-            token = chunk.choices[0].delta.content
-            if not token:
-                continue
-            ground_truth_tokens.append(token)
-        ground_truth_output = "".join(ground_truth_tokens)
-        return ground_truth_output
-
     async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         assert self.config.neuron
         stats = InferenceStats(
@@ -217,23 +197,15 @@ class Validator(BaseNeuron):
             miner_uids = miner_uids[: self.config.neuron.sample_size]
             try:
                 messages, sampling_params = asyncio.run(self.generate_question())
-                ground_truth_tokens = []
-                stream = self.client.chat.completions.create(
+                res = self.client.chat.completions.create(
                     model=self.config.neuron.model_name,
                     messages=messages,
-                    stream=True,
+                    stream=False,
                     temperature=sampling_params.temperature,
                     top_p=sampling_params.top_p,
                     seed=sampling_params.seed,
-                    timeout=5,
                 )
-                for chunk in stream:
-                    token = chunk.choices[0].delta.content
-                    if not token:
-                        continue
-                    ground_truth_tokens.append(token)
-
-                ground_truth = "".join(ground_truth_tokens)
+                ground_truth = res.choices[0].message.content
             except Exception as e:
                 bt.logging.error(f"Error generating dataset: {e}")
                 bt.logging.error(traceback.format_exc())
