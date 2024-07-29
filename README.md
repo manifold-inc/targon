@@ -155,8 +155,7 @@ s2 = length of second string
 In the context of Targon, the scaling factor for our Jaro-Winkler calculation was set to 0.25.
 
 > *Note:*
-> Jaro-Winkler Similarity is not a mathematical metric, as it fails the Triangle Inequality.
-> [https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance]
+> [Jaro-Winkler Similarity](https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance]) is not a mathematical metric, as it fails the Triangle Inequality.
 
 # How to Run Targon
 
@@ -172,7 +171,7 @@ pip install vllm jsonschema
 Now you are ready to server your VLLM instance to PM2
 
 ```bash
-pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key --port 8000 [some-secret-you-also-pass-to-validator]
+pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key [some-secret-you-also-pass-to-validator] --port 8000
 ```
 
 
