@@ -40,6 +40,7 @@ class Validator(BaseNeuron):
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.axon
+        assert self.config.database
 
         ## BITTENSOR INITIALIZATION
         self.dendrite = bt.dendrite(wallet=self.wallet)
@@ -66,7 +67,7 @@ class Validator(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-        if self.config.database_url:
+        if self.config.database.url:
             asyncio.run(setup_db(self.config.database_url))
             bt.logging.info("Succesfully created DB")
 
@@ -165,6 +166,8 @@ class Validator(BaseNeuron):
 
     async def process_uids(self, uids, messages, sampling_params, ground_truth):
         assert self.config.neuron
+        assert self.config.database
+
         try:
             bt.logging.info(
                 f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length }"
@@ -183,9 +186,9 @@ class Validator(BaseNeuron):
             for uid, stat in stats:
                 self.score(uid, stat)
 
-            if self.config.database_url:
+            if self.config.database.url:
                 records = [(uid, stat.model_dump(), "2.0.0") for (uid, stat) in stats]
-                await add_records(records, self.config.database_url)
+                await add_records(records, self.config.database.url)
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")

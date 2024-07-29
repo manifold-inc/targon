@@ -139,7 +139,6 @@ async def setup_db(database_url):
     try:
         conn = await asyncpg.connect(database_url)
         await create_table(conn)
-        print("Successfully created or verified table.")
     except Exception as e:
         print(f"Error creating Supabase client: {e}")
     finally:

@@ -133,5 +133,5 @@ def add_validator_args(parser):
         "--database.url",
         type=str,
         help="Database URL to save Miner Data to Targon Hub",
-        default="",
+        default=None,
     )
