@@ -150,7 +150,7 @@ async def create_table(conn):
     CREATE TABLE IF NOT EXISTS miners_responses (
         id SERIAL PRIMARY KEY,
         uid INTEGER,
-        stats JSON,
+        stats JSONB,
         version VARCHAR(10)
     );
     """
