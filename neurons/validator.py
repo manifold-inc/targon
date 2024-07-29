@@ -143,6 +143,7 @@ class Validator(BaseNeuron):
             return uid, stats
 
     def score(self, uid, stats: InferenceStats):
+        bt.logging.trace(f"{uid}: {stats.verified} | {stats.total_time}")
         if stats.verified and stats.total_time != 0:
             self.miner_tps[uid].append(
                     len(stats.response.split(" ")) / stats.total_time
@@ -326,13 +327,12 @@ class Validator(BaseNeuron):
         uids: List[int] = sorted(rewards.keys())
         rewards = [rewards[uid] for uid in uids]
 
-        # Calculate the average reward for each uid across non-zero values.
-        # Replace any NaN values with 0.
-        # TODO
+        bt.logging.info(f"All tps: {tokens_per_second}")
         if sum(rewards) == 0:
             bt.logging.warning("No one gave responses worth scoring")
             return
         raw_weights = normalize(rewards)
+        bt.logging.info(f"Raw Weights: {raw_weights}")
 
         # Set the weights on chain via our subtensor connection.
         (
@@ -346,8 +346,6 @@ class Validator(BaseNeuron):
             metagraph=self.metagraph,
         )
 
-        bt.logging.info(f"All tps: {tokens_per_second}")
-        bt.logging.info(f"Raw Weights: {raw_weights}")
         bt.logging.info("Setting Weights: " + str(processed_weights))
         bt.logging.info("Weight Uids: " + str(processed_weight_uids))
         result, message = self.subtensor.set_weights(
