@@ -68,7 +68,7 @@ class Validator(BaseNeuron):
         )
 
         if self.config.database.url:
-            asyncio.run(setup_db(self.config.database_url))
+            asyncio.run(setup_db(self.config.database.url))
             bt.logging.info("Succesfully created DB")
 
     def create_ground_truth(self, messages, sampling_params):
