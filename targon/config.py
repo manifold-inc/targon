@@ -100,7 +100,8 @@ def add_miner_args(parser):
 
 def add_validator_args(parser):
     """Add validator specific arguments to the parser."""
-
+    
+    # TODO: Add arg for database.url
     parser.add_argument(
         "--neuron.name",
         type=str,

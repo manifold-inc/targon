@@ -171,6 +171,8 @@ class Validator(BaseNeuron):
             for uid, stat in stats:
                 self.score(uid, stat)
 
+            # TODO: insert records into db in one transaction
+
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
             time.sleep(12)
