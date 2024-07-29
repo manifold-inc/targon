@@ -187,7 +187,7 @@ class Validator(BaseNeuron):
                 self.score(uid, stat)
 
             if self.config.database.url:
-                records = [(uid, str(stat.model_dump()), "2.0.0") for (uid, stat) in stats]
+                records = [(uid, stat, "2.0.0") for (uid, stat) in stats]
                 await add_records(records, self.config.database.url)
 
         except Exception as e:
