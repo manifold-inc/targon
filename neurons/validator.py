@@ -6,14 +6,22 @@ import random
 import asyncio
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
-from targon.utils import normalize, print_info, safe_mean, InferenceStats, check_tokens, setup_db, add_records
+from targon.utils import (
+    normalize,
+    print_info,
+    safe_mean,
+    InferenceStats,
+    check_tokens,
+    setup_db,
+    add_records,
+)
 import traceback
 import math
 import numpy as np
 import pandas as pd
 import bittensor as bt
 
-from typing import List
+from typing import List, Tuple
 from targon import (
     protocol,
     __spec_version__ as spec_version,
@@ -58,7 +66,7 @@ class Validator(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-        if(self.config.database_url):
+        if self.config.database_url:
             asyncio.run(setup_db(self.config.database_url))
             bt.logging.info("Succesfully created DB")
 
@@ -170,21 +178,14 @@ class Validator(BaseNeuron):
                         )
                     )
                 )
-            stats = await asyncio.gather(*tasks)
-            
-            if(self.config.database_url):
-                records = []
-                for uid, stat in stats:
-                    self.score(uid, stat)
-                    records.append((uid, stat.response, "v2.0.0"))
-                
+            stats: List[Tuple[str, InferenceStats]] = await asyncio.gather(*tasks)
+
+            for uid, stat in stats:
+                self.score(uid, stat)
+
+            if self.config.database_url:
+                records = [(uid, stat.model_dump(), "2.0.0") for (uid, stat) in stats]
                 await add_records(records, self.config.database_url)
-
-            else:
-                for uid, stat in stats:
-                    self.score(uid, stat)
-
-            # TODO: insert records into db in one transaction
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
