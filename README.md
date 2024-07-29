@@ -176,7 +176,7 @@ pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [
 >  - [NEURON_API_KEY]
 >  - [AXON_PORT]
 
-NOTE: Trace logging is very verbose. You can use `--logging.debug` instead for less log bloat.
+NOTE: Trace logging is very verbose. You can use `--logging.info` instead for less log bloat.
 
 Additionally:
 ```bash
