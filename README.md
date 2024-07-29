@@ -11,17 +11,18 @@ you implicitly agree to these terms and conditions.
 1. [Compute Requirements](#recommended-compute-requirements)
 2. [Installation](#installation)
     - [Install PM2](#install-pm2)
-    - [Install Targon](#install-targon)
-3. [What is a Redundant Deterministic Verification Network?](#what-is-a-redundent-determinsitic-verfification-network)
+    - [Install Targon](#install-targon-on-your-machine)
+3. [What is a Redundant Deterministic Verification Network?](#what-is-a-redundant-deterministic-verification-network)
     - [Role of a Miner](#role-of-a-miner)
     - [Role of a Validator](#role-of-a-validator)
 4. [Features of Targon](#features-of-targon)
     - [Infenrence Request](#inference-request)
-    - [Jaro-Winkler Scoring](#jaro-winkler-scoring)
+    - [Jaro-Winkler Similarity](#jaro-winkler-similarity)
 5. [How to Run Targon](#how-to-run-targon)
-    - [How to run a Miner](#how-to-run-a-miner)
-    - [How to run a Validator](#how-to-run-a-validator)
-6. [How to Contribute](#how-to-contribute)
+    - [Running a VLLM](#running-a-vllm)
+    - [Running a Miner](#running-a-miner)
+    - [Running a Validator](#running-a-validator)
+7. [How to Contribute](#how-to-contribute)
 
 
 # Recommended Compute Requirements
@@ -158,6 +159,21 @@ In the context of Targon, the scaling factor for our Jaro-Winkler calculation wa
 > [https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance]
 
 # How to Run Targon
+
+## Running a VLLM
+
+### PM2
+In order to run Targon, you must have a VLLM instance up and running. 
+
+```bash
+pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key --port [8000] [some-secret-you-also-pass-to-validator]
+```
+
+>Note:
+>If you get a JSON Schema Error, do 
+>```bash
+>pip install vllm jsonschema
+>```
 
 ## Running a Miner
 
