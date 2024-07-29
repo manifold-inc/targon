@@ -149,7 +149,7 @@ async def create_table(conn):
     query = """
     CREATE TABLE IF NOT EXISTS miners_responses (
         id SERIAL PRIMARY KEY,
-        uid VARCHAR(50),
+        uid INTEGER,
         response TEXT,
         version VARCHAR(10)
     );
@@ -166,7 +166,7 @@ async def add_records(records, database_url):
         conn = await asyncpg.connect(database_url)
         async with conn.transaction():
             await conn.executemany('''
-                INSERT INTO miners_responses (uid, response, version) VALUES ($1, $2, $3)
+                INSERT INTO miners_responses (uid, response, version) VALUES ($1, $2, $3,)
             ''', records)
         print("Records inserted successfully.")
     except Exception as e:
