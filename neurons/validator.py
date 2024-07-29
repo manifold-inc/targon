@@ -128,7 +128,7 @@ class Validator(BaseNeuron):
             tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
-            stats.verified = check_tokens(response.split(" "), ground_truth)
+            stats.verified = check_tokens(response.split(" "), ground_truth.split(" "))
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
@@ -146,7 +146,7 @@ class Validator(BaseNeuron):
         bt.logging.trace(f"{uid}: {stats.verified} | {stats.total_time}")
         if stats.verified and stats.total_time != 0:
             self.miner_tps[uid].append(
-                    len(stats.response.split(" ")) / stats.total_time
+                len(stats.response.split(" ")) / stats.total_time
             )
             return
         self.miner_tps[uid].append(0)
@@ -296,8 +296,7 @@ class Validator(BaseNeuron):
         assert self.config.netuid
 
         tokens_per_second = {
-            miner: safe_mean(self.miner_tps[miner][-30:])
-            for miner in self.miner_tps
+            miner: safe_mean(self.miner_tps[miner][-30:]) for miner in self.miner_tps
         }
         tps_list = list(tokens_per_second.values())
         if len(tps_list) == 0:
