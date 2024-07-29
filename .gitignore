@@ -8,5 +8,6 @@ test_stream.py
 !hub-proxy/docker-compose.yml
 .DS_Store
 
+output.txt
 play.py
 packages

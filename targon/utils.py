@@ -115,6 +115,7 @@ def safe_mean(data):
 class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
+    total_time: float
     tokens_per_second: float
     tokens: List[str]
     response: str

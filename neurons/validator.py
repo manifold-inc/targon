@@ -48,13 +48,7 @@ class Validator(BaseNeuron):
 
         ## STATS
         miners = self.get_miner_uids()
-        self.time_to_first_token = {miner: [] for miner in miners}
-        self.time_for_all_tokens = {miner: [] for miner in miners}
-        self.tokens_per_second = {miner: [] for miner in miners}
-        self.verified_success = {miner: [] for miner in miners}
-        self.tokens_per_second_if_verified = {miner: [] for miner in miners}
-        self.top_verified_tps = 0
-        self.top_unverified_tps = 0
+        self.miner_tps = {miner: [] for miner in miners}
 
         ## SET DATASET
         self.dataset = pd.read_json(
@@ -90,6 +84,7 @@ class Validator(BaseNeuron):
             time_to_first_token=0,
             time_for_all_tokens=0,
             tokens_per_second=0,
+            total_time=0,
             tokens=[],
             response="",
             verified=False,
@@ -133,84 +128,27 @@ class Validator(BaseNeuron):
             tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
+            stats.verified = check_tokens(response.split(" "), ground_truth)
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
+            stats.total_time = end_token_time - start_send_message_time
             stats.response = response
             stats.tokens = response_tokens
-            if token_count <= 1 or len(response_tokens) <= 1:
-                # Dont set tps, but set everything else
-                return uid, stats
-
-            # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
-            if time_to_first_token > 1.8 * time_for_all_tokens:
-                stats.verified = False
-                tokens_per_second = 0
-            if stats.verified:
-                stats.verified = check_tokens(response, ground_truth)
             stats.tokens_per_second = tokens_per_second
+            # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
             return uid, stats
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    def stats(self):
-        time_to_first_token_stats = {
-            miner: safe_mean(self.time_to_first_token[miner][-30:])
-            for miner in self.time_to_first_token
-        }
-        time_for_all_tokens_stats = {
-            miner: safe_mean(self.time_for_all_tokens[miner][-30:])
-            for miner in self.time_for_all_tokens
-        }
-        tokens_per_second_stats = {
-            miner: safe_mean(self.tokens_per_second[miner][-30:])
-            for miner in self.tokens_per_second
-        }
-        verified_success_stats = {
-            miner: safe_mean(self.verified_success[miner][-30:])
-            for miner in self.verified_success
-        }
-
-        mean_tps_dict = {
-            uid: safe_mean(self.tokens_per_second[uid][-30:])
-            for uid in self.tokens_per_second
-        }
-        mean_tps_dict = dict(
-            sorted(mean_tps_dict.items(), key=lambda item: item[1], reverse=True)
-        )
-        top_20_uids = dict(list(mean_tps_dict.items())[:20])
-        return {
-            "top_verified_tps": self.top_verified_tps,
-            "top_unverified_tps": self.top_unverified_tps,
-            "top_uids": top_20_uids,
-            "miners": {
-                uid: {
-                    "top_tps": max(self.tokens_per_second[uid])
-                    if len(self.tokens_per_second[uid]) > 0
-                    else 0,
-                    "mean_time_to_first_token": time_to_first_token_stats[uid],
-                    "mean_time_for_all_tokens": time_for_all_tokens_stats[uid],
-                    "mean_tokens_per_second": tokens_per_second_stats[uid],
-                    "mean_verified_success": verified_success_stats[uid],
-                }
-                for uid in self.time_to_first_token
-            },
-        }
-
     def score(self, uid, stats: InferenceStats):
-        self.top_unverified_tps = max(self.top_unverified_tps, stats.tokens_per_second)
-        if stats.time_to_first_token != 0:
-            self.time_to_first_token[uid].append(stats.time_to_first_token)
-        if stats.time_for_all_tokens != 0:
-            self.time_for_all_tokens[uid].append(stats.time_for_all_tokens)
-        self.verified_success[uid].append(stats.verified)
-        self.tokens_per_second[uid].append(stats.tokens_per_second)
-        if stats.verified:
-            self.top_verified_tps = max(self.top_verified_tps, stats.tokens_per_second)
-            self.tokens_per_second_if_verified[uid].append(stats.tokens_per_second)
-        else:
-            self.tokens_per_second_if_verified[uid].append(0)
+        if stats.verified and stats.total_time != 0:
+            self.miner_tps[uid].append(
+                    len(stats.response.split(" ")) / stats.total_time
+            )
+            return
+        self.miner_tps[uid].append(0)
 
     async def process_uids(self, uids, messages, sampling_params, ground_truth):
         assert self.config.neuron
@@ -357,8 +295,8 @@ class Validator(BaseNeuron):
         assert self.config.netuid
 
         tokens_per_second = {
-            miner: safe_mean(self.tokens_per_second[miner][-30:])
-            for miner in self.tokens_per_second
+            miner: safe_mean(self.miner_tps[miner][-30:])
+            for miner in self.miner_tps
         }
         tps_list = list(tokens_per_second.values())
         if len(tps_list) == 0:
@@ -432,11 +370,10 @@ class Validator(BaseNeuron):
         )
         # Zero out all hotkeys that have been replaced.
         for uid, hotkey in enumerate(self.hotkeys):
+            if self.miner_tps.get(uid) == None:
+                self.miner_tps[uid] = []
             if hotkey != self.metagraph.hotkeys[uid]:
-                self.time_to_first_token[uid] = []
-                self.time_for_all_tokens[uid] = []
-                self.tokens_per_second[uid] = []
-                self.verified_success[uid] = []
+                self.miner_tps[uid] = []
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
