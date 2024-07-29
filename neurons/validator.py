@@ -6,7 +6,7 @@ import random
 import asyncio
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
-from targon.utils import normalize, print_info, safe_mean, InferenceStats, check_tokens
+from targon.utils import normalize, print_info, safe_mean, InferenceStats, check_tokens, setup_db, add_records
 import traceback
 import math
 import numpy as np
@@ -57,6 +57,10 @@ class Validator(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+
+        if(self.config.database_url):
+            asyncio.run(setup_db(self.config.database_url))
+            bt.logging.info("Succesfully created DB")
 
     def create_ground_truth(self, messages, sampling_params):
         assert self.config.neuron
@@ -167,9 +171,18 @@ class Validator(BaseNeuron):
                     )
                 )
             stats = await asyncio.gather(*tasks)
+            
+            if(self.config.database_url):
+                records = []
+                for uid, stat in stats:
+                    self.score(uid, stat)
+                    records.append((uid, stat.response, "v2.0.0"))
+                
+                await add_records(records, self.config.database_url)
 
-            for uid, stat in stats:
-                self.score(uid, stat)
+            else:
+                for uid, stat in stats:
+                    self.score(uid, stat)
 
             # TODO: insert records into db in one transaction
 

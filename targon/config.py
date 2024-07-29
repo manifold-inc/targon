@@ -100,8 +100,7 @@ def add_miner_args(parser):
 
 def add_validator_args(parser):
     """Add validator specific arguments to the parser."""
-    
-    # TODO: Add arg for database.url
+
     parser.add_argument(
         "--neuron.name",
         type=str,
@@ -128,4 +127,11 @@ def add_validator_args(parser):
         type=int,
         help="The maximum number of TAO allowed to query a validator with a vpermit.",
         default=4096,
+    )
+
+    parser.add_argument(
+        "--database.url",
+        type=str,
+        help="Database URL to save Miner Data to Targon Hub",
+        default="",
     )

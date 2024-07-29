@@ -8,3 +8,4 @@ sentencepiece==0.2.0
 protobuf==5.27.2
 plotext==5.2.8
 openai==1.35.14
+asynpg==0.29.0

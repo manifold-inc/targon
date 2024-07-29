@@ -3,6 +3,7 @@ import numpy as np
 from typing import List
 from typing import List
 from pydantic import BaseModel
+import asyncpg
 
 def print_info(metagraph, hotkey, block, isMiner=True):
     uid = metagraph.hotkeys.index(hotkey)
@@ -132,3 +133,45 @@ def check_tokens(miner_output, ground_truth_output):
         return False
 
     return True
+
+async def setup_db(database_url):
+    conn = None
+    try:
+        conn = await asyncpg.connect(database_url)
+        await create_table(conn)
+        print("Successfully created or verified table.")
+    except Exception as e:
+        print(f"Error creating Supabase client: {e}")
+    finally:
+        if conn:
+            await conn.close()
+
+async def create_table(conn):
+    query = """
+    CREATE TABLE IF NOT EXISTS miners_responses (
+        id SERIAL PRIMARY KEY,
+        uid VARCHAR(50),
+        response TEXT,
+        version VARCHAR(10)
+    );
+    """
+    try:
+        await conn.execute(query)
+        print("Table created successfully.")
+    except Exception as e:
+        print(f"Error executing table creation query: {e}")
+
+async def add_records(records, database_url):
+    conn = None
+    try:
+        conn = await asyncpg.connect(database_url)
+        async with conn.transaction():
+            await conn.executemany('''
+                INSERT INTO miners_responses (uid, response, version) VALUES ($1, $2, $3)
+            ''', records)
+        print("Records inserted successfully.")
+    except Exception as e:
+        print(f"Error inserting records: {e}")
+    finally:
+        if conn:
+            await conn.close()
