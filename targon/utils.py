@@ -4,7 +4,7 @@ from typing import List
 from typing import List
 from pydantic import BaseModel
 import asyncpg
-from asyncpg.pool import create_pool
+import json
 
 def print_info(metagraph, hotkey, block, isMiner=True):
     uid = metagraph.hotkeys.index(hotkey)
@@ -161,14 +161,17 @@ async def create_table(conn):
     except Exception as e:
         print(f"Error executing table creation query: {e}")
 
+
 async def add_records(records, database_url):
-    pool = await create_pool(database_url)
+    pool = await asyncpg.create_pool(database_url)
     async with pool.acquire() as conn:
         try:
+            # Convert InferenceStats to JSON string
+            json_records = [(uid, json.dumps(stat.dict()), version) for (uid, stat, version) in records]
             await conn.executemany('''
                 INSERT INTO miners_responses (uid, stats, version) VALUES ($1, $2, $3)
-            ''', records)
+            ''', json_records)
             print("Records inserted successfully.")
         except Exception as e:
             print(f"Error inserting records: {e}")
-    await pool.close();
+    await pool.close()
