@@ -164,10 +164,9 @@ async def add_records(records, database_url):
     conn = None
     try:
         conn = await asyncpg.connect(database_url)
-        async with conn.transaction():
-            await conn.executemany('''
-                INSERT INTO miners_responses (uid, stats, version) VALUES ($1, $2, $3)
-            ''', records)
+        await conn.executemany('''
+            INSERT INTO miners_responses (uid, stats, version) VALUES ($1, $2, $3)
+        ''', records)
         print("Records inserted successfully.")
     except Exception as e:
         print(f"Error inserting records: {e}")
