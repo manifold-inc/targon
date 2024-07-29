@@ -25,6 +25,7 @@ you implicitly agree to these terms and conditions.
 7. [How to Contribute](#how-to-contribute)
 
 
+
 # Recommended Compute Requirements
 The following table shows the suggested compute providers for running a validator or miner.
 
@@ -37,6 +38,12 @@ The following table shows the suggested compute providers for running a validato
 | Azure      | High  | Global   | VM & Bare Metal  | 3/5    |
 | AWS        | High  | Global   | VM & Bare Metal  | 3/5    |
 | Runpod     | Low   | Global   | VM & Container   | 5/5    |
+
+#### Minimum Viable Compute Requirements
+- **VRAM:** 80 GB
+- **Storage:** 200 GB
+- **RAM:** 16 GB
+- **CPU**: 4
 
 # Installation
 
