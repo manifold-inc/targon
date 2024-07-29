@@ -165,7 +165,7 @@ In the context of Targon, the scaling factor for our Jaro-Winkler calculation wa
 ### PM2
 In order to run Targon, you must have a VLLM instance up and running. 
 
-First, install VLLM and JSON Schema on your machin
+First, install VLLM and JSON Schema on your machine
 ```bash
 pip install vllm jsonschema
 ```
