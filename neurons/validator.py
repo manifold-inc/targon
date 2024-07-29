@@ -389,15 +389,10 @@ class Validator(BaseNeuron):
 
             # Filter non serving axons.
             if not self.metagraph.axons[uid].is_serving:
-                bt.logging.debug(f"uid: {uid} is not serving")
                 continue
             # Filter validator permit > 1024 stake.
             if self.metagraph.validator_permit[uid]:
-                bt.logging.debug(f"uid: {uid} has validator permit")
                 if self.metagraph.S[uid] > self.config.neuron.vpermit_tao_limit:
-                    bt.logging.debug(
-                        f"uid: {uid} has stake ({self.metagraph.S[uid]}) > {self.config.neuron.vpermit_tao_limit}"
-                    )
                     continue
             available_uids.append(uid)
             continue
