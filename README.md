@@ -277,7 +277,7 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
    measured in 12 second blocks). *Defaults to 360*
 1. **--mock** ==> Mock neuron and all network components. *Defaults to False*
 1. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
-   CompatibleClient. *Defaults to "http://127.0.0.1:8080"*
+   CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
 1. **--neuron.model_name** ==> Name of the model used for completion. *Defaults
    to "mlabonne/NeuralDaredevil-7B"*
 1. **--neuront.api_key** ==> API key for OpenAi Compatible API. *Defaults to
