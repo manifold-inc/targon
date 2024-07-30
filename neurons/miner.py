@@ -73,6 +73,7 @@ class Miner(BaseNeuron):
         async def _prompt(synapse: Inference, send: Send) -> None:
             assert self.config.neuron
             assert synapse.sampling_params
+            bt.logging.info("Sampling Params: ", str(synapse.sampling_params))
             messages = json.loads(synapse.messages)
             stream = self.client.chat.completions.create(
                 model=self.config.neuron.model_name,
