@@ -204,6 +204,7 @@ class Validator(BaseNeuron):
                     temperature=sampling_params.temperature,
                     top_p=sampling_params.top_p,
                     seed=sampling_params.seed,
+                    max_tokens=sampling_params.max_new_tokens,
                 )
                 ground_truth = res.choices[0].message.content
             except Exception as e:
@@ -253,6 +254,7 @@ class Validator(BaseNeuron):
             temperature=0.5,
             top_p=sampling_params.top_p,
             seed=sampling_params.seed,
+            max_tokens=sampling_params.max_new_tokens,
         )
 
         # Create a final search prompt using the query and sources
