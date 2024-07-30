@@ -1,6 +1,6 @@
 from math import floor
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from typing import List
 from pydantic import BaseModel
 
@@ -120,15 +120,13 @@ class InferenceStats(BaseModel):
     tokens: List[str]
     response: str
     verified: bool
+    jaro_score: float
 
-def check_tokens(miner_output, ground_truth_output):
+def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
     if len(miner_output) < (len(ground_truth_output) * 0.8):
-        return False
+        return 0, False
 
     # Calculate the score from 0 to 1
     score = jaro_winkler(ground_truth_output, miner_output)
 
-    if score < 0.97:
-        return False
-
-    return True
+    return score, score < 0.97

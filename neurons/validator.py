@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import bittensor as bt
 
-from typing import List
+from typing import List, Tuple
 from targon import (
     protocol,
     __spec_version__ as spec_version,
@@ -70,6 +70,7 @@ class Validator(BaseNeuron):
             tokens=[],
             response="",
             verified=False,
+            jaro_score=0
         )
         try:
             synapse = protocol.Inference(
@@ -110,7 +111,9 @@ class Validator(BaseNeuron):
             tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
-            stats.verified = check_tokens(response.split(" "), ground_truth.split(" "))
+            jaro_score, verified = check_tokens(response.split(" "), ground_truth.split(" "))
+            stats.jaro_score = jaro_score
+            stats.verified = verified
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
@@ -124,7 +127,7 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    async def process_uids(self, uids, messages, sampling_params, ground_truth):
+    async def process_uids(self, uids, messages, sampling_params, ground_truth) -> List[Tuple[int, InferenceStats]]:
         assert self.config.neuron
         try:
             bt.logging.info(
@@ -148,14 +151,14 @@ class Validator(BaseNeuron):
                         min(len(stat.response.split(" ")), len(ground_truth.split(" ")))
                         / stat.total_time
                     )
-                    return
+                    continue
                 self.miner_tps[uid].append(0)
 
             return stats
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
-            return None
+            return []
 
     def query_miners(self, miner_uids):
         assert self.config.neuron
@@ -183,9 +186,10 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Error generating dataset: {e}")
             bt.logging.error(traceback.format_exc())
             return None
-        return self.loop.run_until_complete(
+        stats = self.loop.run_until_complete(
             self.process_uids(miner_uids, messages, sampling_params, ground_truth)
-        )  # Adjust batch_size as needed
+        )
+        return stats, ground_truth, sampling_params  # Adjust batch_size as needed
 
     def run(self):
         assert self.config.subtensor
