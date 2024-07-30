@@ -175,7 +175,7 @@ class Validator(BaseNeuron):
                 f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length }"
             )
             tasks = []
-            # generate r-nano id
+            # generate r_nano id
             r_nanoid = generate(size=48)
             
             for uid in uids:
