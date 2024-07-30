@@ -20,6 +20,8 @@ import math
 import numpy as np
 import pandas as pd
 import bittensor as bt
+from nanoid import generate
+from datetime import datetime
 
 from typing import List, Tuple
 from targon import (
@@ -173,6 +175,9 @@ class Validator(BaseNeuron):
                 f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length }"
             )
             tasks = []
+            # generate r-nano id
+            r_nanoid = generate(size=48)
+            
             for uid in uids:
                 tasks.append(
                     asyncio.create_task(
@@ -187,8 +192,9 @@ class Validator(BaseNeuron):
                 self.score(uid, stat)
 
             if self.config.database.url:
-                records = [(self.wallet.hotkey.ss58_address, self.wallet.coldkey.ss58_address, self.subtensor.block, uid, stat, "2.0.0") for (uid, stat) in stats]
-                await add_records(records, self.config.database.url)
+                miners_records = [(self.wallet.hotkey.ss58_address, self.wallet.coldkey.ss58_address, self.subtensor.block, uid, stat, "2.0.0") for (uid, stat) in stats]
+                response_records = [(r_nanoid, self.subtensor.block, datetime.now().isoformat(), json.dumps(sampling_params), json.dumps(ground_truth)) for _ in stats]
+                await add_records(miners_records, response_records, self.config.database.url)
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
