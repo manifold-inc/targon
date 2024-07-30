@@ -177,7 +177,7 @@ class Validator(BaseNeuron):
                 continue
 
             # Declare next forward block a random time in the future so that not all valis query at the same time
-            self.next_forward_block = random.randint(12, 36) + self.subtensor.block
+            self.next_forward_block = random.randint(4, 12) + self.subtensor.block
 
             bt.logging.info(
                 print_info(
