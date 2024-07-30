@@ -129,4 +129,4 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
     # Calculate the score from 0 to 1
     score = jaro_winkler(ground_truth_output, miner_output)
 
-    return score, score < 0.97
+    return score, score > 0.97
