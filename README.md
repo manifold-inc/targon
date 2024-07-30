@@ -257,7 +257,7 @@ Running a validator through PM2 will require the LLM instance of your choice to
 be running.
 
 ```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.proxy.port [PROXY_PORT] --neuron.api_key [NEURON_API_KEY] --neuron.epoch_length 360
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.port [PROXY_PORT] --neuron.api_key [NEURON_API_KEY] --neuron.epoch_length 360
 
 ```
 
@@ -265,7 +265,7 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 >
 > - \[WALLET_NAME\]
 > - \[MODEL_ENDPOINT\]
-> - \[PROXY_PORT\]
+> - \[PORT\]
 > - \[NEURON_API_KEY\]
 
 ## Explanation of Args
@@ -280,7 +280,7 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
    CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
 1. **--neuron.model_name** ==> Name of the model used for completion. *Defaults
    to "mlabonne/NeuralDaredevil-7B"*
-1. **--neuront.api_key** ==> API key for OpenAi Compatible API. *Defaults to
+1. **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
    "12345"*
 
 ### Miner Args
