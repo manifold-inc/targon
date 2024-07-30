@@ -160,13 +160,13 @@ async def create_table(conn):
     """
     query2 = """
     CREATE TABLE IF NOT EXISTS requests_responses (
-        id SERIAL
+        id SERIAL,
         r-nanoid VARCHAR(48),
         block INTEGER,
         timestamp VARCHAR(48),
         sampling-params JSONB,
         baseline JSONB,
-        );
+    );
     """
     try:
         await conn.execute(query1)
