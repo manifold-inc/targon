@@ -166,6 +166,7 @@ class Validator(BaseNeuron):
             return
         self.miner_tps[uid].append(0)
 
+
     async def process_uids(self, uids, messages, sampling_params, ground_truth):
         assert self.config.neuron
         assert self.config.database
@@ -175,7 +176,7 @@ class Validator(BaseNeuron):
                 f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length }"
             )
             tasks = []
-            # generate r_nano id
+            # Generate r_nano id
             r_nanoid = generate(size=48)
             
             for uid in uids:
@@ -186,14 +187,36 @@ class Validator(BaseNeuron):
                         )
                     )
                 )
-            stats: List[Tuple[str, InferenceStats]] = await asyncio.gather(*tasks)
+            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
 
             for uid, stat in stats:
                 self.score(uid, stat)
 
             if self.config.database.url:
-                miners_records = [(r_nanoid, self.wallet.hotkey.ss58_address, self.wallet.coldkey.ss58_address, self.subtensor.block, uid, stat, "2.0.0") for (uid, stat) in stats]
-                response_records = [(r_nanoid, self.subtensor.block, datetime.now().isoformat(), json.dumps(sampling_params.dict()), json.dumps(ground_truth))]
+                # Create miners_records
+                miners_records = [
+                    (
+                        r_nanoid,
+                        self.wallet.hotkey.ss58_address,
+                        self.wallet.coldkey.ss58_address,
+                        self.subtensor.block,
+                        uid,
+                        json.dumps(stat.dict()),
+                        "2.0.0"
+                    )
+                    for uid, stat in stats
+                ]
+                # Create response_records
+                response_records = [
+                    (
+                        r_nanoid,
+                        self.subtensor.block,
+                        datetime.now().isoformat(),
+                        json.dumps(sampling_params.dict()),
+                        json.dumps(ground_truth)
+                    )
+                ]
+
                 await add_records(miners_records, response_records, self.config.database.url)
 
         except Exception as e:

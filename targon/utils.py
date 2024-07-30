@@ -180,17 +180,15 @@ async def add_records(miners_records, response_records, database_url):
     async with pool.acquire() as conn:
         try:
             # Insert response_records first since miners_responses references it
-            response_records_data = [(r_nanoid, block, timestamp, sampling_params, ground_truth) for (r_nanoid, block, timestamp, sampling_params, ground_truth) in response_records]
             await conn.executemany('''
                 INSERT INTO requests_responses (r_nanoid, block, timestamp, sampling_params, ground_truth) VALUES ($1, $2, $3, $4, $5)
-            ''', response_records_data)
+            ''', response_records)
             print("Records inserted into requests_responses successfully.")
 
             # Insert miners_records
-            miners_response_records = [(r_nanoid, hotkey, coldkey, block, uid, json.dumps(stat.dict()), version) for (r_nanoid, hotkey, coldkey, block, uid, stat, version) in miners_records]
             await conn.executemany('''
                 INSERT INTO miners_responses (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ''', miners_response_records)
+            ''', miners_records)
             print("Records inserted into miners_responses successfully.")
 
         except Exception as e:
