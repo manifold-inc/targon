@@ -47,6 +47,7 @@ class Validator(BaseNeuron):
         self.hotkeys = self.metagraph.hotkeys
         self.next_forward_block = None
         self.last_posted_weights = self.metagraph.last_update[self.uid]
+        bt.logging.info(f"Last updated at block {self.last_posted_weights}")
 
         ## STATS
         miners = self.get_miner_uids()
@@ -134,9 +135,6 @@ class Validator(BaseNeuron):
     ) -> List[Tuple[int, InferenceStats]]:
         assert self.config.neuron
         try:
-            bt.logging.info(
-                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length }"
-            )
             tasks = []
             for uid in uids:
                 tasks.append(
@@ -240,6 +238,10 @@ class Validator(BaseNeuron):
             if self.sync_metagraph():
                 self.resync_hotkeys()
 
+
+            bt.logging.info(
+                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.last_posted_weights + self.config.neuron.epoch_length) - self.subtensor.block }"
+            )
             # Check if we should set weights
             if (
                 self.last_posted_weights + self.config.neuron.epoch_length
