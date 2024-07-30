@@ -187,7 +187,7 @@ async def add_records(miners_records, response_records, database_url):
             print("Records inserted into requests_responses successfully.")
 
             # Insert miners_records
-            miners_response_records = [(r_nanoid, hotkey, coldkey, block, uid, json.dumps(stat.__dict__), version) for (r_nanoid, hotkey, coldkey, block, uid, stat, version) in miners_records]
+            miners_response_records = [(r_nanoid, hotkey, coldkey, block, uid, json.dumps(stat.dict()), version) for (r_nanoid, hotkey, coldkey, block, uid, stat, version) in miners_records]
             await conn.executemany('''
                 INSERT INTO miners_responses (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
             ''', miners_response_records)
