@@ -5,8 +5,6 @@ MINER_UIDS = []
 
 if __name__ == "__main__":
     validator = Validator()
-    validator.sync_metagraph()
-    validator.resync_hotkeys()
     res = validator.query_miners(MINER_UIDS)
 
     if res is None:
