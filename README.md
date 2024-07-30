@@ -257,7 +257,7 @@ Running a validator through PM2 will require the LLM instance of your choice to
 be running.
 
 ```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.port [PROXY_PORT] --neuron.api_key [NEURON_API_KEY] --neuron.epoch_length 360
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY]
 
 ```
 
@@ -265,7 +265,6 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 >
 > - \[WALLET_NAME\]
 > - \[MODEL_ENDPOINT\]
-> - \[PORT\]
 > - \[NEURON_API_KEY\]
 
 ## Explanation of Args
