@@ -134,7 +134,6 @@ def check_tokens(miner_output, ground_truth_output):
         return False
 
     return True
-
 async def setup_db(database_url):
     conn = None
     try:
@@ -148,8 +147,18 @@ async def setup_db(database_url):
 
 async def create_table(conn):
     query1 = """
+    CREATE TABLE IF NOT EXISTS requests_responses (
+        r_nanoid VARCHAR(48) PRIMARY KEY,
+        block INTEGER,
+        timestamp VARCHAR(48),
+        sampling_params JSONB,
+        ground_truth JSONB
+    );
+    """
+    query2 = """
     CREATE TABLE IF NOT EXISTS miners_responses (
         id SERIAL PRIMARY KEY,
+        r_nanoid VARCHAR(48) REFERENCES requests_responses(r_nanoid),
         hotkey VARCHAR(48),
         coldkey VARCHAR(48),
         block INTEGER,
@@ -158,42 +167,31 @@ async def create_table(conn):
         version VARCHAR(10)
     );
     """
-    query2 = """
-    CREATE TABLE IF NOT EXISTS requests_responses (
-        id SERIAL,
-        r_nanoid VARCHAR(48),
-        block INTEGER,
-        timestamp VARCHAR(48),
-        sampling-params JSONB,
-        baseline JSONB,
-    );
-    """
     try:
         await conn.execute(query1)
-        print("Table miners_responses created successfully.")
-        await conn.execute(query2)
         print("Table requests_responses created successfully.")
+        await conn.execute(query2)
+        print("Table miners_responses created successfully.")
     except Exception as e:
         print(f"Error executing table creation query: {e}")
-
 
 async def add_records(miners_records, response_records, database_url):
     pool = await asyncpg.create_pool(database_url)
     async with pool.acquire() as conn:
         try:
-            # Insert into miners_response
-            miners_response_records = [(hotkey, coldkey, block, uid, json.dumps(stat.dict()), version) for (hotkey, coldkey, block, uid, stat, version) in miners_records]
-            await conn.executemany('''
-                INSERT INTO miners_responses (hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6)
-            ''', miners_response_records)
-            print("Records inserted into miners_responses successfully.")
-
-            # Insert response_records
+            # Insert response_records first since miners_responses references it
             response_records_data = [(r_nanoid, block, timestamp, sampling_params, ground_truth) for (r_nanoid, block, timestamp, sampling_params, ground_truth) in response_records]
             await conn.executemany('''
                 INSERT INTO requests_responses (r_nanoid, block, timestamp, sampling_params, ground_truth) VALUES ($1, $2, $3, $4, $5)
             ''', response_records_data)
             print("Records inserted into requests_responses successfully.")
+
+            # Insert miners_records
+            miners_response_records = [(r_nanoid, hotkey, coldkey, block, uid, json.dumps(stat.__dict__), version) for (r_nanoid, hotkey, coldkey, block, uid, stat, version) in miners_records]
+            await conn.executemany('''
+                INSERT INTO miners_responses (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ''', miners_response_records)
+            print("Records inserted into miners_responses successfully.")
 
         except Exception as e:
             print(f"Error inserting records: {e}")
