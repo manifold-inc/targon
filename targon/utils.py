@@ -105,6 +105,7 @@ def safe_mean(data):
     Returns:
     float: The mean of the list if it's a valid number, otherwise 0.0.
     """
+    data = [x for x in data if x is not None]
     if len(data) == 0:
         return 0.0
     mean_value = np.mean(data)

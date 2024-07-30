@@ -70,7 +70,7 @@ class Validator(BaseNeuron):
             tokens=[],
             response="",
             verified=False,
-            jaro_score=0
+            jaro_score=0,
         )
         try:
             synapse = protocol.Inference(
@@ -111,7 +111,9 @@ class Validator(BaseNeuron):
             tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
-            jaro_score, verified = check_tokens(response.split(" "), ground_truth.split(" "))
+            jaro_score, verified = check_tokens(
+                response.split(" "), ground_truth.split(" ")
+            )
             stats.jaro_score = jaro_score
             stats.verified = verified
             stats.time_to_first_token = time_to_first_token
@@ -127,7 +129,9 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    async def process_uids(self, uids, messages, sampling_params, ground_truth) -> List[Tuple[int, InferenceStats]]:
+    async def process_uids(
+        self, uids, messages, sampling_params, ground_truth
+    ) -> List[Tuple[int, InferenceStats]]:
         assert self.config.neuron
         try:
             bt.logging.info(
@@ -152,7 +156,10 @@ class Validator(BaseNeuron):
                         / stat.total_time
                     )
                     continue
-                self.miner_tps[uid].append(0)
+                # Dont give people zeros for missing a single query
+                # This also pushes the list forward, so if they start failing all
+                # queries, they will eventually get zero'd
+                self.miner_tps[uid].append(None)
 
             return stats
 
