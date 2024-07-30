@@ -193,7 +193,7 @@ class Validator(BaseNeuron):
 
             if self.config.database.url:
                 miners_records = [(r_nanoid, self.wallet.hotkey.ss58_address, self.wallet.coldkey.ss58_address, self.subtensor.block, uid, stat, "2.0.0") for (uid, stat) in stats]
-                response_records = (r_nanoid, self.subtensor.block, datetime.now().isoformat(), json.dumps(sampling_params.dict()), json.dumps(ground_truth))
+                response_records = [(r_nanoid, self.subtensor.block, datetime.now().isoformat(), json.dumps(sampling_params.dict()), json.dumps(ground_truth)) for (_) in stats]
                 await add_records(miners_records, response_records, self.config.database.url)
 
         except Exception as e:
