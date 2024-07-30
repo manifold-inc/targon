@@ -234,7 +234,7 @@ class Validator(BaseNeuron):
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(16, 1024)
+        max_new_tokens = random.randint(2048, 4096)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
