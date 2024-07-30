@@ -13,7 +13,7 @@ if __name__ == "__main__":
         print("No response from miner")
         exit()
     stats, ground_truth, sampling_params = res
-    with open("responses.txt", "w") as res:
+    with open("output.txt", "w") as res:
         for uid, stat in stats:
             blob = f"{uid}\n"
             blob += f"Ground Truth: {ground_truth}\n"
