@@ -196,7 +196,7 @@ class Validator(BaseNeuron):
         stats = self.loop.run_until_complete(
             self.process_uids(miner_uids, messages, sampling_params, ground_truth)
         )
-        return stats, ground_truth, sampling_params  # Adjust batch_size as needed
+        return stats, ground_truth, sampling_params, messages  # Adjust batch_size as needed
 
     def run(self):
         assert self.config.subtensor
