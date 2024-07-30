@@ -150,6 +150,9 @@ async def create_table(conn):
     query = """
     CREATE TABLE IF NOT EXISTS miners_responses (
         id SERIAL PRIMARY KEY,
+        hotkey VARCHAR(48),
+        coldkey VARCHAR(48),
+        block INTEGER,
         uid INTEGER,
         stats JSONB,
         version VARCHAR(10)
@@ -167,9 +170,9 @@ async def add_records(records, database_url):
     async with pool.acquire() as conn:
         try:
             # Convert InferenceStats to JSON string
-            json_records = [(uid, json.dumps(stat.dict()), version) for (uid, stat, version) in records]
+            json_records = [(hotkey, coldkey, block, uid, json.dumps(stat.dict()), version) for (hotkey, coldkey, block, uid, stat, version) in records]
             await conn.executemany('''
-                INSERT INTO miners_responses (uid, stats, version) VALUES ($1, $2, $3)
+                INSERT INTO miners_responses (hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6)
             ''', json_records)
             print("Records inserted successfully.")
         except Exception as e:
