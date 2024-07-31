@@ -202,11 +202,11 @@ The goal of the hub is to give validators a simple way to directly generate reve
 This is designed as a template for validators to take and create their own branded hubs with, however pull requests are still encouraged.
 
 This is also the place where miners can view their individual performace in real-time. Miners will be able to see:
-    - Jaro Score
-    - Time to First Token
-    - Time for All Tokens
-    - Total Time
-    - Tokens Per Second
+- Jaro Score
+- Time to First Token
+- Time for All Tokens
+- Total Time
+- Tokens Per Second
 
 # How to Run Targon
 
@@ -297,7 +297,7 @@ If you are interested in running your own instance of Targon Hub, you will need 
 
 Below are steps to create a Supabase connection string to utilze this feature:
 
-1. Either create an account or log in to (Supabase)[https://supabase.com/dashboard/sign-in]
+1. Either create an account or log in to [Supabase](https://supabase.com/dashboard/sign-in])
 2. You might be asked to create an organization. In which case, choose the options best suited for your use case.
 3. Once completed, create a new project with a secure password and location of your choosing. 
    Save your password, you will need it later. Your project will then take a few minutes to be provisioned.
