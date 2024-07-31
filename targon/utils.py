@@ -92,7 +92,7 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
         norm_arr.append(temp)
     return norm_arr
 
-def safe_mean(data):
+def safe_mean_score(data):
     """
     Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the
     computed mean is NaN or infinite.
@@ -106,13 +106,13 @@ def safe_mean(data):
     Returns:
     float: The mean of the list if it's a valid number, otherwise 0.0.
     """
-    data = [x for x in data if x is not None]
-    if len(data) == 0:
+    clean_data = [x for x in data if x is not None]
+    if len(clean_data) == 0:
         return 0.0
-    mean_value = np.mean(data)
+    mean_value = np.mean(clean_data)
     if np.isnan(mean_value) or np.isinf(mean_value):
         return 0.0
-    return float(mean_value)
+    return float(mean_value) * (len(clean_data) / len(data))
 
 class InferenceStats(BaseModel):
     time_to_first_token: float

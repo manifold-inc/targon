@@ -11,7 +11,7 @@ from targon.dataset import create_query_prompt, create_search_prompt
 from targon.utils import (
     normalize,
     print_info,
-    safe_mean,
+    safe_mean_score,
     InferenceStats,
     check_tokens,
     add_records,
@@ -335,7 +335,7 @@ class Validator(BaseNeuron):
         assert self.config.netuid
 
         tokens_per_second = {
-            miner: safe_mean(self.miner_tps[miner][-30:]) for miner in self.miner_tps
+            miner: safe_mean_score(self.miner_tps[miner][-30:]) for miner in self.miner_tps
         }
         tps_list = list(tokens_per_second.values())
         if len(tps_list) == 0:
