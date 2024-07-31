@@ -23,6 +23,7 @@ you implicitly agree to these terms and conditions.
    - [Running a VLLM](#running-a-vllm)
    - [Running a Miner](#running-a-miner)
    - [Running a Validator](#running-a-validator)
+   - [Autoupdate](#autoupdate)
 1. [How to Contribute](#how-to-contribute)
 
 # Recommended Compute Requirements
@@ -267,6 +268,53 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 > - \[MODEL_ENDPOINT\]
 > - \[NEURON_API_KEY\]
 
+## Autoupdate
+
+Autoupdate is implemented in targon/utils.py. This is to ensure that your codebase matches the latest version on Main of the Targon Github Repository. 
+
+### Validator Autoupdate
+
+Validator Autoupdate is implemented and defaulted to run once weights have been set. To **disable**, please add the flag to your command line build:
+
+```bash
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --no.autoupdate
+```
+
+### Miner Autoupdate
+
+Miner Autoupdate is **not** implemented. Miners will need to check the Targon repository and update themselves as new versions are released.
+If interested in utilizing the autoupdate feature that Validators use, please follow the steps below:
+
+*NOTE*: This will not be maintained by the Manifold Labs Team.
+
+1. Add the following to targon/config.py within the ```add_miner_args()``` function. This will add an arguement flag  for you to disable automatic miner updates.
+```python
+    parser.add_argument(
+        "--no.autoupdate",
+        action="store_false",
+        dest="autoupdate",
+        help="Disable automatic updates to Targon on latest version on Main.",
+        default=True,
+    )
+```
+
+1. Import the autoupdate function into your miner script (neurons/miner.py) at the top of the file.
+
+```python
+from targon.updater import autoupdate
+```
+
+1. Call the function at a place of your choosing. 
+```python
+    #checks flag passed to build
+    if self.config.autoupdate:
+        autoupdate(branch="main")
+
+```
+
+1. Rebuild your miner with the changes. 
+
+
 ## Explanation of Args
 
 ### Shared Args
@@ -299,6 +347,7 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
    *Defaults to 48*
 1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
    a validator with a permit. *Defaults to 4096*
+1. **--no.autoupdate** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
 
 # How to Contribute
 

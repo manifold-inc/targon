@@ -135,3 +135,11 @@ def add_validator_args(parser):
         help="Database URL to save Miner Data to Targon Hub",
         default=None,
     )
+
+    parser.add_argument(
+        "--no.autoupdate",
+        action="store_false",
+        dest="autoupdate",
+        help="Disable automatic updates to Targon on latest version on Main.",
+        default=True,
+    )
