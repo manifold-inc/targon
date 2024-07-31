@@ -26,7 +26,7 @@ if __name__ == "__main__":
                 min(len(stat.response.split(" ")), len(ground_truth.split(" ")))
                 / stat.total_time
             )
-            blob = f"UID: {uid}\t"
+            blob = f"UID: {uid:>3}  \t"
             # blob += f"Ground Truth: {ground_truth}\n\n"
             # blob += f"Miner response: {stat.response}\n"
             blob += f"WPS: {wps:.2f} "
