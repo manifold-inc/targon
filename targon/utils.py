@@ -4,7 +4,6 @@ from typing import List, Tuple
 from typing import List
 from pydantic import BaseModel
 import asyncpg
-import json
 
 def print_info(metagraph, hotkey, block, isMiner=True):
     uid = metagraph.hotkeys.index(hotkey)
@@ -175,21 +174,23 @@ async def create_table(conn):
         print(f"Error executing table creation query: {e}")
 
 async def add_records(miners_records, response_records, database_url):
-    pool = await asyncpg.create_pool(database_url)
-    async with pool.acquire() as conn:
-        try:
-            # Insert response_records first since miners_responses references it
-            await conn.executemany('''
-                INSERT INTO requests_responses (r_nanoid, block, timestamp, sampling_params, ground_truth) VALUES ($1, $2, $3, $4, $5)
-            ''', response_records)
-            print("Records inserted into requests_responses successfully.")
+    conn = None
+    try:
+        conn = await asyncpg.connect(database_url)
+        # Insert response_records first since miners_responses references it
+        await conn.executemany('''
+            INSERT INTO requests_responses (r_nanoid, block, timestamp, sampling_params, ground_truth) VALUES ($1, $2, $3, $4, $5)
+        ''', response_records)
+        print("Records inserted into requests_responses successfully.")
 
-            # Insert miners_records
-            await conn.executemany('''
-                INSERT INTO miners_responses (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ''', miners_records)
-            print("Records inserted into miners_responses successfully.")
+        # Insert miners_records
+        await conn.executemany('''
+            INSERT INTO miners_responses (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ''', miners_records)
+        print("Records inserted into miners_responses successfully.")
 
-        except Exception as e:
-            print(f"Error inserting records: {e}")
-    await pool.close()
+    except Exception as e:
+        print(f"Error inserting records: {e}")
+    finally:
+        if conn:
+            await conn.close()
