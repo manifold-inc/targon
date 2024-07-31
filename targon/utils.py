@@ -1,4 +1,5 @@
 from math import floor
+import bittensor as bt
 import numpy as np
 from typing import List, Tuple
 from typing import List
@@ -140,16 +141,16 @@ async def add_records(miners_records, response_records, database_url):
         await conn.executemany('''
             INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth) VALUES ($1, $2, $3, $4, $5)
         ''', response_records)
-        print("Records inserted into requests_responses successfully.")
+        bt.logging.info("Records inserted into validator request successfully.")
 
         # Insert miners_records
         await conn.executemany('''
             INSERT INTO miner_response (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
         ''', miners_records)
-        print("Records inserted into miners_responses successfully.")
+        bt.logging.info("Records inserted into miner responses successfully.")
 
     except Exception as e:
-        print(f"Error inserting records: {e}")
+        bt.logging.error(f"Error inserting records: {e}")
     finally:
         if conn:
             await conn.close()
