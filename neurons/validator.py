@@ -189,7 +189,7 @@ class Validator(BaseNeuron):
                     (
                         r_nanoid,
                         self.subtensor.block,
-                        datetime.now().isoformat(),
+                        datetime.now(),
                         json.dumps(sampling_params.dict()),
                         json.dumps(ground_truth)
                     )
