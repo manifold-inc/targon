@@ -180,8 +180,8 @@ class Validator(BaseNeuron):
                 miners_records = [
                     (
                         r_nanoid,
-                        self.wallet.hotkey.ss58_address,
-                        self.wallet.coldkey.ss58_address,
+                        self.metagraph.axons[self.uid].hotkey,
+                        self.metagraph.axons[self.uid].coldkey,
                         self.subtensor.block,
                         uid,
                         json.dumps(stat.model_dump()),
