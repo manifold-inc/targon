@@ -8,22 +8,32 @@ import asyncio
 import openai
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
-from targon.utils import normalize, print_info, safe_mean, InferenceStats, check_tokens
+from targon.utils import (
+    normalize,
+    print_info,
+    safe_mean,
+    InferenceStats,
+    check_tokens,
+    setup_db,
+    add_records,
+)
 import traceback
 import math
 import numpy as np
 import pandas as pd
 import bittensor as bt
+from nanoid import generate
+from datetime import datetime
 
 from typing import List, Tuple
 from targon import (
     protocol,
+    __version__,
     __spec_version__ as spec_version,
 )
 from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
-
 
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
@@ -34,6 +44,7 @@ class Validator(BaseNeuron):
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.axon
+        assert self.config.database
 
         ## BITTENSOR INITIALIZATION
         self.dendrite = bt.dendrite(wallet=self.wallet)
@@ -60,6 +71,10 @@ class Validator(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+
+        if self.config.database.url:
+            asyncio.run(setup_db(self.config.database.url))
+            bt.logging.info("Succesfully created DB")
 
     async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         assert self.config.neuron
@@ -130,12 +145,15 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    async def process_uids(
-        self, uids, messages, sampling_params, ground_truth
-    ) -> List[Tuple[int, InferenceStats]]:
+    async def process_uids(self, uids, messages, sampling_params, ground_truth) -> List[Tuple[int, InferenceStats]]:
         assert self.config.neuron
+        assert self.config.database
+
         try:
             tasks = []
+            # Generate r_nano id
+            r_nanoid = generate(size=48)
+            
             for uid in uids:
                 tasks.append(
                     asyncio.create_task(
@@ -144,7 +162,7 @@ class Validator(BaseNeuron):
                         )
                     )
                 )
-            stats = await asyncio.gather(*tasks)
+            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
 
             for uid, stat in stats:
                 bt.logging.trace(f"{uid}: {stat.verified} | {stat.total_time}")
@@ -158,6 +176,33 @@ class Validator(BaseNeuron):
                 # This also pushes the list forward, so if they start failing all
                 # queries, they will eventually get zero'd
                 self.miner_tps[uid].append(None)
+
+            if self.config.database.url:
+                # Create miners_records
+                miners_records = [
+                    (
+                        r_nanoid,
+                        self.wallet.hotkey.ss58_address,
+                        self.wallet.coldkey.ss58_address,
+                        self.subtensor.block,
+                        uid,
+                        json.dumps(stat.model_dump()),
+                        __version__
+                    )
+                    for uid, stat in stats
+                ]
+                # Create response_records
+                response_records = [
+                    (
+                        r_nanoid,
+                        self.subtensor.block,
+                        datetime.now().isoformat(),
+                        json.dumps(sampling_params.dict()),
+                        json.dumps(ground_truth)
+                    )
+                ]
+
+                await add_records(miners_records, response_records, self.config.database.url)
 
             return stats
 
@@ -261,7 +306,7 @@ class Validator(BaseNeuron):
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(512, 3096)
+        max_new_tokens = random.randint(128, 1024)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
@@ -282,7 +327,7 @@ class Validator(BaseNeuron):
             temperature=0.5,
             top_p=sampling_params.top_p,
             seed=sampling_params.seed,
-            max_tokens=sampling_params.max_new_tokens,
+            max_tokens=random.randint(16, 64)
         )
 
         # Create a final search prompt using the query and sources
@@ -399,7 +444,6 @@ class Validator(BaseNeuron):
             available_uids.append(uid)
             continue
         return available_uids
-
 
 if __name__ == "__main__":
     try:

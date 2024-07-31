@@ -128,3 +128,10 @@ def add_validator_args(parser):
         help="The maximum number of TAO allowed to query a validator with a vpermit.",
         default=4096,
     )
+
+    parser.add_argument(
+        "--database.url",
+        type=str,
+        help="Database URL to save Miner Data to Targon Hub",
+        default=None,
+    )
