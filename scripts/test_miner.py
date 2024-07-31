@@ -29,8 +29,8 @@ if __name__ == "__main__":
             blob = f"UID: {uid:>3}  \t"
             # blob += f"Ground Truth: {ground_truth}\n\n"
             # blob += f"Miner response: {stat.response}\n"
-            blob += f"WPS: {wps:>4.2f} "
-            blob += f"Total Time: {stat.total_time:>4.2f} "
-            blob += f"Jaro Score: {stat.jaro_score:>3.2f}"
+            blob += f"WPS: {wps:>5.2f} "
+            blob += f"Total Time: {stat.total_time:>5.2f} "
+            blob += f"Jaro Score: {stat.jaro_score:>4.2f}"
             res.write(blob + "\n")
             print(blob)
