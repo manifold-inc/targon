@@ -19,6 +19,7 @@ you implicitly agree to these terms and conditions.
 1. [Features of Targon](#features-of-targon)
    - [Infenrence Request](#inference-request)
    - [Jaro-Winkler Similarity](#jaro-winkler-similarity)
+   - [Targon-Hub](#targon-hub)
 1. [How to Run Targon](#how-to-run-targon)
    - [Running a VLLM](#running-a-vllm)
    - [Running a Miner](#running-a-miner)
@@ -195,6 +196,18 @@ was set to 0.25.
 > [Jaro-Winkler Similarity](https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance%5D)
 > is not a mathematical metric, as it fails the Triangle Inequality.
 
+## [Targon Hub](https://github.com/manifold-inc/targon-hub)
+
+The goal of the hub is to give validators a simple way to directly generate revenue off of their bittensor bandwidth. 
+This is designed as a template for validators to take and create their own branded hubs with, however pull requests are still encouraged.
+
+This is also the place where miners can view their individual performace in real-time. Miners will be able to see:
+    - Jaro Score
+    - Time to First Token
+    - Time for All Tokens
+    - Total Time
+    - Tokens Per Second
+
 # How to Run Targon
 
 ## Running a VLLM
@@ -268,6 +281,38 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 > - \[MODEL_ENDPOINT\]
 > - \[NEURON_API_KEY\]
 
+### Targon Hub
+
+If you are interested in running your own instance of Targon Hub, you will need to add an additonal flag to save the records of miners' responses to a PostgreSQL DB.
+
+**NOTE**: No flag means no database!
+
+```bash
+--database.url [DB_CONNECTION_STRING]
+
+```
+> Please replace the following with your specific connection URL:
+>
+> - \[DB_CONNECTION_STRING\]
+
+Below are steps to create a Supabase connection string to utilze this feature:
+
+1. Either create an account or log in to (Supabase)[https://supabase.com/dashboard/sign-in]
+2. You might be asked to create an organization. In which case, choose the options best suited for your use case.
+3. Once completed, create a new project with a secure password and location of your choosing. 
+   Save your password, you will need it later. Your project will then take a few minutes to be provisioned.
+4. Once the project has been created, click on the green ```Connect``` button near the top right of the screen
+5. A modal should open up. Click on connection string, URI, and change the mode from ```transaction``` to ```session```
+   in the dropdown
+6. Copy the connection string shown and insert your password
+7. Run the new full build command with the flag and connection string 
+
+```bash
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --database.url [DB_CONNECTION_STRING]
+```
+
+As your validator runs, you will start seeing records being added into your Supabase database. This will be directly what your Targon Hub will query.
+
 ## Autoupdate
 
 Autoupdate is implemented in targon/utils.py. This is to ensure that your codebase matches the latest version on Main of the Targon Github Repository. 
@@ -298,13 +343,13 @@ If interested in utilizing the autoupdate feature that Validators use, please fo
     )
 ```
 
-1. Import the autoupdate function into your miner script (neurons/miner.py) at the top of the file.
+2. Import the autoupdate function into your miner script (neurons/miner.py) at the top of the file.
 
 ```python
 from targon.updater import autoupdate
 ```
 
-1. Call the function at a place of your choosing. 
+3. Call the function at a place of your choosing. 
 ```python
     #checks flag passed to build
     if self.config.autoupdate:
@@ -312,7 +357,7 @@ from targon.updater import autoupdate
 
 ```
 
-1. Rebuild your miner with the changes. 
+4. Rebuild your miner with the changes. 
 
 
 ## Explanation of Args
@@ -347,6 +392,7 @@ from targon.updater import autoupdate
    *Defaults to 48*
 1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
    a validator with a permit. *Defaults to 4096*
+1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
 1. **--no.autoupdate** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
 
 # How to Contribute
