@@ -26,11 +26,11 @@ if __name__ == "__main__":
                 min(len(stat.response.split(" ")), len(ground_truth.split(" ")))
                 / stat.total_time
             )
-            blob = f"UID: {uid} "
+            blob = f"UID: {uid}\t"
             # blob += f"Ground Truth: {ground_truth}\n\n"
             # blob += f"Miner response: {stat.response}\n"
             blob += f"WPS: {wps:.2f} "
             blob += f"Total Time: {stat.total_time:.2f} "
-            blob += f"Jaro Score: {stat.jaro_score}:.2f\n"
+            blob += f"Jaro Score: {stat.jaro_score:.2f}\n"
             res.write(blob)
             print(blob)
