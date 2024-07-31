@@ -198,7 +198,7 @@ was set to 0.25.
 
 ## Running a VLLM
 
-### PM2
+### VLLM
 
 In order to run Targon, you must have a VLLM instance up and running.
 
@@ -214,9 +214,13 @@ Now you are ready to server your VLLM instance to PM2
 pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key [some-secret-you-also-pass-to-validator] --port 8000
 ```
 
-The URL for a vllm instance in this instance for a vali / miner on the same
-machine would be `http://localhost:8000/v1`. **Make sure** to include the `/v1`
-to the end of the URL.
+The `--neuron.model_endpoint` for miner / vali using this vllm instance on the
+same machine would be `http://localhost:8000/v1`. **Make sure** to include the
+`/v1` to the end of the URL.
+
+Also note that `--api-key` is defined by you. Set it to something hard to guess,
+and probably random. Whatever you decide, pass it in to both `--api-key` in
+vllm, and `--neuron.api_key` on the miner / vali
 
 ## Running a Miner
 
