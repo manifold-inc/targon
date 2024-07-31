@@ -31,6 +31,6 @@ if __name__ == "__main__":
             # blob += f"Miner response: {stat.response}\n"
             blob += f"WPS: {wps:.2f} "
             blob += f"Total Time: {stat.total_time:.2f} "
-            blob += f"Jaro Score: {stat.jaro_score:.2f}\n"
-            res.write(blob)
+            blob += f"Jaro Score: {stat.jaro_score:.2f}"
+            res.write(blob + "\n")
             print(blob)
