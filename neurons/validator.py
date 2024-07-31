@@ -28,6 +28,7 @@ from datetime import datetime
 from typing import List, Tuple
 from targon import (
     protocol,
+    __version__,
     __spec_version__ as spec_version,
 )
 from bittensor.utils.weight_utils import (
@@ -74,26 +75,6 @@ class Validator(BaseNeuron):
         if self.config.database.url:
             asyncio.run(setup_db(self.config.database.url))
             bt.logging.info("Succesfully created DB")
-
-    def create_ground_truth(self, messages, sampling_params):
-        assert self.config.neuron
-        ground_truth_tokens = []
-        stream = self.client.chat.completions.create(
-            model=self.config.neuron.model_name,
-            messages=messages,
-            stream=True,
-            temperature=sampling_params.temperature,
-            top_p=sampling_params.top_p,
-            seed=sampling_params.seed,
-            timeout=5,
-        )
-        for chunk in stream:
-            token = chunk.choices[0].delta.content
-            if not token:
-                continue
-            ground_truth_tokens.append(token)
-        ground_truth_output = "".join(ground_truth_tokens)
-        return ground_truth_output
 
     async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         assert self.config.neuron
@@ -205,8 +186,8 @@ class Validator(BaseNeuron):
                         self.wallet.coldkey.ss58_address,
                         self.subtensor.block,
                         uid,
-                        json.dumps(stat.dict()),
-                        "2.0.0"
+                        json.dumps(stat.model_dump()),
+                        __version__
                     )
                     for uid, stat in stats
                 ]
@@ -325,7 +306,7 @@ class Validator(BaseNeuron):
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(512, 3096)
+        max_new_tokens = random.randint(128, 1024)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
@@ -346,7 +327,7 @@ class Validator(BaseNeuron):
             temperature=0.5,
             top_p=sampling_params.top_p,
             seed=sampling_params.seed,
-            max_tokens=sampling_params.max_new_tokens,
+            max_tokens=random.randint(16, 64)
         )
 
         # Create a final search prompt using the query and sources
