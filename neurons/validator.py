@@ -153,7 +153,6 @@ class Validator(BaseNeuron):
             tasks = []
             # Generate r_nano id
             r_nanoid = generate(size=48)
-            
             for uid in uids:
                 tasks.append(
                     asyncio.create_task(
@@ -163,7 +162,6 @@ class Validator(BaseNeuron):
                     )
                 )
             stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
-
             for uid, stat in stats:
                 bt.logging.trace(f"{uid}: {stat.verified} | {stat.total_time}")
                 if stat.verified and stat.total_time != 0:
@@ -201,13 +199,12 @@ class Validator(BaseNeuron):
                         json.dumps(ground_truth)
                     )
                 ]
-
                 await add_records(miners_records, response_records, self.config.database.url)
-
             return stats
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
+            bt.logging.error(traceback.format_exc())
             return []
 
     def query_miners(self, miner_uids):
