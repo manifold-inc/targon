@@ -1,6 +1,6 @@
 from math import floor
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from typing import List
 from pydantic import BaseModel
 import asyncpg
@@ -92,7 +92,6 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
         norm_arr.append(temp)
     return norm_arr
 
-
 def safe_mean(data):
     """
     Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the
@@ -107,6 +106,7 @@ def safe_mean(data):
     Returns:
     float: The mean of the list if it's a valid number, otherwise 0.0.
     """
+    data = [x for x in data if x is not None]
     if len(data) == 0:
         return 0.0
     mean_value = np.mean(data)
@@ -122,18 +122,17 @@ class InferenceStats(BaseModel):
     tokens: List[str]
     response: str
     verified: bool
+    jaro_score: float
 
-def check_tokens(miner_output, ground_truth_output):
+def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
     if len(miner_output) < (len(ground_truth_output) * 0.8):
-        return False
+        return 0, False
 
     # Calculate the score from 0 to 1
     score = jaro_winkler(ground_truth_output, miner_output)
 
-    if score < 0.97:
-        return False
+    return score, score > 0.97
 
-    return True
 async def setup_db(database_url):
     conn = None
     try:

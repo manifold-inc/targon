@@ -63,7 +63,7 @@ def add_args(parser):
         "--neuron.model_endpoint",
         type=str,
         help="The endpoint to use for the OpenAI Compatible client.",
-        default="http://127.0.0.1:8080",
+        default="http://127.0.0.1:8000/v1",
     )
 
     parser.add_argument(

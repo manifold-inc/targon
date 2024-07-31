@@ -82,6 +82,7 @@ class Miner(BaseNeuron):
                 top_p=synapse.sampling_params.top_p,
                 seed=synapse.sampling_params.seed,
                 timeout=5,
+                max_tokens=synapse.sampling_params.max_new_tokens,
             )
             full_text = ""
             for chunk in stream:

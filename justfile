@@ -3,7 +3,7 @@ default:
   @just list
 
 validator:
-  python3 neurons/validator.py --wallet.name validator --netuid 40 --subtensor.network test --neuron.model_endpoint http://localhost:8000/v1 --neuron.proxy.port 8080 --neuron.api_key aksjdalskj --neuron.epoch_length 101 --logging.trace
+  python3 neurons/validator.py --wallet.name validator --netuid 40 --subtensor.network test --neuron.model_endpoint http://localhost:8000/v1 --neuron.port 8080 --neuron.api_key aksjdalskj --neuron.epoch_length 101 --logging.trace
 
 vali-db:
   python3 neurons/validator.py --wallet.name validator --netuid 40 --subtensor.network test --neuron.model_endpoint http://localhost:8000/v1 --neuron.proxy.port 8080 --neuron.api_key aksjdalskj --neuron.epoch_length 101 --logging.trace --database.url postgresql://postgres.wtrltflsdkcxdelwbaad:testtargonpassword@aws-0-us-east-1.pooler.supabase.com:6543/postgres 

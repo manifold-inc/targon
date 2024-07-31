@@ -4,6 +4,8 @@ import copy
 import time
 import random
 import asyncio
+
+import openai
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.utils import (
@@ -32,7 +34,6 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
-
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
 
@@ -56,6 +57,7 @@ class Validator(BaseNeuron):
         self.hotkeys = self.metagraph.hotkeys
         self.next_forward_block = None
         self.last_posted_weights = self.metagraph.last_update[self.uid]
+        bt.logging.info(f"Last updated at block {self.last_posted_weights}")
 
         ## STATS
         miners = self.get_miner_uids()
@@ -103,6 +105,7 @@ class Validator(BaseNeuron):
             tokens=[],
             response="",
             verified=False,
+            jaro_score=0,
         )
         try:
             synapse = protocol.Inference(
@@ -143,7 +146,11 @@ class Validator(BaseNeuron):
             tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
-            stats.verified = check_tokens(response.split(" "), ground_truth.split(" "))
+            jaro_score, verified = check_tokens(
+                response.split(" "), ground_truth.split(" ")
+            )
+            stats.jaro_score = jaro_score
+            stats.verified = verified
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
@@ -157,24 +164,11 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    def score(self, uid, stats: InferenceStats):
-        bt.logging.trace(f"{uid}: {stats.verified} | {stats.total_time}")
-        if stats.verified and stats.total_time != 0:
-            self.miner_tps[uid].append(
-                len(stats.response.split(" ")) / stats.total_time
-            )
-            return
-        self.miner_tps[uid].append(0)
-
-
-    async def process_uids(self, uids, messages, sampling_params, ground_truth):
+    async def process_uids(self, uids, messages, sampling_params, ground_truth) -> List[Tuple[int, InferenceStats]]:
         assert self.config.neuron
         assert self.config.database
 
         try:
-            bt.logging.info(
-                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.subtensor.block - self.metagraph.last_update[self.uid]) - self.config.neuron.epoch_length }"
-            )
             tasks = []
             # Generate r_nano id
             r_nanoid = generate(size=48)
@@ -190,7 +184,17 @@ class Validator(BaseNeuron):
             stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
 
             for uid, stat in stats:
-                self.score(uid, stat)
+                bt.logging.trace(f"{uid}: {stat.verified} | {stat.total_time}")
+                if stat.verified and stat.total_time != 0:
+                    self.miner_tps[uid].append(
+                        min(len(stat.response.split(" ")), len(ground_truth.split(" ")))
+                        / stat.total_time
+                    )
+                    continue
+                # Dont give people zeros for missing a single query
+                # This also pushes the list forward, so if they start failing all
+                # queries, they will eventually get zero'd
+                self.miner_tps[uid].append(None)
 
             if self.config.database.url:
                 # Create miners_records
@@ -219,9 +223,47 @@ class Validator(BaseNeuron):
 
                 await add_records(miners_records, response_records, self.config.database.url)
 
+            return stats
+
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
-            time.sleep(12)
+            return []
+
+    def query_miners(self, miner_uids):
+        assert self.config.neuron
+        try:
+            messages, sampling_params = asyncio.run(self.generate_question())
+            res = self.client.chat.completions.create(
+                model=self.config.neuron.model_name,
+                messages=messages,
+                stream=False,
+                temperature=sampling_params.temperature,
+                top_p=sampling_params.top_p,
+                seed=sampling_params.seed,
+                max_tokens=sampling_params.max_new_tokens,
+            )
+            ground_truth = res.choices[0].message.content
+        except openai.APIConnectionError:
+            bt.logging.error(
+                f"Failed to connect to LLM server with connection string {self.client.base_url}."
+            )
+            bt.logging.error(
+                "Make sure an open ai compliant server is running at the above url, or fix --neuron.model_endpoint"
+            )
+            return None
+        except Exception as e:
+            bt.logging.error(f"Error generating dataset: {e}")
+            bt.logging.error(traceback.format_exc())
+            return None
+        stats = self.loop.run_until_complete(
+            self.process_uids(miner_uids, messages, sampling_params, ground_truth)
+        )
+        return (
+            stats,
+            ground_truth,
+            sampling_params,
+            messages,
+        )  # Adjust batch_size as needed
 
     def run(self):
         assert self.config.subtensor
@@ -245,7 +287,7 @@ class Validator(BaseNeuron):
                 continue
 
             # Declare next forward block a random time in the future so that not all valis query at the same time
-            self.next_forward_block = random.randint(12, 36) + self.subtensor.block
+            self.next_forward_block = random.randint(1, 6) + self.subtensor.block
 
             bt.logging.info(
                 print_info(
@@ -255,45 +297,19 @@ class Validator(BaseNeuron):
                     isMiner=False,
                 )
             )
-            # get all miner uids
+            # get random set of miner uids
             miner_uids = self.get_miner_uids()
-
-            # randomize miner_uids
             random.shuffle(miner_uids)
-
-            # reduce down to 16 miners
             miner_uids = miner_uids[: self.config.neuron.sample_size]
-            try:
-                messages, sampling_params = asyncio.run(self.generate_question())
-                ground_truth_tokens = []
-                stream = self.client.chat.completions.create(
-                    model=self.config.neuron.model_name,
-                    messages=messages,
-                    stream=True,
-                    temperature=sampling_params.temperature,
-                    top_p=sampling_params.top_p,
-                    seed=sampling_params.seed,
-                    timeout=5,
-                )
-                for chunk in stream:
-                    token = chunk.choices[0].delta.content
-                    if not token:
-                        continue
-                    ground_truth_tokens.append(token)
-
-                ground_truth = "".join(ground_truth_tokens)
-            except Exception as e:
-                bt.logging.error(f"Error generating dataset: {e}")
-                bt.logging.error(traceback.format_exc())
-                continue
-            self.loop.run_until_complete(
-                self.process_uids(miner_uids, messages, sampling_params, ground_truth)
-            )  # Adjust batch_size as needed
+            self.query_miners(miner_uids)
 
             # Sync metagraph and potentially set weights.
             if self.sync_metagraph():
                 self.resync_hotkeys()
 
+            bt.logging.info(
+                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.last_posted_weights + self.config.neuron.epoch_length) - self.subtensor.block }"
+            )
             # Check if we should set weights
             if (
                 self.last_posted_weights + self.config.neuron.epoch_length
@@ -309,7 +325,7 @@ class Validator(BaseNeuron):
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(16, 1024)
+        max_new_tokens = random.randint(512, 3096)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
@@ -322,6 +338,7 @@ class Validator(BaseNeuron):
         # Generate a query from the sampled text and perform text generation
         messages = create_query_prompt(random_row_text)
 
+        # If this fails, it gets caught in the same try/catch as ground truth generation
         res = self.client.chat.completions.create(
             model=self.config.neuron.model_name,
             messages=messages,
@@ -329,6 +346,7 @@ class Validator(BaseNeuron):
             temperature=0.5,
             top_p=sampling_params.top_p,
             seed=sampling_params.seed,
+            max_tokens=sampling_params.max_new_tokens,
         )
 
         # Create a final search prompt using the query and sources
@@ -445,7 +463,6 @@ class Validator(BaseNeuron):
             available_uids.append(uid)
             continue
         return available_uids
-
 
 if __name__ == "__main__":
     try:
