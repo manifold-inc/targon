@@ -194,7 +194,12 @@ class Validator(BaseNeuron):
         stats = self.loop.run_until_complete(
             self.process_uids(miner_uids, messages, sampling_params, ground_truth)
         )
-        return stats, ground_truth, sampling_params, messages  # Adjust batch_size as needed
+        return (
+            stats,
+            ground_truth,
+            sampling_params,
+            messages,
+        )  # Adjust batch_size as needed
 
     def run(self):
         assert self.config.subtensor
@@ -238,7 +243,6 @@ class Validator(BaseNeuron):
             if self.sync_metagraph():
                 self.resync_hotkeys()
 
-
             bt.logging.info(
                 f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.last_posted_weights + self.config.neuron.epoch_length) - self.subtensor.block }"
             )
@@ -257,7 +261,7 @@ class Validator(BaseNeuron):
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(2048, 4096)
+        max_new_tokens = random.randint(512, 3096)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
