@@ -132,47 +132,6 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
 
     return score, score > 0.97
 
-async def setup_db(database_url):
-    conn = None
-    try:
-        conn = await asyncpg.connect(database_url)
-        await create_table(conn)
-    except Exception as e:
-        print(f"Error creating Supabase client: {e}")
-    finally:
-        if conn:
-            await conn.close()
-
-async def create_table(conn):
-    query1 = """
-    CREATE TABLE IF NOT EXISTS requests_responses (
-        r_nanoid VARCHAR(48) PRIMARY KEY,
-        block INTEGER,
-        timestamp VARCHAR(48),
-        sampling_params JSONB,
-        ground_truth JSONB
-    );
-    """
-    query2 = """
-    CREATE TABLE IF NOT EXISTS miners_responses (
-        id SERIAL PRIMARY KEY,
-        r_nanoid VARCHAR(48) REFERENCES requests_responses(r_nanoid),
-        hotkey VARCHAR(48),
-        coldkey VARCHAR(48),
-        block INTEGER,
-        uid INTEGER,
-        stats JSONB,
-        version VARCHAR(10)
-    );
-    """
-    try:
-        await conn.execute(query1)
-        print("Table requests_responses created successfully.")
-        await conn.execute(query2)
-        print("Table miners_responses created successfully.")
-    except Exception as e:
-        print(f"Error executing table creation query: {e}")
-
 async def add_records(miners_records, response_records, database_url):
     conn = None
     try:

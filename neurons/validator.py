@@ -14,7 +14,6 @@ from targon.utils import (
     safe_mean,
     InferenceStats,
     check_tokens,
-    setup_db,
     add_records,
 )
 import traceback
@@ -71,10 +70,6 @@ class Validator(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
-
-        if self.config.database.url:
-            asyncio.run(setup_db(self.config.database.url))
-            bt.logging.info("Succesfully created DB")
 
     async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         assert self.config.neuron
