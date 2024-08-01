@@ -323,6 +323,9 @@ class Validator(BaseNeuron):
             ):
                 self.last_posted_weights = self.subtensor.block
                 self.set_weights()
+                # After setting weights, check to see if we need to update
+                if self.config.autoupdate:
+                    autoupdate(branch="main")
 
     async def generate_question(self):
         assert self.config.neuron
@@ -434,9 +437,6 @@ class Validator(BaseNeuron):
         else:
             bt.logging.error(f"set_weights failed {message}")
 
-        # After setting weights, check to see if we need to update
-        if self.config.autoupdate:
-            autoupdate(branch="main")
 
     def resync_hotkeys(self):
         bt.logging.info(

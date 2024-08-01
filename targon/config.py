@@ -144,7 +144,7 @@ def add_validator_args(parser):
     )
 
     parser.add_argument(
-        "--no.autoupdate",
+        "--autoupdate_off",
         action="store_false",
         dest="autoupdate",
         help="Disable automatic updates to Targon on latest version on Main.",

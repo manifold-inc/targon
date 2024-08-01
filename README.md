@@ -240,7 +240,7 @@ Autoupdate is implemented in targon/utils.py. This is to ensure that your codeba
 Validator Autoupdate is implemented and defaulted to run once weights have been set. To **disable**, please add the flag to your command line build:
 
 ```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --no.autoupdate
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --autoupdate false
 ```
 
 ### Miner Autoupdate
