@@ -250,18 +250,7 @@ If interested in utilizing the autoupdate feature that Validators use, please fo
 
 *NOTE*: This will not be maintained by the Manifold Labs Team.
 
-1. Add the following to targon/config.py within the ```add_miner_args()``` function. This will add an arguement flag  for you to disable automatic miner updates.
-```python
-    parser.add_argument(
-        "--no.autoupdate",
-        action="store_false",
-        dest="autoupdate",
-        help="Disable automatic updates to Targon on latest version on Main.",
-        default=True,
-    )
-```
-
-2. Import the autoupdate function into your miner script (neurons/miner.py) at the top of the file.
+1. Import the autoupdate function into your miner script (neurons/miner.py) at the top of the file.
 
 ```python
 from targon.updater import autoupdate
@@ -269,7 +258,6 @@ from targon.updater import autoupdate
 
 3. Call the function at a place of your choosing. 
 ```python
-    #checks flag passed to build
     if self.config.autoupdate:
         autoupdate(branch="main")
 
@@ -309,6 +297,8 @@ from targon.updater import autoupdate
    *Defaults to 48*
 1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
    a validator with a permit. *Defaults to 4096*
+1. **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
+  cache.pickle*
 1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
 1. **--no.autoupdate** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
 

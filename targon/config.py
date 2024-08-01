@@ -78,6 +78,13 @@ def add_args(parser):
         help="API key for openai compatable api",
         default="12345",
     )
+    parser.add_argument(
+        "--autoupdate_off",
+        action="store_false",
+        dest="autoupdate",
+        help="Disable automatic updates to Targon on latest version on Main.",
+        default=True,
+    )
 
 
 def add_miner_args(parser):
@@ -141,12 +148,4 @@ def add_validator_args(parser):
         type=str,
         help="Database URL to save Miner Data to Targon Hub",
         default=None,
-    )
-
-    parser.add_argument(
-        "--autoupdate_off",
-        action="store_false",
-        dest="autoupdate",
-        help="Disable automatic updates to Targon on latest version on Main.",
-        default=True,
     )
