@@ -212,7 +212,7 @@ class Validator(BaseNeuron):
                 await add_records(
                     miners_records, response_records, self.config.database.url
                 )
-                self.save_scores()
+            self.save_scores()
             return stats
 
         except Exception as e:
