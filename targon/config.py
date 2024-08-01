@@ -109,6 +109,13 @@ def add_validator_args(parser):
     )
 
     parser.add_argument(
+        "--neuron.cache_file",
+        type=str,
+        help="File to save scores, and other misc data that can persist through validator restarts",
+        default="cache.pickle",
+    )
+
+    parser.add_argument(
         "--neuron.timeout",
         type=float,
         help="The timeout for each forward call in seconds.",

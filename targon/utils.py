@@ -1,10 +1,10 @@
 from math import floor
+import bittensor as bt
 import numpy as np
 from typing import List, Tuple
 from typing import List
 from pydantic import BaseModel
 import asyncpg
-import json
 
 def print_info(metagraph, hotkey, block, isMiner=True):
     uid = metagraph.hotkeys.index(hotkey)
@@ -92,7 +92,7 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
         norm_arr.append(temp)
     return norm_arr
 
-def safe_mean(data):
+def safe_mean_score(data):
     """
     Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the
     computed mean is NaN or infinite.
@@ -106,19 +106,19 @@ def safe_mean(data):
     Returns:
     float: The mean of the list if it's a valid number, otherwise 0.0.
     """
-    data = [x for x in data if x is not None]
-    if len(data) == 0:
+    clean_data = [x for x in data if x is not None]
+    if len(clean_data) == 0:
         return 0.0
-    mean_value = np.mean(data)
+    mean_value = np.mean(clean_data)
     if np.isnan(mean_value) or np.isinf(mean_value):
         return 0.0
-    return float(mean_value)
+    return float(mean_value) * (len(clean_data) / len(data))
 
 class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
     total_time: float
-    tokens_per_second: float
+    wps: float
     tokens: List[str]
     response: str
     verified: bool
@@ -133,63 +133,24 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
 
     return score, score > 0.97
 
-async def setup_db(database_url):
+async def add_records(miners_records, response_records, database_url):
     conn = None
     try:
         conn = await asyncpg.connect(database_url)
-        await create_table(conn)
+        # Insert response_records first since miners_responses references it
+        await conn.executemany('''
+            INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth) VALUES ($1, $2, $3, $4, $5)
+        ''', response_records)
+        bt.logging.info("Records inserted into validator request successfully.")
+
+        # Insert miners_records
+        await conn.executemany('''
+            INSERT INTO miner_response (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ''', miners_records)
+        bt.logging.info("Records inserted into miner responses successfully.")
+
     except Exception as e:
-        print(f"Error creating Supabase client: {e}")
+        bt.logging.error(f"Error inserting records: {e}")
     finally:
         if conn:
             await conn.close()
-
-async def create_table(conn):
-    query1 = """
-    CREATE TABLE IF NOT EXISTS requests_responses (
-        r_nanoid VARCHAR(48) PRIMARY KEY,
-        block INTEGER,
-        timestamp VARCHAR(48),
-        sampling_params JSONB,
-        ground_truth JSONB
-    );
-    """
-    query2 = """
-    CREATE TABLE IF NOT EXISTS miners_responses (
-        id SERIAL PRIMARY KEY,
-        r_nanoid VARCHAR(48) REFERENCES requests_responses(r_nanoid),
-        hotkey VARCHAR(48),
-        coldkey VARCHAR(48),
-        block INTEGER,
-        uid INTEGER,
-        stats JSONB,
-        version VARCHAR(10)
-    );
-    """
-    try:
-        await conn.execute(query1)
-        print("Table requests_responses created successfully.")
-        await conn.execute(query2)
-        print("Table miners_responses created successfully.")
-    except Exception as e:
-        print(f"Error executing table creation query: {e}")
-
-async def add_records(miners_records, response_records, database_url):
-    pool = await asyncpg.create_pool(database_url)
-    async with pool.acquire() as conn:
-        try:
-            # Insert response_records first since miners_responses references it
-            await conn.executemany('''
-                INSERT INTO requests_responses (r_nanoid, block, timestamp, sampling_params, ground_truth) VALUES ($1, $2, $3, $4, $5)
-            ''', response_records)
-            print("Records inserted into requests_responses successfully.")
-
-            # Insert miners_records
-            await conn.executemany('''
-                INSERT INTO miners_responses (r_nanoid, hotkey, coldkey, block, uid, stats, version) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ''', miners_records)
-            print("Records inserted into miners_responses successfully.")
-
-        except Exception as e:
-            print(f"Error inserting records: {e}")
-    await pool.close()

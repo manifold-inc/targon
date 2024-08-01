@@ -5,6 +5,7 @@ import time
 import random
 import asyncio
 
+import pickle
 import openai
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
@@ -12,10 +13,9 @@ from targon.updater import autoupdate
 from targon.utils import (
     normalize,
     print_info,
-    safe_mean,
+    safe_mean_score,
     InferenceStats,
     check_tokens,
-    setup_db,
     add_records,
 )
 import traceback
@@ -26,7 +26,7 @@ import bittensor as bt
 from nanoid import generate
 from datetime import datetime
 
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 from targon import (
     protocol,
     __version__,
@@ -36,7 +36,9 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
+
 class Validator(BaseNeuron):
+    miner_tps: Dict[int, Any]
     neuron_type = NeuronType.Validator
 
     def __init__(self, config=None):
@@ -62,8 +64,22 @@ class Validator(BaseNeuron):
         bt.logging.info(f"Last updated at block {self.last_posted_weights}")
 
         ## STATS
+        try:
+            with open(self.config.neuron.cache_file, "rb") as file:
+                loaded_data: Dict[str, Any] = pickle.load(file)
+                # Only load cache if fresh
+                if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
+                    bt.logging.info("Loading cached data")
+                    bt.logging.info(str(loaded_data))
+                    self.miner_tps = loaded_data.get("miner_tps", {})
+        except IOError:
+            bt.logging.info("No cache file found")
+            self.miner_tps = {}
+
         miners = self.get_miner_uids()
-        self.miner_tps = {miner: [] for miner in miners}
+        for miner in miners:
+            if self.miner_tps.get(miner) == None:
+                self.miner_tps[miner] = []
 
         ## SET DATASET
         self.dataset = pd.read_json(
@@ -73,16 +89,12 @@ class Validator(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-        if self.config.database.url:
-            asyncio.run(setup_db(self.config.database.url))
-            bt.logging.info("Succesfully created DB")
-
     async def handle_inference(self, messages, sampling_params, uid, ground_truth):
         assert self.config.neuron
         stats = InferenceStats(
             time_to_first_token=0,
             time_for_all_tokens=0,
-            tokens_per_second=0,
+            wps=0,
             total_time=0,
             tokens=[],
             response="",
@@ -120,12 +132,6 @@ class Validator(BaseNeuron):
             end_token_time = time.time()
             time_to_first_token = end_send_message_time - start_send_message_time
             time_for_all_tokens = end_token_time - start_token_time
-            tokens_per_second_partial = (
-                token_count / time_for_all_tokens
-                if token_count > 0 and time_for_all_tokens > 0
-                else 0
-            )
-            tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
             jaro_score, verified = check_tokens(
@@ -138,7 +144,10 @@ class Validator(BaseNeuron):
             stats.total_time = end_token_time - start_send_message_time
             stats.response = response
             stats.tokens = response_tokens
-            stats.tokens_per_second = tokens_per_second
+            stats.wps = (
+                min(len(stats.response.split(" ")), len(ground_truth.split(" ")))
+                / stats.total_time
+            )
             # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
             return uid, stats
         except Exception as e:
@@ -146,7 +155,9 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    async def process_uids(self, uids, messages, sampling_params, ground_truth) -> List[Tuple[int, InferenceStats]]:
+    async def process_uids(
+        self, uids, messages, sampling_params, ground_truth
+    ) -> List[Tuple[int, InferenceStats]]:
         assert self.config.neuron
         assert self.config.database
 
@@ -154,7 +165,6 @@ class Validator(BaseNeuron):
             tasks = []
             # Generate r_nano id
             r_nanoid = generate(size=48)
-            
             for uid in uids:
                 tasks.append(
                     asyncio.create_task(
@@ -164,14 +174,10 @@ class Validator(BaseNeuron):
                     )
                 )
             stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
-
             for uid, stat in stats:
                 bt.logging.trace(f"{uid}: {stat.verified} | {stat.total_time}")
                 if stat.verified and stat.total_time != 0:
-                    self.miner_tps[uid].append(
-                        min(len(stat.response.split(" ")), len(ground_truth.split(" ")))
-                        / stat.total_time
-                    )
+                    self.miner_tps[uid].append(stat.wps)
                     continue
                 # Dont give people zeros for missing a single query
                 # This also pushes the list forward, so if they start failing all
@@ -183,12 +189,12 @@ class Validator(BaseNeuron):
                 miners_records = [
                     (
                         r_nanoid,
-                        self.wallet.hotkey.ss58_address,
-                        self.wallet.coldkey.ss58_address,
+                        self.metagraph.axons[uid].hotkey,
+                        self.metagraph.axons[uid].coldkey,
                         self.subtensor.block,
                         uid,
                         json.dumps(stat.model_dump()),
-                        __version__
+                        __version__,
                     )
                     for uid, stat in stats
                 ]
@@ -197,19 +203,37 @@ class Validator(BaseNeuron):
                     (
                         r_nanoid,
                         self.subtensor.block,
-                        datetime.now().isoformat(),
+                        datetime.now(),
                         json.dumps(sampling_params.dict()),
-                        json.dumps(ground_truth)
+                        json.dumps(
+                            {"ground_truth": ground_truth, "messages": messages}
+                        ),
                     )
                 ]
-
-                await add_records(miners_records, response_records, self.config.database.url)
-
+                await add_records(
+                    miners_records, response_records, self.config.database.url
+                )
+            self.save_scores()
             return stats
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
+            bt.logging.error(traceback.format_exc())
             return []
+
+    def save_scores(self):
+        assert self.config.neuron
+        with open(self.config.neuron.cache_file, "wb") as file:
+            bt.logging.info("Caching scores...")
+            pickle.dump(
+                {
+                    "miner_tps": self.miner_tps,
+                    "block_saved": self.subtensor.block,
+                    "version": spec_version,
+                },
+                file,
+            )
+            bt.logging.info("Cached")
 
     def query_miners(self, miner_uids):
         assert self.config.neuron
@@ -245,7 +269,7 @@ class Validator(BaseNeuron):
             ground_truth,
             sampling_params,
             messages,
-        )  # Adjust batch_size as needed
+        )
 
     def run(self):
         assert self.config.subtensor
@@ -328,7 +352,7 @@ class Validator(BaseNeuron):
             temperature=0.5,
             top_p=sampling_params.top_p,
             seed=sampling_params.seed,
-            max_tokens=random.randint(16, 64)
+            max_tokens=random.randint(16, 64),
         )
 
         # Create a final search prompt using the query and sources
@@ -344,7 +368,8 @@ class Validator(BaseNeuron):
         assert self.config.netuid
 
         tokens_per_second = {
-            miner: safe_mean(self.miner_tps[miner][-30:]) for miner in self.miner_tps
+            miner: safe_mean_score(self.miner_tps[miner][-30:])
+            for miner in self.miner_tps
         }
         tps_list = list(tokens_per_second.values())
         if len(tps_list) == 0:
@@ -449,6 +474,7 @@ class Validator(BaseNeuron):
             available_uids.append(uid)
             continue
         return available_uids
+
 
 if __name__ == "__main__":
     try:
