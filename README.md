@@ -23,6 +23,7 @@ you implicitly agree to these terms and conditions.
 1. [Features of Targon](#features-of-targon)
    - [Infenrence Request](#inference-request)
    - [Jaro-Winkler Similarity](#jaro-winkler-similarity)
+   - [Targon-Hub](#targon-hub)
 1. [How to Contribute](#how-to-contribute)
 
 # Recommended Compute Requirements
@@ -187,40 +188,119 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 > - \[MODEL_ENDPOINT\]
 > - \[NEURON_API_KEY\]
 
+
+### Targon Hub
+
+The goal of the hub is to give validators a simple way to directly generate revenue off of their bittensor bandwidth. 
+This is designed as a template for validators to take and create their own branded hubs with, however pull requests are still encouraged.
+
+This is also the place where miners can view their individual performace in real-time. Miners will be able to see:
+- Jaro Score
+- Time to First Token
+- Time for All Tokens
+- Total Time
+- Tokens Per Second
+
+If you are interested in running your own instance of Targon Hub, you will need to add an additonal flag to save the records of miners' responses to a PostgreSQL DB.
+
+**NOTE**: No flag means no database!
+
+```bash
+--database.url [DB_CONNECTION_STRING]
+
+```
+> Please replace the following with your specific connection URL:
+>
+> - \[DB_CONNECTION_STRING\]
+
+Below are steps to create a Supabase connection string to utilze this feature:
+
+1. Either create an account or log in to [Supabase](https://supabase.com/dashboard/sign-in])
+2. You might be asked to create an organization. In which case, choose the options best suited for your use case.
+3. Once completed, create a new project with a secure password and location of your choosing. 
+   Save your password, you will need it later. Your project will then take a few minutes to be provisioned.
+4. Once the project has been created, click on the green ```Connect``` button near the top right of the screen
+5. A modal should open up. Click on connection string, URI, and change the mode from ```transaction``` to ```session```
+   in the dropdown
+6. Copy the connection string shown and insert your password
+7. Run the new full build command with the flag and connection string 
+
+```bash
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --database.url [DB_CONNECTION_STRING]
+```
+
+As your validator runs, you will start seeing records being added into your Supabase database. This will be directly what your Targon Hub will query.
+
+## Autoupdate
+
+Autoupdate is implemented in targon/utils.py. This is to ensure that your codebase matches the latest version on Main of the Targon Github Repository. 
+
+### Validator Autoupdate
+
+Validator Autoupdate is implemented and defaulted to run once weights have been set. To **disable**, please add the flag to your command line build:
+
+```bash
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --autoupdate false
+```
+
+### Miner Autoupdate
+
+Miner Autoupdate is **not** implemented. Miners will need to check the Targon repository and update themselves as new versions are released.
+If interested in utilizing the autoupdate feature that Validators use, please follow the steps below:
+
+*NOTE*: This will not be maintained by the Manifold Labs Team.
+
+1. Import the autoupdate function into your miner script (neurons/miner.py) at the top of the file.
+
+```python
+from targon.updater import autoupdate
+```
+
+3. Call the function at a place of your choosing. 
+```python
+    if self.config.autoupdate:
+        autoupdate(branch="main")
+
+```
+
+4. Relaunch your miner with the changes. 
+
 ## Explanation of Args
 
 ### Shared Args
 
-- **--netuid** ==> Subnet Netuid. *Defaults to 4*
-- **--neuron.epoch_length** ==> Default epoch length (how often we set weights,
-  measured in 12 second blocks). *Defaults to 360*
-- **--mock** ==> Mock neuron and all network components. *Defaults to False*
-- **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
-  CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
-- **--neuron.model_name** ==> Name of the model used for completion. *Defaults
-  to "mlabonne/NeuralDaredevil-7B"*
-- **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
-  "12345"*
+1. **--netuid** ==> Subnet Netuid. *Defaults to 4*
+1. **--neuron.epoch_length** ==> Default epoch length (how often we set weights,
+   measured in 12 second blocks). *Defaults to 360*
+1. **--mock** ==> Mock neuron and all network components. *Defaults to False*
+1. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
+   CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
+1. **--neuron.model_name** ==> Name of the model used for completion. *Defaults
+   to "mlabonne/NeuralDaredevil-7B"*
+1. **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
+   "12345"*
 
 ### Miner Args
 
-- **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold -
-  wallet-hot) / neuron.name. *Defaults to miner*
-- **--blacklist.force_validator.permit** ==> If set, forces incoming requests to
-  have a permit. *Defaults to True*
+1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
+   \- wallet-hot) / neuron.name. *Defaults to miner*
+1. **--blacklist.force_validator.permit** ==> If set, forces incoming requests
+   to have a permit. *Defaults to True*
 
 ### Validator Args
 
-- **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold -
-  wallet-hot) / neuron.name. *Defaults to validator*
-- **--neuron.timeout** ==> The timeout for each forward call in seconds.
-  *Defaults to 12*
-- **--neuron.sample_size** ==> The number of miners to query in a single step.
-  *Defaults to 48*
-- **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
-  a validator with a permit. *Defaults to 4096*
-- **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
+1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
+   \- wallet-hot) / neuron.name. *Defaults to validator*
+1. **--neuron.timeout** ==> The timeout for each forward call in seconds.
+   *Defaults to 12*
+1. **--neuron.sample_size** ==> The number of miners to query in a single step.
+   *Defaults to 48*
+1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
+   a validator with a permit. *Defaults to 4096*
+1. **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
   cache.pickle*
+1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
+1. **--no.autoupdate** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
 
 # What is a Redundant Deterministic Verification Network?
 

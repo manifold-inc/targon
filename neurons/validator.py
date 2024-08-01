@@ -9,6 +9,7 @@ import pickle
 import openai
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
+from targon.updater import autoupdate
 from targon.utils import (
     normalize,
     print_info,
@@ -322,6 +323,9 @@ class Validator(BaseNeuron):
             ):
                 self.last_posted_weights = self.subtensor.block
                 self.set_weights()
+                # After setting weights, check to see if we need to update
+                if self.config.autoupdate:
+                    autoupdate(branch="main")
 
     async def generate_question(self):
         assert self.config.neuron
@@ -432,6 +436,7 @@ class Validator(BaseNeuron):
             bt.logging.info("set_weights on chain successfully!")
         else:
             bt.logging.error(f"set_weights failed {message}")
+
 
     def resync_hotkeys(self):
         bt.logging.info(
