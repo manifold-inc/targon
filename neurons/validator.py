@@ -188,7 +188,9 @@ class Validator(BaseNeuron):
                         self.subtensor.block,
                         datetime.now(),
                         json.dumps(sampling_params.dict()),
-                        json.dumps(ground_truth),
+                        json.dumps(
+                            {"ground_truth": ground_truth, "messages": messages}
+                        ),
                     )
                 ]
                 await add_records(
