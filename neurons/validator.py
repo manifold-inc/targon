@@ -34,6 +34,7 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
+
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
 
@@ -76,7 +77,7 @@ class Validator(BaseNeuron):
         stats = InferenceStats(
             time_to_first_token=0,
             time_for_all_tokens=0,
-            tokens_per_second=0,
+            wps=0,
             total_time=0,
             tokens=[],
             response="",
@@ -114,12 +115,6 @@ class Validator(BaseNeuron):
             end_token_time = time.time()
             time_to_first_token = end_send_message_time - start_send_message_time
             time_for_all_tokens = end_token_time - start_token_time
-            tokens_per_second_partial = (
-                token_count / time_for_all_tokens
-                if token_count > 0 and time_for_all_tokens > 0
-                else 0
-            )
-            tokens_per_second = tokens_per_second_partial
             response = "".join(response_tokens)
 
             jaro_score, verified = check_tokens(
@@ -132,7 +127,10 @@ class Validator(BaseNeuron):
             stats.total_time = end_token_time - start_send_message_time
             stats.response = response
             stats.tokens = response_tokens
-            stats.tokens_per_second = tokens_per_second
+            stats.wps = (
+                min(len(stats.response.split(" ")), len(ground_truth.split(" ")))
+                / stats.total_time
+            )
             # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
             return uid, stats
         except Exception as e:
@@ -140,7 +138,9 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    async def process_uids(self, uids, messages, sampling_params, ground_truth) -> List[Tuple[int, InferenceStats]]:
+    async def process_uids(
+        self, uids, messages, sampling_params, ground_truth
+    ) -> List[Tuple[int, InferenceStats]]:
         assert self.config.neuron
         assert self.config.database
 
@@ -160,10 +160,7 @@ class Validator(BaseNeuron):
             for uid, stat in stats:
                 bt.logging.trace(f"{uid}: {stat.verified} | {stat.total_time}")
                 if stat.verified and stat.total_time != 0:
-                    self.miner_tps[uid].append(
-                        min(len(stat.response.split(" ")), len(ground_truth.split(" ")))
-                        / stat.total_time
-                    )
+                    self.miner_tps[uid].append(stat.wps)
                     continue
                 # Dont give people zeros for missing a single query
                 # This also pushes the list forward, so if they start failing all
@@ -180,7 +177,7 @@ class Validator(BaseNeuron):
                         self.subtensor.block,
                         uid,
                         json.dumps(stat.model_dump()),
-                        __version__
+                        __version__,
                     )
                     for uid, stat in stats
                 ]
@@ -191,10 +188,12 @@ class Validator(BaseNeuron):
                         self.subtensor.block,
                         datetime.now(),
                         json.dumps(sampling_params.dict()),
-                        json.dumps(ground_truth)
+                        json.dumps(ground_truth),
                     )
                 ]
-                await add_records(miners_records, response_records, self.config.database.url)
+                await add_records(
+                    miners_records, response_records, self.config.database.url
+                )
             return stats
 
         except Exception as e:
@@ -319,7 +318,7 @@ class Validator(BaseNeuron):
             temperature=0.5,
             top_p=sampling_params.top_p,
             seed=sampling_params.seed,
-            max_tokens=random.randint(16, 64)
+            max_tokens=random.randint(16, 64),
         )
 
         # Create a final search prompt using the query and sources
@@ -335,7 +334,8 @@ class Validator(BaseNeuron):
         assert self.config.netuid
 
         tokens_per_second = {
-            miner: safe_mean_score(self.miner_tps[miner][-30:]) for miner in self.miner_tps
+            miner: safe_mean_score(self.miner_tps[miner][-30:])
+            for miner in self.miner_tps
         }
         tps_list = list(tokens_per_second.values())
         if len(tps_list) == 0:
@@ -436,6 +436,7 @@ class Validator(BaseNeuron):
             available_uids.append(uid)
             continue
         return available_uids
+
 
 if __name__ == "__main__":
     try:

@@ -118,7 +118,7 @@ class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
     total_time: float
-    tokens_per_second: float
+    wps: float
     tokens: List[str]
     response: str
     verified: bool
