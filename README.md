@@ -13,16 +13,16 @@ you implicitly agree to these terms and conditions.
 1. [Installation](#installation)
    - [Install PM2](#install-pm2)
    - [Install Targon](#install-targon-on-your-machine)
+1. [How to Run Targon](#how-to-run-targon)
+   - [Running a VLLM](#running-a-vllm)
+   - [Running a Miner](#running-a-miner)
+   - [Running a Validator](#running-a-validator)
 1. [What is a Redundant Deterministic Verification Network?](#what-is-a-redundant-deterministic-verification-network)
    - [Role of a Miner](#role-of-a-miner)
    - [Role of a Validator](#role-of-a-validator)
 1. [Features of Targon](#features-of-targon)
    - [Infenrence Request](#inference-request)
    - [Jaro-Winkler Similarity](#jaro-winkler-similarity)
-1. [How to Run Targon](#how-to-run-targon)
-   - [Running a VLLM](#running-a-vllm)
-   - [Running a Miner](#running-a-miner)
-   - [Running a Validator](#running-a-validator)
 1. [How to Contribute](#how-to-contribute)
 
 # Recommended Compute Requirements
@@ -110,6 +110,118 @@ python3 -m pip install -e .
 
 You have now installed Targon. You can now run a validator or a miner.
 
+# How to Run Targon
+
+## Running a VLLM
+
+### VLLM
+
+In order to run Targon, you must have a VLLM instance up and running.
+
+First, install VLLM and JSON Schema on your machine
+
+```bash
+pip install vllm jsonschema
+```
+
+Now you are ready to server your VLLM instance to PM2
+
+```bash
+pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key [some-secret-you-also-pass-to-validator] --port 8000
+```
+
+The `--neuron.model_endpoint` for miner / vali using this vllm instance on the
+same machine would be `http://localhost:8000/v1`. **Make sure** to include the
+`/v1` to the end of the URL.
+
+Also note that `--api-key` is defined by you. Set it to something hard to guess,
+and probably random. Whatever you decide, pass it in to both `--api-key` in
+vllm, and `--neuron.api_key` on the miner / vali
+
+## Running a Miner
+
+### PM2
+
+Running a miner through PM2 will require the LLM instance of your choice to be
+running.
+
+```bash
+pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --nueron.api_key [NEURON_API_KEY] --axon.port [AXON_PORT] --logging.trace
+```
+
+> Please replace the following with your specific configuration:
+>
+> - \[WALLET_NAME\]
+> - \[WALLET_HOTKEY\]
+> - \[MODEL_ENDPOINT\]
+> - \[NEURON_API_KEY\]
+> - \[AXON_PORT\]
+
+NOTE: Trace logging is very verbose. You can use `--logging.info` instead for
+less log bloat.
+
+Additionally:
+
+```bash
+--blacklist.force_validator_permit [TRUE/FALSE]
+
+```
+
+is defaulted to true to force incoming requests to have a permit.
+
+## Running a Validator
+
+### PM2
+
+Running a validator through PM2 will require the LLM instance of your choice to
+be running.
+
+```bash
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY]
+
+```
+
+> Please replace the following with your specific configuration:
+>
+> - \[WALLET_NAME\]
+> - \[MODEL_ENDPOINT\]
+> - \[NEURON_API_KEY\]
+
+## Explanation of Args
+
+### Shared Args
+
+- **--netuid** ==> Subnet Netuid. *Defaults to 4*
+- **--neuron.epoch_length** ==> Default epoch length (how often we set weights,
+  measured in 12 second blocks). *Defaults to 360*
+- **--mock** ==> Mock neuron and all network components. *Defaults to False*
+- **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
+  CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
+- **--neuron.model_name** ==> Name of the model used for completion. *Defaults
+  to "mlabonne/NeuralDaredevil-7B"*
+- **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
+  "12345"*
+
+### Miner Args
+
+- **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold -
+  wallet-hot) / neuron.name. *Defaults to miner*
+- **--blacklist.force_validator.permit** ==> If set, forces incoming requests to
+  have a permit. *Defaults to True*
+
+### Validator Args
+
+- **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold -
+  wallet-hot) / neuron.name. *Defaults to validator*
+- **--neuron.timeout** ==> The timeout for each forward call in seconds.
+  *Defaults to 12*
+- **--neuron.sample_size** ==> The number of miners to query in a single step.
+  *Defaults to 48*
+- **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
+  a validator with a permit. *Defaults to 4096*
+- **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
+  cache.pickle*
+
 # What is a Redundant Deterministic Verification Network?
 
 The query and a deterministic seed are used to generate a ground truth output
@@ -193,116 +305,6 @@ was set to 0.25.
 > *Note:*
 > [Jaro-Winkler Similarity](https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance%5D)
 > is not a mathematical metric, as it fails the Triangle Inequality.
-
-# How to Run Targon
-
-## Running a VLLM
-
-### VLLM
-
-In order to run Targon, you must have a VLLM instance up and running.
-
-First, install VLLM and JSON Schema on your machine
-
-```bash
-pip install vllm jsonschema
-```
-
-Now you are ready to server your VLLM instance to PM2
-
-```bash
-pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key [some-secret-you-also-pass-to-validator] --port 8000
-```
-
-The `--neuron.model_endpoint` for miner / vali using this vllm instance on the
-same machine would be `http://localhost:8000/v1`. **Make sure** to include the
-`/v1` to the end of the URL.
-
-Also note that `--api-key` is defined by you. Set it to something hard to guess,
-and probably random. Whatever you decide, pass it in to both `--api-key` in
-vllm, and `--neuron.api_key` on the miner / vali
-
-## Running a Miner
-
-### PM2
-
-Running a miner through PM2 will require the LLM instance of your choice to be
-running.
-
-```bash
-pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --nueron.api_key [NEURON_API_KEY] --axon.port [AXON_PORT] --logging.trace
-```
-
-> Please replace the following with your specific configuration:
->
-> - \[WALLET_NAME\]
-> - \[WALLET_HOTKEY\]
-> - \[MODEL_ENDPOINT\]
-> - \[NEURON_API_KEY\]
-> - \[AXON_PORT\]
-
-NOTE: Trace logging is very verbose. You can use `--logging.info` instead for
-less log bloat.
-
-Additionally:
-
-```bash
---blacklist.force_validator_permit [TRUE/FALSE]
-
-```
-
-is defaulted to true to force incoming requests to have a permit.
-
-## Running a Validator
-
-### PM2
-
-Running a validator through PM2 will require the LLM instance of your choice to
-be running.
-
-```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY]
-
-```
-
-> Please replace the following with your specific configuration:
->
-> - \[WALLET_NAME\]
-> - \[MODEL_ENDPOINT\]
-> - \[NEURON_API_KEY\]
-
-## Explanation of Args
-
-### Shared Args
-
-1. **--netuid** ==> Subnet Netuid. *Defaults to 4*
-1. **--neuron.epoch_length** ==> Default epoch length (how often we set weights,
-   measured in 12 second blocks). *Defaults to 360*
-1. **--mock** ==> Mock neuron and all network components. *Defaults to False*
-1. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
-   CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
-1. **--neuron.model_name** ==> Name of the model used for completion. *Defaults
-   to "mlabonne/NeuralDaredevil-7B"*
-1. **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
-   "12345"*
-
-### Miner Args
-
-1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
-   \- wallet-hot) / neuron.name. *Defaults to miner*
-1. **--blacklist.force_validator.permit** ==> If set, forces incoming requests
-   to have a permit. *Defaults to True*
-
-### Validator Args
-
-1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
-   \- wallet-hot) / neuron.name. *Defaults to validator*
-1. **--neuron.timeout** ==> The timeout for each forward call in seconds.
-   *Defaults to 12*
-1. **--neuron.sample_size** ==> The number of miners to query in a single step.
-   *Defaults to 48*
-1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
-   a validator with a permit. *Defaults to 4096*
 
 # How to Contribute
 
