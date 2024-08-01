@@ -189,7 +189,7 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 > - \[NEURON_API_KEY\]
 
 
-## [Targon Hub](https://github.com/manifold-inc/targon-hub)
+### Targon Hub
 
 The goal of the hub is to give validators a simple way to directly generate revenue off of their bittensor bandwidth. 
 This is designed as a template for validators to take and create their own branded hubs with, however pull requests are still encouraged.
@@ -200,8 +200,6 @@ This is also the place where miners can view their individual performace in real
 - Time for All Tokens
 - Total Time
 - Tokens Per Second
-
-### Targon Hub
 
 If you are interested in running your own instance of Targon Hub, you will need to add an additonal flag to save the records of miners' responses to a PostgreSQL DB.
 
