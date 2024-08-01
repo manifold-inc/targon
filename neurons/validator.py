@@ -5,6 +5,7 @@ import time
 import random
 import asyncio
 
+import pickle
 import openai
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
@@ -24,7 +25,7 @@ import bittensor as bt
 from nanoid import generate
 from datetime import datetime
 
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 from targon import (
     protocol,
     __version__,
@@ -36,6 +37,7 @@ from bittensor.utils.weight_utils import (
 
 
 class Validator(BaseNeuron):
+    miner_tps: Dict[int, Any]
     neuron_type = NeuronType.Validator
 
     def __init__(self, config=None):
@@ -61,8 +63,21 @@ class Validator(BaseNeuron):
         bt.logging.info(f"Last updated at block {self.last_posted_weights}")
 
         ## STATS
+        try:
+            with open(self.config.neuron.cache_file, "rb") as file:
+                loaded_data: Dict[str, Any] = pickle.load(file)
+                # Only load cache if fresh
+                if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
+                    bt.logging.info("Loading cached data")
+                    bt.logging.info(str(loaded_data))
+                    self.miner_tps = loaded_data.get("miner_tps", {})
+        except IOError:
+            bt.logging.info("No cache file found")
+
         miners = self.get_miner_uids()
-        self.miner_tps = {miner: [] for miner in miners}
+        for miner in miners:
+            if self.miner_tps.get(miner) == None:
+                self.miner_tps[miner] = []
 
         ## SET DATASET
         self.dataset = pd.read_json(
@@ -196,12 +211,25 @@ class Validator(BaseNeuron):
                 await add_records(
                     miners_records, response_records, self.config.database.url
                 )
+                self.save_scores()
             return stats
 
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
             bt.logging.error(traceback.format_exc())
             return []
+
+    def save_scores(self):
+        assert self.config.neuron
+        with open(self.config.neuron.cache_file, "wb") as file:
+            pickle.dump(
+                {
+                    "miner_tps": self.miner_tps,
+                    "block_saved": self.subtensor.block,
+                    "version": spec_version,
+                },
+                file,
+            )
 
     def query_miners(self, miner_uids):
         assert self.config.neuron
@@ -237,7 +265,7 @@ class Validator(BaseNeuron):
             ground_truth,
             sampling_params,
             messages,
-        )  # Adjust batch_size as needed
+        )
 
     def run(self):
         assert self.config.subtensor
