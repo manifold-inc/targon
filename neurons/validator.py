@@ -223,6 +223,7 @@ class Validator(BaseNeuron):
     def save_scores(self):
         assert self.config.neuron
         with open(self.config.neuron.cache_file, "wb") as file:
+            bt.logging.info("Caching scores...")
             pickle.dump(
                 {
                     "miner_tps": self.miner_tps,
