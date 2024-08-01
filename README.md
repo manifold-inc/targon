@@ -300,7 +300,7 @@ from targon.updater import autoupdate
 1. **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
   cache.pickle*
 1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
-1. **--no.autoupdate** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
+1. **--autoupdate_off** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
 
 # What is a Redundant Deterministic Verification Network?
 
