@@ -327,9 +327,10 @@ class Validator(BaseNeuron):
                 # Only keep last 30
                 for uid in self.miner_tps.keys():
                     self.miner_tps[uid] = self.miner_tps[uid][-30:]
-                # After setting weights, check to see if we need to update
-                if self.config.autoupdate:
-                    autoupdate(branch="main")
+
+            # After potentially setting weights, check to see if we need to update
+            if self.config.autoupdate:
+                autoupdate(branch="main")
 
     async def generate_question(self):
         assert self.config.neuron
