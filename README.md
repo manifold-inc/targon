@@ -302,41 +302,6 @@ from targon.updater import autoupdate
 1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
 1. **--no.autoupdate** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
 
-## Explanation of Args
-
-### Shared Args
-
-- **--netuid** ==> Subnet Netuid. *Defaults to 4*
-- **--neuron.epoch_length** ==> Default epoch length (how often we set weights,
-  measured in 12 second blocks). *Defaults to 360*
-- **--mock** ==> Mock neuron and all network components. *Defaults to False*
-- **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
-  CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
-- **--neuron.model_name** ==> Name of the model used for completion. *Defaults
-  to "mlabonne/NeuralDaredevil-7B"*
-- **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
-  "12345"*
-
-### Miner Args
-
-- **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold -
-  wallet-hot) / neuron.name. *Defaults to miner*
-- **--blacklist.force_validator.permit** ==> If set, forces incoming requests to
-  have a permit. *Defaults to True*
-
-### Validator Args
-
-- **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold -
-  wallet-hot) / neuron.name. *Defaults to validator*
-- **--neuron.timeout** ==> The timeout for each forward call in seconds.
-  *Defaults to 12*
-- **--neuron.sample_size** ==> The number of miners to query in a single step.
-  *Defaults to 48*
-- **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
-  a validator with a permit. *Defaults to 4096*
-- **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
-  cache.pickle*
-
 # What is a Redundant Deterministic Verification Network?
 
 The query and a deterministic seed are used to generate a ground truth output
