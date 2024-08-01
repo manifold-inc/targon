@@ -194,7 +194,6 @@ class Validator(BaseNeuron):
                         self.subtensor.block,
                         uid,
                         json.dumps(stat.model_dump()),
-                        __version__,
                     )
                     for uid, stat in stats
                 ]
@@ -208,6 +207,7 @@ class Validator(BaseNeuron):
                         json.dumps(
                             {"ground_truth": ground_truth, "messages": messages}
                         ),
+                        spec_version
                     )
                 ]
                 await add_records(
