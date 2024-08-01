@@ -223,7 +223,11 @@ Below are steps to create a Supabase connection string to utilze this feature:
 5. A modal should open up. Click on connection string, URI, and change the mode from ```transaction``` to ```session```
    in the dropdown
 6. Copy the connection string shown and insert your password
-7. Run the new full build command with the flag and connection string 
+7. Clone [Targon Hub](https://github.com/manifold-inc/targon-hub) and follow its setup instructions
+8. Launch the validator with new `--database.url` flag and connection string 
+
+Please reach out to the SN4 team for help setting up targon hub in sn4 chat or [our discord](https://discord.gg/manifold)
+
 
 ```bash
 pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --database.url [DB_CONNECTION_STRING]
