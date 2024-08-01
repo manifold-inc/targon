@@ -232,6 +232,7 @@ class Validator(BaseNeuron):
                 },
                 file,
             )
+            bt.logging.info("Cached")
 
     def query_miners(self, miner_uids):
         assert self.config.neuron
