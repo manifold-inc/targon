@@ -11,3 +11,4 @@ test_stream.py
 output.txt
 play.py
 packages
+*.pickle
