@@ -145,7 +145,7 @@ async def add_records(miners_records, response_records, database_url):
 
         # Insert miners_records
         await conn.executemany('''
-            INSERT INTO miner_response (r_nanoid, hotkey, coldkey, block, uid, stats) VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO miner_response (r_nanoid, hotkey, coldkey, uid, stats) VALUES ($1, $2, $3, $5, $6)
         ''', miners_records)
         bt.logging.info("Records inserted into miner responses successfully.")
 
