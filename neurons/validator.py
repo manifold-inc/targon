@@ -323,6 +323,10 @@ class Validator(BaseNeuron):
             ):
                 self.last_posted_weights = self.subtensor.block
                 self.set_weights()
+
+                # Only keep last 30
+                for uid in self.miner_tps.keys():
+                    self.miner_tps[uid] = self.miner_tps[uid][-30:]
                 # After setting weights, check to see if we need to update
                 if self.config.autoupdate:
                     autoupdate(branch="main")
@@ -371,7 +375,7 @@ class Validator(BaseNeuron):
         assert self.config.netuid
 
         tokens_per_second = {
-            miner: safe_mean_score(self.miner_tps[miner][-30:])
+            miner: safe_mean_score(self.miner_tps[miner][-15:])
             for miner in self.miner_tps
         }
         tps_list = list(tokens_per_second.values())
