@@ -16,6 +16,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import time
 import os
 import sys
 import requests
@@ -42,7 +43,7 @@ def autoupdate( branch: str = "main" ):
     bt.logging.info("Checking for updates...")
     try:
         response = requests.get(
-            f"https://raw.githubusercontent.com/manifold-inc/targon/{branch}/VERSION",
+            f"https://raw.githubusercontent.com/manifold-inc/targon/{branch}/VERSION?token={time.time()}",
             headers={'Cache-Control': 'no-cache'}
         )
         response.raise_for_status()
