@@ -73,6 +73,7 @@ class Validator(BaseNeuron):
                     self.miner_tps = loaded_data.get("miner_tps", {})
         except IOError:
             bt.logging.info("No cache file found")
+            self.miner_tps = {}
 
         miners = self.get_miner_uids()
         for miner in miners:
