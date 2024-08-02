@@ -432,9 +432,10 @@ class Validator(BaseNeuron):
             netuid=self.config.netuid,
             uids=processed_weight_uids,  # type: ignore
             weights=processed_weights,
-            wait_for_finalization=True,
+            wait_for_finalization=False,
             wait_for_inclusion=False,
             version_key=spec_version,
+            max_retries=1
         )
         if result is True:
             bt.logging.info("set_weights on chain successfully!")
