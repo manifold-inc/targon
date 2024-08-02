@@ -141,7 +141,7 @@ async def add_records(miners_records, response_records, database_url):
 
         # Insert miners_records
         await conn.executemany('''
-            INSERT INTO miner_response (r_nanoid, hotkey, coldkey, uid, stats) VALUES ($1, $2, $3, $5, $6)
+            INSERT INTO miner_response (r_nanoid, hotkey, coldkey, uid, stats) VALUES ($1, $2, $3, $4, $5)
         ''', miners_records)
         bt.logging.info("Records inserted into miner responses successfully.")
 
@@ -152,8 +152,6 @@ async def add_records(miners_records, response_records, database_url):
         bt.logging.info("Records inserted into validator request successfully.")
 
     except Exception as e:
-        bt.logging.info(str(miners_records))
-        bt.logging.info(str(response_records))
         bt.logging.error(f"Error inserting records: {e}")
         bt.logging.error(traceback.format_exc())
     finally:
