@@ -64,6 +64,7 @@ class Validator(BaseNeuron):
         bt.logging.info(f"Last updated at block {self.last_posted_weights}")
 
         ## STATS
+        self.miner_tps = {}
         try:
             with open(self.config.neuron.cache_file, "rb") as file:
                 loaded_data: Dict[str, Any] = pickle.load(file)
@@ -74,7 +75,6 @@ class Validator(BaseNeuron):
                     self.miner_tps = loaded_data.get("miner_tps", {})
         except IOError:
             bt.logging.info("No cache file found")
-            self.miner_tps = {}
 
         miners = self.get_miner_uids()
         for miner in miners:
