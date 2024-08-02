@@ -1,4 +1,5 @@
 from math import floor
+from asyncpg.connection import traceback
 import bittensor as bt
 import numpy as np
 from typing import List, Tuple
@@ -151,7 +152,10 @@ async def add_records(miners_records, response_records, database_url):
         bt.logging.info("Records inserted into validator request successfully.")
 
     except Exception as e:
+        bt.logging.info(str(miners_records))
+        bt.logging.info(str(response_records))
         bt.logging.error(f"Error inserting records: {e}")
+        bt.logging.error(traceback.format_exc())
     finally:
         if conn:
             await conn.close()
