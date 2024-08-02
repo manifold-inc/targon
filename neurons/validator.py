@@ -433,7 +433,7 @@ class Validator(BaseNeuron):
             uids=processed_weight_uids,  # type: ignore
             weights=processed_weights,
             wait_for_finalization=True,
-            wait_for_inclusion=True,
+            wait_for_inclusion=False,
             version_key=spec_version,
         )
         if result is True:
