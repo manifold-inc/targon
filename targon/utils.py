@@ -137,17 +137,18 @@ async def add_records(miners_records, response_records, database_url):
     conn = None
     try:
         conn = await asyncpg.connect(database_url)
-        # Insert response_records first since miners_responses references it
-        await conn.executemany('''
-            INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version) VALUES ($1, $2, $3, $4, $5, $6)
-        ''', response_records)
-        bt.logging.info("Records inserted into validator request successfully.")
 
         # Insert miners_records
         await conn.executemany('''
             INSERT INTO miner_response (r_nanoid, hotkey, coldkey, uid, stats) VALUES ($1, $2, $3, $5, $6)
         ''', miners_records)
         bt.logging.info("Records inserted into miner responses successfully.")
+
+        # Insert response_records first since miners_responses references it
+        await conn.executemany('''
+            INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version) VALUES ($1, $2, $3, $4, $5, $6)
+        ''', response_records)
+        bt.logging.info("Records inserted into validator request successfully.")
 
     except Exception as e:
         bt.logging.error(f"Error inserting records: {e}")

@@ -191,7 +191,7 @@ class Validator(BaseNeuron):
                         r_nanoid,
                         self.metagraph.axons[uid].hotkey,
                         self.metagraph.axons[uid].coldkey,
-                        uid,
+                        int(uid),
                         json.dumps(stat.model_dump()),
                     )
                     for uid, stat in stats
