@@ -7,6 +7,7 @@ import torch
 
 
 async def sync_miners(n: int):
+    metagraph.sync()
     indices = torch.topk(torch.Tensor(metagraph.incentive), n).indices
 
     # Get the corresponding uids
@@ -27,7 +28,7 @@ async def sync_miners(n: int):
     ]
     print("Saving new miners to cache", flush=True)
     r.json().set("miners", obj=ips, path=Path.root_path())
-    await asyncio.sleep(50 * 12)
+    await asyncio.sleep(60 * 12)
 
 
 if __name__ == "__main__":

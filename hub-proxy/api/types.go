@@ -29,18 +29,17 @@ type Miner struct {
 }
 
 type InferenceBody struct {
-	Name           string         `json:"name"`
-	Timeout        float32        `json:"timeout"`
-	TotalSize      int            `json:"total_size"`
-	HeaderSize     int            `json:"header_size"`
-	Dendrite       DendriteOrAxon `json:"dendrite"`
-	Axon           DendriteOrAxon `json:"axon"`
-	BodyHash       string         `json:"body_hash"`
-	RequiredFields []string       `json:"required_hash_fields"`
-	Sources        []string       `json:"sources"`
-	Query          string         `json:"query"`
-	SamplingParams SamplingParams `json:"sampling_params"`
-	Completion     *string        `json:"completion"`
+	Name             string         `json:"name"`
+	Timeout          float32        `json:"timeout"`
+	TotalSize        int            `json:"total_size"`
+	HeaderSize       int            `json:"header_size"`
+	Dendrite         DendriteOrAxon `json:"dendrite"`
+	Axon             DendriteOrAxon `json:"axon"`
+	ComputedBodyHash string         `json:"computed_body_hash"`
+	RequiredFields   []string       `json:"required_hash_fields"`
+	Messages         string         `json:"messages"`
+	SamplingParams   SamplingParams `json:"sampling_params"`
+	Completion       *string        `json:"completion"`
 }
 
 type DendriteOrAxon struct {
@@ -48,7 +47,7 @@ type DendriteOrAxon struct {
 	StatusMessage *string `json:"status_message"`
 	ProcessTime   *string `json:"process_time"`
 	Ip            string  `json:"ip"`
-	Port          *string `json:"port"`
+	Port          *int    `json:"port"`
 	Version       *int    `json:"version"`
 	Nonce         *int64  `json:"nonce"`
 	Uuid          *string `json:"uuid"`
@@ -70,8 +69,9 @@ type SamplingParams struct {
 	TopP                float32  `json:"top_p"`
 	TypicalP            float32  `json:"typical_p"`
 	Watermark           bool     `json:"watermark"`
-	Seed                *string  `json:"seed"`
+	Seed                int      `json:"seed"`
 	Truncate            *string  `json:"truncate"`
+	Stream              bool     `json:"stream"`
 }
 
 type Event struct {

@@ -1,6 +1,5 @@
 services:
   proxy:
-    scale: 1
     environment:
       - DEBUG=true
     labels:
