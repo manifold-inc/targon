@@ -13,6 +13,6 @@ if __name__ == "__main__":
     public_key_str = public_key.hex()
     private_key_str = private_key.hex()
 
-    print(f"Hotkey ss58 String: {wallet.hotkey.ss58_address}")
-    print(f"Public Key String: {public_key_str}")
-    print(f"Private Key String: {private_key_str}")
+    print(f"HOTKEY={wallet.hotkey.ss58_address}")
+    print(f"PUBLIC_KEY={public_key_str}")
+    print(f"PRIVATE_KEY={private_key_str}")
