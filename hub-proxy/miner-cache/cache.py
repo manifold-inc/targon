@@ -7,7 +7,7 @@ import numpy
 
 
 async def sync_miners(n: int):
-    metagraph.sync()
+    metagraph = subtensor.metagraph(netuid=4)
     indices = numpy.argsort(metagraph.incentive)[-n:]
 
     # Get the corresponding uids
@@ -26,15 +26,13 @@ async def sync_miners(n: int):
         }
         for (axon, _) in axons
     ]
-    print("Saving new miners to cache", flush=True)
-    print(ips)
+    print(ips, flush=True)
     r.json().set("miners", obj=ips, path=Path.root_path())
     await asyncio.sleep(60 * 12)
 
 
 if __name__ == "__main__":
     subtensor = bt.subtensor("ws://subtensor.sybil.com:9944")
-    metagraph: bt.metagraph = subtensor.metagraph(netuid=4)
-    r = Redis(host="cache", port=6379, decode_responses=True)
+    r = Redis(host="redis", port=6379, decode_responses=True)
     while True:
-        asyncio.run(sync_miners(3))
+        asyncio.run(sync_miners(10))
