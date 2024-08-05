@@ -33,6 +33,6 @@ async def sync_miners(n: int):
 
 if __name__ == "__main__":
     subtensor = bt.subtensor("ws://subtensor.sybil.com:9944")
-    r = Redis(host="redis", port=6379, decode_responses=True)
+    r = Redis(host="cache", port=6379, decode_responses=True)
     while True:
         asyncio.run(sync_miners(10))
