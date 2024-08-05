@@ -70,7 +70,7 @@ def add_args(parser):
         "--neuron.model_name",
         type=str,
         help="The name of the model used for completion",
-        default="mlabonne/NeuralDaredevil-7B",
+        default="NousResearch/Meta-Llama-3.1-8B-Instruct",
     )
     parser.add_argument(
         "--neuron.api_key",

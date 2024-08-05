@@ -128,7 +128,7 @@ pip install vllm jsonschema
 Now you are ready to server your VLLM instance to PM2
 
 ```bash
-pm2 start vllm --name vllm-serve --interpreter python3 -- serve mlabonne/NeuralDaredevil-7B --dtype auto --api-key [some-secret-you-also-pass-to-validator] --port 8000
+pm2 start vllm --name vllm-serve --interpreter python3 -- serve NousResearch/Meta-Llama-3.1-8B-Instruct --dtype auto --api-key [some-secret-you-also-pass-to-validator] --port 8000
 ```
 
 The `--neuron.model_endpoint` for miner / vali using this vllm instance on the
@@ -280,7 +280,7 @@ from targon.updater import autoupdate
 1. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
    CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
 1. **--neuron.model_name** ==> Name of the model used for completion. *Defaults
-   to "mlabonne/NeuralDaredevil-7B"*
+   to "NousResearch/Meta-Llama-3.1-8B-Instruct"*
 1. **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
    "12345"*
 

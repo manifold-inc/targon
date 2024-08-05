@@ -281,7 +281,7 @@ func queryMiners(c *Context, req RequestBody) string {
 				Id:      uuid.New().String(),
 				Object:  "chat.completion.chunk",
 				Created: time.Now().String(),
-				Model:   "mlabonne/NeuralDaredevil-7B",
+				Model:   "NousResearch/Meta-Llama-3.1-8B-Instruct",
 				Choices: []Choice{{Delta: Delta{Content: token}}},
 			}
 			eventData, _ := json.Marshal(data)
