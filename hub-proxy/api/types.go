@@ -7,6 +7,19 @@ type MinerResponse struct {
 	ColdKey string
 	HotKey  string
 }
+type Response struct {
+	Id      string `json:"id"`
+	Object  string `json:"object"`
+	Created string `json:"created"`
+	Model   string `json:"model"`
+	Choices []Choice `json:"choices"`
+}
+type Choice struct {
+	Delta Delta `json:"delta"`
+}
+type Delta struct {
+	Content string `json:"content"`
+}
 
 type RequestBodyMessages struct {
 	Role    string `json:"role"`
