@@ -107,17 +107,6 @@ func sendEvent(c *Context, data map[string]any) {
 	c.Response().Flush()
 }
 
-func buildPrompt(messages []RequestBodyMessages) string {
-	// Convert openAI api format to simple query string.
-	// Temporary untill targon v2
-
-	prompt := ""
-	for _, message := range messages {
-		prompt += fmt.Sprintf("%s: %s\n", message.Role, message.Content)
-	}
-	return prompt
-}
-
 func getTopMiners(c *Context) []Miner {
 	rh := rejson.NewReJSONHandler()
 	rh.SetGoRedisClientWithContext(c.Request().Context(), client)
