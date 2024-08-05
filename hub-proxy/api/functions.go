@@ -95,18 +95,9 @@ func formatListToPythonString(list []string) string {
 	return strList
 }
 
-func sendEvent(c *Context, token string) {
+func sendEvent(c *Context, data string) {
 	// Send SSE event to response
-
-	data := Response{
-		Id:      uuid.New().String(),
-		Object:  "chat.completion.chunk",
-		Created: time.Now().String(),
-		Model:   "mlabonne/NeuralDaredevil-7B",
-		Choices: []Choice{{Delta: Delta{Content: token}}},
-	}
-	eventData, _ := json.Marshal(data)
-	fmt.Fprintf(c.Response(), "data: %s\n", string(eventData))
+	fmt.Fprintf(c.Response(), "data: %s\n\n", data)
 	c.Response().Flush()
 }
 
@@ -285,8 +276,18 @@ func queryMiners(c *Context, req RequestBody) string {
 				c.Err.Println(err.Error())
 				break
 			}
-			sendEvent(c, token)
+
+			data := Response{
+				Id:      uuid.New().String(),
+				Object:  "chat.completion.chunk",
+				Created: time.Now().String(),
+				Model:   "mlabonne/NeuralDaredevil-7B",
+				Choices: []Choice{{Delta: Delta{Content: token}}},
+			}
+			eventData, _ := json.Marshal(data)
+			sendEvent(c, string(eventData))
 			if err == io.EOF {
+				sendEvent(c, "[DONE]")
 				finished = true
 				break
 			}
