@@ -204,7 +204,6 @@ func queryMiners(c *Context, req RequestBody) string {
 				Watermark:           false,
 				Stream:              true,
 			},
-			Completion: nil,
 		}
 
 		endpoint := "http://" + miner.Ip + ":" + fmt.Sprint(miner.Port) + "/Inference"

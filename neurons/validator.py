@@ -148,7 +148,6 @@ class Validator(BaseNeuron):
                 min(len(stats.response.split(" ")), len(ground_truth.split(" ")))
                 / stats.total_time
             )
-            # check if the response was pregenerated, meaning the time it takes to get the first token is much longer than the total generation
             return uid, stats
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
@@ -206,7 +205,7 @@ class Validator(BaseNeuron):
                         json.dumps(
                             {"ground_truth": ground_truth, "messages": messages}
                         ),
-                        spec_version
+                        spec_version,
                     )
                 ]
                 await add_records(
@@ -289,6 +288,7 @@ class Validator(BaseNeuron):
 
             # Wait random amount
             if self.next_forward_block > self.subtensor.block:
+                bt.logging.info(f"Waiting till block {self.next_forward_block}")
                 continue
 
             # Declare next forward block a random time in the future so that not all valis query at the same time
@@ -313,19 +313,19 @@ class Validator(BaseNeuron):
                 self.resync_hotkeys()
 
             bt.logging.info(
-                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { (self.last_posted_weights + self.config.neuron.epoch_length) - self.subtensor.block }"
+                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { self.config.neuron.epoch_length - (self.subtensor.block % self.config.neuron.epoch_length) }"
             )
             # Check if we should set weights
             if (
-                self.last_posted_weights + self.config.neuron.epoch_length
-                < self.subtensor.block
+                self.subtensor.block % self.config.neuron.epoch_length == 0
+                and self.last_posted_weights != self.subtensor.block
             ):
                 self.last_posted_weights = self.subtensor.block
                 self.set_weights()
 
                 # Only keep last 30
                 for uid in self.miner_tps.keys():
-                    self.miner_tps[uid] = self.miner_tps[uid][-30:]
+                    self.miner_tps[uid] = self.miner_tps[uid][-15:]
 
             # After potentially setting weights, check to see if we need to update
             if self.config.autoupdate:
@@ -435,13 +435,12 @@ class Validator(BaseNeuron):
             wait_for_finalization=False,
             wait_for_inclusion=False,
             version_key=spec_version,
-            max_retries=1
+            max_retries=1,
         )
         if result is True:
             bt.logging.info("set_weights on chain successfully!")
         else:
             bt.logging.error(f"set_weights failed {message}")
-
 
     def resync_hotkeys(self):
         bt.logging.info(

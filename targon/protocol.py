@@ -143,7 +143,6 @@ class Inference(bt.StreamingSynapse):
     Attributes:
     - `model` (str): The ID of the model to use.
     - `messages` (List[Dict[str, str]]): A list of messages, where each message is a dictionary with `role` and `content`.
-    - `completion` (Optional[str]): Stores the processed result of the streaming tokens.
     """
 
     messages: str = pydantic.Field(
@@ -156,58 +155,16 @@ class Inference(bt.StreamingSynapse):
         title="Sampling Params",
         description="The sampling parameters for the OpenAI Compatible model.",
     )
-    completion: Optional[str] = pydantic.Field(
-        default=None,
-        title="Completion",
-        description="The processed result of the streaming tokens.",
-    )
 
     async def process_streaming_response(self, response: ClientResponse) -> Any:
-        """
-        `process_streaming_response` is an asynchronous method designed to process the incoming streaming response from the
-        Bittensor network. It's the heart of the Challenge class, ensuring that streaming tokens, which represent
-        prompts or messages, are decoded and appropriately managed.
-
-        As the streaming response is consumed, the tokens are decoded from their 'utf-8' encoded format, split based on
-        newline characters, and concatenated into the `completion` attribute. This accumulation of decoded tokens in the
-        `completion` attribute allows for a continuous and coherent accumulation of the streaming content.
-
-        Args:
-            response: The streaming response object containing the content chunks to be processed. Each chunk in this
-                      response is expected to be a set of tokens that can be decoded and split into individual messages or prompts.
-        """
         async for chunk in response.content.iter_any():
-            if self.completion is None:
-                self.completion = ""
             tokens = chunk.decode("utf-8")
-            self.completion += tokens
             yield tokens
 
     def deserialize(self):
         return json.loads(self.messages)
 
     def extract_response_json(self, response: ClientResponse) -> dict:
-        """
-        `extract_response_json` is a method that performs the crucial task of extracting pertinent JSON data from the given
-        response. The method is especially useful when you need a detailed insight into the streaming response's metadata
-        or when debugging response-related issues.
-
-        Beyond just extracting the JSON data, the method also processes and structures the data for easier consumption
-        and understanding. For instance, it extracts specific headers related to dendrite and axon, offering insights
-        about the Bittensor network's internal processes. The method ultimately returns a dictionary with a structured
-        view of the extracted data.
-
-        Args:
-            response: The response object from which to extract the JSON data. This object typically includes headers and
-                      content which can be used to glean insights about the response.
-
-        Returns:
-            dict: A structured dictionary containing:
-                - Basic response metadata such as name, timeout, total_size, and header_size.
-                - Dendrite and Axon related information extracted from headers.
-                - Roles and Messages pertaining to the current Challenge instance.
-                - The accumulated completion.
-        """
         headers = {
             k.decode("utf-8"): v.decode("utf-8")
             for k, v in response.__dict__["_raw_headers"]
@@ -228,5 +185,4 @@ class Inference(bt.StreamingSynapse):
             "dendrite": extract_info("bt_header_dendrite"),
             "axon": extract_info("bt_header_axon"),
             "messages": self.messages,
-            "completion": self.completion,
         }

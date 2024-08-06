@@ -52,7 +52,6 @@ type InferenceBody struct {
 	RequiredFields   []string       `json:"required_hash_fields"`
 	Messages         string         `json:"messages"`
 	SamplingParams   SamplingParams `json:"sampling_params"`
-	Completion       *string        `json:"completion"`
 }
 
 type DendriteOrAxon struct {
