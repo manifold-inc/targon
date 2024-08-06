@@ -13,9 +13,6 @@ async def sync_miners():
 
     # Get the corresponding uids
     uids_with_highest_incentives: List[int] = metagraph.uids[indices].tolist()
-    print(metagraph.incentive)
-    print(indices)
-    print(uids_with_highest_incentives)
 
     # get the axon of the uids
     axons: List[Tuple[bt.AxonInfo, int]] = [
