@@ -288,11 +288,7 @@ class Validator(BaseNeuron):
 
             # Wait random amount
             if self.next_forward_block > self.subtensor.block:
-                bt.logging.info(f"Waiting till block {self.next_forward_block}")
                 continue
-
-            # Declare next forward block a random time in the future so that not all valis query at the same time
-            self.next_forward_block = random.randint(1, 6) + self.subtensor.block
 
             bt.logging.info(
                 print_info(
@@ -330,6 +326,10 @@ class Validator(BaseNeuron):
             # After potentially setting weights, check to see if we need to update
             if self.config.autoupdate:
                 autoupdate(branch="main")
+
+            # Declare next forward block a random time in the future so that not all valis query at the same time
+            self.next_forward_block = random.randint(1, 6) + self.subtensor.block
+            bt.logging.info(f"Waiting till block {self.next_forward_block}")
 
     async def generate_question(self):
         assert self.config.neuron
