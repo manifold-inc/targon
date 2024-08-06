@@ -329,7 +329,7 @@ class Validator(BaseNeuron):
 
             # Declare next forward block a random time in the future so that not all valis query at the same time
             self.next_forward_block = random.randint(1, 6) + self.subtensor.block
-            bt.logging.info(f"Waiting till block {self.next_forward_block}")
+            bt.logging.info(f"Waiting {self.next_forward_block - self.subtensor.block} blocks")
 
     async def generate_question(self):
         assert self.config.neuron
