@@ -6,9 +6,11 @@ from redis.commands.json.path import Path
 import numpy
 
 
-async def sync_miners(n: int):
+async def sync_miners():
     metagraph = subtensor.metagraph(netuid=4)
-    indices = numpy.argsort(metagraph.incentive)[-n:]
+    indices = numpy.argsort(metagraph.incentive)[-10:]
+    print(metagraph.incentive)
+    print(indices)
 
     # Get the corresponding uids
     uids_with_highest_incentives: List[int] = metagraph.uids[indices].tolist()
@@ -35,4 +37,4 @@ if __name__ == "__main__":
     subtensor = bt.subtensor("ws://subtensor.sybil.com:9944")
     r = Redis(host="cache", port=6379, decode_responses=True)
     while True:
-        asyncio.run(sync_miners(10))
+        asyncio.run(sync_miners())
