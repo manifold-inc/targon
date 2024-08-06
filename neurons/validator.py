@@ -286,9 +286,29 @@ class Validator(BaseNeuron):
             if not self.next_forward_block:
                 self.next_forward_block = self.subtensor.block
 
+            # Sync metagraph and potentially set weights.
+            if self.sync_metagraph():
+                self.resync_hotkeys()
+
+            # Check if we should set weights
+            if (
+                self.subtensor.block % self.config.neuron.epoch_length == 0
+                and self.last_posted_weights != self.subtensor.block
+            ):
+                self.last_posted_weights = self.subtensor.block
+                self.set_weights()
+
+                # Only keep last 30
+                for uid in self.miner_tps.keys():
+                    self.miner_tps[uid] = self.miner_tps[uid][-15:]
+
             # Wait random amount
             if self.next_forward_block > self.subtensor.block:
                 continue
+
+            # Check to see if we need to update
+            if self.config.autoupdate:
+                autoupdate(branch="main")
 
             bt.logging.info(
                 print_info(
@@ -304,29 +324,9 @@ class Validator(BaseNeuron):
             miner_uids = miner_uids[: self.config.neuron.sample_size]
             self.query_miners(miner_uids)
 
-            # Sync metagraph and potentially set weights.
-            if self.sync_metagraph():
-                self.resync_hotkeys()
-
             bt.logging.info(
                 f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { self.config.neuron.epoch_length - (self.subtensor.block % self.config.neuron.epoch_length) }"
             )
-            # Check if we should set weights
-            if (
-                self.subtensor.block % self.config.neuron.epoch_length == 0
-                and self.last_posted_weights != self.subtensor.block
-            ):
-                self.last_posted_weights = self.subtensor.block
-                self.set_weights()
-
-                # Only keep last 30
-                for uid in self.miner_tps.keys():
-                    self.miner_tps[uid] = self.miner_tps[uid][-15:]
-
-            # After potentially setting weights, check to see if we need to update
-            if self.config.autoupdate:
-                autoupdate(branch="main")
-
             # Declare next forward block a random time in the future so that not all valis query at the same time
             self.next_forward_block = random.randint(1, 6) + self.subtensor.block
             bt.logging.info(f"Waiting {self.next_forward_block - self.subtensor.block} blocks")
