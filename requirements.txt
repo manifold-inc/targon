@@ -1,7 +1,6 @@
 bittensor==7.1.0
 huggingface_hub==0.23.4
 typer[all]==0.9.0
-transformers==4.42.3
 pandas==2.2.2
 numpy==1.26.4
 sentencepiece==0.2.0
