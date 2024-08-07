@@ -110,6 +110,9 @@ func main() {
 		if ok != nil {
 			return c.String(500, ok.Error())
 		}
+		if(db == nil){
+			log.Println("Databse is null outside goroutine")
+		}
 		go updatOrganicRequest(info, req.PubId)
 		return c.String(200, "")
 	})
