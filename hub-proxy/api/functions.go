@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"math/rand"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -117,6 +118,10 @@ func getTopMiners(c *Context) []Miner {
 	if err != nil {
 		c.Err.Printf("Failed to JSON Unmarshal: %s\n", err.Error())
 		return nil
+	}
+	for i := range miners {
+		j := rand.Intn(i + 1)
+		miners[i], miners[j] = miners[j], miners[i]
 	}
 	return miners
 }
