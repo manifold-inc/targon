@@ -302,6 +302,10 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 }
 
 func updatOrganicRequest(res ResponseInfo, pub_id string) {
+	if(db == nil){
+		log.Println("Databse is null (How did we get here?)")
+		return
+	}
 	_, err := db.Exec("UPDATE organic_request SET uid=?, hotkey=?, coldkey=?, miner_address=?, attempt=? WHERE pub_id=?",res.Miner.Uid, res.Miner.Hotkey, res.Miner.Coldkey, fmt.Sprintf("http://%s:%d", res.Miner.Ip, res.Miner.Port), res.Attempt, pub_id)
 	if err != nil {
 		log.Println("Failed to update")
