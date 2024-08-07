@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -301,11 +302,7 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 	return ResponseInfo{}, errors.New("Ran out of miners to query")
 }
 
-func updatOrganicRequest(res ResponseInfo, pub_id string) {
-	if(db == nil){
-		log.Println("Databse is null (How did we get here?)")
-		return
-	}
+func updatOrganicRequest(db *sql.DB,res ResponseInfo, pub_id string) {
 	_, err := db.Exec("UPDATE organic_request SET uid=?, hotkey=?, coldkey=?, miner_address=?, attempt=? WHERE pub_id=?",res.Miner.Uid, res.Miner.Hotkey, res.Miner.Coldkey, fmt.Sprintf("http://%s:%d", res.Miner.Ip, res.Miner.Port), res.Attempt, pub_id)
 	if err != nil {
 		log.Println("Failed to update")

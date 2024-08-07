@@ -25,7 +25,6 @@ var (
 	INSTANCE_UUID    string
 	DEBUG            bool
 
-	db     *sql.DB
 	client *redis.Client
 )
 
@@ -113,7 +112,7 @@ func main() {
 		if(db == nil){
 			log.Println("Databse is null outside goroutine")
 		}
-		go updatOrganicRequest(info, req.PubId)
+		go updatOrganicRequest(db, info, req.PubId)
 		return c.String(200, "")
 	})
 	e.Logger.Fatal(e.Start(":80"))
