@@ -40,7 +40,7 @@ type Miner struct {
 	Port    int    `json:"port,omitempty"`
 	Hotkey  string `json:"hotkey,omitempty"`
 	Coldkey string `json:"coldkey,omitempty"`
-	Uid			int `json:"uid,omitempty"`
+	Uid     int    `json:"uid,omitempty"`
 }
 
 type InferenceBody struct {
