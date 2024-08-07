@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,8 +13,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-
 	"github.com/redis/go-redis/v9"
+	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 var (
@@ -24,6 +25,7 @@ var (
 	INSTANCE_UUID    string
 	DEBUG            bool
 
+	db     *sql.DB
 	client *redis.Client
 )
 
@@ -49,6 +51,7 @@ func main() {
 	PUBLIC_KEY = safeEnv("PUBLIC_KEY")
 	PRIVATE_KEY = safeEnv("PRIVATE_KEY")
 	HUB_SECRET_TOKEN = safeEnv("HUB_SECRET_TOKEN")
+	DB_URL := safeEnv("DB_URL")
 	INSTANCE_UUID = uuid.New().String()
 	debug, present := os.LookupEnv("DEBUG")
 
@@ -69,13 +72,21 @@ func main() {
 			return next(cc)
 		}
 	})
+	var err error
+	db := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(DB_URL)))
+	err = db.Ping()
+	if err != nil {
+		log.Panicln(err.Error())
+	}
+	defer db.Close()
+
 	client = redis.NewClient(&redis.Options{
 		Addr:     "cache:6379",
 		Password: "",
 		DB:       0,
 	})
-	var err error
 	defer client.Close()
+
 	e.POST("/api/chat/completions", func(c echo.Context) error {
 		cc := c.(*Context)
 		cc.Request().Header.Add("Content-Type", "application/json")
@@ -94,12 +105,12 @@ func main() {
 		c.Response().Header().Set("Connection", "keep-alive")
 		c.Response().Header().Set("X-Accel-Buffering", "no")
 
-
 		cc.Info.Printf("/api/chat/completions\n")
-		res := queryMiners(cc, req)
-		if len(res) != 0{
-			return c.String(500, res)
+		info, ok := queryMiners(cc, req)
+		if ok != nil {
+			return c.String(500, ok.Error())
 		}
+		go updatOrganicRequest(info, req.PubId)
 		return c.String(200, "")
 	})
 	e.Logger.Fatal(e.Start(":80"))

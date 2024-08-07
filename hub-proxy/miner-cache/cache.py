@@ -24,8 +24,9 @@ async def sync_miners():
             "port": axon.port,
             "hotkey": axon.hotkey,
             "coldkey": axon.coldkey,
+            "uid": uid
         }
-        for (axon, _) in axons
+        for (axon, uid) in axons
     ]
     print(ips, flush=True)
     r.json().set("miners", obj=ips, path=Path.root_path())

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -119,13 +120,13 @@ func getTopMiners(c *Context) []Miner {
 	return miners
 }
 
-func queryMiners(c *Context, req RequestBody) string {
+func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 	// Query miners with llm request
 
 	// First we get our miners
 	miners := getTopMiners(c)
 	if miners == nil {
-		return "No Miners"
+		return ResponseInfo{}, errors.New("No Miners")
 	}
 
 	// Build the rest of the body hash
@@ -143,7 +144,7 @@ func queryMiners(c *Context, req RequestBody) string {
 	messages_json, ok := json.Marshal(req.Messages)
 	if ok != nil {
 		c.Warn.Printf(ok.Error())
-		return "Failed to json marshall messages"
+		return ResponseInfo{}, errors.New("Failed to json marshall messages")
 	}
 
 	// query each miner at the same time with the variable context of the
@@ -295,7 +296,21 @@ func queryMiners(c *Context, req RequestBody) string {
 		if finished == false {
 			continue
 		}
-		return ""
+		return ResponseInfo{Miner: miner, Attempt: index}, nil
 	}
-	return ""
+	return ResponseInfo{}, errors.New("Ran out of miners to query")
+}
+
+func updatOrganicRequest(res ResponseInfo, pub_id string) {
+	organicUpdate, err := db.Prepare("UPDATE organic_request SET uid=?, hotkey=?, coldkey=?, miner_address=?, attempt=? WHERE pub_id=?")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	_, err = organicUpdate.Exec(res.Miner.Uid, res.Miner.Hotkey, res.Miner.Coldkey, fmt.Sprintf("http://%s:%d", res.Miner.Ip, res.Miner.Port), res.Attempt, pub_id)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	return
 }

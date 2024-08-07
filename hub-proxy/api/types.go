@@ -8,10 +8,10 @@ type MinerResponse struct {
 	HotKey  string
 }
 type Response struct {
-	Id      string `json:"id"`
-	Object  string `json:"object"`
-	Created string `json:"created"`
-	Model   string `json:"model"`
+	Id      string   `json:"id"`
+	Object  string   `json:"object"`
+	Created string   `json:"created"`
+	Model   string   `json:"model"`
 	Choices []Choice `json:"choices"`
 }
 type Choice struct {
@@ -32,6 +32,7 @@ type RequestBody struct {
 	Messages  []RequestBodyMessages `json:"messages"`
 	ApiKey    string                `json:"api_key"`
 	MaxTokens int                   `json:"max_tokens"`
+	PubId     string                `json:"pub_id"`
 }
 
 type Miner struct {
@@ -39,6 +40,7 @@ type Miner struct {
 	Port    int    `json:"port,omitempty"`
 	Hotkey  string `json:"hotkey,omitempty"`
 	Coldkey string `json:"coldkey,omitempty"`
+	Uid			string `json:"uid,omitempty"`
 }
 
 type InferenceBody struct {
@@ -91,4 +93,9 @@ type Event struct {
 	Id    string                 `json:"id"`
 	Retry int                    `json:"retry"`
 	Data  map[string]interface{} `json:"data"`
+}
+
+type ResponseInfo struct {
+	Miner   Miner
+	Attempt int
 }
