@@ -100,12 +100,6 @@ class Validator(BaseNeuron):
                 asyncpg.connect(self.config.database.url)
             )
 
-    def __del__(self):
-        if not self.db_conn:
-            return
-        bt.logging.info("Closing db connection")
-        self.loop.run_until_complete(self.db_conn.close())
-
     async def add_records(self, miners_records, response_records):
         try:
             assert self.db_conn
@@ -382,6 +376,16 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 10
                 miner_uids = miner_uids[:miner_subset]
             self.query_miners(miner_uids)
             step += 1
+
+        # Exiting
+        self.shutdown()
+
+    def shutdown(self):
+        if not self.db_conn:
+            return
+        bt.logging.info("Closing db connection")
+        self.loop.run_until_complete(self.db_conn.close())
+
 
     async def generate_question(self):
         assert self.config.neuron
