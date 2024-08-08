@@ -312,9 +312,8 @@ class Validator(BaseNeuron):
         try:
             assert self.db_conn
             rows = await self.db_conn.fetch(f"""
-SELECT v.ground_truth, o.response, o.uid, o.hotkey, o.pub_id FROM organic_request as o
-INNER JOIN validator_request as v ON v.r_nanoid = o.r_nanoid 
-WHERE o.scored=FALSE AND v.block > {self.subtensor.block - (self.subtensor.block % 360)}
+SELECT response, uid, pub_id, request->'messages' as messages, request->'max_tokens' as max_tokens FROM organic_request
+WHERE scored=FALSE AND block > {self.subtensor.block - (self.subtensor.block % 360)}
 """)
             for row in rows:
                 bt.logging.info(str(row))
