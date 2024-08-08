@@ -312,7 +312,7 @@ class Validator(BaseNeuron):
         try:
             assert self.db_conn
             rows = await self.db_conn.fetch(f"""
-SELECT v.groud_truth, m.response, m.uid, m.hotkey, m.pub_id FROM miner_response as m
+SELECT v.ground_truth, m.response, m.uid, m.hotkey, m.pub_id FROM miner_response as m
 INNER JOIN validator_request as v ON v.r_nanoid = m.r_nanoid 
 WHERE m.scored=FALSE AND v.block > {self.subtensor.block - (self.subtensor.block % 360)}
 """)
