@@ -7,15 +7,18 @@ from typing import List
 from pydantic import BaseModel
 import asyncpg
 
+
 def print_info(metagraph, hotkey, block, isMiner=True):
     uid = metagraph.hotkeys.index(hotkey)
     log = f"UID:{uid} | Block:{block} | Consensus:{metagraph.C[uid]} | "
     if isMiner:
-        return (
+        bt.logging.info(
             log
             + f"Stake:{metagraph.S[uid]} | Trust:{metagraph.T[uid]} | Incentive:{metagraph.I[uid]} | Emission:{metagraph.E[uid]}"
         )
-    return log + f"VTrust:{metagraph.Tv[uid]} | "
+        return
+    bt.logging.info(log + f"VTrust:{metagraph.Tv[uid]} | ")
+
 
 def jaro_distance(s1, s2):
     if s1 == s2:
@@ -54,6 +57,7 @@ def jaro_distance(s1, s2):
         t /= 2
     return (match / len1 + match / len2 + (match - t) / match) / 3.0
 
+
 # https://www.geeksforgeeks.org/jaro-and-jaro-winkler-similarity/
 # This is inversed, so 1 == very similar and 0 is non-similar
 def jaro_winkler(s1, s2):
@@ -66,8 +70,9 @@ def jaro_winkler(s1, s2):
             else:
                 break
         prefix = min(4, prefix)
-        jaro_dist += .25 * prefix * (1 - jaro_dist)
+        jaro_dist += 0.25 * prefix * (1 - jaro_dist)
     return jaro_dist
+
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
     """
@@ -93,6 +98,7 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
         norm_arr.append(temp)
     return norm_arr
 
+
 def safe_mean_score(data):
     """
     Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the
@@ -115,6 +121,7 @@ def safe_mean_score(data):
         return 0.0
     return float(mean_value) * (len(clean_data) / len(data))
 
+
 class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
@@ -125,6 +132,7 @@ class InferenceStats(BaseModel):
     verified: bool
     jaro_score: float
 
+
 def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
     if len(miner_output) < (len(ground_truth_output) * 0.8):
         return 0, False
@@ -134,26 +142,4 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
 
     return score, score > 0.97
 
-async def add_records(miners_records, response_records, database_url):
-    conn = None
-    try:
-        conn = await asyncpg.connect(database_url)
 
-        # Insert miners_records
-        await conn.executemany('''
-            INSERT INTO miner_response (r_nanoid, hotkey, coldkey, uid, stats) VALUES ($1, $2, $3, $4, $5)
-        ''', miners_records)
-        bt.logging.info("Records inserted into miner responses successfully.")
-
-        # Insert response_records first since miners_responses references it
-        await conn.executemany('''
-            INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version) VALUES ($1, $2, $3, $4, $5, $6)
-        ''', response_records)
-        bt.logging.info("Records inserted into validator request successfully.")
-
-    except Exception as e:
-        bt.logging.error(f"Error inserting records: {e}")
-        bt.logging.error(traceback.format_exc())
-    finally:
-        if conn:
-            await conn.close()

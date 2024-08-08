@@ -130,13 +130,6 @@ def add_validator_args(parser):
     )
 
     parser.add_argument(
-        "--neuron.sample_size",
-        type=int,
-        help="The number of miners to query in a single step.",
-        default=48,
-    )
-
-    parser.add_argument(
         "--neuron.vpermit_tao_limit",
         type=int,
         help="The maximum number of TAO allowed to query a validator with a vpermit.",
@@ -146,6 +139,6 @@ def add_validator_args(parser):
     parser.add_argument(
         "--database.url",
         type=str,
-        help="Database URL to save Miner Data to Targon Hub",
+        help="Database URL to save Miner Data to Targon Hub / score organic queries",
         default=None,
     )
