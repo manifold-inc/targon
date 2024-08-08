@@ -308,6 +308,19 @@ class Validator(BaseNeuron):
             sampling_params,
             messages,
         )
+    async def score_organic(self):
+        try:
+            assert self.db_conn
+            rows = await self.db_conn.fetch(f"""
+SELECT v.groud_truth, m.response, m.uid, m.hotkey, m.pub_id FROM miner_response as m
+INNER JOIN validator_request as v ON v.r_nanoid = m.r_nanoid 
+WHERE m.scored=FALSE AND v.block > {self.subtensor.block - (self.subtensor.block % 360)}
+""")
+            for row in rows:
+                bt.logging.info(str(row))
+        except Exception as e:
+            bt.logging.error(f"Error scoring organic requests: {e}")
+            bt.logging.error(traceback.format_exc())
 
     def run(self):
         assert self.config.subtensor
@@ -354,7 +367,7 @@ class Validator(BaseNeuron):
 
             # Score organic queries every few steps
             if not step % 30 and self.config.database.url:
-                pass
+                self.loop.run_until_complete(self.score_organic())
 
             print_info(
                 self.metagraph,
