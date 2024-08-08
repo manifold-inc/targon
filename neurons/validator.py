@@ -323,6 +323,10 @@ class Validator(BaseNeuron):
 
         # This loop maintains the validator's operations until intentionally stopped.
         step = 0
+        miner_subset = 36
+        miner_uids = self.get_miner_uids()
+        random.shuffle(miner_uids)
+        miner_uids = miner_uids[:miner_subset]
         while not self.should_exit:
             bt.logging.info(
                 f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { self.config.neuron.epoch_length - (self.subtensor.block % self.config.neuron.epoch_length) }"
@@ -359,10 +363,11 @@ class Validator(BaseNeuron):
                 isMiner=False,
             )
 
-            # get random set of miner uids
-            miner_uids = self.get_miner_uids()
-            random.shuffle(miner_uids)
-            miner_uids = miner_uids[:24]
+            # get random set of miner uids every other step
+            if step % 2:
+                miner_uids = self.get_miner_uids()
+                random.shuffle(miner_uids)
+                miner_uids = miner_uids[:miner_subset]
             self.query_miners(miner_uids)
             step += 1
 
