@@ -6,7 +6,6 @@ import random
 import asyncio
 
 import pickle
-from asyncpg import Record
 from asyncpg.connection import asyncpg
 import openai
 from neurons.base import BaseNeuron, NeuronType
@@ -287,50 +286,60 @@ class Validator(BaseNeuron):
         )
 
     async def score_organic(self):
+        bt.logging.info(f"Scoring 3 random recent organics")
         try:
             assert self.db_conn
             rows = await self.db_conn.fetch(
                 f"""
 SELECT response, uid, pub_id, request->'messages' as messages, request->'max_tokens' as max_tokens, metadata->'request_duration_ms' as total_time FROM organic_request
-WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 3 """
+WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
             )
             for row in rows:
-                uid = row['uid']
-                sampling_params = protocol.InferenceSamplingParams(
-                    seed=5688697,
-                    temperature=0.01,
-                    top_p=0.98,
-                    max_new_tokens=row["max_tokens"],
-                )
-                ground_truth = self.generate_ground_truth(
-                    row["messages"], sampling_params
-                )
-                if ground_truth is None:
-                    continue
+                try:
+                    response = row['response']
+                    uid = row["uid"]
+                    if self.miner_wps.get(uid) is None:
+                        self.miner_wps[uid] = []
+                    if response is None:
+                        self.miner_wps[uid].extend([None] * 3)
 
-                response_words = row["response"].split(" ")
-                ground_truth_words = ground_truth.split(" ")
-                jaro_score, verified = check_tokens(response_words, ground_truth_words)
-                stat = InferenceStats(
-                    time_to_first_token=0,
-                    time_for_all_tokens=0,
-                    total_time=row["total_time"],
-                    wps=(
-                        min(len(response_words), len(ground_truth_words))
-                        / row["total_time"]
-                    ),
-                    tokens=[],
-                    response="",
-                    jaro_score=jaro_score,
-                    verified=verified,
-                )
-                bt.logging.info(row.uid)
-                bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
-                if stat.verified and stat.total_time != 0:
-                    self.miner_wps[uid].append(stat.wps)
+                    sampling_params = protocol.InferenceSamplingParams(
+                        seed=5688697,
+                        temperature=0.01,
+                        top_p=0.98,
+                        max_new_tokens=row["max_tokens"],
+                    )
+                    messages = json.loads(row["messages"])
+                    ground_truth = self.generate_ground_truth(messages, sampling_params)
+                    if ground_truth is None:
+                        continue
+
+                    response_words = row["response"].split(" ")
+                    ground_truth_words = ground_truth.split(" ")
+                    jaro_score, verified = check_tokens(response_words, ground_truth_words)
+                    stat = InferenceStats(
+                        time_to_first_token=0,
+                        time_for_all_tokens=0,
+                        total_time=row["total_time"],
+                        wps=(
+                            min(len(response_words), len(ground_truth_words))
+                            / float(row["total_time"])
+                        ),
+                        tokens=[],
+                        response="",
+                        jaro_score=jaro_score,
+                        verified=verified,
+                    )
+                    bt.logging.info(f"Organic: {uid}: {stat.verified} | {stat.total_time}")
+                    await self.db_conn.execute("UPDATE organic_request SET scored=True, jaro=$1", jaro_score)
+                    if stat.verified:
+                        self.miner_wps[uid].extend([stat.wps] * 3)
+                        continue
+                    self.miner_wps[uid].append(stat.wps * jaro_score)
+                except Exception as e:
+                    bt.logging.error(f"Error scoring organic requests for {row['uid']}: {e}")
+                    bt.logging.error(traceback.format_exc())
                     continue
-                self.miner_wps[uid].append(None)
-                # TODO update as scored
         except Exception as e:
             bt.logging.error(f"Error scoring organic requests: {e}")
             bt.logging.error(traceback.format_exc())
