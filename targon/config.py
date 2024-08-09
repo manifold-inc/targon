@@ -126,14 +126,7 @@ def add_validator_args(parser):
         "--neuron.timeout",
         type=float,
         help="The timeout for each forward call in seconds.",
-        default=12,
-    )
-
-    parser.add_argument(
-        "--neuron.sample_size",
-        type=int,
-        help="The number of miners to query in a single step.",
-        default=48,
+        default=8,
     )
 
     parser.add_argument(
@@ -146,6 +139,6 @@ def add_validator_args(parser):
     parser.add_argument(
         "--database.url",
         type=str,
-        help="Database URL to save Miner Data to Targon Hub",
+        help="Database URL to save Miner Data to Targon Hub / score organic queries",
         default=None,
     )

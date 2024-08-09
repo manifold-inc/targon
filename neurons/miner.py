@@ -136,12 +136,10 @@ class Miner(BaseNeuron):
         try:
             while not self.should_exit:
                 # Print Logs for Miner
-                bt.logging.info(
-                    print_info(
-                        self.metagraph,
-                        self.wallet.hotkey.ss58_address,
-                        self.subtensor.block,
-                    )
+                print_info(
+                    self.metagraph,
+                    self.wallet.hotkey.ss58_address,
+                    self.subtensor.block,
                 )
                 # Wait before checking again.
                 time.sleep(12)

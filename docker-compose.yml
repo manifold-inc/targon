@@ -2,9 +2,9 @@ services:
   vllm-1:
     image: vllm/vllm-openai:latest
     runtime: nvidia
-    command: --model NousResearch/Meta-Llama-3.1-8B-Instruct --dtype auto
+    command: --model NousResearch/Meta-Llama-3.1-8B-Instruct
     ports:
-      - 8000:8000
+      - 9000:8000
     ipc: host
     volumes:
       - hf_cache:/root/.cache/huggingface
@@ -15,6 +15,23 @@ services:
             - driver: nvidia
               device_ids:
                 - "0"
+              capabilities: [gpu]
+  vllm-2:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    command: --model NousResearch/Meta-Llama-3.1-8B-Instruct
+    ports:
+      - 9001:8000
+    ipc: host
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids:
+                - "1"
               capabilities: [gpu]
 volumes:
   hf_cache:

@@ -296,7 +296,7 @@ from targon.updater import autoupdate
 1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
    \- wallet-hot) / neuron.name. *Defaults to validator*
 1. **--neuron.timeout** ==> The timeout for each forward call in seconds.
-   *Defaults to 12*
+   *Defaults to 8*
 1. **--neuron.sample_size** ==> The number of miners to query in a single step.
    *Defaults to 48*
 1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
