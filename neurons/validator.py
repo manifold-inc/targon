@@ -6,6 +6,7 @@ import random
 import asyncio
 
 import pickle
+from asyncpg import Record
 from asyncpg.connection import asyncpg
 import openai
 from neurons.base import BaseNeuron, NeuronType
@@ -190,69 +191,6 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
-    async def process_uids(
-        self, uids, messages, sampling_params, ground_truth
-    ) -> List[Tuple[int, InferenceStats]]:
-        assert self.config.neuron
-        assert self.config.database
-
-        try:
-            tasks = []
-            # Generate r_nano id
-            r_nanoid = generate(size=48)
-            for uid in uids:
-                tasks.append(
-                    asyncio.create_task(
-                        self.handle_inference(
-                            messages, sampling_params, uid, ground_truth
-                        )
-                    )
-                )
-            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
-            for uid, stat in stats:
-                bt.logging.trace(f"{uid}: {stat.verified} | {stat.total_time}")
-                if stat.verified and stat.total_time != 0:
-                    self.miner_wps[uid].append(stat.wps)
-                    continue
-                # Dont give people zeros for missing a single query
-                # This also pushes the list forward, so if they start failing all
-                # queries, they will eventually get zero'd
-                self.miner_wps[uid].append(None)
-
-            if self.config.database.url:
-                # Create miners_records
-                miners_records = [
-                    (
-                        r_nanoid,
-                        self.metagraph.axons[uid].hotkey,
-                        self.metagraph.axons[uid].coldkey,
-                        int(uid),
-                        json.dumps(stat.model_dump()),
-                    )
-                    for uid, stat in stats
-                ]
-                # Create response_records
-                response_records = [
-                    (
-                        r_nanoid,
-                        self.subtensor.block,
-                        datetime.now(),
-                        json.dumps(sampling_params.dict()),
-                        json.dumps(
-                            {"ground_truth": ground_truth, "messages": messages}
-                        ),
-                        spec_version,
-                    )
-                ]
-                await self.add_records(miners_records, response_records)
-            self.save_scores()
-            return stats
-
-        except Exception as e:
-            bt.logging.error(f"Error in forward: {e}")
-            bt.logging.error(traceback.format_exc())
-            return []
-
     def save_scores(self):
         assert self.config.neuron
         with open(self.config.neuron.cache_file, "wb") as file:
@@ -267,23 +205,51 @@ class Validator(BaseNeuron):
             )
             bt.logging.info("Cached")
 
-    def query_miners(self, miner_uids):
+    def generate_ground_truth(self, messages, sampling_params):
         assert self.config.neuron
-        try:
-            messages, sampling_params = asyncio.run(self.generate_question())
-            res = self.client.chat.completions.create(
-                model=self.config.neuron.model_name,
-                messages=messages,
-                stream=False,
-                temperature=sampling_params.temperature,
-                top_p=sampling_params.top_p,
-                seed=sampling_params.seed,
-                max_tokens=sampling_params.max_new_tokens,
+        res = self.client.chat.completions.create(
+            model=self.config.neuron.model_name,
+            messages=messages,
+            stream=False,
+            temperature=sampling_params.temperature,
+            top_p=sampling_params.top_p,
+            seed=sampling_params.seed,
+            max_tokens=sampling_params.max_new_tokens,
+        )
+        return res.choices[0].message.content
+
+    async def save_stats_to_db(self, stats, sampling_params, messages, ground_truth):
+        r_nanoid = generate(size=48)
+        miners_records = [
+            (
+                r_nanoid,
+                self.metagraph.axons[uid].hotkey,
+                self.metagraph.axons[uid].coldkey,
+                int(uid),
+                json.dumps(stat.model_dump()),
             )
-            ground_truth = res.choices[0].message.content
-        except openai.APIConnectionError:
+            for uid, stat in stats
+        ]
+        response_records = [
+            (
+                r_nanoid,
+                self.subtensor.block,
+                datetime.now(),
+                json.dumps(sampling_params.model_dump()),
+                json.dumps({"ground_truth": ground_truth, "messages": messages}),
+                spec_version,
+            )
+        ]
+        await self.add_records(miners_records, response_records)
+
+    async def query_miners(self, miner_uids, save_to_db=True):
+        assert self.config.database
+        try:
+            messages, sampling_params = self.generate_question()
+            ground_truth = self.generate_ground_truth(messages, sampling_params)
+        except openai.APIConnectionError as e:
             bt.logging.error(
-                f"Failed to connect to LLM server with connection string {self.client.base_url}."
+                f"Failed to connect to LLM server with connection string {self.client.base_url}: {e.message}"
             )
             bt.logging.error(
                 "Make sure an open ai compliant server is running at the above url, or fix --neuron.model_endpoint"
@@ -293,24 +259,78 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Error generating dataset: {e}")
             bt.logging.error(traceback.format_exc())
             return None
-        stats = self.loop.run_until_complete(
-            self.process_uids(miner_uids, messages, sampling_params, ground_truth)
-        )
+
+        tasks = []
+        for uid in miner_uids:
+            tasks.append(
+                asyncio.create_task(
+                    self.handle_inference(messages, sampling_params, uid, ground_truth)
+                )
+            )
+        stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+        for uid, stat in stats:
+            bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
+            if stat.verified and stat.total_time != 0:
+                self.miner_wps[uid].append(stat.wps)
+                continue
+            self.miner_wps[uid].append(None)
+
+        if self.config.database.url and save_to_db:
+            await self.save_stats_to_db(stats, sampling_params, messages, ground_truth)
+
+        self.save_scores()
         return (
             stats,
             ground_truth,
             sampling_params,
             messages,
         )
+
     async def score_organic(self):
         try:
             assert self.db_conn
-            rows = await self.db_conn.fetch(f"""
-SELECT response, uid, pub_id, request->>'messages' as messages, request->>'max_tokens' as max_tokens, metadata->>'request_duration_ms' as duration FROM organic_request
-WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 10
-""")
+            rows = await self.db_conn.fetch(
+                f"""
+SELECT response, uid, pub_id, request->'messages' as messages, request->'max_tokens' as max_tokens, metadata->'request_duration_ms' as total_time FROM organic_request
+WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 3 """
+            )
             for row in rows:
-                bt.logging.info(str(row))
+                uid = row['uid']
+                sampling_params = protocol.InferenceSamplingParams(
+                    seed=5688697,
+                    temperature=0.01,
+                    top_p=0.98,
+                    max_new_tokens=row["max_tokens"],
+                )
+                ground_truth = self.generate_ground_truth(
+                    row["messages"], sampling_params
+                )
+                if ground_truth is None:
+                    continue
+
+                response_words = row["response"].split(" ")
+                ground_truth_words = ground_truth.split(" ")
+                jaro_score, verified = check_tokens(response_words, ground_truth_words)
+                stat = InferenceStats(
+                    time_to_first_token=0,
+                    time_for_all_tokens=0,
+                    total_time=row["total_time"],
+                    wps=(
+                        min(len(response_words), len(ground_truth_words))
+                        / row["total_time"]
+                    ),
+                    tokens=[],
+                    response="",
+                    jaro_score=jaro_score,
+                    verified=verified,
+                )
+                bt.logging.info(row.uid)
+                bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
+                if stat.verified and stat.total_time != 0:
+                    self.miner_wps[uid].append(stat.wps)
+                    continue
+                self.miner_wps[uid].append(None)
+                # TODO update as scored
         except Exception as e:
             bt.logging.error(f"Error scoring organic requests: {e}")
             bt.logging.error(traceback.format_exc())
@@ -374,7 +394,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 10
                 miner_uids = self.get_miner_uids()
                 random.shuffle(miner_uids)
                 miner_uids = miner_uids[:miner_subset]
-            self.query_miners(miner_uids)
+            self.loop.run_until_complete(self.query_miners(miner_uids))
             step += 1
 
         # Exiting
@@ -386,8 +406,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 10
         bt.logging.info("Closing db connection")
         self.loop.run_until_complete(self.db_conn.close())
 
-
-    async def generate_question(self):
+    def generate_question(self):
         assert self.config.neuron
         # Generate a random seed for reproducibility in sampling and text generation
         random.seed(urandom(100))
