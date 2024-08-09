@@ -286,7 +286,7 @@ class Validator(BaseNeuron):
         )
 
     async def score_organic(self):
-        bt.logging.info(f"Scoring 3 random recent organics")
+        bt.logging.info(f"Scoring up to 5 random recent organics")
         try:
             assert self.db_conn
             rows = await self.db_conn.fetch(
@@ -294,6 +294,7 @@ class Validator(BaseNeuron):
 SELECT response, uid, pub_id, request->'messages' as messages, request->'max_tokens' as max_tokens, metadata->'request_duration_ms' as total_time FROM organic_request
 WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
             )
+            bt.logging.info(f"Found {len(rows)} rows")
             for row in rows:
                 try:
                     response = row["response"]
@@ -302,6 +303,10 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                         self.miner_wps[uid] = []
                     if response is None:
                         self.miner_wps[uid].extend([None] * 3)
+                        bt.logging.info(
+                            f"Organic: {uid} failed req completely"
+                        )
+                        continue
 
                     sampling_params = protocol.InferenceSamplingParams(
                         seed=5688697,
