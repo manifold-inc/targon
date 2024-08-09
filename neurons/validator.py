@@ -296,7 +296,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
             )
             for row in rows:
                 try:
-                    response = row['response']
+                    response = row["response"]
                     uid = row["uid"]
                     if self.miner_wps.get(uid) is None:
                         self.miner_wps[uid] = []
@@ -316,7 +316,9 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
 
                     response_words = row["response"].split(" ")
                     ground_truth_words = ground_truth.split(" ")
-                    jaro_score, verified = check_tokens(response_words, ground_truth_words)
+                    jaro_score, verified = check_tokens(
+                        response_words, ground_truth_words
+                    )
                     stat = InferenceStats(
                         time_to_first_token=0,
                         time_for_all_tokens=0,
@@ -330,14 +332,20 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                         jaro_score=jaro_score,
                         verified=verified,
                     )
-                    bt.logging.info(f"Organic: {uid}: {stat.verified} | {stat.total_time}")
-                    await self.db_conn.execute("UPDATE organic_request SET scored=True, jaro=$1", jaro_score)
+                    bt.logging.info(
+                        f"Organic: {uid}: {stat.verified} | {stat.total_time}"
+                    )
+                    await self.db_conn.execute(
+                        "UPDATE organic_request SET scored=True, jaro=$1", jaro_score
+                    )
                     if stat.verified:
                         self.miner_wps[uid].extend([stat.wps] * 3)
                         continue
                     self.miner_wps[uid].append(stat.wps * jaro_score)
                 except Exception as e:
-                    bt.logging.error(f"Error scoring organic requests for {row['uid']}: {e}")
+                    bt.logging.error(
+                        f"Error scoring organic requests for {row['uid']}: {e}"
+                    )
                     bt.logging.error(traceback.format_exc())
                     continue
         except Exception as e:
@@ -364,7 +372,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         miner_uids = miner_uids[:miner_subset]
         while not self.should_exit:
             bt.logging.info(
-                f"Forward Block: {self.subtensor.block} |  Blocks till Set Weights: { self.config.neuron.epoch_length - (self.subtensor.block % self.config.neuron.epoch_length) }"
+                f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: { self.config.neuron.epoch_length - (self.subtensor.block % self.config.neuron.epoch_length) }"
             )
 
             # Sync metagraph
@@ -383,12 +391,20 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                 for uid in self.miner_wps.keys():
                     self.miner_wps[uid] = self.miner_wps[uid][-15:]
 
+            # Stop querying if close to weight set block
+            if (
+                self.config.neuron.epoch_length
+                - (self.subtensor.block % self.config.neuron.epoch_length)
+                < 5
+            ):
+                continue
+
             # Check to see if we need to update
             if self.config.autoupdate:
                 autoupdate(branch="main")
 
             # Score organic queries every few steps
-            if not step % 30 and self.config.database.url:
+            if not step % 25 and self.config.database.url:
                 self.loop.run_until_complete(self.score_organic())
 
             print_info(
