@@ -338,7 +338,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                         verified=verified,
                     )
                     bt.logging.info(
-                        f"Organic: {uid}: {stat.verified} | {stat.total_time}"
+                        f"Organic: {uid}: {stat.verified} | {stat.total_time}ms"
                     )
                     await self.db_conn.execute(
                         "UPDATE organic_request SET scored=True, jaro=$1", jaro_score
