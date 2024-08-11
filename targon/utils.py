@@ -116,7 +116,12 @@ def safe_mean_score(data):
     clean_data = [x for x in data if x is not None]
     if len(clean_data) == 0:
         return 0.0
-    mean_value = np.mean(clean_data)
+
+    # Clip absurdly high scores to 5x the median.
+    reasonable_max = np.median(clean_data) * 5.0
+    cleaner_data = [val if val <= reasonable_max else reasonable_max]
+
+    mean_value = np.mean(cleaner_data)
     if np.isnan(mean_value) or np.isinf(mean_value):
         return 0.0
     return float(mean_value) * (len(clean_data) / len(data))
