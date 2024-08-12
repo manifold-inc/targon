@@ -26,7 +26,7 @@ import bittensor as bt
 from nanoid import generate
 from datetime import datetime
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from targon import (
     protocol,
     __version__,
@@ -474,9 +474,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
 
         return prompt, sampling_params
 
-    def set_weights(self):
-        assert self.config.netuid
-
+    def get_weights(self) -> Tuple[List[int], List[float]]:
         wps = {
             miner: safe_mean_score(self.miner_wps[miner][-15:])
             for miner in self.miner_wps
@@ -484,7 +482,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         wps_list = list(wps.values())
         if len(wps_list) == 0:
             bt.logging.warning("Not setting weights, no responses from miners")
-            return
+            return [], []
         top_wps = max(wps_list)
         min_non_zero_wps = min([x for x in wps_list if x != 0])
         percentile_threshold = top_wps * 0.7
@@ -513,9 +511,16 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         bt.logging.info(f"All wps: {wps}")
         if sum(rewards) == 0:
             bt.logging.warning("No one gave responses worth scoring")
-            return
+            return [], []
         raw_weights = normalize(rewards)
         bt.logging.info(f"Raw Weights: {raw_weights}")
+        return uids, raw_weights
+
+    def set_weights(self):
+        assert self.config.netuid
+        uids, raw_weights = self.get_weights()
+        if not len(uids):
+            return
 
         # Set the weights on chain via our subtensor connection.
         (

@@ -1,4 +1,5 @@
 from random import shuffle
+import asyncio
 from neurons.validator import Validator
 
 
@@ -9,7 +10,9 @@ if __name__ == "__main__":
     miner_uids = validator.get_miner_uids()
     shuffle(miner_uids)
     miner_uids = miner_uids[:48]
-    res = validator.query_miners(miner_uids)
+    res = asyncio.get_event_loop().run_until_complete(
+        validator.query_miners(miner_uids)
+    )
 
     if res is None:
         print("No response from miner")
