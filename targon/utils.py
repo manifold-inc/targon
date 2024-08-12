@@ -122,4 +122,4 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
 
     if len(miner_output) < (len(ground_truth_output) * 0.7):
         return score, False
-    return score, score > 0.9 and score_2 > 0.55
+    return score, score_1 > 0.9 and score_2 > 0.55
