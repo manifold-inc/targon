@@ -303,9 +303,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                         self.miner_wps[uid] = []
                     if response is None:
                         self.miner_wps[uid].extend([None] * 3)
-                        bt.logging.info(
-                            f"Organic: {uid} failed req completely"
-                        )
+                        bt.logging.info(f"Organic: {uid} failed req completely")
                         continue
 
                     sampling_params = protocol.InferenceSamplingParams(
@@ -488,7 +486,8 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
             bt.logging.warning("Not setting weights, no responses from miners")
             return
         top_wps = max(wps_list)
-        percentile_threshold = top_wps * 0.8
+        min_non_zero_wps = min([x for x in wps_list if x != 0])
+        percentile_threshold = top_wps * 0.7
         for i, v in enumerate(wps_list):
             if v < percentile_threshold:
                 wps_list[i] = 0
@@ -500,7 +499,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         for uid, s in wps.items():
             reward_multiplier = 1
             if s < percentile_threshold:
-                s = 0
+                s = min(s, min_non_zero_wps)
             if s > 0:
                 normalized_difference = (s - avg_wps) / range_wps
                 reward_multiplier = math.exp(

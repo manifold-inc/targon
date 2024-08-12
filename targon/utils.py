@@ -1,4 +1,4 @@
-from math import floor
+from math import exp, floor
 from asyncpg.connection import traceback
 import bittensor as bt
 import numpy as np
@@ -75,21 +75,6 @@ def jaro_winkler(s1, s2):
 
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
-    """
-    Normalizes a list of floats to a specified range [t_min, t_max].
-
-    This function scales the input list of floats such that the minimum value in the list
-    is mapped to t_min and the maximum value in the list is mapped to t_max. The values
-    in between are scaled proportionally.
-
-    Args:
-    arr (List[float]): The list of floats to be normalized.
-    t_min (float): The minimum value of the target range. Default is 0.
-    t_max (float): The maximum value of the target range. Default is 1.
-
-    Returns:
-    List[float]: A new list containing the normalized values.
-    """
     norm_arr = []
     diff = t_max - t_min
     diff_arr = max(arr) - min(arr)
@@ -99,27 +84,18 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
     return norm_arr
 
 
+def sigmoid(num):
+    return 1 / (1 + exp(-((num - 0.5) / 0.1)))
+
+
 def safe_mean_score(data):
-    """
-    Computes the mean of a list of numbers, returning 0.0 if the list is empty or if the
-    computed mean is NaN or infinite.
-
-    This function ensures that the mean calculation is safe by handling edge cases where
-    the input list is empty or the mean is not a finite number.
-
-    Args:
-    data (list): A list of numbers to compute the mean of.
-
-    Returns:
-    float: The mean of the list if it's a valid number, otherwise 0.0.
-    """
     clean_data = [x for x in data if x is not None]
     if len(clean_data) == 0:
         return 0.0
     mean_value = np.mean(clean_data)
     if np.isnan(mean_value) or np.isinf(mean_value):
         return 0.0
-    return float(mean_value) * (len(clean_data) / len(data))
+    return float(mean_value) * sigmoid(len(clean_data) / len(data))
 
 
 class InferenceStats(BaseModel):
@@ -134,12 +110,16 @@ class InferenceStats(BaseModel):
 
 
 def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
-    if len(miner_output) < (len(ground_truth_output) * 0.8):
-        return 0, False
-
     # Calculate the score from 0 to 1
-    score = jaro_winkler(ground_truth_output, miner_output)
+    half_of_ground = floor(len(ground_truth_output) / 3)
+    score_1 = jaro_winkler(
+        ground_truth_output[:half_of_ground], miner_output[:half_of_ground]
+    )
+    score_2 = jaro_winkler(
+        ground_truth_output[half_of_ground:], miner_output[half_of_ground:]
+    )
+    score = (score_1 + score_2) / 2
 
-    return score, score > 0.97
-
-
+    if len(miner_output) < (len(ground_truth_output) * 0.7):
+        return score, False
+    return score, score > 0.9 and score_2 > 0.55
