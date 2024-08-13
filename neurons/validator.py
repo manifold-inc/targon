@@ -276,7 +276,9 @@ class Validator(BaseNeuron):
             )
         stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
-            bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time} | {stat.jaros}")
+            bt.logging.info(
+                f"{uid}: {stat.verified} | {stat.total_time} | {stat.jaros}"
+            )
             if stat.verified and stat.total_time != 0:
                 self.miner_wps[uid].append(stat.wps)
                 continue
@@ -491,11 +493,6 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
             bt.logging.warning("Not setting weights, no responses from miners")
             return [], []
         top_wps = max(wps_list)
-        percentile_threshold = top_wps * 0.7
-        for i, v in enumerate(wps_list):
-            if v < percentile_threshold:
-                wps_list[i] = 0
-
         range_wps = top_wps - min(wps_list)
         avg_wps = np.average(wps_list)
 
@@ -508,7 +505,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                     normalized_difference * 10
                 )  # Scale the difference to enhance reward disparity
 
-            rewards[uid] = reward_multiplier * s
+            rewards[uid] = reward_multiplier * s if s != 0 else 1e-9
         uids: List[int] = sorted(rewards.keys())
         rewards = [rewards[uid] for uid in uids]
 
