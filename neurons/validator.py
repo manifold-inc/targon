@@ -276,7 +276,7 @@ class Validator(BaseNeuron):
             )
         stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
-            bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
+            bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time} | {stat.jaros}")
             if stat.verified and stat.total_time != 0:
                 self.miner_wps[uid].append(stat.wps)
                 continue
