@@ -127,9 +127,9 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[List[float], bool]:
             score = jaro_winkler(ground_chunks[i], miner_chunks[i])
         else:
             score = jaro_distance(ground_chunks[i], miner_chunks[i])
-        this_passed = score > (1 - i / (3 * total_ground_chunks))
+        this_passed = score > (1 - i / total_ground_chunks)
         if this_passed:
             passed += 1
         jaros.append(score)
 
-    return jaros, passed / total_ground_chunks > .65
+    return jaros, passed / total_ground_chunks > .60
