@@ -146,8 +146,7 @@ class Validator(BaseNeuron):
             total_time=0,
             response="",
             verified=False,
-            jaro_score_1=0,
-            jaro_score_2=0,
+            jaros=[],
         )
         try:
             synapse = protocol.Inference(
@@ -182,11 +181,8 @@ class Validator(BaseNeuron):
             time_for_all_tokens = end_token_time - start_token_time
             response = "".join(response_tokens)
 
-            jaro_score_1, jaro_score_2, verified = check_tokens(
-                response.split(" "), ground_truth.split(" ")
-            )
-            stats.jaro_score_1 = jaro_score_1
-            stats.jaro_score_2 = jaro_score_2
+            jaros, verified = check_tokens(response.split(" "), ground_truth.split(" "))
+            stats.jaros = jaros
             stats.verified = verified
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
@@ -331,9 +327,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
 
                     response_words = row["response"].split(" ")
                     ground_truth_words = ground_truth.split(" ")
-                    jaro_score_1, jaro_score_2, verified = check_tokens(
-                        response_words, ground_truth_words
-                    )
+                    jaros, verified = check_tokens(response_words, ground_truth_words)
                     stat = InferenceStats(
                         time_to_first_token=0,
                         time_for_all_tokens=0,
@@ -343,23 +337,19 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                             / float(row["total_time"])
                         ),
                         response="",
-                        jaro_score_1=jaro_score_1,
-                        jaro_score_2=jaro_score_2,
+                        jaros=jaros,
                         verified=verified,
                     )
                     bt.logging.info(
                         f"Organic: {uid}: {stat.verified} | {stat.total_time}ms"
                     )
                     await self.db_organics.execute(
-                        "UPDATE organic_request SET scored=True, jaro=$1",
-                        (jaro_score_1 + jaro_score_2) / 2,
+                        "UPDATE organic_request SET scored=True",
                     )
                     if stat.verified:
                         self.miner_wps[uid].extend([stat.wps] * 3)
                         continue
-                    self.miner_wps[uid].append(
-                        stat.wps * (jaro_score_1 + jaro_score_2) / 2
-                    )
+                    self.miner_wps[uid].append(stat.wps * (sum(jaros) / len(jaros)))
                 except Exception as e:
                     bt.logging.error(
                         f"Error scoring organic requests for {row['uid']}: {e}"

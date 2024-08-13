@@ -103,20 +103,35 @@ class InferenceStats(BaseModel):
     wps: float
     response: str
     verified: bool
-    jaro_score_1: float
-    jaro_score_2: float
+    jaros: List[float]
 
 
-def check_tokens(miner_output, ground_truth_output) -> Tuple[float, float, bool]:
+def divide_chunks(l, n):
+    for i in range(0, len(l), n):
+        yield l[i : i + n]
+
+
+def check_tokens(miner_output, ground_truth_output) -> Tuple[List[float], bool]:
     # Calculate the score from 0 to 1
-    half_of_ground = floor(len(ground_truth_output) / 3)
-    score_1 = jaro_winkler(
-        ground_truth_output[:half_of_ground], miner_output[:half_of_ground]
-    )
-    score_2 = jaro_winkler(
-        ground_truth_output[half_of_ground:], miner_output[half_of_ground:]
-    )
+    miner_chunks = list(divide_chunks(miner_output, 15))
+    ground_chunks = list(divide_chunks(ground_truth_output, 15))
+    jaros = []
+    total_ground_chunks = len(ground_chunks)
+    total_miner_chunks = len(miner_chunks)
+    passed = True
+    for i in range(0, total_ground_chunks):
+        if total_miner_chunks <= i:
+            jaros.append((0))
+            continue
+        if i == 0:
+            score = jaro_winkler(ground_chunks[i], miner_chunks[i])
+        else:
+            score = jaro_distance(ground_chunks[i], miner_chunks[i])
+        this_passed = score > (1 - i / (3 * total_ground_chunks))
+        if not this_passed:
+            passed = False
+        jaros.append(score)
 
     if len(miner_output) < (len(ground_truth_output) * 0.7):
-        return score_1, score_2, False
-    return score_1, score_2, score_1 > 0.9 and score_2 > 0.55
+        return jaros, False
+    return jaros, passed
