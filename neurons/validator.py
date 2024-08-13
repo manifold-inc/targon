@@ -412,7 +412,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                 autoupdate(branch="main")
 
             # Score organic queries every few steps
-            if not step % 25 and self.config.database.url:
+            if not step % 25 and self.config.database.organics_url:
                 self.loop.run_until_complete(self.score_organic())
 
             print_info(
