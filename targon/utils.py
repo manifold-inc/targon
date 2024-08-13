@@ -1,11 +1,9 @@
 from math import exp, floor
-from asyncpg.connection import traceback
 import bittensor as bt
 import numpy as np
 from typing import List, Tuple
 from typing import List
 from pydantic import BaseModel
-import asyncpg
 
 
 def print_info(metagraph, hotkey, block, isMiner=True):
@@ -103,13 +101,13 @@ class InferenceStats(BaseModel):
     time_for_all_tokens: float
     total_time: float
     wps: float
-    tokens: List[str]
     response: str
     verified: bool
-    jaro_score: float
+    jaro_score_1: float
+    jaro_score_2: float
 
 
-def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
+def check_tokens(miner_output, ground_truth_output) -> Tuple[float, float, bool]:
     # Calculate the score from 0 to 1
     half_of_ground = floor(len(ground_truth_output) / 3)
     score_1 = jaro_winkler(
@@ -118,8 +116,7 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[float, bool]:
     score_2 = jaro_winkler(
         ground_truth_output[half_of_ground:], miner_output[half_of_ground:]
     )
-    score = (score_1 + score_2) / 2
 
     if len(miner_output) < (len(ground_truth_output) * 0.7):
-        return score, False
-    return score, score_1 > 0.9 and score_2 > 0.55
+        return score_1, score_2, False
+    return score_1, score_2, score_1 > 0.9 and score_2 > 0.55

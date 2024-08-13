@@ -26,7 +26,7 @@ import bittensor as bt
 from nanoid import generate
 from datetime import datetime
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from targon import (
     protocol,
     __version__,
@@ -39,7 +39,8 @@ from bittensor.utils.weight_utils import (
 
 class Validator(BaseNeuron):
     miner_wps: Dict[int, Any]
-    db_conn: Optional[asyncpg.Connection]
+    db_stats: Optional[asyncpg.Connection]
+    db_organics: Optional[asyncpg.Connection]
     neuron_type = NeuronType.Validator
 
     def __init__(self, config=None):
@@ -94,17 +95,28 @@ class Validator(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
-        self.db_conn = None
-        if self.config.database.url:
-            self.db_conn = self.loop.run_until_complete(
-                asyncpg.connect(self.config.database.url)
-            )
+        try:
+            self.db_stats = None
+            if self.config.database.url:
+                self.db_stats = self.loop.run_until_complete(
+                    asyncpg.connect(self.config.database.url)
+                )
+        except Exception as e:
+            bt.logging.error(f"Failed to initialize stats database: {e}")
+        try:
+            self.db_organics = None
+            if self.config.database.organics_url:
+                self.db_organics = self.loop.run_until_complete(
+                    asyncpg.connect(self.config.database.organics_url)
+                )
+        except Exception as e:
+            bt.logging.error(f"Failed to initialize organics database: {e}")
 
     async def add_records(self, miners_records, response_records):
         try:
-            assert self.db_conn
+            assert self.db_stats
             # Insert miners_records
-            await self.db_conn.executemany(
+            await self.db_stats.executemany(
                 """
                 INSERT INTO miner_response (r_nanoid, hotkey, coldkey, uid, stats) VALUES ($1, $2, $3, $4, $5)
             """,
@@ -113,7 +125,7 @@ class Validator(BaseNeuron):
             bt.logging.info("Records inserted into miner responses successfully.")
 
             # Insert response_records first since miners_responses references it
-            await self.db_conn.executemany(
+            await self.db_stats.executemany(
                 """
                 INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version) VALUES ($1, $2, $3, $4, $5, $6)
             """,
@@ -132,10 +144,10 @@ class Validator(BaseNeuron):
             time_for_all_tokens=0,
             wps=0,
             total_time=0,
-            tokens=[],
             response="",
             verified=False,
-            jaro_score=0,
+            jaro_score_1=0,
+            jaro_score_2=0,
         )
         try:
             synapse = protocol.Inference(
@@ -170,16 +182,16 @@ class Validator(BaseNeuron):
             time_for_all_tokens = end_token_time - start_token_time
             response = "".join(response_tokens)
 
-            jaro_score, verified = check_tokens(
+            jaro_score_1, jaro_score_2, verified = check_tokens(
                 response.split(" "), ground_truth.split(" ")
             )
-            stats.jaro_score = jaro_score
+            stats.jaro_score_1 = jaro_score_1
+            stats.jaro_score_2 = jaro_score_2
             stats.verified = verified
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
             stats.response = response
-            stats.tokens = response_tokens
             stats.wps = (
                 min(len(stats.response.split(" ")), len(ground_truth.split(" ")))
                 / stats.total_time
@@ -288,8 +300,8 @@ class Validator(BaseNeuron):
     async def score_organic(self):
         bt.logging.info(f"Scoring up to 5 random recent organics")
         try:
-            assert self.db_conn
-            rows = await self.db_conn.fetch(
+            assert self.db_organics
+            rows = await self.db_organics.fetch(
                 f"""
 SELECT response, uid, pub_id, request->'messages' as messages, request->'max_tokens' as max_tokens, metadata->'request_duration_ms' as total_time FROM organic_request
 WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
@@ -319,7 +331,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
 
                     response_words = row["response"].split(" ")
                     ground_truth_words = ground_truth.split(" ")
-                    jaro_score, verified = check_tokens(
+                    jaro_score_1, jaro_score_2, verified = check_tokens(
                         response_words, ground_truth_words
                     )
                     stat = InferenceStats(
@@ -330,21 +342,24 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                             min(len(response_words), len(ground_truth_words))
                             / float(row["total_time"])
                         ),
-                        tokens=[],
                         response="",
-                        jaro_score=jaro_score,
+                        jaro_score_1=jaro_score_1,
+                        jaro_score_2=jaro_score_2,
                         verified=verified,
                     )
                     bt.logging.info(
                         f"Organic: {uid}: {stat.verified} | {stat.total_time}ms"
                     )
-                    await self.db_conn.execute(
-                        "UPDATE organic_request SET scored=True, jaro=$1", jaro_score
+                    await self.db_organics.execute(
+                        "UPDATE organic_request SET scored=True, jaro=$1",
+                        (jaro_score_1 + jaro_score_2) / 2,
                     )
                     if stat.verified:
                         self.miner_wps[uid].extend([stat.wps] * 3)
                         continue
-                    self.miner_wps[uid].append(stat.wps * jaro_score)
+                    self.miner_wps[uid].append(
+                        stat.wps * (jaro_score_1 + jaro_score_2) / 2
+                    )
                 except Exception as e:
                     bt.logging.error(
                         f"Error scoring organic requests for {row['uid']}: {e}"
@@ -429,10 +444,12 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         self.shutdown()
 
     def shutdown(self):
-        if not self.db_conn:
-            return
-        bt.logging.info("Closing db connection")
-        self.loop.run_until_complete(self.db_conn.close())
+        if self.db_stats:
+            bt.logging.info("Closing stats db connection")
+            self.loop.run_until_complete(self.db_stats.close())
+        if self.db_organics:
+            bt.logging.info("Closing organics db connection")
+            self.loop.run_until_complete(self.db_organics.close())
 
     def generate_question(self):
         assert self.config.neuron
@@ -441,7 +458,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(128, 1024)
+        max_new_tokens = random.randint(1024 * 5, 1024 * 10)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
@@ -484,7 +501,6 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
             bt.logging.warning("Not setting weights, no responses from miners")
             return [], []
         top_wps = max(wps_list)
-        min_non_zero_wps = min([x for x in wps_list if x != 0])
         percentile_threshold = top_wps * 0.7
         for i, v in enumerate(wps_list):
             if v < percentile_threshold:
@@ -496,8 +512,6 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         rewards = {}
         for uid, s in wps.items():
             reward_multiplier = 1
-            if s < percentile_threshold:
-                s = min(s, min_non_zero_wps)
             if s > 0:
                 normalized_difference = (s - avg_wps) / range_wps
                 reward_multiplier = math.exp(
@@ -566,10 +580,6 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
     def get_miner_uids(self) -> List[int]:
-        """Returns all available uids from the metagraph
-        Returns:
-            uids (np.ndarray): Array of available uids.
-        """
         available_uids = []
         assert self.config.neuron
 

@@ -139,6 +139,13 @@ def add_validator_args(parser):
     parser.add_argument(
         "--database.url",
         type=str,
-        help="Database URL to save Miner Data to Targon Hub / score organic queries",
+        help="Database URL to save Miner Data to Targon Hub",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--database.organics_url",
+        type=str,
+        help="Database URL to score organic queries",
         default=None,
     )
