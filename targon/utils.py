@@ -118,7 +118,7 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[List[float], bool]:
     jaros = []
     total_ground_chunks = len(ground_chunks)
     total_miner_chunks = len(miner_chunks)
-    passed = True
+    passed = 0
     for i in range(0, total_ground_chunks):
         if total_miner_chunks <= i:
             jaros.append((0))
@@ -128,10 +128,8 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[List[float], bool]:
         else:
             score = jaro_distance(ground_chunks[i], miner_chunks[i])
         this_passed = score > (1 - i / (3 * total_ground_chunks))
-        if not this_passed:
-            passed = False
+        if this_passed:
+            passed += 1
         jaros.append(score)
 
-    if len(miner_output) < (len(ground_truth_output) * 0.7):
-        return jaros, False
-    return jaros, passed
+    return jaros, passed / total_ground_chunks > .65
