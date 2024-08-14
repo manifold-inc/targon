@@ -13,6 +13,10 @@ from targon.config import add_miner_args
 from enum import Enum
 import signal
 
+from targon import (
+    __spec_version__ as spec_version,
+)
+
 
 class NeuronType(Enum):
     Validator = 'VALIDATOR'
@@ -64,6 +68,7 @@ class BaseNeuron:
 
     def __init__(self, config=None):
         # Add parser args
+        bt.logging.info(f"Targon version {spec_version}")
         parser = argparse.ArgumentParser()
         bt.wallet.add_args(parser)
         bt.subtensor.add_args(parser)
