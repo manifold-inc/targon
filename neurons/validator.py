@@ -5,7 +5,6 @@ import time
 import random
 import asyncio
 
-import pickle
 from asyncpg.connection import asyncpg
 import openai
 from neurons.base import BaseNeuron, NeuronType
