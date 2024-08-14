@@ -67,21 +67,35 @@ class Validator(BaseNeuron):
 
         ## STATS
         self.miner_wps = {}
+
         try:
-            with open(self.config.neuron.cache_file, "rb") as file:
+            # Load old cache file
+            with open("cache.pickle", "rb") as file:
                 loaded_data: Dict[str, Any] = pickle.load(file)
                 # Only load cache if fresh
                 if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
                     bt.logging.info("Loading cached data")
                     bt.logging.info(str(loaded_data))
                     self.miner_wps = loaded_data.get("miner_wps", {})
+            self.save_scores()
+        except:
+            pass
 
-                    # Can remove after next+1 update
-                    if self.miner_wps == {}:
-                        self.miner_wps = loaded_data.get("miner_tps", {})
-
+        try:
+            with open(self.config.neuron.cache_file, "r") as file:
+                loaded_data: Dict[str, Any] = json.load(file)
+                # Only load cache if fresh
+                if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
+                    bt.logging.info("Loading cached data")
+                    bt.logging.info(str(loaded_data))
+                    self.miner_wps = loaded_data.get("miner_wps", {})
         except IOError:
             bt.logging.info("No cache file found")
+        except EOFError:
+            bt.logging.warning("Curropted pickle file")
+        except Exception as e:
+            bt.logging.error(f"Failed reading cache file: {e}")
+            bt.logging.error(traceback.format_exc())
 
         miners = self.get_miner_uids()
         for miner in miners:
@@ -199,18 +213,22 @@ class Validator(BaseNeuron):
             return uid, stats
 
     def save_scores(self):
-        assert self.config.neuron
-        with open(self.config.neuron.cache_file, "wb") as file:
-            bt.logging.info("Caching scores...")
-            pickle.dump(
-                {
-                    "miner_wps": self.miner_wps,
-                    "block_saved": self.subtensor.block,
-                    "version": spec_version,
-                },
-                file,
-            )
-            bt.logging.info("Cached")
+        try:
+            assert self.config.neuron
+            with open(self.config.neuron.cache_file, "w") as file:
+                bt.logging.info("Caching scores...")
+                json.dump(
+                    {
+                        "miner_wps": self.miner_wps,
+                        "block_saved": self.subtensor.block,
+                        "version": spec_version,
+                    },
+                    file,
+                )
+                bt.logging.info("Cached")
+        except Exception as e:
+            bt.logging.error(f"Failed writing to cache file: {e}")
+            bt.logging.error(traceback.format_exc())
 
     def generate_ground_truth(self, messages, sampling_params):
         assert self.config.neuron

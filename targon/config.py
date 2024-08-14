@@ -119,7 +119,7 @@ def add_validator_args(parser):
         "--neuron.cache_file",
         type=str,
         help="File to save scores, and other misc data that can persist through validator restarts",
-        default="cache.pickle",
+        default="cache.json",
     )
 
     parser.add_argument(
