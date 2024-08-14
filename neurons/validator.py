@@ -127,7 +127,7 @@ class Validator(BaseNeuron):
             # Insert response_records first since miners_responses references it
             await self.db_stats.executemany(
                 """
-                INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version) VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version, hotkey) VALUES ($1, $2, $3, $4, $5, $6, $7)
             """,
                 response_records,
             )
@@ -249,6 +249,7 @@ class Validator(BaseNeuron):
                 json.dumps(sampling_params.model_dump()),
                 json.dumps({"ground_truth": ground_truth, "messages": messages}),
                 spec_version,
+                self.wallet.hotkey.ss58_address
             )
         ]
         await self.add_records(miners_records, response_records)
