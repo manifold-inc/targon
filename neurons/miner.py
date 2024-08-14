@@ -8,6 +8,7 @@ from neurons.base import BaseNeuron, NeuronType
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
+from neurons.miner_app import app
 
 from bittensor.axon import FastAPIThreadedServer
 from targon.protocol import Inference
@@ -15,6 +16,11 @@ from targon.protocol import Inference
 
 class Miner(BaseNeuron):
     neuron_type = NeuronType.Miner
+    fast_api: FastAPIThreadedServer
+
+    def shutdown(self):
+        if self.fast_api:
+            self.fast_api.stop()
 
     def __init__(self, config=None):
         super().__init__(config)
@@ -31,13 +37,9 @@ class Miner(BaseNeuron):
             external_ip=self.config.axon.external_ip,
             config=self.config,
         )
-        self.axon.attach(
-            forward_fn=self.forward,
-            blacklist_fn=self.blacklist,
-            priority_fn=self.priority,
+        bt.logging.info(
+            "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
-
-        bt.logging.info("\N{grinning face with smiling eyes}", "Successfully Initialized!")
 
     async def blacklist(self, synapse: Inference) -> Tuple[bool, str]:
         assert synapse.dendrite
@@ -68,7 +70,7 @@ class Miner(BaseNeuron):
         return priority
 
     async def forward(self, synapse: Inference):
-        bt.logging.info(u'\u2713' ,"Getting Inference request!")
+        bt.logging.info("\u2713", "Getting Inference request!")
 
         async def _prompt(synapse: Inference, send: Send) -> None:
             assert self.config.neuron
@@ -96,7 +98,7 @@ class Miner(BaseNeuron):
                             "more_body": True,
                         }
                     )
-            bt.logging.info("\N{grinning face}" , "Successful Prompt");
+            bt.logging.info("\N{grinning face}", "Successful Prompt")
 
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
@@ -112,23 +114,34 @@ class Miner(BaseNeuron):
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
-        bt.logging.info(
-            f"Serving miner axon {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
-        )
-        self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
-        # Start  starts the miner's axon, making it active on the network.
+        #TODO make this logging better
+        bt.logging.info(
+            f"Serving miner endpoint on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+        )
+
+        serve_success = self.subtensor.serve(
+            wallet=self.wallet,
+            ip=self.config.axon.ip,
+            port=self.config.axon.port,
+            netuid=self.config.netuid,
+            protocol=4,
+        )
+        if not serve_success:
+            bt.logging.error("Failed to serve endpoint")
+            return
+
+        # Start  starts the miner's endpoint, making it active on the network.
         # change the config in the axon
         fast_config = uvicorn.Config(
-            self.axon.app,
+            app,
             host="0.0.0.0",
             port=self.config.axon.port,
-            log_level='info',
+            log_level="info",
             loop="asyncio",
         )
-        self.axon.fast_server = FastAPIThreadedServer(config=fast_config)
-
-        self.axon.start()
+        self.fast_api = FastAPIThreadedServer(config=fast_config)
+        self.fast_api.start()
 
         bt.logging.info(f"Miner starting at block: {self.subtensor.block}")
 
@@ -149,6 +162,8 @@ class Miner(BaseNeuron):
         except Exception as e:
             bt.logging.error(str(e))
             bt.logging.error(traceback.format_exc())
+        self.shutdown()
+
 
 if __name__ == "__main__":
     try:

@@ -137,7 +137,9 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Error inserting records: {e}")
             bt.logging.error(traceback.format_exc())
 
-    async def handle_inference(self, messages, sampling_params, uid, ground_truth):
+    async def handle_inference(
+        self, messages, sampling_params, uid: int, ground_truth: str
+    ):
         assert self.config.neuron
         stats = InferenceStats(
             time_to_first_token=0,
@@ -158,6 +160,11 @@ class Validator(BaseNeuron):
             start_send_message_time = time.time()
             end_send_message_time = None
             start_token_time = 0
+
+            # WIP
+            # axon_info = self.metagraph.axons[uid]
+            # requests.post(url=f"http://{axon_info.ip}:{axon_info.port}/inference")
+
             async for token in await self.dendrite(
                 self.metagraph.axons[uid],
                 synapse,
@@ -258,6 +265,9 @@ class Validator(BaseNeuron):
         try:
             messages, sampling_params = self.generate_question()
             ground_truth = self.generate_ground_truth(messages, sampling_params)
+            if ground_truth is None:
+                bt.logging.error("Failed to generate ground truth")
+                return
         except openai.APIConnectionError as e:
             bt.logging.error(
                 f"Failed to connect to LLM server with connection string {self.client.base_url}: {e.message}"
