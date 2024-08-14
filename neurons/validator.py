@@ -69,19 +69,6 @@ class Validator(BaseNeuron):
         self.miner_wps = {}
 
         try:
-            # Load old cache file
-            with open("cache.pickle", "rb") as file:
-                loaded_data: Dict[str, Any] = pickle.load(file)
-                # Only load cache if fresh
-                if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
-                    bt.logging.info("Loading cached data")
-                    bt.logging.info(str(loaded_data))
-                    self.miner_wps = loaded_data.get("miner_wps", {})
-            self.save_scores()
-        except:
-            pass
-
-        try:
             with open(self.config.neuron.cache_file, "r") as file:
                 loaded_data: Dict[str, Any] = json.load(file)
                 # Only load cache if fresh
