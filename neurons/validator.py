@@ -4,6 +4,7 @@ import copy
 import time
 import random
 import asyncio
+import aiohttp
 
 from asyncpg.connection import asyncpg
 import openai
@@ -23,7 +24,7 @@ import numpy as np
 import pandas as pd
 import bittensor as bt
 from nanoid import generate
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from typing import Any, Dict, List, Optional, Tuple
 from targon import (
@@ -41,6 +42,7 @@ class Validator(BaseNeuron):
     db_stats: Optional[asyncpg.Connection]
     db_organics: Optional[asyncpg.Connection]
     neuron_type = NeuronType.Validator
+    last_delegates_sync_time: Optional[datetime] = None
 
     def __init__(self, config=None):
         super().__init__(config)
@@ -112,9 +114,70 @@ class Validator(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Failed to initialize organics database: {e}")
 
+
+    async def fetch_json_from_github(self, url: str) -> Optional[Dict[str, Any]]:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    bt.logging.error(f"Failed to fetch Delagates JSON from GitHub. Status: {response.status}")
+                    return None
+
+    async def sync_delegates_to_db(self):
+       GITHUB_DELEGATES_URL = 'https://raw.githubusercontent.com/opentensor/bittensor-delegates/main/public/delegates.json'
+       validators = await self.fetch_json_from_github(GITHUB_DELEGATES_URL)
+
+       if validators is None:
+           return
+        
+       try:
+            for hotkey, details in validators.items():
+                name = details.get('name')
+
+                assert self.db_stats
+                # Check if this delegate already exists
+                existing_record = await self.db_stats.fetchrow(
+                    "SELECT * FROM validator WHERE hotkey = $1", hotkey
+                )
+
+                if existing_record:
+                    # Update the record if it exists and has changed
+                    if (existing_record['valiName'] != name):
+
+                        bt.logging.info(f"Updating record for hotkey {hotkey} to name: {name}")
+                        await self.db_stats.execute(
+                            """
+                            UPDATE validator SET valiName = $1 WHERE hotkey = $2
+                            """,
+                            name, hotkey
+                        )
+                else:
+                    # Insert a new record if it doesn't exist
+                    bt.logging.info(f"Inserting new delgate name {name} for hotkey {hotkey}")
+                    await self.db_stats.execute(
+                        """
+                        INSERT INTO validator (hotkey, valiName) VALUES ($1, $2, $3, $4, $5)
+                        """,
+                        hotkey, name
+                    )
+
+       except Exception as e:
+            bt.logging.error(f"Error syncing delegates to database: {e}")
+            bt.logging.error(traceback.format_exc())
+
+    async def check_delegates_sync(self):
+        if self.last_delegates_sync_time is None or (datetime.now() - self.last_delegates_sync_time) > timedelta(weeks=1):
+            await self.sync_delegates_to_db()
+            self.last_delegates_sync_time = datetime.now()
+
     async def add_records(self, miners_records, response_records):
         try:
             assert self.db_stats
+
+            # Check if we need to sync delegates
+            await self.check_delegates_sync()
+
             # Insert miners_records
             await self.db_stats.executemany(
                 """
@@ -127,7 +190,7 @@ class Validator(BaseNeuron):
             # Insert response_records first since miners_responses references it
             await self.db_stats.executemany(
                 """
-                INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version) VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version, hotkey) VALUES ($1, $2, $3, $4, $5, $6, $7)
             """,
                 response_records,
             )
@@ -249,6 +312,7 @@ class Validator(BaseNeuron):
                 json.dumps(sampling_params.model_dump()),
                 json.dumps({"ground_truth": ground_truth, "messages": messages}),
                 spec_version,
+                self.wallet.hotkey.ss58_address
             )
         ]
         await self.add_records(miners_records, response_records)
