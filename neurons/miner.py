@@ -1,6 +1,7 @@
 from functools import partial
 import traceback
 import time
+from bittensor.subtensor import serve_extrinsic
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import netaddr
 import requests
@@ -106,7 +107,7 @@ class Miner(BaseNeuron):
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
         external_ip = self.config.axon.ip
-        if not external_ip or external_ip == '[::]':
+        if not external_ip or external_ip == "[::]":
             try:
                 external_ip = requests.get("https://checkip.amazonaws.com").text.strip()
                 netaddr.IPAddress(external_ip)
@@ -117,12 +118,13 @@ class Miner(BaseNeuron):
             f"Serving miner endpoint {external_ip}:{self.config.axon.port} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
 
-        serve_success = self.subtensor.serve(
-            wallet=self.wallet,
-            ip=external_ip,
-            port=self.config.axon.port,
-            netuid=self.config.netuid,
-            protocol=4,
+        serve_success = serve_extrinsic(
+            self.subtensor,
+            self.wallet,
+            external_ip,
+            self.config.axon.port,
+            self.config.netuid,
+            4,
         )
         if not serve_success:
             bt.logging.error("Failed to serve endpoint")
