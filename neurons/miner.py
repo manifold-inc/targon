@@ -1,4 +1,3 @@
-from functools import partial
 import traceback
 import time
 from bittensor.subtensor import serve_extrinsic
@@ -6,8 +5,6 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import netaddr
 import requests
 from starlette.responses import StreamingResponse
-from starlette.types import Send
-import json
 
 from neurons.base import BaseNeuron, NeuronType
 from targon.epistula import EpistulaRequest, verify_signature
