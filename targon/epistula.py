@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, Any, Dict, Generic, Optional, TypeVar
+from typing import Annotated, Any, Dict, Generic, List, Optional, TypeVar, Union
 
 import time
 from pydantic import Field
@@ -23,7 +23,7 @@ class EpistulaRequest(GenericModel, Generic[T]):
 
 
 def generate_body(
-    data: Any, receiver_hotkey: str, sender_hotkey: str
+    data: Union[Dict[Any, Any], List[Any]], receiver_hotkey: str, sender_hotkey: str
 ) -> Dict[str, Any]:
     return {
         "data": data,
@@ -33,7 +33,9 @@ def generate_body(
     }
 
 
-def generate_header(hotkey: Keypair, body: Any) -> Dict[str, Any]:
+def generate_header(
+    hotkey: Keypair, body: Union[Dict[Any, Any], List[Any]]
+) -> Dict[str, Any]:
     return {"Body-Signature": hotkey.sign(json.dumps(body)).hex()}
 
 
