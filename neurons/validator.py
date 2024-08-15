@@ -74,7 +74,8 @@ class Validator(BaseNeuron):
                 if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
                     bt.logging.info("Loading cached data")
                     bt.logging.info(str(loaded_data))
-                    self.miner_wps = loaded_data.get("miner_wps", {})
+                    miner_wps: Dict[str, List[float]] = loaded_data.get("miner_wps", {})
+                    self.miner_wps = dict([(int(k), v) for k, v in miner_wps.items()])
         except IOError:
             bt.logging.info("No cache file found")
         except EOFError:
@@ -211,6 +212,7 @@ class Validator(BaseNeuron):
                     },
                     file,
                 )
+                file.flush()
                 bt.logging.info("Cached")
         except Exception as e:
             bt.logging.error(f"Failed writing to cache file: {e}")
@@ -454,7 +456,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(1024 * 5, 1024 * 10)
+        max_new_tokens = random.randint(1024, 1024 * 7)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
