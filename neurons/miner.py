@@ -1,14 +1,15 @@
 from functools import partial
 import traceback
 import time
-from typing import Tuple
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from starlette.types import Send
 import json
+
 from neurons.base import BaseNeuron, NeuronType
+from targon.epistula import verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
-from neurons.miner_app import app
 
 from bittensor.axon import FastAPIThreadedServer
 from targon.protocol import Inference
@@ -40,34 +41,6 @@ class Miner(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
-
-    async def blacklist(self, synapse: Inference) -> Tuple[bool, str]:
-        assert synapse.dendrite
-        if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
-            # Ignore requests from unrecognized entities.
-            bt.logging.trace(
-                f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
-            )
-            return True, "Unrecognized hotkey"
-
-        bt.logging.trace(
-            f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
-        )
-        return False, "Hotkey recognized!"
-
-    async def priority(self, synapse: Inference) -> float:
-        assert synapse.dendrite
-        assert synapse.dendrite.hotkey
-        caller_uid = self.metagraph.hotkeys.index(
-            synapse.dendrite.hotkey
-        )  # Get the caller index.
-        priority = float(
-            self.metagraph.S[caller_uid]
-        )  # Return the stake as the priority.
-        bt.logging.trace(
-            f"Prioritizing {synapse.dendrite.hotkey} with value: ", str(priority)
-        )
-        return priority
 
     async def forward(self, synapse: Inference):
         bt.logging.info("\u2713", "Getting Inference request!")
@@ -103,6 +76,38 @@ class Miner(BaseNeuron):
         token_streamer = partial(_prompt, synapse)
         return synapse.create_streaming_response(token_streamer)
 
+    async def verify_request(
+        self,
+        request: Request,
+    ):
+        # We do this as early as possible so that now has a lesser chance
+        # of causing a stale request
+        now = time.time_ns()
+
+        # We need to check the signature of the body as bytes
+        body = await request.body()
+        # But use some specific fields from the body
+        json = await request.json()
+        signed_by = json.get("signed_by")
+        signed_for = json.get("signed_for")
+        if signed_for != self.wallet.hotkey.ss58_address:
+            raise HTTPException(
+                status_code=400, detail="Bad Request, message is not intended for self"
+            )
+        if signed_by not in self.metagraph.hotkeys:
+            raise HTTPException(status_code=401, detail="Signer not in metagraph")
+
+        # If anything is returned here, we can throw
+        err = verify_signature(
+            request.headers.get("Body-Signature"),
+            body,
+            json.get("nonce"),
+            signed_by,
+            now,
+        )
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+
     def run(self):
         assert self.config.netuid
         assert self.config.subtensor
@@ -115,7 +120,7 @@ class Miner(BaseNeuron):
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
 
-        #TODO make this logging better
+        # TODO make this logging better
         bt.logging.info(
             f"Serving miner endpoint on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
@@ -133,6 +138,12 @@ class Miner(BaseNeuron):
 
         # Start  starts the miner's endpoint, making it active on the network.
         # change the config in the axon
+        app = FastAPI()
+        router = APIRouter()
+        router.add_api_route(
+            "/inference", self.forward, dependencies=[Depends(self.verify_request)]
+        )
+        app.include_router(router)
         fast_config = uvicorn.Config(
             app,
             host="0.0.0.0",
