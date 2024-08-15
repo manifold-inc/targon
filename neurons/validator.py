@@ -72,10 +72,10 @@ class Validator(BaseNeuron):
                 loaded_data: Dict[str, Any] = json.load(file)
                 # Only load cache if fresh
                 if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
-                    bt.logging.info("Loading cached data")
-                    bt.logging.info(str(loaded_data))
                     miner_wps: Dict[str, List[float]] = loaded_data.get("miner_wps", {})
                     self.miner_wps = dict([(int(k), v) for k, v in miner_wps.items()])
+                    bt.logging.info("Loading cached data")
+                    bt.logging.trace(str(self.miner_wps))
         except IOError:
             bt.logging.info("No cache file found")
         except EOFError:
