@@ -36,7 +36,7 @@ class Miner(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-    async def forward(self, request: EpistulaRequest[Inference]):
+    async def inference(self, request: EpistulaRequest[Inference]):
         bt.logging.info("\u2713", "Getting Inference request!")
 
         async def stream(req: Inference):
@@ -133,7 +133,7 @@ class Miner(BaseNeuron):
         router = APIRouter()
         router.add_api_route(
             "/inference",
-            self.forward,
+            self.inference,
             dependencies=[Depends(self.verify_request)],
             methods=["POST"],
         )
