@@ -391,17 +391,23 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
             blocks_till = self.config.neuron.epoch_length - (
                 self.subtensor.block % self.config.neuron.epoch_length
             )
-            bt.logging.info(
-                f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: {blocks_till}"
-            )
+            if self.last_posted_weights != self.subtensor.block:
+                bt.logging.info(
+                    f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: {blocks_till}"
+                )
 
             # Set weights
-            if self.subtensor.block % self.config.neuron.epoch_length == 0:
+            # Gives wiggle room for out of sync validators
+            if (
+                self.subtensor.block % self.config.neuron.epoch_length == 0
+                or self.last_posted_weights + (self.config.neuron.epoch_length * 2)
+                < self.subtensor.block
+            ):
+                if self.last_posted_weights == self.subtensor.block:
+                    continue
                 bt.logging.info(
                     f"Last set weights: {self.last_posted_weights}, current: {self.subtensor.block}"
                 )
-                if self.last_posted_weights == self.subtensor.block:
-                    continue
                 self.last_posted_weights = self.subtensor.block
 
                 # Sync metagraph before setting weights
