@@ -119,7 +119,7 @@ class Miner(BaseNeuron):
 
         serve_success = self.subtensor.serve(
             wallet=self.wallet,
-            ip=self.config.axon.ip,
+            ip=external_ip,
             port=self.config.axon.port,
             netuid=self.config.netuid,
             protocol=4,
