@@ -106,7 +106,7 @@ class Miner(BaseNeuron):
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
         external_ip = self.config.axon.ip
-        if external_ip is None:
+        if not external_ip or external_ip == '[::]':
             try:
                 external_ip = requests.get("https://checkip.amazonaws.com").text.strip()
                 netaddr.IPAddress(external_ip)
