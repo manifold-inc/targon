@@ -116,12 +116,12 @@ class Miner(BaseNeuron):
         )
 
         serve_success = serve_extrinsic(
-            self.subtensor,
-            self.wallet,
-            external_ip,
-            self.config.axon.port,
-            self.config.netuid,
-            4,
+            subtensor=self.subtensor,
+            wallet=self.wallet,
+            ip=external_ip,
+            port=self.config.axon.port,
+            protocol=4,
+            netuid=self.config.netuid,
         )
         if not serve_success:
             bt.logging.error("Failed to serve endpoint")
