@@ -36,7 +36,7 @@ def generate_body(
 def generate_header(
     hotkey: Keypair, body: Union[Dict[Any, Any], List[Any]]
 ) -> Dict[str, Any]:
-    return {"Body-Signature": hotkey.sign(json.dumps(body)).hex()}
+    return {"Body-Signature": "0x" + hotkey.sign(json.dumps(body)).hex()}
 
 
 def verify_signature(
