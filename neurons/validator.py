@@ -251,7 +251,7 @@ class Validator(BaseNeuron):
                 json.dumps(sampling_params.model_dump()),
                 json.dumps({"ground_truth": ground_truth, "messages": messages}),
                 spec_version,
-                self.wallet.hotkey.ss58_address
+                self.wallet.hotkey.ss58_address,
             )
         ]
         await self.add_records(miners_records, response_records)
@@ -388,21 +388,25 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         random.shuffle(miner_uids)
         miner_uids = miner_uids[:miner_subset]
         while not self.should_exit:
+            blocks_till = self.config.neuron.epoch_length - (
+                self.subtensor.block % self.config.neuron.epoch_length
+            )
             bt.logging.info(
-                f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: { self.config.neuron.epoch_length - (self.subtensor.block % self.config.neuron.epoch_length) }"
+                f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: {blocks_till}"
             )
 
-            # Sync metagraph
-            if self.sync_metagraph():
-                self.resync_hotkeys()
-
             # Set weights
-            if (
-                self.subtensor.block % self.config.neuron.epoch_length == 0
-                and self.last_posted_weights != self.subtensor.block
-            ):
-                bt.logging.info("Setting weights")
+            if self.subtensor.block % self.config.neuron.epoch_length == 0:
+                bt.logging.info(
+                    f"Last set weights: {self.last_posted_weights}, current: {self.subtensor.block}"
+                )
+                if self.last_posted_weights == self.subtensor.block:
+                    continue
                 self.last_posted_weights = self.subtensor.block
+
+                # Sync metagraph before setting weights
+                if self.sync_metagraph():
+                    self.resync_hotkeys()
                 self.set_weights()
 
                 # Only keep last 15 scores
@@ -410,12 +414,12 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                     self.miner_wps[uid] = self.miner_wps[uid][-15:]
 
             # Stop querying if close to weight set block
-            if (
-                self.config.neuron.epoch_length
-                - (self.subtensor.block % self.config.neuron.epoch_length)
-                < 5
-            ):
+            if blocks_till < 5 or blocks_till == self.config.neuron.epoch_length:
                 continue
+
+            # Sync metagraph if needed
+            if self.sync_metagraph():
+                self.resync_hotkeys()
 
             # Check to see if we need to update
             if self.config.autoupdate:
@@ -529,7 +533,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         assert self.config.netuid
         uids, raw_weights = self.get_weights()
         if not len(uids):
-            bt.logging.info("No UIDS")
+            bt.logging.info("No UIDS to score")
             return
 
         # Set the weights on chain via our subtensor connection.
