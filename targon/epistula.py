@@ -1,5 +1,7 @@
-from typing import Annotated, Generic, Optional, TypeVar
+import json
+from typing import Annotated, Any, Dict, Generic, Optional, TypeVar
 
+import time
 from pydantic import Field
 from pydantic.generics import GenericModel
 from substrateinterface import Keypair
@@ -18,6 +20,21 @@ class EpistulaRequest(GenericModel, Generic[T]):
     signed_for: str = Field(
         title="Signed For", description="Hotkey of intended receiver"
     )
+
+
+def generate_body(
+    data: Any, receiver_hotkey: str, sender_hotkey: str
+) -> Dict[str, Any]:
+    return {
+        "data": data,
+        "nonce": time.time_ns(),
+        "signed_by": sender_hotkey,
+        "signed_for": receiver_hotkey,
+    }
+
+
+def generate_header(hotkey: Keypair, body: Any) -> Dict[str, Any]:
+    return {"Body-Signature": hotkey.sign(json.dumps(body)).hex()}
 
 
 def verify_signature(

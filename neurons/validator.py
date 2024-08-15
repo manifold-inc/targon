@@ -6,9 +6,12 @@ import random
 import asyncio
 
 from asyncpg.connection import asyncpg
+from bittensor.dendrite import aiohttp
 import openai
+import requests
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
+from targon.epistula import generate_body, generate_header
 from targon.updater import autoupdate
 from targon.utils import (
     normalize,
@@ -151,7 +154,7 @@ class Validator(BaseNeuron):
             jaros=[],
         )
         try:
-            synapse = protocol.Inference(
+            req = protocol.Inference(
                 messages=messages,
                 sampling_params=sampling_params,
             )
@@ -161,24 +164,24 @@ class Validator(BaseNeuron):
             end_send_message_time = None
             start_token_time = 0
 
-            # WIP
-            # axon_info = self.metagraph.axons[uid]
-            # requests.post(url=f"http://{axon_info.ip}:{axon_info.port}/inference")
-
-            async for token in await self.dendrite(
-                self.metagraph.axons[uid],
-                synapse,
-                deserialize=False,
-                timeout=self.config.neuron.timeout,
-                streaming=True,
-            ):
-                if token_count == 1:
-                    end_send_message_time = time.time()
-                    start_token_time = time.time()
-                if isinstance(token, protocol.Inference):
-                    continue
-                response_tokens.append(token)
-                token_count += 1
+            axon_info = self.metagraph.axons[uid]
+            headers = generate_header(self.wallet.hotkey, req)
+            body = generate_body(req, axon_info.hotkey, self.wallet.hotkey.ss58_address)
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    url=f"http://{axon_info.ip}:{axon_info.port}/inference",
+                    headers=headers,
+                    json=body,
+                    stream=True,
+                ) as r:
+                    async for line in r.content:
+                        if token_count == 1:
+                            end_send_message_time = time.time()
+                            start_token_time = time.time()
+                        token = line.decode()
+                        response_tokens.append(token)
+                        token_count += 1
+                        bt.logging.info(token)
 
             if end_send_message_time is None:
                 end_send_message_time = time.time()
