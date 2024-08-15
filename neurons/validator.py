@@ -166,7 +166,7 @@ class Validator(BaseNeuron):
 
             axon_info = self.metagraph.axons[uid]
             headers = generate_header(self.wallet.hotkey, req)
-            body = generate_body(req, axon_info.hotkey, self.wallet.hotkey.ss58_address)
+            body = generate_body(req.model_dump_json(), axon_info.hotkey, self.wallet.hotkey.ss58_address)
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     url=f"http://{axon_info.ip}:{axon_info.port}/inference",
