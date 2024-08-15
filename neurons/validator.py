@@ -75,9 +75,10 @@ class Validator(BaseNeuron):
                 loaded_data: Dict[str, Any] = json.load(file)
                 # Only load cache if fresh
                 if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
+                    miner_wps: Dict[str, List[float]] = loaded_data.get("miner_wps", {})
+                    self.miner_wps = dict([(int(k), v) for k, v in miner_wps.items()])
                     bt.logging.info("Loading cached data")
-                    bt.logging.info(str(loaded_data))
-                    self.miner_wps = loaded_data.get("miner_wps", {})
+                    bt.logging.trace(str(self.miner_wps))
         except IOError:
             bt.logging.info("No cache file found")
         except EOFError:
@@ -130,7 +131,7 @@ class Validator(BaseNeuron):
             # Insert response_records first since miners_responses references it
             await self.db_stats.executemany(
                 """
-                INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version) VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version, hotkey) VALUES ($1, $2, $3, $4, $5, $6, $7)
             """,
                 response_records,
             )
@@ -221,6 +222,7 @@ class Validator(BaseNeuron):
                     },
                     file,
                 )
+                file.flush()
                 bt.logging.info("Cached")
         except Exception as e:
             bt.logging.error(f"Failed writing to cache file: {e}")
@@ -259,6 +261,7 @@ class Validator(BaseNeuron):
                 json.dumps(sampling_params.model_dump()),
                 json.dumps({"ground_truth": ground_truth, "messages": messages}),
                 spec_version,
+                self.wallet.hotkey.ss58_address,
             )
         ]
         await self.add_records(miners_records, response_records)
@@ -398,20 +401,31 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         random.shuffle(miner_uids)
         miner_uids = miner_uids[:miner_subset]
         while not self.should_exit:
-            bt.logging.info(
-                f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: { self.config.neuron.epoch_length - (self.subtensor.block % self.config.neuron.epoch_length) }"
+            blocks_till = self.config.neuron.epoch_length - (
+                self.subtensor.block % self.config.neuron.epoch_length
             )
-
-            # Sync metagraph
-            if self.sync_metagraph():
-                self.resync_hotkeys()
+            if self.last_posted_weights != self.subtensor.block:
+                bt.logging.info(
+                    f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: {blocks_till}"
+                )
 
             # Set weights
+            # Gives wiggle room for out of sync validators
             if (
                 self.subtensor.block % self.config.neuron.epoch_length == 0
-                and self.last_posted_weights != self.subtensor.block
+                or self.last_posted_weights + (self.config.neuron.epoch_length * 2)
+                < self.subtensor.block
             ):
+                if self.last_posted_weights == self.subtensor.block:
+                    continue
+                bt.logging.info(
+                    f"Last set weights: {self.last_posted_weights}, current: {self.subtensor.block}"
+                )
                 self.last_posted_weights = self.subtensor.block
+
+                # Sync metagraph before setting weights
+                if self.sync_metagraph():
+                    self.resync_hotkeys()
                 self.set_weights()
 
                 # Only keep last 15 scores
@@ -419,12 +433,12 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                     self.miner_wps[uid] = self.miner_wps[uid][-15:]
 
             # Stop querying if close to weight set block
-            if (
-                self.config.neuron.epoch_length
-                - (self.subtensor.block % self.config.neuron.epoch_length)
-                < 5
-            ):
+            if blocks_till < 5 or blocks_till == self.config.neuron.epoch_length:
                 continue
+
+            # Sync metagraph if needed
+            if self.sync_metagraph():
+                self.resync_hotkeys()
 
             # Check to see if we need to update
             if self.config.autoupdate:
@@ -467,7 +481,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         seed = random.randint(10000, 10000000)
 
         # Determine the maximum number of new tokens to generate
-        max_new_tokens = random.randint(1024 * 5, 1024 * 10)
+        max_new_tokens = random.randint(1024, 1024 * 7)
 
         # Create sampling parameters using the generated seed and token limit
         sampling_params = protocol.InferenceSamplingParams(
@@ -538,6 +552,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         assert self.config.netuid
         uids, raw_weights = self.get_weights()
         if not len(uids):
+            bt.logging.info("No UIDS to score")
             return
 
         # Set the weights on chain via our subtensor connection.
