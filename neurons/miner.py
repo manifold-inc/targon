@@ -2,6 +2,8 @@ from functools import partial
 import traceback
 import time
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+import netaddr
+import requests
 from starlette.responses import StreamingResponse
 from starlette.types import Send
 import json
@@ -103,10 +105,16 @@ class Miner(BaseNeuron):
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
+        external_ip = self.config.axon.ip
+        if external_ip is None:
+            try:
+                external_ip = requests.get("https://checkip.amazonaws.com").text.strip()
+                netaddr.IPAddress(external_ip)
+            except Exception:
+                bt.logging.error("Failed to get external IP")
 
-        # TODO make this logging better
         bt.logging.info(
-            f"Serving miner endpoint on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Serving miner endpoint {external_ip}:{self.config.axon.port} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
 
         serve_success = self.subtensor.serve(
