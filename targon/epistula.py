@@ -13,7 +13,7 @@ T = TypeVar("T")
 
 class EpistulaRequest(GenericModel, Generic[T]):
     data: T
-    nonce: float = Field(
+    nonce: int = Field(
         title="Nonce", description="Unix timestamp of when request was sent"
     )
     signed_by: str = Field(title="Signed By", description="Hotkey of sender / signer")

@@ -43,31 +43,18 @@ type Miner struct {
 	Uid     int    `json:"uid,omitempty"`
 }
 
-type InferenceBody struct {
-	Name             string         `json:"name"`
-	Timeout          float32        `json:"timeout"`
-	TotalSize        int            `json:"total_size"`
-	HeaderSize       int            `json:"header_size"`
-	Dendrite         DendriteOrAxon `json:"dendrite"`
-	Axon             DendriteOrAxon `json:"axon"`
-	ComputedBodyHash string         `json:"computed_body_hash"`
-	RequiredFields   []string       `json:"required_hash_fields"`
-	Messages         string         `json:"messages"`
-	SamplingParams   SamplingParams `json:"sampling_params"`
+type Epistula struct {
+	Data      InferenceBody `json:"data"`
+	Nonce     int64         `json:"nonce"`
+	SignedBy  string        `json:"signed_by"`
+	SignedFor string        `json:"signed_for"`
 }
 
-type DendriteOrAxon struct {
-	StatusCode    *string `json:"status_code"`
-	StatusMessage *string `json:"status_message"`
-	ProcessTime   *string `json:"process_time"`
-	Ip            string  `json:"ip"`
-	Port          *int    `json:"port"`
-	Version       *int    `json:"version"`
-	Nonce         *int64  `json:"nonce"`
-	Uuid          *string `json:"uuid"`
-	Hotkey        string  `json:"hotkey"`
-	Signature     *string `json:"signature"`
+type InferenceBody struct {
+	Messages       []RequestBodyMessages `json:"messages"`
+	SamplingParams SamplingParams        `json:"sampling_params"`
 }
+
 type SamplingParams struct {
 	BestOf              int      `json:"best_of"`
 	DecoderInputDetails bool     `json:"decoder_input_details"`
