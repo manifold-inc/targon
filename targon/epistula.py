@@ -1,11 +1,16 @@
-from typing import Annotated, Any, Generic, Optional, Type, TypeVar
+from typing import Annotated, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic.generics import GenericModel
 from substrateinterface import Keypair
 
 
-class EpistulaRequest(BaseModel):
-    data: Type[Any]
+# Define a type variable
+T = TypeVar("T")
+
+
+class EpistulaRequest(GenericModel, Generic[T]):
+    data: T
     nonce: float = Field(
         title="Nonce", description="Unix timestamp of when request was sent"
     )
@@ -13,6 +18,7 @@ class EpistulaRequest(BaseModel):
     signed_for: str = Field(
         title="Signed For", description="Hotkey of intended receiver"
     )
+
 
 def verify_signature(
     signature, body: bytes, nonce, sender, now

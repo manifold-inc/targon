@@ -152,7 +152,7 @@ class Validator(BaseNeuron):
         )
         try:
             synapse = protocol.Inference(
-                messages=json.dumps(messages),
+                messages=messages,
                 sampling_params=sampling_params,
             )
             response_tokens = []

@@ -2,11 +2,12 @@ from functools import partial
 import traceback
 import time
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from starlette.responses import StreamingResponse
 from starlette.types import Send
 import json
 
 from neurons.base import BaseNeuron, NeuronType
-from targon.epistula import verify_signature
+from targon.epistula import EpistulaRequest, verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
@@ -29,52 +30,35 @@ class Miner(BaseNeuron):
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.logging
-        assert self.config.axon
 
         ## BITTENSOR INITIALIZATION
-        self.axon = bt.axon(
-            wallet=self.wallet,
-            port=self.config.axon.port,
-            external_ip=self.config.axon.external_ip,
-            config=self.config,
-        )
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-    async def forward(self, synapse: Inference):
+    async def forward(self, request: EpistulaRequest[Inference]):
         bt.logging.info("\u2713", "Getting Inference request!")
 
-        async def _prompt(synapse: Inference, send: Send) -> None:
+        async def stream(req: Inference):
             assert self.config.neuron
-            assert synapse.sampling_params
-            messages = json.loads(synapse.messages)
+            assert req.sampling_params
             stream = self.client.chat.completions.create(
                 model=self.config.neuron.model_name,
-                messages=messages,
+                messages=req.messages,
                 stream=True,
-                temperature=synapse.sampling_params.temperature,
-                top_p=synapse.sampling_params.top_p,
-                seed=synapse.sampling_params.seed,
+                temperature=req.sampling_params.temperature,
+                top_p=req.sampling_params.top_p,
+                seed=req.sampling_params.seed,
                 timeout=5,
-                max_tokens=synapse.sampling_params.max_new_tokens,
+                max_tokens=req.sampling_params.max_new_tokens,
             )
-            full_text = ""
             for chunk in stream:
                 token = chunk.choices[0].delta.content
                 if token:
-                    full_text += token
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": token.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-            bt.logging.info("\N{grinning face}", "Successful Prompt")
+                    yield token.encode("utf-8")
+            bt.logging.info("\N{grinning face}", "Processed forward")
 
-        token_streamer = partial(_prompt, synapse)
-        return synapse.create_streaming_response(token_streamer)
+        return StreamingResponse(stream(request.data))
 
     async def verify_request(
         self,

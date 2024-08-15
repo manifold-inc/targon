@@ -17,8 +17,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 
+from openai.types.chat import ChatCompletion, ChatCompletionMessage, ChatCompletionMessageParam
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from targon.epistula import EpistulaRequest
 
@@ -131,7 +132,7 @@ class InferenceSamplingParams(BaseModel):
 
 
 class Inference(BaseModel):
-    messages: str = Field(
+    messages: List[ChatCompletionMessageParam] = Field(
         title="Message",
         description="The messages to be sent to the Bittensor network.",
     )
@@ -140,6 +141,3 @@ class Inference(BaseModel):
         title="Sampling Params",
         description="The sampling parameters for the OpenAI Compatible model.",
     )
-unk = EpistulaRequest[Inference](Inference)
-
-unk.data
