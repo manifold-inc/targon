@@ -401,6 +401,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                 self.subtensor.block % self.config.neuron.epoch_length == 0
                 and self.last_posted_weights != self.subtensor.block
             ):
+                bt.logging.info("Setting weights")
                 self.last_posted_weights = self.subtensor.block
                 self.set_weights()
 
@@ -528,6 +529,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         assert self.config.netuid
         uids, raw_weights = self.get_weights()
         if not len(uids):
+            bt.logging.info("No UIDS")
             return
 
         # Set the weights on chain via our subtensor connection.
