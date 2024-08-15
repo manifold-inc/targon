@@ -167,22 +167,29 @@ class Validator(BaseNeuron):
 
             axon_info = self.metagraph.axons[uid]
             req_dict = req.model_dump()
-            headers = generate_header(self.wallet.hotkey, req_dict)
-            body = generate_body(req_dict, axon_info.hotkey, self.wallet.hotkey.ss58_address)
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    url=f"http://{axon_info.ip}:{axon_info.port}/inference",
-                    headers=headers,
-                    json=body,
-                ) as r:
-                    async for line in r.content:
-                        if token_count == 1:
-                            end_send_message_time = time.time()
-                            start_token_time = time.time()
-                        token = line.decode()
-                        response_tokens.append(token)
-                        token_count += 1
-                        bt.logging.info(token)
+            body = generate_body(
+                req_dict, axon_info.hotkey, self.wallet.hotkey.ss58_address
+            )
+            headers = generate_header(self.wallet.hotkey, body)
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        url=f"http://{axon_info.ip}:{axon_info.port}/inference",
+                        headers=headers,
+                        json=body,
+                    ) as r:
+                        if r.status != 200:
+                            raise Exception(f"{r.status}: {await r.text()}")
+                        async for line in r.content.iter_any():
+                            if token_count == 1:
+                                end_send_message_time = time.time()
+                                start_token_time = time.time()
+                            token = line.decode()
+                            response_tokens.append(token)
+                            token_count += 1
+                            bt.logging.info(token)
+            except Exception as e:
+                bt.logging.trace(f"Miner failed request: {e}")
 
             if end_send_message_time is None:
                 end_send_message_time = time.time()
