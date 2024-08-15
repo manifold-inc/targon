@@ -132,7 +132,10 @@ class Miner(BaseNeuron):
         app = FastAPI()
         router = APIRouter()
         router.add_api_route(
-            "/inference", self.forward, dependencies=[Depends(self.verify_request)]
+            "/inference",
+            self.forward,
+            dependencies=[Depends(self.verify_request)],
+            methods=["POST"],
         )
         app.include_router(router)
         fast_config = uvicorn.Config(
