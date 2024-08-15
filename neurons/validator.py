@@ -174,7 +174,6 @@ class Validator(BaseNeuron):
                     url=f"http://{axon_info.ip}:{axon_info.port}/inference",
                     headers=headers,
                     json=body,
-                    stream=True,
                 ) as r:
                     async for line in r.content:
                         if token_count == 1:
