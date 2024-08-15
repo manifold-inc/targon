@@ -54,7 +54,7 @@ def verify_signature(
     keypair = Keypair(ss58_address=sender)
     if nonce + ALLOWED_DELTA_NS < now:
         return "Request is too stale"
-    verified = keypair.verify(signature, body)
+    verified = keypair.verify(body, signature)
     if not verified:
         return "Signature Mismatch"
     return None
