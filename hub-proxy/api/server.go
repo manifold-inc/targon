@@ -75,7 +75,7 @@ func main() {
 	db := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(DB_URL)))
 	err = db.Ping()
 	if err != nil {
-		log.Panicln(err.Error())
+		log.Println(err.Error())
 	}
 	defer db.Close()
 
@@ -109,10 +109,9 @@ func main() {
 		if ok != nil {
 			return c.String(500, ok.Error())
 		}
-		if(db == nil){
-			log.Println("Databse is null outside goroutine")
+		if db != nil {
+			go updatOrganicRequest(db, info, req.PubId)
 		}
-		go updatOrganicRequest(db, info, req.PubId)
 		return c.String(200, "")
 	})
 	e.Logger.Fatal(e.Start(":80"))
