@@ -23,7 +23,6 @@ import numpy as np
 import pandas as pd
 import bittensor as bt
 from nanoid import generate
-from datetime import datetime
 
 from typing import Any, Dict, List, Optional, Tuple
 from targon import (
@@ -128,7 +127,7 @@ class Validator(BaseNeuron):
             # Insert response_records first since miners_responses references it
             await self.db_stats.executemany(
                 """
-                INSERT INTO validator_request (r_nanoid, block, timestamp, sampling_params, ground_truth, version, hotkey) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO validator_request (r_nanoid, block, sampling_params, ground_truth, version, hotkey) VALUES ($1, $2, $3, $4, $5, $6)
             """,
                 response_records,
             )
@@ -247,7 +246,6 @@ class Validator(BaseNeuron):
             (
                 r_nanoid,
                 self.subtensor.block,
-                datetime.now(),
                 json.dumps(sampling_params.model_dump()),
                 json.dumps({"ground_truth": ground_truth, "messages": messages}),
                 spec_version,
