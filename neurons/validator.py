@@ -521,7 +521,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                     normalized_difference * 10
                 )  # Scale the difference to enhance reward disparity
 
-            rewards[uid] = reward_multiplier * s if s != 0 else 1e-9
+            rewards[uid] = reward_multiplier * s
         uids: List[int] = sorted(rewards.keys())
         rewards = [rewards[uid] for uid in uids]
 
