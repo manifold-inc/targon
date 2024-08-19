@@ -176,6 +176,7 @@ class Validator(BaseNeuron):
                         url=f"http://{axon_info.ip}:{axon_info.port}/inference",
                         headers=headers,
                         json=body,
+                        timeout=12
                     ) as r:
                         if r.status != 200:
                             raise Exception(f"{r.status}: {await r.text()}")
