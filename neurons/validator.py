@@ -6,9 +6,12 @@ import random
 import asyncio
 
 from asyncpg.connection import asyncpg
+from bittensor.dendrite import aiohttp
 import openai
+import requests
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
+from targon.epistula import generate_body, generate_header
 from targon.updater import autoupdate
 from targon.utils import (
     normalize,
@@ -137,7 +140,9 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Error inserting records: {e}")
             bt.logging.error(traceback.format_exc())
 
-    async def handle_inference(self, messages, sampling_params, uid, ground_truth):
+    async def handle_inference(
+        self, messages, sampling_params, uid: int, ground_truth: str
+    ):
         assert self.config.neuron
         stats = InferenceStats(
             time_to_first_token=0,
@@ -149,8 +154,8 @@ class Validator(BaseNeuron):
             jaros=[],
         )
         try:
-            synapse = protocol.Inference(
-                messages=json.dumps(messages),
+            req = protocol.Inference(
+                messages=messages,
                 sampling_params=sampling_params,
             )
             response_tokens = []
@@ -158,20 +163,32 @@ class Validator(BaseNeuron):
             start_send_message_time = time.time()
             end_send_message_time = None
             start_token_time = 0
-            async for token in await self.dendrite(
-                self.metagraph.axons[uid],
-                synapse,
-                deserialize=False,
-                timeout=self.config.neuron.timeout,
-                streaming=True,
-            ):
-                if token_count == 1:
-                    end_send_message_time = time.time()
-                    start_token_time = time.time()
-                if isinstance(token, protocol.Inference):
-                    continue
-                response_tokens.append(token)
-                token_count += 1
+
+            axon_info = self.metagraph.axons[uid]
+            req_dict = req.model_dump()
+            body = generate_body(
+                req_dict, axon_info.hotkey, self.wallet.hotkey.ss58_address
+            )
+            headers = generate_header(self.wallet.hotkey, body)
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        url=f"http://{axon_info.ip}:{axon_info.port}/inference",
+                        headers=headers,
+                        json=body,
+                    ) as r:
+                        if r.status != 200:
+                            raise Exception(f"{r.status}: {await r.text()}")
+                        async for line in r.content.iter_any():
+                            if token_count == 1:
+                                end_send_message_time = time.time()
+                                start_token_time = time.time()
+                            token = line.decode()
+                            response_tokens.append(token)
+                            token_count += 1
+                            bt.logging.info(token)
+            except Exception as e:
+                bt.logging.trace(f"Miner failed request: {e}")
 
             if end_send_message_time is None:
                 end_send_message_time = time.time()
@@ -259,6 +276,9 @@ class Validator(BaseNeuron):
         try:
             messages, sampling_params = self.generate_question()
             ground_truth = self.generate_ground_truth(messages, sampling_params)
+            if ground_truth is None:
+                bt.logging.error("Failed to generate ground truth")
+                return
         except openai.APIConnectionError as e:
             bt.logging.error(
                 f"Failed to connect to LLM server with connection string {self.client.base_url}: {e.message}"

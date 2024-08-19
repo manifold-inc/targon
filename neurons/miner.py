@@ -1,10 +1,13 @@
-from functools import partial
 import traceback
 import time
-from typing import Tuple
-from starlette.types import Send
-import json
+from bittensor.subtensor import serve_extrinsic
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+import netaddr
+import requests
+from starlette.responses import StreamingResponse
+
 from neurons.base import BaseNeuron, NeuronType
+from targon.epistula import EpistulaRequest, verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
@@ -15,6 +18,11 @@ from targon.protocol import Inference
 
 class Miner(BaseNeuron):
     neuron_type = NeuronType.Miner
+    fast_api: FastAPIThreadedServer
+
+    def shutdown(self):
+        if self.fast_api:
+            self.fast_api.stop()
 
     def __init__(self, config=None):
         super().__init__(config)
@@ -22,84 +30,67 @@ class Miner(BaseNeuron):
         assert self.config.netuid
         assert self.config.neuron
         assert self.config.logging
-        assert self.config.axon
 
         ## BITTENSOR INITIALIZATION
-        self.axon = bt.axon(
-            wallet=self.wallet,
-            port=self.config.axon.port,
-            external_ip=self.config.axon.external_ip,
-            config=self.config,
-        )
-        self.axon.attach(
-            forward_fn=self.forward,
-            blacklist_fn=self.blacklist,
-            priority_fn=self.priority,
+        bt.logging.info(
+            "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-        bt.logging.info("\N{grinning face with smiling eyes}", "Successfully Initialized!")
+    async def inference(self, request: EpistulaRequest[Inference]):
+        bt.logging.info("\u2713", "Getting Inference request!")
 
-    async def blacklist(self, synapse: Inference) -> Tuple[bool, str]:
-        assert synapse.dendrite
-        if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
-            # Ignore requests from unrecognized entities.
-            bt.logging.trace(
-                f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
-            )
-            return True, "Unrecognized hotkey"
-
-        bt.logging.trace(
-            f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
-        )
-        return False, "Hotkey recognized!"
-
-    async def priority(self, synapse: Inference) -> float:
-        assert synapse.dendrite
-        assert synapse.dendrite.hotkey
-        caller_uid = self.metagraph.hotkeys.index(
-            synapse.dendrite.hotkey
-        )  # Get the caller index.
-        priority = float(
-            self.metagraph.S[caller_uid]
-        )  # Return the stake as the priority.
-        bt.logging.trace(
-            f"Prioritizing {synapse.dendrite.hotkey} with value: ", str(priority)
-        )
-        return priority
-
-    async def forward(self, synapse: Inference):
-        bt.logging.info(u'\u2713' ,"Getting Inference request!")
-
-        async def _prompt(synapse: Inference, send: Send) -> None:
+        async def stream(req: Inference):
             assert self.config.neuron
-            assert synapse.sampling_params
-            messages = json.loads(synapse.messages)
+            assert req.sampling_params
             stream = self.client.chat.completions.create(
                 model=self.config.neuron.model_name,
-                messages=messages,
+                messages=req.messages,
                 stream=True,
-                temperature=synapse.sampling_params.temperature,
-                top_p=synapse.sampling_params.top_p,
-                seed=synapse.sampling_params.seed,
+                temperature=req.sampling_params.temperature,
+                top_p=req.sampling_params.top_p,
+                seed=req.sampling_params.seed,
                 timeout=5,
-                max_tokens=synapse.sampling_params.max_new_tokens,
+                max_tokens=req.sampling_params.max_new_tokens,
             )
-            full_text = ""
             for chunk in stream:
                 token = chunk.choices[0].delta.content
                 if token:
-                    full_text += token
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": token.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-            bt.logging.info("\N{grinning face}" , "Successful Prompt");
+                    yield token.encode("utf-8")
+            bt.logging.info("\N{grinning face}", "Processed forward")
 
-        token_streamer = partial(_prompt, synapse)
-        return synapse.create_streaming_response(token_streamer)
+        return StreamingResponse(stream(request.data))
+
+    async def verify_request(
+        self,
+        request: Request,
+    ):
+        # We do this as early as possible so that now has a lesser chance
+        # of causing a stale request
+        now = time.time_ns()
+
+        # We need to check the signature of the body as bytes
+        body = await request.body()
+        # But use some specific fields from the body
+        json = await request.json()
+        signed_by = json.get("signed_by")
+        signed_for = json.get("signed_for")
+        if signed_for != self.wallet.hotkey.ss58_address:
+            raise HTTPException(
+                status_code=400, detail="Bad Request, message is not intended for self"
+            )
+        if signed_by not in self.metagraph.hotkeys:
+            raise HTTPException(status_code=401, detail="Signer not in metagraph")
+
+        # If anything is returned here, we can throw
+        err = verify_signature(
+            request.headers.get("Body-Signature"),
+            body,
+            json.get("nonce"),
+            signed_by,
+            now,
+        )
+        if err:
+            raise HTTPException(status_code=400, detail=err)
 
     def run(self):
         assert self.config.netuid
@@ -112,23 +103,50 @@ class Miner(BaseNeuron):
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
-        bt.logging.info(
-            f"Serving miner axon {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
-        )
-        self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
+        external_ip = self.config.axon.ip
+        if not external_ip or external_ip == "[::]":
+            try:
+                external_ip = requests.get("https://checkip.amazonaws.com").text.strip()
+                netaddr.IPAddress(external_ip)
+            except Exception:
+                bt.logging.error("Failed to get external IP")
 
-        # Start  starts the miner's axon, making it active on the network.
+        bt.logging.info(
+            f"Serving miner endpoint {external_ip}:{self.config.axon.port} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+        )
+
+        serve_success = serve_extrinsic(
+            subtensor=self.subtensor,
+            wallet=self.wallet,
+            ip=external_ip,
+            port=self.config.axon.port,
+            protocol=4,
+            netuid=self.config.netuid,
+        )
+        if not serve_success:
+            bt.logging.error("Failed to serve endpoint")
+            return
+
+        # Start  starts the miner's endpoint, making it active on the network.
         # change the config in the axon
+        app = FastAPI()
+        router = APIRouter()
+        router.add_api_route(
+            "/inference",
+            self.inference,
+            dependencies=[Depends(self.verify_request)],
+            methods=["POST"],
+        )
+        app.include_router(router)
         fast_config = uvicorn.Config(
-            self.axon.app,
+            app,
             host="0.0.0.0",
             port=self.config.axon.port,
-            log_level='info',
+            log_level="info",
             loop="asyncio",
         )
-        self.axon.fast_server = FastAPIThreadedServer(config=fast_config)
-
-        self.axon.start()
+        self.fast_api = FastAPIThreadedServer(config=fast_config)
+        self.fast_api.start()
 
         bt.logging.info(f"Miner starting at block: {self.subtensor.block}")
 
@@ -149,6 +167,8 @@ class Miner(BaseNeuron):
         except Exception as e:
             bt.logging.error(str(e))
             bt.logging.error(traceback.format_exc())
+        self.shutdown()
+
 
 if __name__ == "__main__":
     try:

@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"math/rand"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -33,7 +33,7 @@ func safeEnv(env string) string {
 	return res
 }
 
-func signMessage(message string, public string, private string) string {
+func signMessage(message []byte, public string, private string) string {
 	// Signs a message via schnorrkel pub and private keys
 
 	var pubk [32]byte
@@ -56,7 +56,7 @@ func signMessage(message string, public string, private string) string {
 	pub.Decode(pubk)
 
 	signingCtx := []byte("substrate")
-	signingTranscript := schnorrkel.NewSigningContext(signingCtx, []byte(message))
+	signingTranscript := schnorrkel.NewSigningContext(signingCtx, message)
 	sig, _ := priv.Sign(signingTranscript)
 	sigEncode := sig.Encode()
 	out := hex.EncodeToString(sigEncode[:])
@@ -71,31 +71,6 @@ func sha256Hash(str string) string {
 	h.Write([]byte(str))
 	sum := h.Sum(nil)
 	return hex.EncodeToString(sum)
-}
-
-func formatListToPythonString(list []string) string {
-	// Take a go list of strings and convert it to a pythonic version of the
-	// string representaton of a list.
-
-	strList := "["
-	for i, element := range list {
-		element = strconv.Quote(element)
-		element = strings.TrimPrefix(element, "\"")
-		element = strings.TrimSuffix(element, "\"")
-		separator := "'"
-		if strings.ContainsRune(element, '\'') && !strings.ContainsRune(element, '"') {
-			separator = "\""
-		} else {
-			element = strings.ReplaceAll(element, "'", "\\'")
-			element = strings.ReplaceAll(element, "\\\"", "\"")
-		}
-		if i != 0 {
-			strList += ", "
-		}
-		strList += separator + element + separator
-	}
-	strList += "]"
-	return strList
 }
 
 func sendEvent(c *Context, data string) {
@@ -136,8 +111,6 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 	}
 
 	// Build the rest of the body hash
-	bodyHash := sha256Hash("")
-
 	tr := &http.Transport{
 		MaxIdleConns:      10,
 		IdleConnTimeout:   30 * time.Second,
@@ -147,74 +120,43 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 
 	nonce := time.Now().UnixNano()
 
-	messages_json, ok := json.Marshal(req.Messages)
-	if ok != nil {
-		c.Warn.Printf(ok.Error())
-		return ResponseInfo{}, errors.New("Failed to json marshall messages")
-	}
-
 	// query each miner at the same time with the variable context of the
 	// parent function via go routines
 	for index, miner := range miners {
-		message := []string{fmt.Sprint(nonce), HOTKEY, miner.Hotkey, INSTANCE_UUID, bodyHash}
-		joinedMessage := strings.Join(message, ".")
-		signedMessage := signMessage(joinedMessage, PUBLIC_KEY, PRIVATE_KEY)
-		version := 710
-		body := InferenceBody{
-			Name:             "Inference",
-			Timeout:          12.0,
-			TotalSize:        0,
-			HeaderSize:       0,
-			RequiredFields:   []string{},
-			Messages:         string(messages_json),
-			ComputedBodyHash: "",
-			Dendrite: DendriteOrAxon{
-				Ip:            "10.0.0.1",
-				Version:       &version,
-				Nonce:         &nonce,
-				Uuid:          &INSTANCE_UUID,
-				Hotkey:        HOTKEY,
-				Signature:     &signedMessage,
-				Port:          nil,
-				StatusCode:    nil,
-				StatusMessage: nil,
-				ProcessTime:   nil,
-			},
-			Axon: DendriteOrAxon{
-				StatusCode:    nil,
-				StatusMessage: nil,
-				ProcessTime:   nil,
-				Version:       nil,
-				Nonce:         nil,
-				Uuid:          nil,
-				Signature:     nil,
-				Ip:            miner.Ip,
-				Port:          &miner.Port,
-				Hotkey:        miner.Hotkey,
-			},
-			SamplingParams: SamplingParams{
-				Seed:                5688697,
-				Truncate:            nil,
-				BestOf:              1,
-				DecoderInputDetails: true,
-				Details:             false,
-				DoSample:            true,
-				MaxNewTokens:        req.MaxTokens,
-				RepetitionPenalty:   1.0,
-				ReturnFullText:      false,
-				Stop:                []string{""},
-				Temperature:         .01,
-				TopK:                10,
-				TopNTokens:          5,
-				TopP:                .98,
-				TypicalP:            .98,
-				Watermark:           false,
-				Stream:              true,
+		body := Epistula{
+			Nonce:     nonce,
+			SignedBy:  HOTKEY,
+			SignedFor: miner.Hotkey,
+			Data: InferenceBody{
+				Messages: req.Messages,
+				SamplingParams: SamplingParams{
+					Seed:                5688697,
+					Truncate:            nil,
+					BestOf:              1,
+					DecoderInputDetails: true,
+					Details:             false,
+					DoSample:            true,
+					MaxNewTokens:        req.MaxTokens,
+					RepetitionPenalty:   1.0,
+					ReturnFullText:      false,
+					Stop:                []string{""},
+					Temperature:         .01,
+					TopK:                10,
+					TopNTokens:          5,
+					TopP:                .98,
+					TypicalP:            .98,
+					Watermark:           false,
+					Stream:              true,
+				},
 			},
 		}
-
-		endpoint := "http://" + miner.Ip + ":" + fmt.Sprint(miner.Port) + "/Inference"
+		endpoint := "http://" + miner.Ip + ":" + fmt.Sprint(miner.Port) + "/inference"
 		out, err := json.Marshal(body)
+		if err != nil {
+			c.Warn.Printf("Failed to parse json %s", err.Error())
+			continue
+		}
+		signedMessage := signMessage(out, PUBLIC_KEY, PRIVATE_KEY)
 		r, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(out))
 		if err != nil {
 			c.Warn.Printf("Failed miner request: %s\n", err.Error())
@@ -223,23 +165,7 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 		r.Close = true
 		r.Header["Content-Type"] = []string{"application/json"}
 		r.Header["Connection"] = []string{"keep-alive"}
-
-		r.Header["name"] = []string{"Inference"}
-		r.Header["timeout"] = []string{"12.0"}
-		r.Header["bt_header_axon_ip"] = []string{miner.Ip}
-		r.Header["bt_header_axon_port"] = []string{strconv.Itoa(miner.Port)}
-		r.Header["bt_header_axon_hotkey"] = []string{miner.Hotkey}
-		r.Header["bt_header_dendrite_ip"] = []string{"10.0.0.1"}
-		r.Header["bt_header_dendrite_version"] = []string{fmt.Sprint(version)}
-		r.Header["bt_header_dendrite_nonce"] = []string{strconv.Itoa(int(nonce))}
-		r.Header["bt_header_dendrite_uuid"] = []string{INSTANCE_UUID}
-		r.Header["bt_header_dendrite_hotkey"] = []string{HOTKEY}
-		r.Header["bt_header_dendrite_signature"] = []string{signedMessage}
-		r.Header["bt_header_input_obj_messages"] = []string{"IiI="}
-		r.Header["header_size"] = []string{"0"}
-		r.Header["total_size"] = []string{"0"}
-		r.Header["computed_body_hash"] = []string{bodyHash}
-		r.Header.Add("Accept-Encoding", "identity")
+		r.Header["Body-Signature"] = []string{signedMessage}
 
 		res, err := httpClient.Do(r)
 		if err != nil {
@@ -307,8 +233,8 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 	return ResponseInfo{}, errors.New("Ran out of miners to query")
 }
 
-func updatOrganicRequest(db *sql.DB,res ResponseInfo, pub_id string) {
-	_, err := db.Exec("UPDATE organic_request SET uid=$1, hotkey=$2, coldkey=$3, miner_address=$4, attempt=$5 WHERE pub_id=$6",res.Miner.Uid, res.Miner.Hotkey, res.Miner.Coldkey, fmt.Sprintf("http://%s:%d", res.Miner.Ip, res.Miner.Port), res.Attempt, pub_id)
+func updatOrganicRequest(db *sql.DB, res ResponseInfo, pub_id string) {
+	_, err := db.Exec("UPDATE organic_request SET uid=$1, hotkey=$2, coldkey=$3, miner_address=$4, attempt=$5 WHERE pub_id=$6", res.Miner.Uid, res.Miner.Hotkey, res.Miner.Coldkey, fmt.Sprintf("http://%s:%d", res.Miner.Ip, res.Miner.Port), res.Attempt, pub_id)
 	if err != nil {
 		log.Println("Failed to update")
 		log.Println(err)
