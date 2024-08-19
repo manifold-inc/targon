@@ -30,6 +30,7 @@ def generate_body(
         "nonce": time.time_ns(),
         "signed_by": sender_hotkey,
         "signed_for": receiver_hotkey,
+        "version": 1,
     }
 
 
