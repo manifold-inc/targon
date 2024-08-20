@@ -501,7 +501,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         # Sample a random row from the dataset and extract the text
         # random_row_text = self.dataset.sample(n=1)["text"].iloc[0]
 
-        random_row_text = self.dataset.sample(n=1)["conversations"][0]["value"]
+        random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0]["value"]
         # Generate a query from the sampled text and perform text generation
         messages = create_query_prompt(random_row_text)
 
