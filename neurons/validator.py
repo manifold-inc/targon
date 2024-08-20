@@ -23,7 +23,7 @@ from targon.utils import (
 import traceback
 import math
 import numpy as np
-import pandas as pd
+import dask.dataframe as dd
 import bittensor as bt
 from nanoid import generate
 
@@ -96,9 +96,9 @@ class Validator(BaseNeuron):
                 self.miner_wps[miner] = []
 
         ## SET DATASET
-        self.dataset = pd.read_parquet(
-            "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
-        )
+        df = dd.read_parquet("hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet")
+        self.dataset = df.compute()
+        
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
