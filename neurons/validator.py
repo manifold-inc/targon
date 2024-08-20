@@ -37,6 +37,10 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "targon", "data")
+NAMES = [line.strip() for line in open(os.path.join(BASE_DIR, "names.txt")).readlines()]
+COUNTRIES = [line.strip() for line in open(os.path.join(BASE_DIR, "countries.txt")).readlines()]
+
 
 class Validator(BaseNeuron):
     miner_wps: Dict[int, Any]
@@ -516,7 +520,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         if completion is None:
             print(res)
             raise Exception("No completion")
-        prompt = create_search_prompt(completion)
+        prompt = create_search_prompt(completion, increase_entropy=True)
 
         return prompt, sampling_params
 
