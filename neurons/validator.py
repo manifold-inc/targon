@@ -96,8 +96,8 @@ class Validator(BaseNeuron):
                 self.miner_wps[miner] = []
 
         ## SET DATASET
-        self.dataset = pd.read_json(
-            "hf://datasets/pinecone/dl-doc-search/train.jsonl", lines=True
+        self.dataset = pd.read_parquet(
+            "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
         )
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
@@ -499,8 +499,9 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         )
 
         # Sample a random row from the dataset and extract the text
-        random_row_text = self.dataset.sample(n=1)["text"].iloc[0]
+        # random_row_text = self.dataset.sample(n=1)["text"].iloc[0]
 
+        random_row_text = self.dataset.sample(n=1)["conversations"][0]["value"]
         # Generate a query from the sampled text and perform text generation
         messages = create_query_prompt(random_row_text)
 
