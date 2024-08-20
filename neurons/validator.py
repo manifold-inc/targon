@@ -23,7 +23,7 @@ from targon.utils import (
 import traceback
 import math
 import numpy as np
-import pandas as pd
+import dask.dataframe as dd
 import bittensor as bt
 from nanoid import generate
 
@@ -36,10 +36,6 @@ from targon import (
 from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
-
-BASE_DIR = path.join(path.dirname(path.abspath(__file__)), "..", "targon", "data")
-NAMES = [line.strip() for line in open(path.join(BASE_DIR, "names.txt")).readlines()]
-COUNTRIES = [line.strip() for line in open(path.join(BASE_DIR, "countries.txt")).readlines()]
 
 
 class Validator(BaseNeuron):
@@ -96,9 +92,11 @@ class Validator(BaseNeuron):
                 self.miner_wps[miner] = []
 
         ## SET DATASET
-        self.dataset = pd.read_parquet(
-            "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
-        )
+        bt.logging.info("⌛️", "Loading dataset")
+        df = dd.read_parquet("hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet")
+        self.dataset = df.compute()
+        
+
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
