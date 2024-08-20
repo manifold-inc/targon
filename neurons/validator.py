@@ -96,9 +96,11 @@ class Validator(BaseNeuron):
                 self.miner_wps[miner] = []
 
         ## SET DATASET
+        bt.logging.info("⌛️", "Loading dataset")
         df = dd.read_parquet("hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet")
         self.dataset = df.compute()
         
+
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
