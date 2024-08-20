@@ -1,4 +1,4 @@
-from os import urandom
+from os import urandom, path
 import json
 import copy
 import time
@@ -37,9 +37,9 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
-BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "targon", "data")
-NAMES = [line.strip() for line in open(os.path.join(BASE_DIR, "names.txt")).readlines()]
-COUNTRIES = [line.strip() for line in open(os.path.join(BASE_DIR, "countries.txt")).readlines()]
+BASE_DIR = path.join(path.dirname(path.abspath(__file__)), "..", "targon", "data")
+NAMES = [line.strip() for line in open(path.join(BASE_DIR, "names.txt")).readlines()]
+COUNTRIES = [line.strip() for line in open(path.join(BASE_DIR, "countries.txt")).readlines()]
 
 
 class Validator(BaseNeuron):
