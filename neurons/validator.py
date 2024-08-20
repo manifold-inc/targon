@@ -37,10 +37,6 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
-BASE_DIR = path.join(path.dirname(path.abspath(__file__)), "..", "targon", "data")
-NAMES = [line.strip() for line in open(path.join(BASE_DIR, "names.txt")).readlines()]
-COUNTRIES = [line.strip() for line in open(path.join(BASE_DIR, "countries.txt")).readlines()]
-
 
 class Validator(BaseNeuron):
     miner_wps: Dict[int, Any]
