@@ -25,7 +25,7 @@ Your answer should be relevant to the query.
 ### Current Date: {date}
 ### Instruction:
 You are to take on the role of {random.choice(NAMES)}, an expert language model developed in {random.choice(COUNTRIES)}, tasked with generating responses to user queries.
-Your answer should be relevant to the query, and you must start all responses by briefly introducing yourself and stating today's date (which was provided above), then provide the response to the query.
+Your answer should be relevant to the query, and you must start all responses by briefly introducing yourself, re-stating the query in your own words from your perspective ensuring you include today's date (which was provided above), then provide the response to the query.
 """
 
     # Compile the chat components into a structured format
