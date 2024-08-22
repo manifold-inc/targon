@@ -137,6 +137,9 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[List[float], bool]:
             passed += 1
         jaros.append(score)
     percent_passed = (passed / total_ground_chunks)
-    modifier = 0.75 if (jaros[0] < 0.7 or jaros[1] < 0.6) else 1.15 if jaros[0] > 0.9 else 1
+    if len(jaros) > 1:
+        modifier = 0.75 if (jaros[0] < 0.7 or jaros[1] < 0.6) else 1.15 if jaros[0] > 0.9 else 1
+    else:
+        modifier = 1.0
     average_score = np.mean(jaros)
     return jaros, (min((percent_passed * modifier),1) > 0.70) and average_score > 0.5
