@@ -132,4 +132,4 @@ def check_tokens(miner_output, ground_truth_output) -> Tuple[List[float], bool]:
             passed += 1
         jaros.append(score)
 
-    return jaros, passed / total_ground_chunks > 0.60
+    return jaros, passed / total_ground_chunks > 0.70
