@@ -111,35 +111,31 @@ def divide_chunks(l, n):
         yield l[i : i + n]
 
 
-def check_tokens(miner_output, ground_truth_output) -> Tuple[List[float], bool]:
+def check_tokens(mout, vout) -> Tuple[List[float], bool]:
     # Calculate the score from 0 to 1
-    miner_chunks = [miner_output[:30]]
-    ground_chunks = [ground_truth_output[:30]]
-
-    # Subsequent chunks are 50 tokens each
-    miner_chunks.extend(list(divide_chunks(miner_output[30:], 50)))
-    ground_chunks.extend(list(divide_chunks(ground_truth_output[30:], 50)))
-
+    miner_chunks = [mout[:30], *list(divide_chunks(mout[30:], 50))]
+    ground_chunks = [vout[:30], *list(divide_chunks(vout[30:], 50))]
     jaros = []
     total_ground_chunks = len(ground_chunks)
     total_miner_chunks = len(miner_chunks)
     passed = 0
+    modifier = 1
     for i in range(0, total_ground_chunks):
         if total_miner_chunks <= i:
             jaros.append((0))
             continue
         if i == 0:
             score = jaro_winkler(ground_chunks[i], miner_chunks[i])
+            if score < 0.7:
+                modifier = 0.75
+            if score > 0.9:
+                modifier = 1.15
         else:
             score = jaro_distance(ground_chunks[i], miner_chunks[i])
-        this_passed = score > (1 - ((i + 1) / total_ground_chunks))
-        if this_passed:
+        if score > (1 - ((i + 1) / total_ground_chunks)):
             passed += 1
         jaros.append(score)
-    percent_passed = (passed / total_ground_chunks)
-    if len(jaros) > 1:
-        modifier = 0.75 if (jaros[0] < 0.7 or jaros[1] < 0.6) else 1.15 if jaros[0] > 0.9 else 1
-    else:
-        modifier = 1.0
-    average_score = np.mean(jaros)
-    return jaros, (min((percent_passed * modifier),1) > 0.70) and average_score > 0.5
+    percent_passed = passed / total_ground_chunks
+    if len(jaros) > 1 and jaros[1] < 0.6:
+        modifier = 0.75
+    return jaros, (percent_passed * modifier > 0.70 and np.mean(jaros).item() > 0.5)

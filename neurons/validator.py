@@ -1,4 +1,4 @@
-from os import urandom, path
+from os import urandom
 import json
 import copy
 import time
@@ -8,7 +8,6 @@ import asyncio
 from asyncpg.connection import asyncpg
 from bittensor.dendrite import aiohttp
 import openai
-import requests
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import generate_body, generate_header
@@ -495,9 +494,6 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         sampling_params = protocol.InferenceSamplingParams(
             seed=seed, max_new_tokens=max_new_tokens
         )
-
-        # Sample a random row from the dataset and extract the text
-        # random_row_text = self.dataset.sample(n=1)["text"].iloc[0]
 
         random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0]["value"]
         # Generate a query from the sampled text and perform text generation
