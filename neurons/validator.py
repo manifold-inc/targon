@@ -36,10 +36,10 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
+INGESTOR_URL = "INGESTORURL"
 
 class Validator(BaseNeuron):
     miner_wps: Dict[int, Any]
-    db_stats: Optional[asyncpg.Connection]
     db_organics: Optional[asyncpg.Connection]
     neuron_type = NeuronType.Validator
 
@@ -100,14 +100,6 @@ class Validator(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
         try:
-            self.db_stats = None
-            if self.config.database.url:
-                self.db_stats = self.loop.run_until_complete(
-                    asyncpg.connect(self.config.database.url)
-                )
-        except Exception as e:
-            bt.logging.error(f"Failed to initialize stats database: {e}")
-        try:
             self.db_organics = None
             if self.config.database.organics_url:
                 self.db_organics = self.loop.run_until_complete(
@@ -116,29 +108,33 @@ class Validator(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Failed to initialize organics database: {e}")
 
-    async def add_records(self, miners_records, response_records):
+    async def send_stats_to_ingestor(self, miners_records, response_records):
         try:
-            assert self.db_stats
-            # Insert miners_records
-            await self.db_stats.executemany(
-                """
-                INSERT INTO miner_response (r_nanoid, hotkey, coldkey, uid, stats) VALUES ($1, $2, $3, $4, $5)
-            """,
-                miners_records,
-            )
-            bt.logging.info("Records inserted into miner responses successfully.")
+            # Prepare the data
+            data = {
+                "responses": miners_records,
+                "request": response_records[0],
+            }
 
-            # Insert response_records first since miners_responses references it
-            await self.db_stats.executemany(
-                """
-                INSERT INTO validator_request (r_nanoid, block, sampling_params, ground_truth, version, hotkey) VALUES ($1, $2, $3, $4, $5, $6)
-            """,
-                response_records,
-            )
-            bt.logging.info("Records inserted into validator request successfully.")
+            # Generate body and headers
+            body = generate_body(data, sender_hotkey=self.wallet.hotkey.ss58_address)
+            headers = generate_header(self.wallet.hotkey, body)
+
+            # Send request to the FastAPI server
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{INGESTOR_URL}/ingest",
+                    headers=headers,
+                    json=body
+                ) as response:
+                    if response.status == 200:
+                        bt.logging.info("Records ingested successfully.")
+                    else:
+                        error_detail = await response.text()
+                        bt.logging.error(f"Error sending records: {response.status} - {error_detail}")
 
         except Exception as e:
-            bt.logging.error(f"Error inserting records: {e}")
+            bt.logging.error(f"Error in send_stats_to_ingestor: {e}")
             bt.logging.error(traceback.format_exc())
 
     async def handle_inference(
@@ -271,7 +267,7 @@ class Validator(BaseNeuron):
                 self.wallet.hotkey.ss58_address,
             )
         ]
-        await self.add_records(miners_records, response_records)
+        await self.send_stats_to_ingestor(miners_records, response_records)
 
     async def query_miners(self, miner_uids, save_to_db=True):
         assert self.config.database
@@ -311,7 +307,7 @@ class Validator(BaseNeuron):
                 continue
             self.miner_wps[uid].append(None)
 
-        if self.config.database.url and save_to_db:
+        if save_to_db:
             await self.save_stats_to_db(stats, sampling_params, messages, ground_truth)
 
         self.save_scores()
@@ -474,9 +470,6 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         self.shutdown()
 
     def shutdown(self):
-        if self.db_stats:
-            bt.logging.info("Closing stats db connection")
-            self.loop.run_until_complete(self.db_stats.close())
         if self.db_organics:
             bt.logging.info("Closing organics db connection")
             self.loop.run_until_complete(self.db_organics.close())
