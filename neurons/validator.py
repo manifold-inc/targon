@@ -10,7 +10,7 @@ from bittensor.dendrite import aiohttp
 import openai
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
-from targon.epistula import generate_body, generate_header
+from targon.epistula import generate_header
 from targon.updater import autoupdate
 from targon.utils import (
     normalize,
@@ -166,11 +166,8 @@ class Validator(BaseNeuron):
             start_token_time = 0
 
             axon_info = self.metagraph.axons[uid]
-            req_dict = req.model_dump()
-            body = generate_body(
-                req_dict, axon_info.hotkey, self.wallet.hotkey.ss58_address
-            )
-            headers = generate_header(self.wallet.hotkey, body)
+            body = req.model_dump()
+            headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
