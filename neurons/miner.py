@@ -66,7 +66,7 @@ class Miner(BaseNeuron):
     ):
         # We do this as early as possible so that now has a lesser chance
         # of causing a stale request
-        now = time.time_ns()
+        now = round(time.time() * 1000)
 
         # We need to check the signature of the body as bytes
         # But use some specific fields from the body
@@ -86,8 +86,8 @@ class Miner(BaseNeuron):
             body,
             request.headers.get("Epistula-Timestamp"),
             request.headers.get("Epistula-Uuid"),
-            request.headers.get("Epistula-Signed-For"),
-            request.headers.get("Epistula-Signed-By"),
+            signed_for,
+            signed_by,
             now,
         )
         if err:

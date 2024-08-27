@@ -23,7 +23,7 @@ def generate_header(
         "Epistula-Signed-By": hotkey.ss58_address,
         "Epistula-Request-Signature": "0x"
         + hotkey.sign(
-            f"{sha256(json.dumps(body).encode('utf-8'))}.{uuid}.{timestamp}.{signed_for}"
+            f"{sha256(json.dumps(body).encode('utf-8')).hexdigest()}.{uuid}.{timestamp}.{signed_for}"
         ).hex(),
     }
     if signed_for:
@@ -60,9 +60,9 @@ def verify_signature(
     keypair = Keypair(ss58_address=signed_by)
     if timestamp + ALLOWED_DELTA_MS < now:
         return "Request is too stale"
-    verified = keypair.verify(
-        f"{sha256(body)}.{uuid}.{timestamp}.{signed_for}", signature
-    )
+    message = f"{sha256(body).hexdigest()}.{uuid}.{timestamp}.{signed_for}"
+    print(message)
+    verified = keypair.verify(message, signature)
     if not verified:
         return "Signature Mismatch"
     return None
