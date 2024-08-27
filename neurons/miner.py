@@ -91,6 +91,7 @@ class Miner(BaseNeuron):
             now,
         )
         if err:
+            bt.logging.error(err)
             raise HTTPException(status_code=400, detail=err)
 
     def run(self):
