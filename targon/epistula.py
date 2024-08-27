@@ -39,8 +39,27 @@ def generate_header(
         )
     return headers
 
+def verify_signature_v1(
+    signature, body: bytes, nonce, sender, now
+) -> Optional[Annotated[str, "Error Message"]]:
+    if not isinstance(signature, str):
+        return "Invalid Signature"
+    if not isinstance(nonce, int):
+        return "Invalid Nonce"
+    if not isinstance(sender, str):
+        return "Invalid Sender key"
+    if not isinstance(body, bytes):
+        return "Body is not of type bytes"
+    ALLOWED_DELTA_NS = 5 * 1000000000
+    keypair = Keypair(ss58_address=sender)
+    if nonce + ALLOWED_DELTA_NS < now:
+        return "Request is too stale"
+    verified = keypair.verify(body, signature)
+    if not verified:
+        return "Signature Mismatch"
+    return None
 
-def verify_signature(
+def verify_signature_v2(
     signature, body: bytes, timestamp, uuid, signed_for, signed_by, now
 ) -> Optional[Annotated[str, "Error Message"]]:
     if not isinstance(signature, str):
