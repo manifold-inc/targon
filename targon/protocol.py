@@ -17,11 +17,10 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from openai.types.chat import ChatCompletion, ChatCompletionMessage, ChatCompletionMessageParam
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from targon.epistula import EpistulaRequest
 
 
 class InferenceSamplingParams(BaseModel):
