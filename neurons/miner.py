@@ -82,7 +82,7 @@ class Miner(BaseNeuron):
         # If anything is returned here, we can throw
         body = await request.body()
         err = verify_signature(
-            request.headers.get("Epistula-Body-Signature"),
+            request.headers.get("Epistula-Request-Signature"),
             body,
             request.headers.get("Epistula-Timestamp"),
             request.headers.get("Epistula-Uuid"),
