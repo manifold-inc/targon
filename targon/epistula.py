@@ -15,7 +15,7 @@ def generate_header(
 ) -> Dict[str, Any]:
     timestamp = round(time.time() * 1000)
     timestampInterval = ceil(timestamp / 1e4) * 1e4
-    uuid = uuid4()
+    uuid = str(uuid4())
     headers = {
         "Epistula-Version": str(2),
         "Epistula-Timestamp": str(timestamp),
