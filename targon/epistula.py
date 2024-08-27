@@ -11,28 +11,33 @@ from substrateinterface import Keypair
 def generate_header(
     hotkey: Keypair,
     body: Union[Dict[Any, Any], List[Any]],
-    signed_for: str,
+    signed_for: Optional[str] = None,
 ) -> Dict[str, Any]:
     timestamp = round(time.time() * 1000)
     timestampInterval = ceil(timestamp / 1e4) * 1e4
     uuid = uuid4()
-    return {
+    headers = {
         "Epistula-Version": str(2),
-        "Epistula-Timestamp": timestamp,
+        "Epistula-Timestamp": str(timestamp),
         "Epistula-Uuid": uuid,
-        "Epistula-Signed-For": signed_for,
         "Epistula-Signed-By": hotkey.ss58_address,
         "Epistula-Request-Signature": "0x"
         + hotkey.sign(
             f"{sha256(json.dumps(body).encode('utf-8'))}.{uuid}.{timestamp}.{signed_for}"
         ).hex(),
-        "Epistula-Secret-Signature-0": "0x"
-        + hotkey.sign(str(timestampInterval - 1) + "." + signed_for).hex(),
-        "Epistula-Secret-Signature-1": "0x"
-        + hotkey.sign(str(timestampInterval) + "." + signed_for).hex(),
-        "Epistula-Secret-Signature-2": "0x"
-        + hotkey.sign(str(timestampInterval + 1) + "." + signed_for).hex(),
     }
+    if signed_for:
+        headers["Epistula-Signed-For"] = signed_for
+        headers["Epistula-Secret-Signature-0"] = (
+            "0x" + hotkey.sign(str(timestampInterval - 1) + "." + signed_for).hex()
+        )
+        headers["Epistula-Secret-Signature-1"] = (
+            "0x" + hotkey.sign(str(timestampInterval) + "." + signed_for).hex()
+        )
+        headers["Epistula-Secret-Signature-2"] = (
+            "0x" + hotkey.sign(str(timestampInterval + 1) + "." + signed_for).hex()
+        )
+    return headers
 
 
 def verify_signature(
