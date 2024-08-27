@@ -41,14 +41,14 @@ def generate_header(
 
 
 def verify_signature(
-    signature, body: bytes, timestamp, uuid, signed_for, sender, now
+    signature, body: bytes, timestamp, uuid, signed_for, signed_by, now
 ) -> Optional[Annotated[str, "Error Message"]]:
     if not isinstance(signature, str):
         return "Invalid Signature"
     timestamp = int(timestamp)
     if not isinstance(timestamp, int):
         return "Invalid Timestamp"
-    if not isinstance(sender, str):
+    if not isinstance(signed_by, str):
         return "Invalid Sender key"
     if not isinstance(signed_for, str):
         return "Invalid receiver key"
@@ -57,7 +57,7 @@ def verify_signature(
     if not isinstance(body, bytes):
         return "Body is not of type bytes"
     ALLOWED_DELTA_MS = 5000
-    keypair = Keypair(ss58_address=sender)
+    keypair = Keypair(ss58_address=signed_by)
     if timestamp + ALLOWED_DELTA_MS < now:
         return "Request is too stale"
     verified = keypair.verify(
