@@ -20,7 +20,6 @@ from targon.utils import (
     check_tokens,
 )
 import traceback
-import math
 import numpy as np
 import dask.dataframe as dd
 import bittensor as bt
@@ -525,22 +524,8 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         if len(wps_list) == 0:
             bt.logging.warning("Not setting weights, no responses from miners")
             return [], []
-        top_wps = max(wps_list)
-        range_wps = top_wps - min(wps_list)
-        avg_wps = np.average(wps_list)
-
-        rewards = {}
-        for uid, s in wps.items():
-            reward_multiplier = 1
-            if s > 0:
-                normalized_difference = (s - avg_wps) / range_wps
-                reward_multiplier = math.exp(
-                    normalized_difference * 10
-                )  # Scale the difference to enhance reward disparity
-
-            rewards[uid] = reward_multiplier * s
-        uids: List[int] = sorted(rewards.keys())
-        rewards = [rewards[uid] for uid in uids]
+        uids: List[int] = sorted(wps.keys())
+        rewards = [wps[uid] for uid in uids]
 
         bt.logging.info(f"All wps: {wps}")
         if sum(rewards) == 0:
