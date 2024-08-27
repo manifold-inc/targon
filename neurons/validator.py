@@ -116,15 +116,14 @@ class Validator(BaseNeuron):
             }
 
             # Convert data to bytes
-            body = json.dumps(data).encode('utf-8')
-            headers = generate_header(self.wallet.hotkey, body)
+            headers = generate_header(self.wallet.hotkey, data)
 
             # Send request to the FastAPI server
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{INGESTOR_URL}/ingest",
                     headers=headers,
-                    data=body
+                    data=data
                 ) as response:
                     if response.status == 200:
                         bt.logging.info("Records ingested successfully.")
