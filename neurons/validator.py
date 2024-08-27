@@ -199,7 +199,6 @@ class Validator(BaseNeuron):
                             token = line.decode()
                             response_tokens.append(token)
                             token_count += 1
-                            bt.logging.info(token)
             except Exception as e:
                 bt.logging.trace(f"Miner failed request: {e}")
 
