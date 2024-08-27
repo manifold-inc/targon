@@ -116,8 +116,8 @@ class Validator(BaseNeuron):
                 "request": response_records[0],
             }
 
-            # Generate body and headers
-            body = generate_body(data, sender_hotkey=self.wallet.hotkey.ss58_address)
+            # Convert data to bytes
+            body = json.dumps(data).encode('utf-8')
             headers = generate_header(self.wallet.hotkey, body)
 
             # Send request to the FastAPI server
@@ -125,7 +125,7 @@ class Validator(BaseNeuron):
                 async with session.post(
                     f"{INGESTOR_URL}/ingest",
                     headers=headers,
-                    json=body
+                    data=body
                 ) as response:
                     if response.status == 200:
                         bt.logging.info("Records ingested successfully.")
