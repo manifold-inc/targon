@@ -528,7 +528,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         rewards = [wps[uid] for uid in uids]
 
         bt.logging.info(f"All wps: {wps}")
-        if sum(rewards) == 0:
+        if sum(rewards) < 1/1e9:
             bt.logging.warning("No one gave responses worth scoring")
             return [], []
         raw_weights = normalize(rewards)
