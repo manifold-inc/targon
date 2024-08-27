@@ -7,7 +7,7 @@ import requests
 from starlette.responses import StreamingResponse
 
 from neurons.base import BaseNeuron, NeuronType
-from targon.epistula import EpistulaRequest, verify_signature
+from targon.epistula import verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
@@ -36,7 +36,7 @@ class Miner(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-    async def inference(self, request: EpistulaRequest[Inference]):
+    async def inference(self, request: Inference):
         bt.logging.info("\u2713", "Getting Inference request!")
 
         async def stream(req: Inference):
@@ -58,7 +58,7 @@ class Miner(BaseNeuron):
                     yield token.encode("utf-8")
             bt.logging.info("\N{grinning face}", "Processed forward")
 
-        return StreamingResponse(stream(request.data))
+        return StreamingResponse(stream(request))
 
     async def verify_request(
         self,
@@ -69,11 +69,9 @@ class Miner(BaseNeuron):
         now = time.time_ns()
 
         # We need to check the signature of the body as bytes
-        body = await request.body()
         # But use some specific fields from the body
-        json = await request.json()
-        signed_by = json.get("signed_by")
-        signed_for = json.get("signed_for")
+        signed_by = request.headers.get("Epistula-Signed-By")
+        signed_for = request.headers.get("Epistula-Signed-For")
         if signed_for != self.wallet.hotkey.ss58_address:
             raise HTTPException(
                 status_code=400, detail="Bad Request, message is not intended for self"
@@ -82,11 +80,14 @@ class Miner(BaseNeuron):
             raise HTTPException(status_code=401, detail="Signer not in metagraph")
 
         # If anything is returned here, we can throw
+        body = await request.body()
         err = verify_signature(
             request.headers.get("Body-Signature"),
             body,
-            json.get("nonce"),
-            signed_by,
+            request.headers.get("Epistula-Timestamp"),
+            request.headers.get("Epistula-Uuid"),
+            request.headers.get("Epistula-Signed-For"),
+            request.headers.get("Epistula-Signed-by"),
             now,
         )
         if err:
