@@ -66,7 +66,7 @@ class Miner(BaseNeuron):
     ):
         # We do this as early as possible so that now has a lesser chance
         # of causing a stale request
-        now = time.time_ns()
+        now = round(time.time() * 1000)
 
         # We need to check the signature of the body as bytes
         # But use some specific fields from the body
@@ -82,15 +82,16 @@ class Miner(BaseNeuron):
         # If anything is returned here, we can throw
         body = await request.body()
         err = verify_signature(
-            request.headers.get("Body-Signature"),
+            request.headers.get("Epistula-Request-Signature"),
             body,
             request.headers.get("Epistula-Timestamp"),
             request.headers.get("Epistula-Uuid"),
-            request.headers.get("Epistula-Signed-For"),
-            request.headers.get("Epistula-Signed-by"),
+            signed_for,
+            signed_by,
             now,
         )
         if err:
+            bt.logging.error(err)
             raise HTTPException(status_code=400, detail=err)
 
     def run(self):
