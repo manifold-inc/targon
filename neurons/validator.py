@@ -37,6 +37,7 @@ from bittensor.utils.weight_utils import (
 
 INGESTOR_URL = "INGESTORURL"
 
+
 class Validator(BaseNeuron):
     miner_wps: Dict[int, Any]
     db_organics: Optional[asyncpg.Connection]
@@ -91,9 +92,10 @@ class Validator(BaseNeuron):
 
         ## SET DATASET
         bt.logging.info("⌛️", "Loading dataset")
-        df = dd.read_parquet("hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet")
+        df = dd.read_parquet(
+            "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
+        )
         self.dataset = df.compute()
-        
 
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
@@ -107,12 +109,33 @@ class Validator(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Failed to initialize organics database: {e}")
 
-    async def send_stats_to_ingestor(self, miners_records, response_records):
+    async def send_stats_to_ingestor(
+        self, stats, sampling_params, messages, ground_truth
+    ):
         try:
+            r_nanoid = generate(size=48)
+            responses = [
+                (
+                    r_nanoid,
+                    self.metagraph.axons[uid].hotkey,
+                    self.metagraph.axons[uid].coldkey,
+                    int(uid),
+                    json.dumps(stat.model_dump()),
+                )
+                for uid, stat in stats
+            ]
+            request = (
+                r_nanoid,
+                self.subtensor.block,
+                json.dumps(sampling_params.model_dump()),
+                json.dumps({"ground_truth": ground_truth, "messages": messages}),
+                spec_version,
+                self.wallet.hotkey.ss58_address,
+            )
             # Prepare the data
             data = {
-                "responses": miners_records,
-                "request": response_records[0],
+                "request": request,
+                "responses": responses,
             }
 
             # Convert data to bytes
@@ -121,15 +144,15 @@ class Validator(BaseNeuron):
             # Send request to the FastAPI server
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    f"{INGESTOR_URL}/ingest",
-                    headers=headers,
-                    data=data
+                    f"{INGESTOR_URL}/ingest", headers=headers, data=data
                 ) as response:
                     if response.status == 200:
                         bt.logging.info("Records ingested successfully.")
                     else:
                         error_detail = await response.text()
-                        bt.logging.error(f"Error sending records: {response.status} - {error_detail}")
+                        bt.logging.error(
+                            f"Error sending records: {response.status} - {error_detail}"
+                        )
 
         except Exception as e:
             bt.logging.error(f"Error in send_stats_to_ingestor: {e}")
@@ -168,7 +191,7 @@ class Validator(BaseNeuron):
                         url=f"http://{axon_info.ip}:{axon_info.port}/inference",
                         headers=headers,
                         json=body,
-                        timeout=12
+                        timeout=12,
                     ) as r:
                         if r.status != 200:
                             raise Exception(f"{r.status}: {await r.text()}")
@@ -240,31 +263,7 @@ class Validator(BaseNeuron):
         )
         return res.choices[0].message.content
 
-    async def save_stats_to_db(self, stats, sampling_params, messages, ground_truth):
-        r_nanoid = generate(size=48)
-        miners_records = [
-            (
-                r_nanoid,
-                self.metagraph.axons[uid].hotkey,
-                self.metagraph.axons[uid].coldkey,
-                int(uid),
-                json.dumps(stat.model_dump()),
-            )
-            for uid, stat in stats
-        ]
-        response_records = [
-            (
-                r_nanoid,
-                self.subtensor.block,
-                json.dumps(sampling_params.model_dump()),
-                json.dumps({"ground_truth": ground_truth, "messages": messages}),
-                spec_version,
-                self.wallet.hotkey.ss58_address,
-            )
-        ]
-        await self.send_stats_to_ingestor(miners_records, response_records)
-
-    async def query_miners(self, miner_uids, save_to_db=True):
+    async def query_miners(self, miner_uids):
         assert self.config.database
         try:
             messages, sampling_params = self.generate_question()
@@ -302,15 +301,11 @@ class Validator(BaseNeuron):
                 continue
             self.miner_wps[uid].append(None)
 
-        if save_to_db:
-            await self.save_stats_to_db(stats, sampling_params, messages, ground_truth)
-
-        self.save_scores()
         return (
             stats,
-            ground_truth,
             sampling_params,
             messages,
+            ground_truth,
         )
 
     async def score_organic(self):
@@ -458,7 +453,9 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
                 miner_uids = self.get_miner_uids()
                 random.shuffle(miner_uids)
                 miner_uids = miner_uids[:miner_subset]
-            self.loop.run_until_complete(self.query_miners(miner_uids))
+            res = self.loop.run_until_complete(self.query_miners(miner_uids))
+            self.loop.run_until_complete(self.send_stats_to_ingestor(*res))
+            self.save_scores()
             step += 1
 
         # Exiting
@@ -520,7 +517,7 @@ WHERE scored=FALSE AND created_at >= (NOW() - INTERVAL '30 minutes') LIMIT 5"""
         rewards = [wps[uid] for uid in uids]
 
         bt.logging.info(f"All wps: {wps}")
-        if sum(rewards) < 1/1e9:
+        if sum(rewards) < 1 / 1e9:
             bt.logging.warning("No one gave responses worth scoring")
             return [], []
         raw_weights = normalize(rewards)
