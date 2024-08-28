@@ -35,7 +35,7 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
-INGESTOR_URL = "INGESTORURL"
+INGESTOR_URL = "http://177.54.155.247:8000"
 
 
 class Validator(BaseNeuron):
@@ -115,23 +115,23 @@ class Validator(BaseNeuron):
         try:
             r_nanoid = generate(size=48)
             responses = [
-                (
-                    r_nanoid,
-                    self.metagraph.axons[uid].hotkey,
-                    self.metagraph.axons[uid].coldkey,
-                    int(uid),
-                    json.dumps(stat.model_dump()),
-                )
+                {
+                    "r_nanoid": r_nanoid,
+                    "hotkey": self.metagraph.axons[uid].hotkey,
+                    "coldkey": self.metagraph.axons[uid].coldkey,
+                    "uid": int(uid),
+                    "stats": json.dumps(stat.model_dump()),
+                }
                 for uid, stat in stats
             ]
-            request = (
-                r_nanoid,
-                self.subtensor.block,
-                json.dumps(sampling_params.model_dump()),
-                json.dumps({"ground_truth": ground_truth, "messages": messages}),
-                spec_version,
-                self.wallet.hotkey.ss58_address,
-            )
+            request = {
+                    "r_nanoid": r_nanoid,
+                    "block": self.subtensor.block,
+                    "sampling_params": json.dumps(sampling_params.model_dump()),
+                    "ground_truth": json.dumps({"ground_truth": ground_truth, "messages": messages}),
+                    "version": spec_version,
+                    "hotkey": self.wallet.hotkey.ss58_address,
+            }
             # Prepare the data
             body = {
                 "request": request,
