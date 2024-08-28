@@ -13,7 +13,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -179,14 +178,6 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 			bdy, _ := io.ReadAll(res.Body)
 			res.Body.Close()
 			c.Warn.Printf("Miner: %s %s\nError: %s\n", miner.Hotkey, miner.Coldkey, string(bdy))
-			continue
-		}
-
-		axon_version := res.Header.Get("Bt_header_axon_version")
-		ver, err := strconv.Atoi(axon_version)
-		if err != nil || ver < 672 {
-			res.Body.Close()
-			c.Warn.Printf("Miner: %s %s\nError: Axon version too low\n", miner.Hotkey, miner.Coldkey)
 			continue
 		}
 
