@@ -23,7 +23,7 @@ def generate_header(
         "Epistula-Signed-By": hotkey.ss58_address,
         "Epistula-Request-Signature": "0x"
         + hotkey.sign(
-            f"{sha256(json.dumps(body).encode('utf-8')).hexdigest()}.{uuid}.{timestamp}.{signed_for}"
+            f"{sha256(json.dumps(body).encode('utf-8')).hexdigest()}.{uuid}.{timestamp}.{signed_for or ''}"
         ).hex(),
     }
     if signed_for:
@@ -38,6 +38,7 @@ def generate_header(
             "0x" + hotkey.sign(str(timestampInterval + 1) + "." + signed_for).hex()
         )
     return headers
+
 
 def verify_signature_v1(
     signature, body: bytes, nonce, sender, now
@@ -58,6 +59,7 @@ def verify_signature_v1(
     if not verified:
         return "Signature Mismatch"
     return None
+
 
 def verify_signature_v2(
     signature, body: bytes, timestamp, uuid, signed_for, signed_by, now
