@@ -7,7 +7,7 @@ import requests
 from starlette.responses import StreamingResponse
 
 from neurons.base import BaseNeuron, NeuronType
-from targon.epistula import EpistulaRequest, verify_signature
+from targon.epistula import verify_signature_v1, verify_signature_v2
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
@@ -36,7 +36,7 @@ class Miner(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-    async def inference(self, request: EpistulaRequest[Inference]):
+    async def inference(self, request: Inference):
         bt.logging.info("\u2713", "Getting Inference request!")
 
         async def stream(req: Inference):
@@ -58,9 +58,17 @@ class Miner(BaseNeuron):
                     yield token.encode("utf-8")
             bt.logging.info("\N{grinning face}", "Processed forward")
 
-        return StreamingResponse(stream(request.data))
+        return StreamingResponse(stream(request))
 
-    async def verify_request(
+    async def determine_epistula_version_and_verify(self, request: Request):
+        version = request.headers.get("Epistula-Version")
+        if version == "2":
+            await self.verify_request_v2(request)
+            return
+        await self.verify_request_v1(request)
+
+    # TODO: refactor this to make it easy / pretty
+    async def verify_request_v1(
         self,
         request: Request,
     ):
@@ -82,7 +90,7 @@ class Miner(BaseNeuron):
             raise HTTPException(status_code=401, detail="Signer not in metagraph")
 
         # If anything is returned here, we can throw
-        err = verify_signature(
+        err = verify_signature_v1(
             request.headers.get("Body-Signature"),
             body,
             json.get("nonce"),
@@ -90,6 +98,40 @@ class Miner(BaseNeuron):
             now,
         )
         if err:
+            raise HTTPException(status_code=400, detail=err)
+
+    async def verify_request_v2(
+        self,
+        request: Request,
+    ):
+        # We do this as early as possible so that now has a lesser chance
+        # of causing a stale request
+        now = round(time.time() * 1000)
+
+        # We need to check the signature of the body as bytes
+        # But use some specific fields from the body
+        signed_by = request.headers.get("Epistula-Signed-By")
+        signed_for = request.headers.get("Epistula-Signed-For")
+        if signed_for != self.wallet.hotkey.ss58_address:
+            raise HTTPException(
+                status_code=400, detail="Bad Request, message is not intended for self"
+            )
+        if signed_by not in self.metagraph.hotkeys:
+            raise HTTPException(status_code=401, detail="Signer not in metagraph")
+
+        # If anything is returned here, we can throw
+        body = await request.body()
+        err = verify_signature_v2(
+            request.headers.get("Epistula-Request-Signature"),
+            body,
+            request.headers.get("Epistula-Timestamp"),
+            request.headers.get("Epistula-Uuid"),
+            signed_for,
+            signed_by,
+            now,
+        )
+        if err:
+            bt.logging.error(err)
             raise HTTPException(status_code=400, detail=err)
 
     def run(self):
@@ -134,7 +176,7 @@ class Miner(BaseNeuron):
         router.add_api_route(
             "/inference",
             self.inference,
-            dependencies=[Depends(self.verify_request)],
+            dependencies=[Depends(self.determine_epistula_version_and_verify)],
             methods=["POST"],
         )
         app.include_router(router)

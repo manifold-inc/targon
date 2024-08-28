@@ -1,46 +1,45 @@
 import json
-from typing import Annotated, Any, Dict, Generic, List, Optional, TypeVar, Union
+from hashlib import sha256
+from uuid import uuid4
+from math import ceil
+from typing import Annotated, Any, Dict, List, Optional, Union
 
 import time
-from pydantic import Field
-from pydantic.generics import GenericModel
 from substrateinterface import Keypair
 
 
-# Define a type variable
-T = TypeVar("T")
-
-
-class EpistulaRequest(GenericModel, Generic[T]):
-    data: T
-    nonce: int = Field(
-        title="Nonce", description="Unix timestamp of when request was sent"
-    )
-    signed_by: str = Field(title="Signed By", description="Hotkey of sender / signer")
-    signed_for: str = Field(
-        title="Signed For", description="Hotkey of intended receiver"
-    )
-
-
-def generate_body(
-    data: Union[Dict[Any, Any], List[Any]], receiver_hotkey: str, sender_hotkey: str
-) -> Dict[str, Any]:
-    return {
-        "data": data,
-        "nonce": time.time_ns(),
-        "signed_by": sender_hotkey,
-        "signed_for": receiver_hotkey,
-        "version": 1,
-    }
-
-
 def generate_header(
-    hotkey: Keypair, body: Union[Dict[Any, Any], List[Any]]
+    hotkey: Keypair,
+    body: Union[Dict[Any, Any], List[Any]],
+    signed_for: Optional[str] = None,
 ) -> Dict[str, Any]:
-    return {"Body-Signature": "0x" + hotkey.sign(json.dumps(body)).hex()}
+    timestamp = round(time.time() * 1000)
+    timestampInterval = ceil(timestamp / 1e4) * 1e4
+    uuid = str(uuid4())
+    headers = {
+        "Epistula-Version": str(2),
+        "Epistula-Timestamp": str(timestamp),
+        "Epistula-Uuid": uuid,
+        "Epistula-Signed-By": hotkey.ss58_address,
+        "Epistula-Request-Signature": "0x"
+        + hotkey.sign(
+            f"{sha256(json.dumps(body).encode('utf-8')).hexdigest()}.{uuid}.{timestamp}.{signed_for}"
+        ).hex(),
+    }
+    if signed_for:
+        headers["Epistula-Signed-For"] = signed_for
+        headers["Epistula-Secret-Signature-0"] = (
+            "0x" + hotkey.sign(str(timestampInterval - 1) + "." + signed_for).hex()
+        )
+        headers["Epistula-Secret-Signature-1"] = (
+            "0x" + hotkey.sign(str(timestampInterval) + "." + signed_for).hex()
+        )
+        headers["Epistula-Secret-Signature-2"] = (
+            "0x" + hotkey.sign(str(timestampInterval + 1) + "." + signed_for).hex()
+        )
+    return headers
 
-
-def verify_signature(
+def verify_signature_v1(
     signature, body: bytes, nonce, sender, now
 ) -> Optional[Annotated[str, "Error Message"]]:
     if not isinstance(signature, str):
@@ -56,6 +55,33 @@ def verify_signature(
     if nonce + ALLOWED_DELTA_NS < now:
         return "Request is too stale"
     verified = keypair.verify(body, signature)
+    if not verified:
+        return "Signature Mismatch"
+    return None
+
+def verify_signature_v2(
+    signature, body: bytes, timestamp, uuid, signed_for, signed_by, now
+) -> Optional[Annotated[str, "Error Message"]]:
+    if not isinstance(signature, str):
+        return "Invalid Signature"
+    timestamp = int(timestamp)
+    if not isinstance(timestamp, int):
+        return "Invalid Timestamp"
+    if not isinstance(signed_by, str):
+        return "Invalid Sender key"
+    if not isinstance(signed_for, str):
+        return "Invalid receiver key"
+    if not isinstance(uuid, str):
+        return "Invalid uuid"
+    if not isinstance(body, bytes):
+        return "Body is not of type bytes"
+    ALLOWED_DELTA_MS = 5000
+    keypair = Keypair(ss58_address=signed_by)
+    if timestamp + ALLOWED_DELTA_MS < now:
+        return "Request is too stale"
+    message = f"{sha256(body).hexdigest()}.{uuid}.{timestamp}.{signed_for}"
+    print(message)
+    verified = keypair.verify(message, signature)
     if not verified:
         return "Signature Mismatch"
     return None

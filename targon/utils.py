@@ -83,7 +83,7 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
 
 
 def sigmoid(num):
-    return 1 / (1 + exp(-((num - 0.3) / 0.1)))
+    return 1 / (1 + exp(-((num - 0.5) / 0.1)))
 
 
 def safe_mean_score(data):
