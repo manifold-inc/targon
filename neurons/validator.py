@@ -35,7 +35,7 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
-INGESTOR_URL = "INGESTORURL"
+INGESTOR_URL = "http://177.54.155.247:8000"
 
 
 class Validator(BaseNeuron):
