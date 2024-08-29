@@ -148,17 +148,17 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 			continue
 		}
 		timestamp := time.Now().UnixMilli()
-		uuid := uuid.New().String()
+		id := uuid.New().String()
 		timestampInterval := int64(math.Ceil(float64(timestamp) / 1e4))
 
 		bodyHash := sha256Hash(out)
-		message := fmt.Sprintf("%s.%s.%d.%s", bodyHash, uuid, timestamp, miner.Hotkey)
+		message := fmt.Sprintf("%s.%s.%d.%s", bodyHash, id, timestamp, miner.Hotkey)
 		requestSignature := signMessage([]byte(message), PUBLIC_KEY, PRIVATE_KEY)
 
 		headers := map[string]string{
 			"Epistula-Version":            "2",
 			"Epistula-Timestamp":          fmt.Sprintf("%d", timestamp),
-			"Epistula-Uuid":               uuid,
+			"Epistula-Uuid":               id,
 			"Epistula-Signed-By":          HOTKEY,
 			"Epistula-Signed-For":         miner.Hotkey,
 			"Epistula-Request-Signature":  requestSignature,
