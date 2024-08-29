@@ -21,7 +21,6 @@ import (
 	"github.com/ChainSafe/go-schnorrkel"
 	"github.com/google/uuid"
 	"github.com/nitishm/go-rejson/v4"
-	"golang.org/x/crypto/sha3"
 )
 
 func safeEnv(env string) string {
