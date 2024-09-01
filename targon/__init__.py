@@ -1,7 +1,7 @@
 from .config import *
 from .dataset import *
 
-__version__ = "2.6.1"
+__version__ = "2.6.2"
 
 version_split = __version__.split(".")
 __spec_version__ = (
