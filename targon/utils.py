@@ -139,7 +139,7 @@ def check_tokens(mout, vout) -> Tuple[List[float], bool]:
     percent_passed = passed / total_ground_chunks
     if len(jaros) > 1 and jaros[1] < 0.6:
         modifier = 0.75
-    seqRatio = SequenceMatcher(None, miner_chunks, ground_chunks).ratio()
+    seqRatio = SequenceMatcher(None, vout, mout).ratio()
     return jaros, (
         percent_passed * modifier > 0.70
         and np.mean(jaros).item() > 0.5
