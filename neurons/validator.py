@@ -241,7 +241,8 @@ class Validator(BaseNeuron):
                 miner_uids = self.get_miner_uids()
                 random.shuffle(miner_uids)
                 miner_uids = miner_uids[:miner_subset]
-            res = self.loop.run_until_complete(self.query_miners(miner_uids))
+            endpoint = random.choice(list(Endpoints))
+            res = self.loop.run_until_complete(self.query_miners(miner_uids, endpoint))
             self.loop.run_until_complete(self.send_stats_to_ingestor(*res))
             self.save_scores()
             step += 1
@@ -249,9 +250,8 @@ class Validator(BaseNeuron):
         # Exiting
         self.shutdown()
 
-    async def query_miners(self, miner_uids):
+    async def query_miners(self, miner_uids, endpoint: Endpoints):
         assert self.config.database
-        endpoint = random.choice(list(Endpoints))
         messages, sampling_params = self.generate_question(endpoint)
         if messages is None or sampling_params is None:
             return None
