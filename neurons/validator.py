@@ -303,15 +303,26 @@ class Validator(BaseNeuron):
             start_token_time = 0
 
             axon_info = self.metagraph.axons[uid]
-            body = {"messages": messages, **sampling_params.model_dump()}
+            match endpoint:
+                case Endpoints.CHAT:
+                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/chat/completion"
+                    body = {"messages": messages, **sampling_params.model_dump()}
+                case Endpoints.COMPLETION:
+                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/completion"
+                    body = {"prompt": messages, **sampling_params.model_dump()}
             headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             start_send_message_time = time.time()
+            timeout = aiohttp.ClientTimeout(
+                total=20, # Total time (s)
+                sock_connect=5, # Time to Connect (s)
+                sock_read=5 # Time to read first byte (s)
+            )
             try:
                 async with session.post(
-                    url=f"http://{axon_info.ip}:{axon_info.port}/v1/chat/completion",
+                    url=url,
                     headers=headers,
                     json=body,
-                    timeout=12,
+                    timeout=timeout,
                 ) as r:
                     if r.status != 200:
                         raise Exception(f"{r.status}: {await r.text()}")
