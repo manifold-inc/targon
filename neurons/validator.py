@@ -127,14 +127,14 @@ class Validator(BaseNeuron):
                 }
                 for uid, stat in stats
             ]
-            request = {"prompt": messages}
+            vali_request = {"prompt": messages}
             if isinstance(messages, str):
-                request = {"messages": messages}
+                vali_request = {"messages": messages}
             request = {
                 "r_nanoid": r_nanoid,
                 "block": self.subtensor.block,
                 "sampling_params": sampling_params.model_dump(),
-                "request": request,
+                "request": vali_request,
                 "request_endpoint": endpoint,
                 "version": spec_version,
                 "hotkey": self.wallet.hotkey.ss58_address,
