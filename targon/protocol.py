@@ -17,10 +17,10 @@
 # DEALINGS IN THE SOFTWARE.
 
 
+from enum import Enum
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field
-from typing import List, Optional
-
+from typing import Any, List, Optional
 
 
 class InferenceSamplingParams(BaseModel):
@@ -129,14 +129,17 @@ class InferenceSamplingParams(BaseModel):
         description="Whether to stream.",
     )
 
+class InferenceStats(BaseModel):
+    time_to_first_token: float
+    time_for_all_tokens: float
+    total_time: float
+    tps: float
+    response: str
+    tokens: List[Any]
+    verified: bool
 
-class Inference(BaseModel):
-    messages: List[ChatCompletionMessageParam] = Field(
-        title="Message",
-        description="The messages to be sent to the Bittensor network.",
-    )
-    sampling_params: Optional[InferenceSamplingParams] = Field(
-        default=InferenceSamplingParams(seed=333),
-        title="Sampling Params",
-        description="The sampling parameters for the OpenAI Compatible model.",
-    )
+
+
+class Endpoints(Enum):
+    CHAT = 'CHAT',
+    COMPLETION = 'COMPLETION'

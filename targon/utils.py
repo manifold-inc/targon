@@ -1,10 +1,8 @@
-from math import exp, floor
-from difflib import SequenceMatcher
+from math import exp
 import bittensor as bt
 import numpy as np
-from typing import List, Tuple
 from typing import List
-from pydantic import BaseModel
+from typing import List
 
 
 def print_info(metagraph, hotkey, block, isMiner=True):
@@ -17,61 +15,6 @@ def print_info(metagraph, hotkey, block, isMiner=True):
         )
         return
     bt.logging.info(log + f"VTrust:{metagraph.Tv[uid]} | ")
-
-
-def jaro_distance(s1, s2):
-    if s1 == s2:
-        return 1.0
-
-    len1 = len(s1)
-    len2 = len(s2)
-
-    if len1 == 0 or len2 == 0:
-        return 0.0
-    max_dist = floor(max(len(s1), len(s2)) * 0.75) - 1
-    match = 0
-    hash_s1 = [0] * len(s1)
-    hash_s2 = [0] * len(s2)
-
-    for i in range(len1):
-        for j in range(max(0, i - max_dist), min(len2, i + max_dist + 1)):
-            if s1[i] == s2[j] and hash_s2[j] == 0:
-                hash_s1[i] = 1
-                hash_s2[j] = 1
-                match += 1
-                break
-    if match == 0:
-        return 0.0
-    t = 0
-    point = 0
-    for i in range(len1):
-        if hash_s1[i]:
-            while hash_s2[point] == 0:
-                point += 1
-            if s1[i] != s2[point]:
-                point += 1
-                t += 1
-            else:
-                point += 1
-        t /= 2
-    return (match / len1 + match / len2 + (match - t) / match) / 3.0
-
-
-# https://www.geeksforgeeks.org/jaro-and-jaro-winkler-similarity/
-# This is inversed, so 1 == very similar and 0 is non-similar
-def jaro_winkler(s1, s2):
-    jaro_dist = jaro_distance(s1, s2)
-    if jaro_dist > 0.7:
-        prefix = 0
-        for i in range(min(len(s1), len(s2))):
-            if s1[i] == s2[i]:
-                prefix += 1
-            else:
-                break
-        prefix = min(4, prefix)
-        jaro_dist += 0.25 * prefix * (1 - jaro_dist)
-    return jaro_dist
-
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
     norm_arr = []
@@ -97,51 +40,12 @@ def safe_mean_score(data):
     return float(mean_value) * sigmoid(len(clean_data) / len(data))
 
 
-class InferenceStats(BaseModel):
-    time_to_first_token: float
-    time_for_all_tokens: float
-    total_time: float
-    wps: float
-    response: str
-    verified: bool
-    jaros: List[float]
+def fail_with_none(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            bt.logging.error(str(e))
+            return None
 
-
-def divide_chunks(l, n):
-    for i in range(0, len(l), n):
-        yield l[i : i + n]
-
-
-def check_tokens(mout, vout) -> Tuple[List[float], bool]:
-    # Calculate the score from 0 to 1
-    miner_chunks = [mout[:30], *list(divide_chunks(mout[30:], 50))]
-    ground_chunks = [vout[:30], *list(divide_chunks(vout[30:], 50))]
-    jaros = []
-    total_ground_chunks = len(ground_chunks)
-    total_miner_chunks = len(miner_chunks)
-    passed = 0
-    modifier = 1
-    for i in range(0, total_ground_chunks):
-        if total_miner_chunks <= i:
-            jaros.append((0))
-            continue
-        if i == 0:
-            score = jaro_winkler(ground_chunks[i], miner_chunks[i])
-            if score < 0.7:
-                modifier = 0.75
-            if score > 0.9:
-                modifier = 1.15
-        else:
-            score = jaro_distance(ground_chunks[i], miner_chunks[i])
-        if score > (1 - ((i + 1) / total_ground_chunks)):
-            passed += 1
-        jaros.append(score)
-    percent_passed = passed / total_ground_chunks
-    if len(jaros) > 1 and jaros[1] < 0.6:
-        modifier = 0.75
-    seqRatio = SequenceMatcher(None, vout, mout).ratio()
-    return jaros, (
-        percent_passed * modifier > 0.70
-        and np.mean(jaros).item() > 0.5
-        and seqRatio > 0.4
-    )
+    return inner

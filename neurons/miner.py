@@ -7,13 +7,12 @@ import requests
 from starlette.responses import StreamingResponse
 
 from neurons.base import BaseNeuron, NeuronType
-from targon.epistula import verify_signature_v1, verify_signature_v2
+from targon.epistula import verify_signature_v2
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
 
 from bittensor.axon import FastAPIThreadedServer
-from targon.protocol import Inference
 
 
 class Miner(BaseNeuron):
@@ -36,71 +35,42 @@ class Miner(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
 
-    async def inference(self, request: Inference):
-        bt.logging.info("\u2713", "Getting Inference request!")
+    async def create_chat_completion(self, request: Request):
+        bt.logging.info("\u2713", "Getting Chat Completion request!")
 
-        async def stream(req: Inference):
-            assert self.config.neuron
-            assert req.sampling_params
-            stream = self.client.chat.completions.create(
-                model=self.config.neuron.model_name,
-                messages=req.messages,
-                stream=True,
-                temperature=req.sampling_params.temperature,
-                top_p=req.sampling_params.top_p,
-                seed=req.sampling_params.seed,
-                timeout=5,
-                max_tokens=req.sampling_params.max_new_tokens,
-            )
+        async def stream(req):
+            assert req['stream'] == True
+            stream = self.client.chat.completions.create(**req)
             for chunk in stream:
                 token = chunk.choices[0].delta.content
                 if token:
                     yield token.encode("utf-8")
             bt.logging.info("\N{grinning face}", "Processed forward")
 
-        return StreamingResponse(stream(request))
+        return StreamingResponse(stream(await request.json()))
+
+    async def create_completion(self, request: Request):
+        bt.logging.info("\u2713", "Getting Completion request!")
+
+        async def stream(req):
+            assert req['stream'] == True
+            stream = self.client.completions.create(**req)
+            for chunk in stream:
+                token = chunk.choices[0].delta.content
+                if token:
+                    yield token.encode("utf-8")
+            bt.logging.info("\N{grinning face}", "Processed forward")
+
+        return StreamingResponse(stream(await request.json()))
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
         if version == "2":
-            await self.verify_request_v2(request)
+            await self.verify_request(request)
             return
-        await self.verify_request_v1(request)
+        raise HTTPException(status_code=400, detail="Unknown Epistula version")
 
-    # TODO: refactor this to make it easy / pretty
-    async def verify_request_v1(
-        self,
-        request: Request,
-    ):
-        # We do this as early as possible so that now has a lesser chance
-        # of causing a stale request
-        now = time.time_ns()
-
-        # We need to check the signature of the body as bytes
-        body = await request.body()
-        # But use some specific fields from the body
-        json = await request.json()
-        signed_by = json.get("signed_by")
-        signed_for = json.get("signed_for")
-        if signed_for != self.wallet.hotkey.ss58_address:
-            raise HTTPException(
-                status_code=400, detail="Bad Request, message is not intended for self"
-            )
-        if signed_by not in self.metagraph.hotkeys:
-            raise HTTPException(status_code=401, detail="Signer not in metagraph")
-
-        # If anything is returned here, we can throw
-        err = verify_signature_v1(
-            request.headers.get("Body-Signature"),
-            body,
-            json.get("nonce"),
-            signed_by,
-            now,
-        )
-        if err:
-            raise HTTPException(status_code=400, detail=err)
-
-    async def verify_request_v2(
+    async def verify_request(
         self,
         request: Request,
     ):
@@ -174,8 +144,14 @@ class Miner(BaseNeuron):
         app = FastAPI()
         router = APIRouter()
         router.add_api_route(
-            "/inference",
-            self.inference,
+            "/v1/chat/completions",
+            self.create_chat_completion,
+            dependencies=[Depends(self.determine_epistula_version_and_verify)],
+            methods=["POST"],
+        )
+        router.add_api_route(
+            "/v1/completions",
+            self.create_completion,
             dependencies=[Depends(self.determine_epistula_version_and_verify)],
             methods=["POST"],
         )
