@@ -1,4 +1,5 @@
 from math import exp
+import traceback
 import bittensor as bt
 import numpy as np
 from typing import List
@@ -15,6 +16,7 @@ def print_info(metagraph, hotkey, block, isMiner=True):
         )
         return
     bt.logging.info(log + f"VTrust:{metagraph.Tv[uid]} | ")
+
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
     norm_arr = []
@@ -40,12 +42,15 @@ def safe_mean_score(data):
     return float(mean_value) * sigmoid(len(clean_data) / len(data))
 
 
-def fail_with_none(func):
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            bt.logging.error(str(e))
-            return None
-
-    return inner
+def fail_with_none(message: str = ""):
+    def outer(func):
+        def inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                bt.logging.error(message)
+                bt.logging.error(str(e))
+                bt.logging.error(traceback.format_exc())
+                return None
+        return inner
+    return outer

@@ -94,6 +94,8 @@ class Validator(BaseNeuron):
 
         ## SET DATASET
         bt.logging.info("⌛️", "Loading dataset")
+        # @CARRO / @josh todo
+        # choose multiple datasets
         df = dd.read_parquet(
             "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
         )
@@ -284,7 +286,7 @@ class Validator(BaseNeuron):
         endpoint: Endpoints
     ):
         assert self.config.neuron
-        assert sampling_params.max_new_tokens
+        assert sampling_params.max_tokens
         stats = InferenceStats(
             time_to_first_token=0,
             time_for_all_tokens=0,
@@ -340,7 +342,7 @@ class Validator(BaseNeuron):
             stats.total_time = end_token_time - start_send_message_time
             stats.response = response
             stats.tps = (
-                min(len(stats.tokens), sampling_params.max_new_tokens)
+                min(len(stats.tokens), sampling_params.max_tokens)
                 / stats.total_time
             )
             return uid, stats
@@ -349,27 +351,24 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return uid, stats
 
+    @fail_with_none("Failed writing to cache file")
     def save_scores(self):
-        try:
-            assert self.config.neuron
-            with open(self.config.neuron.cache_file, "w") as file:
-                bt.logging.info("Caching scores...")
-                json.dump(
-                    {
-                        "miner_tps": self.miner_tps,
-                        "block_saved": self.subtensor.block,
-                        "version": spec_version,
-                    },
-                    file,
-                )
-                file.flush()
-                bt.logging.info("Cached")
-        except Exception as e:
-            bt.logging.error(f"Failed writing to cache file: {e}")
-            bt.logging.error(traceback.format_exc())
+        assert self.config.neuron
+        with open(self.config.neuron.cache_file, "w") as file:
+            bt.logging.info("Caching scores...")
+            json.dump(
+                {
+                    "miner_tps": self.miner_tps,
+                    "block_saved": self.subtensor.block,
+                    "version": spec_version,
+                },
+                file,
+            )
+            file.flush()
+            bt.logging.info("Cached")
 
 
-    @fail_with_none
+    @fail_with_none("Failed to check tokens")
     def check_tokens(
         self,
         prompt: Union[str, List[ChatCompletionMessageParam]],
@@ -414,8 +413,7 @@ class Validator(BaseNeuron):
                 )
                 return res.json()
             case _:
-                return None
-
+                raise Exception(f"Unknown Endpoint {endpoint}")
 
     def shutdown(self):
         if self.db_organics:
@@ -429,11 +427,11 @@ class Validator(BaseNeuron):
             random.seed(urandom(100))
             seed = random.randint(10000, 10000000)
             temperature = random.random() * 2
-            max_new_tokens = random.randint(1024, 1024 * 15)
+            max_tokens= random.randint(1024, 1024 * 15)
 
             # Create sampling parameters using the generated seed and token limit
             sampling_params = protocol.InferenceSamplingParams(
-                seed=seed, max_new_tokens=max_new_tokens, temperature=temperature
+                seed=seed, max_tokens=max_tokens, temperature=temperature
             )
 
             random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0][
@@ -474,6 +472,7 @@ class Validator(BaseNeuron):
             bt.logging.error(traceback.format_exc())
             return None, None
 
+    @fail_with_none("Failed getting Weights")
     def get_weights(self) -> Tuple[List[int], List[float]]:
         tps = {
             miner: safe_mean_score(self.miner_tps[miner][-15:])
@@ -494,9 +493,13 @@ class Validator(BaseNeuron):
         bt.logging.info(f"Raw Weights: {raw_weights}")
         return uids, raw_weights
 
+    @fail_with_none("Failed setting weights")
     def set_weights(self):
         assert self.config.netuid
-        uids, raw_weights = self.get_weights()
+        weights = self.get_weights()
+        if weights is None:
+            return None
+        uids, raw_weights = weights
         if not len(uids):
             bt.logging.info("No UIDS to score")
             return
@@ -530,6 +533,7 @@ class Validator(BaseNeuron):
         else:
             bt.logging.error(f"set_weights failed {message}")
 
+    @fail_with_none("Failed resyncing hotkeys")
     def resync_hotkeys(self):
         bt.logging.info(
             "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
