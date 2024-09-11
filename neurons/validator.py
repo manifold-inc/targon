@@ -464,7 +464,7 @@ class Validator(BaseNeuron):
             return {
                 "seed": seed,
                 "max_tokens": max_tokens,
-                "teperature": temperature,
+                "temperature": temperature,
                 "model": self.config.neuron.model_name,
                 "stream": True,
                 **create_search_prompt(completion, endpoint),
