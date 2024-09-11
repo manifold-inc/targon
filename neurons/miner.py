@@ -8,7 +8,7 @@ from starlette.responses import StreamingResponse
 
 from neurons.base import BaseNeuron, NeuronType
 from targon.epistula import verify_signature_v2
-from targon.utils import fail_with_none, print_info
+from targon.utils import print_info
 import uvicorn
 import bittensor as bt
 
@@ -38,30 +38,34 @@ class Miner(BaseNeuron):
     async def create_chat_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Chat Completion request!")
 
-        @fail_with_none("Failed create chat completion")
         async def stream(req):
-            assert req['stream'] == True
-            stream = self.client.chat.completions.create(**req)
-            for chunk in stream:
-                token = chunk.choices[0].delta.content
-                if token:
-                    yield token.encode("utf-8")
-            bt.logging.info("\N{grinning face}", "Processed forward")
+            try:
+                assert req['stream'] == True
+                stream = self.client.chat.completions.create(**req)
+                for chunk in stream:
+                    token = chunk.choices[0].delta.content
+                    if token:
+                        yield token.encode("utf-8")
+                bt.logging.info("\N{grinning face}", "Processed forward")
+            except Exception as e:
+                print(e)
 
         return StreamingResponse(stream(await request.json()))
 
     async def create_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Completion request!")
 
-        @fail_with_none("Failed create completion")
         async def stream(req):
-            assert req['stream'] == True
-            stream = self.client.completions.create(**req)
-            for chunk in stream:
-                token = chunk.choices[0].delta.content
-                if token:
-                    yield token.encode("utf-8")
-            bt.logging.info("\N{grinning face}", "Processed forward")
+            try:
+                assert req['stream'] == True
+                stream = self.client.completions.create(**req)
+                for chunk in stream:
+                    token = chunk.choices[0].delta.content
+                    if token:
+                        yield token.encode("utf-8")
+                bt.logging.info("\N{grinning face}", "Processed forward")
+            except Exception as e:
+                print(e)
 
         return StreamingResponse(stream(await request.json()))
 
