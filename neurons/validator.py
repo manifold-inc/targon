@@ -299,7 +299,7 @@ class Validator(BaseNeuron):
             axon_info = self.metagraph.axons[uid]
             miner = openai.OpenAI(
                 base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
-                api_key="",
+                api_key="sn4",
                 max_retries=0,
                 timeout=Timeout(12, connect=5, read=5),
             )
