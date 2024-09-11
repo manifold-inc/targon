@@ -62,7 +62,7 @@ def fail_with_none(message: str = ""):
 
 
 def create_header_hook(hotkey, axon_hotkey):
-    def add_headers(request: httpx.Request):
+    async def add_headers(request: httpx.Request):
         print(f'generating headers for {axon_hotkey}')
         for key, header in generate_header(hotkey, request.read(), axon_hotkey).items():
             request.headers[key] = header
