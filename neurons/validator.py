@@ -113,7 +113,9 @@ class Validator(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Failed to initialize organics database: {e}")
 
-    async def send_stats_to_ingestor(self, stats, sampling_params, messages, endpoint):
+    async def send_stats_to_ingestor(
+        self, stats: List[InferenceStats], sampling_params, messages, endpoint
+    ):
         try:
             r_nanoid = generate(size=48)
             # @SAROKAN make sure the new fields line up w/ DB and injestor.
@@ -123,7 +125,7 @@ class Validator(BaseNeuron):
                     "hotkey": self.metagraph.axons[uid].hotkey,
                     "coldkey": self.metagraph.axons[uid].coldkey,
                     "uid": int(uid),
-                    "stats": stat.model_dump(),
+                    "stats": stat and stat.model_dump(),
                 }
                 for uid, stat in stats
             ]
@@ -260,25 +262,21 @@ class Validator(BaseNeuron):
             for uid in miner_uids:
                 tasks.append(
                     asyncio.create_task(
-                        self.handle_inference(messages, sampling_params, uid, session, endpoint)
+                        self.handle_inference(
+                            messages, sampling_params, uid, session, endpoint
+                        )
                     )
                 )
-            stats: List[Tuple[int, Optional[InferenceStats]]] = await asyncio.gather(*tasks)
+            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(
+                *tasks
+            )
         for uid, stat in stats:
-            if stat is None:
-                self.miner_tps[uid].append(None)
-                continue
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if stat.verified and stat.total_time != 0:
                 self.miner_tps[uid].append(stat.tps)
                 continue
             self.miner_tps[uid].append(None)
-        return (
-            stats,
-            sampling_params,
-            messages,
-            endpoint
-        )
+        return (stats, sampling_params, messages, endpoint)
 
     async def handle_inference(
         self,
@@ -286,7 +284,7 @@ class Validator(BaseNeuron):
         sampling_params: InferenceSamplingParams,
         uid: int,
         session: aiohttp.ClientSession,
-        endpoint: Endpoints
+        endpoint: Endpoints,
     ):
         assert self.config.neuron
         assert sampling_params.max_tokens
@@ -316,9 +314,9 @@ class Validator(BaseNeuron):
             headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             start_send_message_time = time.time()
             timeout = aiohttp.ClientTimeout(
-                total=20, # Total time (s)
-                sock_connect=5, # Time to Connect (s)
-                sock_read=5 # Time to read first byte (s)
+                total=20,  # Total time (s)
+                sock_connect=5,  # Time to Connect (s)
+                sock_read=5,  # Time to read first byte (s)
             )
             try:
                 async with session.post(
@@ -340,7 +338,7 @@ class Validator(BaseNeuron):
                         token_count += 1
             except Exception as e:
                 bt.logging.trace(f"Miner failed request: {e}")
-                return uid, None
+                stats.error = str(e)
 
             if end_send_message_time is None:
                 end_send_message_time = time.time()
@@ -350,16 +348,17 @@ class Validator(BaseNeuron):
             time_for_all_tokens = end_token_time - start_token_time
             response = "".join(response_tokens)
 
-            verified = self.check_tokens(messages, stats.tokens, endpoint=endpoint)
-            stats.verified = verified or False
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
             stats.response = response
             stats.tps = (
-                min(len(stats.tokens), sampling_params.max_tokens)
-                / stats.total_time
+                min(len(stats.tokens), sampling_params.max_tokens) / stats.total_time
             )
+            if stats.error:
+                return uid, stats
+            verified = self.check_tokens(messages, stats.tokens, endpoint=endpoint)
+            stats.verified = verified or False
             return uid, stats
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
@@ -381,7 +380,6 @@ class Validator(BaseNeuron):
             )
             file.flush()
             bt.logging.info("Cached")
-
 
     @fail_with_none("Failed to check tokens")
     def check_tokens(
@@ -442,7 +440,7 @@ class Validator(BaseNeuron):
             random.seed(urandom(100))
             seed = random.randint(10000, 10000000)
             temperature = random.random() * 2
-            max_tokens= random.randint(1024, 1024 * 15)
+            max_tokens = random.randint(1024, 1024 * 15)
 
             # Create sampling parameters using the generated seed and token limit
             sampling_params = protocol.InferenceSamplingParams(

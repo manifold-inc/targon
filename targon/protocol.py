@@ -88,6 +88,7 @@ class InferenceStats(BaseModel):
     response: str
     tokens: List[Any]
     verified: bool
+    error: Optional[str] = None
 
 
 
