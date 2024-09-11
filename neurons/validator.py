@@ -37,8 +37,11 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
-INGESTOR_URL = "http://177.54.155.247:8000"
+#Prod
+#INGESTOR_URL = "http://177.54.155.247:8000"
 
+#Test
+INGESTOR_URL = "http://160.202.129.179:8000"
 
 class Validator(BaseNeuron):
     miner_tps: Dict[int, Any]

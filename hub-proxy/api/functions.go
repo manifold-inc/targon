@@ -141,7 +141,7 @@ func queryMiners(c *Context, req RequestBody) (ResponseInfo, error) {
 				Stream:              true,
 			},
 		}
-		endpoint := "http://" + miner.Ip + ":" + fmt.Sprint(miner.Port) + "/inference"
+		endpoint := "http://" + miner.Ip + ":" + fmt.Sprint(miner.Port) + "/v1/chat/completions"
 		out, err := json.Marshal(body)
 		if err != nil {
 			c.Warn.Printf("Failed to parse json %s", err.Error())
