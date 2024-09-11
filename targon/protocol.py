@@ -50,12 +50,6 @@ class InferenceSamplingParams(BaseModel):
         description="Sampling temperature to use, between 0 and 2.",
     )
 
-    top_k: Optional[int] = Field(
-        default=10,
-        title="Top K",
-        description="Nucleus sampling parameter, top_p probability mass.",
-    )
-
     top_p: Optional[float] = Field(
         default=0.998,
         title="Top P",
