@@ -15,15 +15,12 @@ if __name__ == "__main__":
     if res is None:
         print("No response from miner")
         exit()
-    stats, sampling_params, messages, endpoint = res
-    print(sampling_params.model_dump())
+    stats, request, endpoint = res
+    print(request)
     for uid, stat in stats:
-        if not sampling_params.max_tokens:
+        if not request.get("max_tokens"):
             continue
-        tps = (
-            min(len(stat.tokens), sampling_params.max_tokens)
-            / stat.total_time
-        )
+        tps = min(len(stat.tokens), request.get("max_tokens",0)) / stat.total_time
         blob = f"UID: {uid:>3}  \t"
         # blob += f"Ground Truth: {ground_truth}\n\n"
         # blob += f"Miner response: {stat.response}\n"
