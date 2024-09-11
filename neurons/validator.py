@@ -1,6 +1,5 @@
 from os import urandom
 from httpx import Timeout
-import httpx
 from openai.types import Completion
 from openai.types.chat import ChatCompletionChunk
 from requests import post
@@ -267,7 +266,7 @@ class Validator(BaseNeuron):
         for uid in miner_uids:
             tasks.append(
                 asyncio.create_task(
-                    self.handle_inference(request, client, uid, endpoint)
+                    self.handle_inference(request, uid, endpoint)
                 )
             )
         stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
