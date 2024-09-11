@@ -43,6 +43,7 @@ class Miner(BaseNeuron):
                 assert req["stream"] == True
                 stream = self.client.chat.completions.create(**req)
                 for chunk in stream:
+                    print(chunk)
                     yield chunk
                 bt.logging.info("\N{grinning face}", "Processed forward")
             except Exception as e:
@@ -58,12 +59,14 @@ class Miner(BaseNeuron):
                 assert req["stream"] == True
                 stream = self.client.completions.create(**req)
                 for chunk in stream:
-                    yield chunk
+                    print(chunk)
+                    continue
                 bt.logging.info("\N{grinning face}", "Processed forward")
+                return ""
             except Exception as e:
                 bt.logging.error(str(e))
 
-        return StreamingResponse(stream(await request.json()))
+        return stream(await request.json())
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
