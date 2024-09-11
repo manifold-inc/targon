@@ -2,8 +2,10 @@ import traceback
 import time
 from bittensor.subtensor import serve_extrinsic
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+import httpx
 import netaddr
 import requests
+from starlette.background import BackgroundTask
 from starlette.responses import StreamingResponse
 
 from neurons.base import BaseNeuron, NeuronType
@@ -34,39 +36,30 @@ class Miner(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+        self.client = httpx.AsyncClient(
+            base_url=self.config.neuron.model_endpoint,
+            headers={"Authorization": f"Bearer {self.config.neuron.api_key}"},
+        )
 
     async def create_chat_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Chat Completion request!")
-
-        def stream(req):
-            try:
-                assert req["stream"] == True
-                stream = self.client.chat.completions.create(**req)
-                for chunk in stream:
-                    print(chunk)
-                    yield chunk
-                bt.logging.info("\N{grinning face}", "Processed forward")
-            except Exception as e:
-                bt.logging.error(str(e))
-
-        return StreamingResponse(stream(await request.json()))
+        req = self.client.build_request(
+            "POST", "/chat/completions", content=await request.body()
+        )
+        r = await self.client.send(req, stream=True)
+        return StreamingResponse(
+            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
+        )
 
     async def create_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Completion request!")
-
-        def stream(req):
-            try:
-                assert req["stream"] == True
-                stream = self.client.completions.create(**req)
-                for chunk in stream:
-                    print(chunk)
-                    continue
-                bt.logging.info("\N{grinning face}", "Processed forward")
-                return ""
-            except Exception as e:
-                bt.logging.error(str(e))
-
-        return stream(await request.json())
+        req = self.client.build_request(
+            "POST", "/completions", content=await request.body()
+        )
+        r = await self.client.send(req, stream=True)
+        return StreamingResponse(
+            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
+        )
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
