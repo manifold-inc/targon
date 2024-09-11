@@ -37,23 +37,33 @@ class Miner(BaseNeuron):
 
     async def create_chat_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Chat Completion request!")
-        try:
-            req = await request.json()
-            assert req["stream"] == True
-            stream = self.client.chat.completions.create(**req)
-            return StreamingResponse(stream)
-        except Exception as e:
-            bt.logging.error(str(e))
+
+        async def stream(req):
+            try:
+                assert req["stream"] == True
+                stream = await self.client.chat.completions.create(**req)
+                async for chunk in stream:
+                    yield chunk
+                bt.logging.info("\N{grinning face}", "Processed forward")
+            except Exception as e:
+                bt.logging.error(str(e))
+
+        return StreamingResponse(stream(await request.json()))
 
     async def create_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Completion request!")
-        try:
-            req = await request.json()
-            assert req["stream"] == True
-            stream = self.client.completions.create(**req)
-            return StreamingResponse(stream)
-        except Exception as e:
-            bt.logging.error(str(e))
+
+        async def stream(req):
+            try:
+                assert req["stream"] == True
+                stream = await self.client.completions.create(**req)
+                async for chunk in stream:
+                    yield chunk
+                bt.logging.info("\N{grinning face}", "Processed forward")
+            except Exception as e:
+                bt.logging.error(str(e))
+
+        return StreamingResponse(stream(await request.json()))
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")

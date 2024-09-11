@@ -3,7 +3,7 @@ import bittensor as bt
 import copy
 
 from nest_asyncio import asyncio
-from openai import OpenAI
+from openai import AsyncOpenAI
 from targon import (
     add_args,
     add_validator_args,
@@ -119,7 +119,7 @@ class BaseNeuron:
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
 
         # Initialize OpenAI client
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             base_url=self.config.neuron.model_endpoint,
             api_key=self.config.neuron.api_key,
         )
