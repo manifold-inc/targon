@@ -32,22 +32,10 @@ class InferenceSamplingParams(BaseModel):
         description="The seed used to generate the output.",
     )
 
-    best_of: Optional[int] = Field(
-        default=1,
-        title="Best of",
-        description="The number of samples to generate.",
-    )
-
     max_tokens: Optional[int] = Field(
         default=32,
         title="Max New Tokens",
         description="The maximum number of tokens to generate in the completion.",
-    )
-
-    repetition_penalty: Optional[float] = Field(
-        default=1.0,
-        title="Repetition Penalty",
-        description="The repetition penalty.",
     )
 
     stop: Optional[List[str]] = Field(
