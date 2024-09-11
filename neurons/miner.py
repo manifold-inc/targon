@@ -37,8 +37,8 @@ class Miner(BaseNeuron):
 
     async def create_chat_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Chat Completion request!")
-        req = await request.json()
         try:
+            req = await request.json()
             assert req["stream"] == True
             stream = self.client.chat.completions.create(**req)
             return StreamingResponse(stream)
@@ -47,8 +47,8 @@ class Miner(BaseNeuron):
 
     async def create_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Completion request!")
-        req = await request.json()
         try:
+            req = await request.json()
             assert req["stream"] == True
             stream = self.client.completions.create(**req)
             return StreamingResponse(stream)
