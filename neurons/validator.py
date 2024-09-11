@@ -37,11 +37,12 @@ from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
 
-#Prod
-#INGESTOR_URL = "http://177.54.155.247:8000"
+# Prod
+# INGESTOR_URL = "http://177.54.155.247:8000"
 
-#Test
+# Test
 INGESTOR_URL = "http://160.202.129.179:8000"
+
 
 class Validator(BaseNeuron):
     miner_tps: Dict[int, Any]
@@ -117,7 +118,11 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Failed to initialize organics database: {e}")
 
     async def send_stats_to_ingestor(
-        self, stats: List[InferenceStats], sampling_params, messages, endpoint
+        self,
+        stats: List[Tuple[int, InferenceStats]],
+        sampling_params,
+        messages,
+        endpoint: Endpoints,
     ):
         try:
             r_nanoid = generate(size=48)
@@ -140,7 +145,7 @@ class Validator(BaseNeuron):
                 "block": self.subtensor.block,
                 "sampling_params": sampling_params.model_dump(),
                 "request": vali_request,
-                "request_endpoint": endpoint,
+                "request_endpoint": str(endpoint),
                 "version": spec_version,
                 "hotkey": self.wallet.hotkey.ss58_address,
             }
@@ -248,7 +253,8 @@ class Validator(BaseNeuron):
                 miner_uids = miner_uids[:miner_subset]
             endpoint = random.choice(list(Endpoints))
             res = self.loop.run_until_complete(self.query_miners(miner_uids, endpoint))
-            self.loop.run_until_complete(self.send_stats_to_ingestor(*res))
+            if res is not None:
+                self.loop.run_until_complete(self.send_stats_to_ingestor(*res))
             self.save_scores()
             step += 1
 
@@ -270,9 +276,7 @@ class Validator(BaseNeuron):
                         )
                     )
                 )
-            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(
-                *tasks
-            )
+            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if stat.verified and stat.total_time != 0:
