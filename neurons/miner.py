@@ -38,11 +38,11 @@ class Miner(BaseNeuron):
     async def create_chat_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Chat Completion request!")
 
-        async def stream(req):
+        def stream(req):
             try:
                 assert req["stream"] == True
-                stream = await self.client.chat.completions.create(**req)
-                async for chunk in stream:
+                stream = self.client.chat.completions.create(**req)
+                for chunk in stream:
                     yield chunk
                 bt.logging.info("\N{grinning face}", "Processed forward")
             except Exception as e:
@@ -53,11 +53,11 @@ class Miner(BaseNeuron):
     async def create_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Completion request!")
 
-        async def stream(req):
+        def stream(req):
             try:
                 assert req["stream"] == True
-                stream = await self.client.completions.create(**req)
-                async for chunk in stream:
+                stream = self.client.completions.create(**req)
+                for chunk in stream:
                     yield chunk
                 bt.logging.info("\N{grinning face}", "Processed forward")
             except Exception as e:

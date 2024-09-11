@@ -258,7 +258,7 @@ class Validator(BaseNeuron):
 
     async def query_miners(self, miner_uids, endpoint: Endpoints):
         assert self.config.database
-        request = await self.generate_request(endpoint)
+        request = self.generate_request(endpoint)
         if not request:
             return None
         tasks = []
@@ -436,7 +436,7 @@ class Validator(BaseNeuron):
             bt.logging.info("Closing organics db connection")
             self.loop.run_until_complete(self.db_organics.close())
 
-    async def generate_request(self, endpoint: Endpoints):
+    def generate_request(self, endpoint: Endpoints):
         try:
             assert self.config.neuron
             # Generate a random seed for reproducibility in sampling and text generation
@@ -452,7 +452,7 @@ class Validator(BaseNeuron):
             messages = create_query_prompt(random_row_text)
 
             # If this fails, it gets caught in the same try/catch as ground truth generation
-            res = await self.client.chat.completions.create(
+            res = self.client.chat.completions.create(
                 model=self.config.neuron.model_name,
                 messages=messages,
                 stream=False,
