@@ -297,24 +297,21 @@ class Validator(BaseNeuron):
             end_send_message_time = None
             start_token_time = 0
             axon_info = self.metagraph.axons[uid]
-            miner = openai.OpenAI(
+            miner = openai.AsyncOpenAI(
                 base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
                 api_key="sn4",
                 max_retries=0,
                 timeout=Timeout(12, connect=5, read=5),
             )
-            print(miner.base_url)
             headers = generate_header(self.wallet.hotkey, request, axon_info.hotkey)
             start_send_message_time = time.time()
             try:
                 match endpoint:
                     case Endpoints.CHAT:
-                        chat: openai.Stream[
-                            ChatCompletionChunk
-                        ] = miner.chat.completions.create(
+                        chat = await miner.chat.completions.create(
                             **request, extra_headers=headers
                         )
-                        for chunk in chat:
+                        async for chunk in chat:
                             if start_token_time == 0:
                                 start_token_time = time.time()
                             choice = chunk.choices[0]
@@ -327,10 +324,10 @@ class Validator(BaseNeuron):
                                 )
                             )
                     case Endpoints.COMPLETION:
-                        comp: openai.Stream[Completion] = miner.completions.create(
+                        comp = await miner.completions.create(
                             **request, extra_headers=headers
                         )
-                        for chunk in comp:
+                        async for chunk in comp:
                             if start_token_time == 0:
                                 start_token_time = time.time()
                             choice = chunk.choices[0]
