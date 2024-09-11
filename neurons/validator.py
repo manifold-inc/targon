@@ -264,14 +264,13 @@ class Validator(BaseNeuron):
         if not request:
             return None
         tasks = []
-        with httpx.Client() as client:
-            for uid in miner_uids:
-                tasks.append(
-                    asyncio.create_task(
-                        self.handle_inference(request, client, uid, endpoint)
-                    )
+        for uid in miner_uids:
+            tasks.append(
+                asyncio.create_task(
+                    self.handle_inference(request, client, uid, endpoint)
                 )
-            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+            )
+        stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if stat.verified and stat.total_time != 0:
@@ -283,7 +282,6 @@ class Validator(BaseNeuron):
     async def handle_inference(
         self,
         request,
-        client: httpx.Client,
         uid: int,
         endpoint: Endpoints,
     ):
@@ -346,10 +344,10 @@ class Validator(BaseNeuron):
                                 )
                             )
             except openai.APIConnectionError as e:
-                bt.logging.trace(f"Miner failed request: {e}")
+                bt.logging.trace(f"Miner {uid} failed request: {e}")
                 stats.error = str(e)
             except Exception as e:
-                bt.logging.trace(f"Unknown Error when sending to miner: {e}")
+                bt.logging.trace(f"Unknown Error when sending to miner {uid}: {e}")
                 stats.error = str(e)
 
             if end_send_message_time is None:
