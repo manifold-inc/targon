@@ -391,7 +391,8 @@ class Validator(BaseNeuron):
     ) -> Optional[bool]:
         assert self.config.neuron
         response_string = ""
-        index = len(response)
+        num_tokens = len(response)
+        index = random.randint(0, num_tokens - 1)
         for i in range(index):
             response_string += response[i][0]
         powv = response[index][1]
