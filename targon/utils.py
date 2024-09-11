@@ -1,9 +1,12 @@
 from math import exp
 import traceback
 import bittensor as bt
+import httpx
 import numpy as np
 from typing import List
 from typing import List
+
+from targon.epistula import generate_header
 
 
 def print_info(metagraph, hotkey, block, isMiner=True):
@@ -52,5 +55,13 @@ def fail_with_none(message: str = ""):
                 bt.logging.error(str(e))
                 bt.logging.error(traceback.format_exc())
                 return None
+
         return inner
+
     return outer
+
+
+def create_header_hook(hotkey, axon_hotkey):
+    def add_headers(request: httpx.Request):
+        request.headers.update(generate_header(hotkey, request.read(), axon_hotkey))
+    return add_headers

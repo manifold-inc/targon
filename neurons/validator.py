@@ -1,7 +1,5 @@
 from os import urandom
 from httpx import Timeout
-from openai.types import Completion
-from openai.types.chat import ChatCompletionChunk
 from requests import post
 import json
 import copy
@@ -17,6 +15,7 @@ from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import generate_header
 from targon.updater import autoupdate
 from targon.utils import (
+    create_header_hook,
     fail_with_none,
     normalize,
     print_info,
@@ -265,9 +264,7 @@ class Validator(BaseNeuron):
         tasks = []
         for uid in miner_uids:
             tasks.append(
-                asyncio.create_task(
-                    self.handle_inference(request, uid, endpoint)
-                )
+                asyncio.create_task(self.handle_inference(request, uid, endpoint))
             )
         stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
@@ -302,15 +299,19 @@ class Validator(BaseNeuron):
                 api_key="sn4",
                 max_retries=0,
                 timeout=Timeout(12, connect=5, read=5),
+                http_client=openai.DefaultAsyncHttpxClient(
+                    event_hooks={
+                        "request": [
+                            create_header_hook(self.wallet.hotkey, axon_info.hotkey)
+                        ]
+                    }
+                ),
             )
-            headers = generate_header(self.wallet.hotkey, request, axon_info.hotkey)
             start_send_message_time = time.time()
             try:
                 match endpoint:
                     case Endpoints.CHAT:
-                        chat = await miner.chat.completions.create(
-                            **request, extra_headers=headers
-                        )
+                        chat = await miner.chat.completions.create(**request)
                         async for chunk in chat:
                             if start_token_time == 0:
                                 start_token_time = time.time()
@@ -324,9 +325,7 @@ class Validator(BaseNeuron):
                                 )
                             )
                     case Endpoints.COMPLETION:
-                        comp = await miner.completions.create(
-                            **request, extra_headers=headers
-                        )
+                        comp = await miner.completions.create(**request)
                         async for chunk in comp:
                             if start_token_time == 0:
                                 start_token_time = time.time()

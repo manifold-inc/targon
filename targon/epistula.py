@@ -10,21 +10,25 @@ from substrateinterface import Keypair
 
 def generate_header(
     hotkey: Keypair,
-    body: Union[Dict[Any, Any], List[Any]],
+    body: Union[Dict[Any, Any], List[Any], bytes],
     signed_for: Optional[str] = None,
 ) -> Dict[str, Any]:
     timestamp = round(time.time() * 1000)
     timestampInterval = ceil(timestamp / 1e4) * 1e4
     uuid = str(uuid4())
+    req_hash = None
+    if isinstance(body, bytes):
+        req_hash = sha256(body).hexdigest()
+    else:
+        req_hash = sha256(json.dumps(body).encode("utf-8"))
+
     headers = {
         "Epistula-Version": str(2),
         "Epistula-Timestamp": str(timestamp),
         "Epistula-Uuid": uuid,
         "Epistula-Signed-By": hotkey.ss58_address,
         "Epistula-Request-Signature": "0x"
-        + hotkey.sign(
-            f"{sha256(json.dumps(body).encode('utf-8')).hexdigest()}.{uuid}.{timestamp}.{signed_for or ''}"
-        ).hex(),
+        + hotkey.sign(f"{req_hash}.{uuid}.{timestamp}.{signed_for or ''}").hex(),
     }
     if signed_for:
         headers["Epistula-Signed-For"] = signed_for
