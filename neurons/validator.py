@@ -1,5 +1,4 @@
 from os import urandom
-from openai.types.chat import ChatCompletionMessageParam
 from requests import post
 import json
 import copy
@@ -20,16 +19,15 @@ from targon.utils import (
     print_info,
     safe_mean_score,
 )
-from targon.protocol import Endpoints, InferenceSamplingParams, InferenceStats
+from targon.protocol import Endpoints, InferenceStats
 import traceback
 import numpy as np
 import dask.dataframe as dd
 import bittensor as bt
 from nanoid import generate
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from targon import (
-    protocol,
     __version__,
     __spec_version__ as spec_version,
 )
@@ -120,8 +118,7 @@ class Validator(BaseNeuron):
     async def send_stats_to_ingestor(
         self,
         stats: List[Tuple[int, InferenceStats]],
-        sampling_params,
-        messages,
+        req: Dict[str, Any],
         endpoint: Endpoints,
     ):
         try:
@@ -137,14 +134,10 @@ class Validator(BaseNeuron):
                 }
                 for uid, stat in stats
             ]
-            vali_request = {"prompt": messages}
-            if isinstance(messages, str):
-                vali_request = {"messages": messages}
             request = {
                 "r_nanoid": r_nanoid,
                 "block": self.subtensor.block,
-                "sampling_params": sampling_params.model_dump(),
-                "request": vali_request,
+                "request": req,
                 "request_endpoint": str(endpoint),
                 "version": spec_version,
                 "hotkey": self.wallet.hotkey.ss58_address,
@@ -263,17 +256,15 @@ class Validator(BaseNeuron):
 
     async def query_miners(self, miner_uids, endpoint: Endpoints):
         assert self.config.database
-        messages, sampling_params = self.generate_question(endpoint)
-        if messages is None or sampling_params is None:
+        request = self.generate_request(endpoint)
+        if not request:
             return None
         tasks = []
         async with aiohttp.ClientSession() as session:
             for uid in miner_uids:
                 tasks.append(
                     asyncio.create_task(
-                        self.handle_inference(
-                            messages, sampling_params, uid, session, endpoint
-                        )
+                        self.handle_inference(request, uid, session, endpoint)
                     )
                 )
             stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
@@ -283,18 +274,16 @@ class Validator(BaseNeuron):
                 self.miner_tps[uid].append(stat.tps)
                 continue
             self.miner_tps[uid].append(None)
-        return (stats, sampling_params, messages, endpoint)
+        return (stats, request, endpoint)
 
     async def handle_inference(
         self,
-        messages,
-        sampling_params: InferenceSamplingParams,
+        request,
         uid: int,
         session: aiohttp.ClientSession,
         endpoint: Endpoints,
     ):
         assert self.config.neuron
-        assert sampling_params.max_tokens
         stats = InferenceStats(
             time_to_first_token=0,
             time_for_all_tokens=0,
@@ -311,15 +300,12 @@ class Validator(BaseNeuron):
             start_token_time = 0
 
             axon_info = self.metagraph.axons[uid]
-            base = {"model": self.config.neuron.model_name, "stream": True}
             match endpoint:
                 case Endpoints.CHAT:
                     url = f"http://{axon_info.ip}:{axon_info.port}/v1/chat/completions"
-                    body = {"messages": messages, **sampling_params.model_dump(), **base}
                 case Endpoints.COMPLETION:
                     url = f"http://{axon_info.ip}:{axon_info.port}/v1/completions"
-                    body = {"prompt": messages, **sampling_params.model_dump(), **base}
-            headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
+            headers = generate_header(self.wallet.hotkey, request, axon_info.hotkey)
             start_send_message_time = time.time()
             timeout = aiohttp.ClientTimeout(
                 total=20,  # Total time (s)
@@ -330,7 +316,7 @@ class Validator(BaseNeuron):
                 async with session.post(
                     url=url,
                     headers=headers,
-                    json=body,
+                    json=request,
                     timeout=timeout,
                 ) as r:
                     if r.status != 200:
@@ -361,11 +347,11 @@ class Validator(BaseNeuron):
             stats.total_time = end_token_time - start_send_message_time
             stats.response = response
             stats.tps = (
-                min(len(stats.tokens), sampling_params.max_tokens) / stats.total_time
+                min(len(stats.tokens), request['max_tokens']) / stats.total_time
             )
             if stats.error:
                 return uid, stats
-            verified = self.check_tokens(messages, stats.tokens, endpoint=endpoint)
+            verified = self.check_tokens(request, stats.tokens, endpoint=endpoint)
             stats.verified = verified or False
             return uid, stats
         except Exception as e:
@@ -392,7 +378,7 @@ class Validator(BaseNeuron):
     @fail_with_none("Failed to check tokens")
     def check_tokens(
         self,
-        prompt: Union[str, List[ChatCompletionMessageParam]],
+        request,
         response: List[Tuple[str, int]],
         endpoint: Endpoints = Endpoints.CHAT,
     ) -> Optional[bool]:
@@ -404,13 +390,14 @@ class Validator(BaseNeuron):
         powv = response[index][1]
         match endpoint:
             case Endpoints.CHAT:
-                assert isinstance(prompt, dict)
+                messages = request.get('messages')
+                assert isinstance(messages, dict)
                 res = post(
                     self.config.neuron.model_endpoint + "/chat/completions/verify",
                     headers={"Content-Type": "application/json"},
                     data=json.dumps(
                         {
-                            "messages": prompt,
+                            "messages": messages,
                             "model": self.config.neuron.model_name,
                             "response": response_string,
                             "powv": powv,
@@ -419,6 +406,7 @@ class Validator(BaseNeuron):
                 )
                 return res.json()
             case Endpoints.COMPLETION:
+                prompt = request.get('prompt')
                 assert isinstance(prompt, str)
                 res = post(
                     self.config.neuron.model_endpoint + "/completions/verify",
@@ -441,7 +429,7 @@ class Validator(BaseNeuron):
             bt.logging.info("Closing organics db connection")
             self.loop.run_until_complete(self.db_organics.close())
 
-    def generate_question(self, endpoint: Endpoints):
+    def generate_request(self, endpoint: Endpoints):
         try:
             assert self.config.neuron
             # Generate a random seed for reproducibility in sampling and text generation
@@ -449,11 +437,6 @@ class Validator(BaseNeuron):
             seed = random.randint(10000, 10000000)
             temperature = random.random() * 2
             max_tokens = random.randint(1024, 1024 * 15)
-
-            # Create sampling parameters using the generated seed and token limit
-            sampling_params = protocol.InferenceSamplingParams(
-                seed=seed, max_tokens=max_tokens, temperature=temperature
-            )
 
             random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0][
                 "value"
@@ -467,8 +450,7 @@ class Validator(BaseNeuron):
                 messages=messages,
                 stream=False,
                 temperature=0.5,
-                top_p=sampling_params.top_p,
-                seed=sampling_params.seed,
+                seed=seed,
                 max_tokens=random.randint(16, 64),
             )
 
@@ -477,9 +459,16 @@ class Validator(BaseNeuron):
             if completion is None:
                 bt.logging.error(str(res))
                 raise Exception("No completion")
-            prompt = create_search_prompt(completion, endpoint)
 
-            return prompt, sampling_params
+            # Create sampling parameters using the generated seed and token limit
+            return {
+                "seed": seed,
+                "max_tokens": max_tokens,
+                "teperature": temperature,
+                "model": self.config.neuron.model_name,
+                "stream": True,
+                **create_search_prompt(completion, endpoint),
+            }
         except openai.APIConnectionError as e:
             bt.logging.error(
                 f"Failed to connect to LLM server with connection string {self.client.base_url}: {e.message}"
@@ -487,11 +476,11 @@ class Validator(BaseNeuron):
             bt.logging.error(
                 "Make sure an open ai compliant server is running at the above url, or fix --neuron.model_endpoint"
             )
-            return None, None
+            return None
         except Exception as e:
             bt.logging.error(f"Error generating dataset: {e}")
             bt.logging.error(traceback.format_exc())
-            return None, None
+            return None
 
     @fail_with_none("Failed getting Weights")
     def get_weights(self) -> Tuple[List[int], List[float]]:

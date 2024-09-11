@@ -1,7 +1,7 @@
 import os
 import random
 from datetime import datetime
-from typing import Iterable, Union
+from typing import Dict, Iterable, Union
 from openai.types.chat import ChatCompletionMessageParam
 
 from targon.protocol import Endpoints
@@ -10,7 +10,7 @@ BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 NAMES = [line.strip() for line in open(os.path.join(BASE_DIR, "names.txt")).readlines()]
 COUNTRIES = [line.strip() for line in open(os.path.join(BASE_DIR, "countries.txt")).readlines()]
 
-def create_search_prompt(query: str, endpoint: Endpoints) ->  Union[Iterable[ChatCompletionMessageParam], str]:
+def create_search_prompt(query: str, endpoint: Endpoints) ->  Dict[str, Union[str, Iterable[ChatCompletionMessageParam]]]:
     # Format the current date for inclusion in the prompt
     date = datetime.now().strftime("%Y-%m-%d")
     system_message = f"""
@@ -26,10 +26,10 @@ Your answer should be relevant to the query, and you must start all responses by
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": query},
             ]
-            return messages
+            return {"messages": messages}
         case Endpoints.COMPLETION:
             prompt: str = f"""{system_message}\n\n{query}"""
-            return prompt
+            return {"prompt": prompt}
         case _:
             raise Exception("Unknown Endpoint")
 

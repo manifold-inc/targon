@@ -18,49 +18,9 @@
 
 
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Any, List, Optional
 
-
-class InferenceSamplingParams(BaseModel):
-    """
-    SamplingParams is a pydantic model that represents the sampling parameters for the OpenAI Compabtable API model.
-    """
-
-    seed: int = Field(
-        title="Seed",
-        description="The seed used to generate the output.",
-    )
-
-    max_tokens: Optional[int] = Field(
-        default=32,
-        title="Max New Tokens",
-        description="The maximum number of tokens to generate in the completion.",
-    )
-
-    stop: Optional[List[str]] = Field(
-        default=[""],
-        title="Stop",
-        description="The stop words.",
-    )
-
-    temperature: Optional[float] = Field(
-        default=0.01,
-        title="Temperature",
-        description="Sampling temperature to use, between 0 and 2.",
-    )
-
-    top_p: Optional[float] = Field(
-        default=0.998,
-        title="Top P",
-        description="Nucleus sampling parameter, top_p probability mass.",
-    )
-
-    stream: Optional[bool] = Field(
-        default=True,
-        title="Stream",
-        description="Whether to stream.",
-    )
 
 class InferenceStats(BaseModel):
     time_to_first_token: float
