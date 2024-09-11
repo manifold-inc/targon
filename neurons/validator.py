@@ -263,8 +263,11 @@ class Validator(BaseNeuron):
                         self.handle_inference(messages, sampling_params, uid, session, endpoint)
                     )
                 )
-            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+            stats: List[Tuple[int, Optional[InferenceStats]]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
+            if stat is None:
+                self.miner_tps[uid].append(None)
+                continue
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if stat.verified and stat.total_time != 0:
                 self.miner_tps[uid].append(stat.tps)
@@ -337,6 +340,7 @@ class Validator(BaseNeuron):
                         token_count += 1
             except Exception as e:
                 bt.logging.trace(f"Miner failed request: {e}")
+                return uid, None
 
             if end_send_message_time is None:
                 end_send_message_time = time.time()
