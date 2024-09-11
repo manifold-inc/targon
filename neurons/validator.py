@@ -1,4 +1,6 @@
 from os import urandom
+from httpx import Timeout
+import httpx
 from openai.types import Completion
 from openai.types.chat import ChatCompletionChunk
 from requests import post
@@ -262,13 +264,14 @@ class Validator(BaseNeuron):
         if not request:
             return None
         tasks = []
-        for uid in miner_uids:
-            tasks.append(
-                asyncio.create_task(
-                    self.handle_inference(request, uid, endpoint)
+        with httpx.Client() as client:
+            for uid in miner_uids:
+                tasks.append(
+                    asyncio.create_task(
+                        self.handle_inference(request, client, uid, endpoint)
+                    )
                 )
-            )
-        stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if stat.verified and stat.total_time != 0:
@@ -280,6 +283,7 @@ class Validator(BaseNeuron):
     async def handle_inference(
         self,
         request,
+        client: httpx.Client,
         uid: int,
         endpoint: Endpoints,
     ):
@@ -299,6 +303,9 @@ class Validator(BaseNeuron):
             miner = openai.OpenAI(
                 base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
                 api_key="",
+                max_retries=1,
+                timeout=Timeout(12, connect=5, read=5),
+                http_client=client,
             )
             headers = generate_header(self.wallet.hotkey, request, axon_info.hotkey)
             start_send_message_time = time.time()
