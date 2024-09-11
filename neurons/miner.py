@@ -37,37 +37,23 @@ class Miner(BaseNeuron):
 
     async def create_chat_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Chat Completion request!")
-
-        async def stream(req):
-            try:
-                assert req['stream'] == True
-                stream = self.client.chat.completions.create(**req)
-                for chunk in stream:
-                    token = chunk.choices[0].delta.content
-                    if token:
-                        yield token.encode("utf-8")
-                bt.logging.info("\N{grinning face}", "Processed forward")
-            except Exception as e:
-                bt.logging.error(str(e))
-
-        return StreamingResponse(stream(await request.json()))
+        req = await request.json()
+        try:
+            assert req["stream"] == True
+            stream = self.client.chat.completions.create(**req)
+            return StreamingResponse(stream)
+        except Exception as e:
+            bt.logging.error(str(e))
 
     async def create_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Completion request!")
-
-        async def stream(req):
-            try:
-                assert req['stream'] == True
-                stream = self.client.completions.create(**req)
-                for chunk in stream:
-                    token = chunk.choices[0].delta.content
-                    if token:
-                        yield token.encode("utf-8")
-                bt.logging.info("\N{grinning face}", "Processed forward")
-            except Exception as e:
-                bt.logging.error(str(e))
-
-        return StreamingResponse(stream(await request.json()))
+        req = await request.json()
+        try:
+            assert req["stream"] == True
+            stream = self.client.completions.create(**req)
+            return StreamingResponse(stream)
+        except Exception as e:
+            bt.logging.error(str(e))
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")

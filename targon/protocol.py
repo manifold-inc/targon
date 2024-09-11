@@ -27,7 +27,6 @@ class InferenceStats(BaseModel):
     time_for_all_tokens: float
     total_time: float
     tps: float
-    response: str
     tokens: List[Any]
     verified: bool
     error: Optional[str] = None

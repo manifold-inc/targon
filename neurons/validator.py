@@ -1,4 +1,6 @@
 from os import urandom
+from openai.types import Completion
+from openai.types.chat import ChatCompletionChunk
 from requests import post
 import json
 import copy
@@ -260,14 +262,13 @@ class Validator(BaseNeuron):
         if not request:
             return None
         tasks = []
-        async with aiohttp.ClientSession() as session:
-            for uid in miner_uids:
-                tasks.append(
-                    asyncio.create_task(
-                        self.handle_inference(request, uid, session, endpoint)
-                    )
+        for uid in miner_uids:
+            tasks.append(
+                asyncio.create_task(
+                    self.handle_inference(request, uid, endpoint)
                 )
-            stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+            )
+        stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if stat.verified and stat.total_time != 0:
@@ -280,7 +281,6 @@ class Validator(BaseNeuron):
         self,
         request,
         uid: int,
-        session: aiohttp.ClientSession,
         endpoint: Endpoints,
     ):
         assert self.config.neuron
@@ -290,48 +290,59 @@ class Validator(BaseNeuron):
             tps=0,
             total_time=0,
             tokens=[],
-            response="",
             verified=False,
         )
         try:
-            response_tokens = []
-            token_count = 0
             end_send_message_time = None
             start_token_time = 0
-
             axon_info = self.metagraph.axons[uid]
-            match endpoint:
-                case Endpoints.CHAT:
-                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/chat/completions"
-                case Endpoints.COMPLETION:
-                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/completions"
+            miner = openai.OpenAI(
+                base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
+                api_key="",
+            )
             headers = generate_header(self.wallet.hotkey, request, axon_info.hotkey)
             start_send_message_time = time.time()
-            timeout = aiohttp.ClientTimeout(
-                total=20,  # Total time (s)
-                sock_connect=5,  # Time to Connect (s)
-                sock_read=5,  # Time to read first byte (s)
-            )
             try:
-                async with session.post(
-                    url=url,
-                    headers=headers,
-                    json=request,
-                    timeout=timeout,
-                ) as r:
-                    if r.status != 200:
-                        raise Exception(f"{r.status}: {await r.text()}")
-                    async for chunk in r.content.iter_any():
-                        if token_count == 1:
-                            end_send_message_time = time.time()
-                            start_token_time = time.time()
-                        print(chunk)
-                        token = chunk.decode()
-                        print("decode:", chunk)
-                        response_tokens.append(token)
-                        token_count += 1
-            except Exception as e:
+                match endpoint:
+                    case Endpoints.CHAT:
+                        chat: openai.Stream[
+                            ChatCompletionChunk
+                        ] = miner.chat.completions.create(
+                            **request, extra_headers=headers
+                        )
+                        for chunk in chat:
+                            if start_token_time == 0:
+                                start_token_time = time.time()
+                            choice = chunk.choices[0]
+                            if choice.model_extra is None:
+                                continue
+                            stats.tokens.append(
+                                (
+                                    choice.delta.content or "",
+                                    choice.model_extra.get("powv"),
+                                )
+                            )
+                    case Endpoints.COMPLETION:
+                        comp: openai.Stream[Completion] = miner.completions.create(
+                            **request, extra_headers=headers
+                        )
+                        for chunk in comp:
+                            if start_token_time == 0:
+                                start_token_time = time.time()
+                            choice = chunk.choices[0]
+                            if choice.model_extra is None:
+                                continue
+                            stats.tokens.append(
+                                (
+                                    choice.text or "",
+                                    choice.model_extra.get("powv"),
+                                )
+                            )
+            except openai.APIConnectionError as e:
                 bt.logging.trace(f"Miner failed request: {e}")
+                stats.error = str(e)
+            except Exception as e:
+                bt.logging.trace(f"Unknown Error when sending to miner: {e}")
                 stats.error = str(e)
 
             if end_send_message_time is None:
@@ -340,15 +351,11 @@ class Validator(BaseNeuron):
             end_token_time = time.time()
             time_to_first_token = end_send_message_time - start_send_message_time
             time_for_all_tokens = end_token_time - start_token_time
-            response = "".join(response_tokens)
 
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
-            stats.response = response
-            stats.tps = (
-                min(len(stats.tokens), request['max_tokens']) / stats.total_time
-            )
+            stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
             if stats.error:
                 return uid, stats
             verified = self.check_tokens(request, stats.tokens, endpoint=endpoint)
@@ -390,7 +397,7 @@ class Validator(BaseNeuron):
         powv = response[index][1]
         match endpoint:
             case Endpoints.CHAT:
-                messages = request.get('messages')
+                messages = request.get("messages")
                 assert isinstance(messages, dict)
                 res = post(
                     self.config.neuron.model_endpoint + "/chat/completions/verify",
@@ -406,7 +413,7 @@ class Validator(BaseNeuron):
                 )
                 return res.json()
             case Endpoints.COMPLETION:
-                prompt = request.get('prompt')
+                prompt = request.get("prompt")
                 assert isinstance(prompt, str)
                 res = post(
                     self.config.neuron.model_endpoint + "/completions/verify",
