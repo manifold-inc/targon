@@ -313,10 +313,10 @@ class Validator(BaseNeuron):
             axon_info = self.metagraph.axons[uid]
             match endpoint:
                 case Endpoints.CHAT:
-                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/chat/completion"
+                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/chat/completions"
                     body = {"messages": messages, **sampling_params.model_dump()}
                 case Endpoints.COMPLETION:
-                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/completion"
+                    url = f"http://{axon_info.ip}:{axon_info.port}/v1/completions"
                     body = {"prompt": messages, **sampling_params.model_dump()}
             headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             start_send_message_time = time.time()
