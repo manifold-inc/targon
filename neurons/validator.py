@@ -311,13 +311,14 @@ class Validator(BaseNeuron):
             start_token_time = 0
 
             axon_info = self.metagraph.axons[uid]
+            base = {"model": self.config.neuron.model_name, "stream": True}
             match endpoint:
                 case Endpoints.CHAT:
                     url = f"http://{axon_info.ip}:{axon_info.port}/v1/chat/completions"
-                    body = {"messages": messages, **sampling_params.model_dump()}
+                    body = {"messages": messages, **sampling_params.model_dump(), **base}
                 case Endpoints.COMPLETION:
                     url = f"http://{axon_info.ip}:{axon_info.port}/v1/completions"
-                    body = {"prompt": messages, **sampling_params.model_dump()}
+                    body = {"prompt": messages, **sampling_params.model_dump(), **base}
             headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             start_send_message_time = time.time()
             timeout = aiohttp.ClientTimeout(

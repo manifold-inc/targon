@@ -48,7 +48,7 @@ class Miner(BaseNeuron):
                         yield token.encode("utf-8")
                 bt.logging.info("\N{grinning face}", "Processed forward")
             except Exception as e:
-                print(e)
+                bt.logging.error(str(e))
 
         return StreamingResponse(stream(await request.json()))
 
@@ -65,7 +65,7 @@ class Miner(BaseNeuron):
                         yield token.encode("utf-8")
                 bt.logging.info("\N{grinning face}", "Processed forward")
             except Exception as e:
-                print(e)
+                bt.logging.error(str(e))
 
         return StreamingResponse(stream(await request.json()))
 
