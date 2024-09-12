@@ -396,11 +396,11 @@ class Validator(BaseNeuron):
         endpoint: Endpoints = Endpoints.CHAT,
     ) -> Optional[bool]:
         assert self.config.neuron
-        response_string = ""
+        response_tokens = []
         num_tokens = len(response)
         index = random.randint(0, num_tokens - 1)
         for i in range(index):
-            response_string += response[i][0]
+            response_tokens.append(response[i][0])
         powv = response[index][1]
         if powv is None:
             return False
@@ -416,7 +416,7 @@ class Validator(BaseNeuron):
                             "version": '1',
                             "messages": messages,
                             "model": self.config.neuron.model_name,
-                            "response": response_string,
+                            "response": response_tokens,
                             "powv": powv,
                         }
                     ),
@@ -437,7 +437,7 @@ class Validator(BaseNeuron):
                             "version": '1',
                             "prompt": prompt,
                             "model": self.config.neuron.model_name,
-                            "response": response_string,
+                            "response": response_tokens,
                             "powv": powv,
                         }
                     ),
