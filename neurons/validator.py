@@ -399,7 +399,7 @@ class Validator(BaseNeuron):
         match endpoint:
             case Endpoints.CHAT:
                 messages = request.get("messages")
-                assert isinstance(messages, dict)
+                assert isinstance(messages, list)
                 res = post(
                     self.config.neuron.model_endpoint + "/chat/completions/verify",
                     headers={"Content-Type": "application/json"},
