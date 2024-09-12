@@ -462,7 +462,7 @@ class Validator(BaseNeuron):
             # Generate a random seed for reproducibility in sampling and text generation
             random.seed(urandom(100))
             seed = random.randint(10000, 10000000)
-            temperature = random.random() * 2
+            temperature = random.random() * 1.5
             max_tokens = random.randint(1024, 1024 * 2)
 
             random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0][
