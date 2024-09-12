@@ -1,4 +1,5 @@
 from os import urandom
+import os
 from httpx import Timeout
 from requests import post
 import json
@@ -97,13 +98,24 @@ class Validator(BaseNeuron):
                 self.miner_tps[miner] = []
 
         ## SET DATASET
-        bt.logging.info("⌛️", "Loading dataset")
-        # @CARRO / @josh todo
-        # choose multiple datasets
-        df = dd.read_parquet(
-            "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
-        )
-        self.dataset = df.compute()
+        if self.config.mock:
+            datafile = 'data.npy'
+            if not os.path.isfile(datafile):
+                df = dd.read_parquet(
+                    "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
+                )
+                with open(datafile, 'wb') as f:
+                    np.save(f, df)
+            with open(datafile, 'rb') as f:
+                self.dataset = np.load(f)
+        else:
+            bt.logging.info("⌛️", "Loading dataset")
+            # @CARRO / @josh todo
+            # choose multiple datasets
+            df = dd.read_parquet(
+                "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
+            )
+            self.dataset = df.compute()
 
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"

@@ -13,3 +13,4 @@ play.py
 packages
 *.pickle
 cache.json
+*.npy

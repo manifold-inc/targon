@@ -55,7 +55,7 @@ def add_args(parser):
     parser.add_argument(
         "--mock",
         action="store_true",
-        help="Mock neuron and all network components.",
+        help="Run in mock mode",
         default=False,
     )
 
