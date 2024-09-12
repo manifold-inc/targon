@@ -411,6 +411,7 @@ class Validator(BaseNeuron):
                     headers={"Content-Type": "application/json"},
                     data=json.dumps(
                         {
+                            "version": '1',
                             "messages": messages,
                             "model": self.config.neuron.model_name,
                             "response": response_string,
@@ -431,6 +432,7 @@ class Validator(BaseNeuron):
                     headers={"Content-Type": "application/json"},
                     data=json.dumps(
                         {
+                            "version": '1',
                             "prompt": prompt,
                             "model": self.config.neuron.model_name,
                             "response": response_string,
