@@ -1,5 +1,4 @@
 from os import urandom
-import os
 from httpx import Timeout
 from requests import post
 import json
@@ -107,8 +106,7 @@ class Validator(BaseNeuron):
             )
         else:
             df = dd.read_parquet(
-                "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
-            )
+                "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet")
         self.dataset = df.compute()
 
         bt.logging.info(
@@ -402,6 +400,8 @@ class Validator(BaseNeuron):
         for i in range(index):
             response_string += response[i][0]
         powv = response[index][1]
+        if powv is None:
+            return False
         match endpoint:
             case Endpoints.CHAT:
                 messages = request.get("messages")
@@ -418,7 +418,11 @@ class Validator(BaseNeuron):
                         }
                     ),
                 )
-                return res.json()
+                res = res.json()
+                if isinstance(res, dict):
+                    bt.logging.error(str(res))
+                    return None
+                return res
             case Endpoints.COMPLETION:
                 prompt = request.get("prompt")
                 assert isinstance(prompt, str)
@@ -434,7 +438,11 @@ class Validator(BaseNeuron):
                         }
                     ),
                 )
-                return res.json()
+                res = res.json()
+                if isinstance(res, dict):
+                    bt.logging.error(str(res))
+                    return None
+                return res
             case _:
                 raise Exception(f"Unknown Endpoint {endpoint}")
 
