@@ -167,6 +167,8 @@ class Validator(BaseNeuron):
                             f"Error sending records: {response.status} - {error_detail}"
                         )
 
+        except ConnectionRefusedError:
+            bt.logging.error("Error conecting to ingestor, offline.")
         except Exception as e:
             bt.logging.error(f"Error in send_stats_to_ingestor: {e}")
             bt.logging.error(traceback.format_exc())
