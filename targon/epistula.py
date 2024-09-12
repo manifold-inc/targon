@@ -20,7 +20,7 @@ def generate_header(
     if isinstance(body, bytes):
         req_hash = sha256(body).hexdigest()
     else:
-        req_hash = sha256(json.dumps(body).encode("utf-8"))
+        req_hash = sha256(json.dumps(body).encode("utf-8")).hexdigest()
 
     headers = {
         "Epistula-Version": str(2),
