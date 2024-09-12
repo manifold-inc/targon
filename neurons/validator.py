@@ -450,7 +450,7 @@ class Validator(BaseNeuron):
             random.seed(urandom(100))
             seed = random.randint(10000, 10000000)
             temperature = random.random() * 2
-            max_tokens = random.randint(1024, 1024 * 15)
+            max_tokens = random.randint(1024, 1024 * 2)
 
             random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0][
                 "value"
