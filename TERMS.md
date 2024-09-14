@@ -37,7 +37,7 @@ We shall not be liable for any indirect, incidental, special, consequential, or 
 
 #### 8. Indemnification
 
-You agree to indemnify, defend, and hold harmless FileTAO, its officers, directors, employees, agents, licensors, suppliers, and any third-party information providers from and against all losses, expenses, damages, and costs, including reasonable attorneys' fees, resulting from any violation of these Terms or any activity related to your account (including negligent or wrongful conduct).
+You agree to indemnify, defend, and hold harmless Manifold Labs Inc, its officers, directors, employees, agents, licensors, suppliers, and any third-party information providers from and against all losses, expenses, damages, and costs, including reasonable attorneys' fees, resulting from any violation of these Terms or any activity related to your account (including negligent or wrongful conduct).
 
 #### 9. Governing Law
 
