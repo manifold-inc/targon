@@ -10,7 +10,7 @@ setup(
     author_email='devs@manifold.inc',
     description='The code for SN4 on bittensor',
     long_description_content_type='text/markdown',
-    url='http://sybil.com',
+    url='http://manifold.inc',
     packages=find_packages(),
     install_requires=[
         line.strip() for line in open('requirements.txt').readlines()
