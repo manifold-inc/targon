@@ -1,7 +1,8 @@
-# Targon: A Redundant Deterministic Verification of Large Language Models
+# Targon: A Deterministic Verification of Large Language Models
 
-Targon (Bittensor Subnet 4) is a redundant deterministic verification mechanism
-that can be used to interpret and analyze ground truth sources and a query.
+Targon (Bittensor Subnet 4) is a deterministic verification mechanism that is
+used to incentivize miners to run openai compliant endpoints and serve synthetic
+and organic queries.
 
 NOTICE: Using this software, you must agree to the Terms and Agreements provided
 in the terms and conditions document. By downloading and running this software,
@@ -17,12 +18,11 @@ you implicitly agree to these terms and conditions.
    - [Running a VLLM](#running-a-vllm)
    - [Running a Miner](#running-a-miner)
    - [Running a Validator](#running-a-validator)
-1. [What is a Redundant Deterministic Verification Network?](#what-is-a-redundant-deterministic-verification-network)
+1. [What is a Deterministic Verification Network?](#what-is-a-deterministic-verification-network)
    - [Role of a Miner](#role-of-a-miner)
    - [Role of a Validator](#role-of-a-validator)
 1. [Features of Targon](#features-of-targon)
-   - [Infenrence Request](#inference-request)
-   - [Jaro-Winkler Similarity](#jaro-winkler-similarity)
+   - [Full OpenAi Compliance](#full-openai-compliance)
    - [Targon-Hub](#targon-hub)
 1. [How to Contribute](#how-to-contribute)
 
@@ -113,16 +113,46 @@ You have now installed Targon. You can now run a validator or a miner.
 
 # How to Run Targon
 
-## Running a VLLM
+## Running manifolds VLLM
 
 ### VLLM
 
-In order to run Targon, you must have a VLLM instance up and running.
+#### Docker
 
-First, install VLLM and JSON Schema on your machine
+In order to run Targon, you must have the manifold vLLM fork instance that
+includes powv tokens up and running. The easiest way is to run the vllm fork via
+docker. It is recommended to add an environment variable for the api key.
+
+> **NOTE**: The api key passed to vllm is your made up api key that you will
+> also pass to your miner/validator. This ensures that no one else can access
+> your vllm instance
+
+Install [docker](https://docs.docker.com/install/) and run
 
 ```bash
-pip install vllm jsonschema
+docker run --runtime nvidia --gpus all \
+    -v ~/.cache/huggingface:/root/.cache/huggingface \
+    --env "VLLM_API_KEY=<make up your own>" \
+    -p 8000:8000 \
+    --ipc=host \
+    manifold/vllm-openai:powv \
+    --model NousResearch/Meta-Llama-3.1-8B-Instruct
+```
+
+#### PM2
+
+Running without docker currently requires a dev installation of the vllm fork.
+
+```bash
+git clone https://github.com/manifold-inc/vllm-powv.git
+cd vllm-powv
+pip install jsonschema
+
+# If this fails, you may need to set the path for cuda. This may be different per
+# system.
+#
+# CUDACXX=/usr/local/cuda-12/bin/nvcc pip install -e .
+pip install -e .
 ```
 
 Now you are ready to server your VLLM instance to PM2
@@ -135,19 +165,18 @@ The `--neuron.model_endpoint` for miner / vali using this vllm instance on the
 same machine would be `http://localhost:8000/v1`. **Make sure** to include the
 `/v1` to the end of the URL.
 
-Also note that `--api-key` is defined by you. Set it to something hard to guess,
-and probably random. Whatever you decide, pass it in to both `--api-key` in
-vllm, and `--neuron.api_key` on the miner / vali
+Also note *again* that `--api-key` is defined by you. Set it to something hard
+to guess, and probably random. Whatever you decide, pass it in to both
+`--api-key` in vllm, and `--neuron.api_key` on the miner / vali
 
 ## Running a Miner
 
 ### PM2
 
-Running a miner through PM2 will require the LLM instance of your choice to be
-running.
+Running a miner through PM2 will require the vLLM instance to be running.
 
 ```bash
-pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --nueron.api_key [NEURON_API_KEY] --axon.port [AXON_PORT] --logging.trace
+pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --axon.port [AXON_PORT] --logging.trace
 ```
 
 > Please replace the following with your specific configuration:
@@ -188,20 +217,16 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 > - \[MODEL_ENDPOINT\]
 > - \[NEURON_API_KEY\]
 
-
 ### Targon Hub
 
-The goal of the hub is to give validators a simple way to directly generate revenue off of their bittensor bandwidth. 
-This is designed as a template for validators to take and create their own branded hubs with, however pull requests are still encouraged.
+The goal of the hub is to give validators a simple way to directly generate
+revenue off of their bittensor bandwidth. This is designed as a template for
+validators to take and create their own branded hubs with, however pull requests
+are still encouraged.
 
-This is also the place where miners can view their individual performace in real-time. Miners will be able to see:
-- Jaro Score
-- Time to First Token
-- Time for All Tokens
-- Total Time
-- Tokens Per Second
-
-If you are interested in running your own instance of Targon Hub, you will need to add an additonal flag to save the records of miners' responses to a PostgreSQL DB.
+If you are interested in running your own instance of Targon Hub, you will need
+to add an additional flag to save the records of miners' responses to a
+PostgreSQL DB.
 
 **NOTE**: No flag means no database!
 
@@ -209,39 +234,48 @@ If you are interested in running your own instance of Targon Hub, you will need 
 --database.url [DB_CONNECTION_STRING]
 
 ```
+
 > Please replace the following with your specific connection URL:
 >
 > - \[DB_CONNECTION_STRING\]
 
 Below are steps to create a Supabase connection string to utilze this feature:
 
-1. Either create an account or log in to [Supabase](https://supabase.com/dashboard/sign-in])
-2. You might be asked to create an organization. In which case, choose the options best suited for your use case.
-3. Once completed, create a new project with a secure password and location of your choosing. 
-   Save your password, you will need it later. Your project will then take a few minutes to be provisioned.
-4. Once the project has been created, click on the green ```Connect``` button near the top right of the screen
-5. A modal should open up. Click on connection string, URI, and change the mode from ```transaction``` to ```session```
-   in the dropdown
-6. Copy the connection string shown and insert your password
-7. Clone [Targon Hub](https://github.com/manifold-inc/targon-hub) and follow its setup instructions
-8. Launch the validator with new `--database.url` flag and connection string 
+1. Either create an account or log in to
+   [Supabase](https://supabase.com/dashboard/sign-in%5D)
+1. You might be asked to create an organization. In which case, choose the
+   options best suited for your use case.
+1. Once completed, create a new project with a secure password and location of
+   your choosing. Save your password, you will need it later. Your project will
+   then take a few minutes to be provisioned.
+1. Once the project has been created, click on the green `Connect` button near
+   the top right of the screen
+1. A modal should open up. Click on connection string, URI, and change the mode
+   from `transaction` to `session` in the dropdown
+1. Copy the connection string shown and insert your password
+1. Clone [Targon Hub](https://github.com/manifold-inc/targon-hub) and follow its
+   setup instructions
+1. Launch the validator with new `--database.url` flag and connection string
 
-Please reach out to the SN4 team for help setting up targon hub in sn4 chat or [our discord](https://discord.gg/manifold)
-
+Please reach out to the SN4 team for help setting up targon hub in sn4 chat or
+[our discord](https://discord.gg/manifold)
 
 ```bash
 pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --database.url [DB_CONNECTION_STRING]
 ```
 
-As your validator runs, you will start seeing records being added into your Supabase database. This will be directly what your Targon Hub will query.
+As your validator runs, you will start seeing records being added into your
+Supabase database. This will be directly what your Targon Hub will query.
 
 ## Autoupdate
 
-Autoupdate is implemented in targon/utils.py. This is to ensure that your codebase matches the latest version on Main of the Targon Github Repository. 
+Autoupdate is implemented in targon/utils.py. This is to ensure that your
+codebase matches the latest version on Main of the Targon Github Repository.
 
 ### Validator Autoupdate
 
-Validator Autoupdate is implemented and defaulted to run once weights have been set. To **disable**, please add the flag to your command line build:
+Validator Autoupdate is implemented and defaulted to run once weights have been
+set. To **disable**, please add the flag to your command line build:
 
 ```bash
 pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --autoupdate false
@@ -249,25 +283,29 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 
 ### Miner Autoupdate
 
-Miner Autoupdate is **not** implemented. Miners will need to check the Targon repository and update themselves as new versions are released.
-If interested in utilizing the autoupdate feature that Validators use, please follow the steps below:
+Miner Autoupdate is **not** implemented. Miners will need to check the Targon
+repository and update themselves as new versions are released. If interested in
+utilizing the autoupdate feature that Validators use, please follow the steps
+below:
 
 *NOTE*: This will not be maintained by the Manifold Labs Team.
 
-1. Import the autoupdate function into your miner script (neurons/miner.py) at the top of the file.
+1. Import the autoupdate function into your miner script (neurons/miner.py) at
+   the top of the file.
 
 ```python
 from targon.updater import autoupdate
 ```
 
-3. Call the function at a place of your choosing. 
+3. Call the function at a place of your choosing.
+
 ```python
     if self.config.autoupdate:
         autoupdate(branch="main")
 
 ```
 
-4. Relaunch your miner with the changes. 
+4. Relaunch your miner with the changes.
 
 ## Explanation of Args
 
@@ -302,93 +340,56 @@ from targon.updater import autoupdate
 1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
    a validator with a permit. *Defaults to 4096*
 1. **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
-  cache.pickle*
+   cache.pickle*
 1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
-1. **--autoupdate_off** ==> Disable automatic updates to Targon on latest version on Main if set. *Defaults to True* 
+1. **--autoupdate_off** ==> Disable automatic updates to Targon on latest
+   version on Main if set. *Defaults to True*
 
-# What is a Redundant Deterministic Verification Network?
+# What is A Deterministic Verification Network
 
-The query and a deterministic seed are used to generate a ground truth output
-with the specified model, which can be run by the validator or as a light
-client. The validator then sends requests to miners with the query and
-deterministic seed. The miner's responses are scored based on Tokens Per Second
-only if they pass a Jaro-Winkler Similarity test given a predefined threshold.
+Targon uses a novel, in-house proof-of-work value to verify model responses.
+These are generated just like log-probs, and can be used to verify with 99.99%
+accuracy that a response was generated with the model requested. Verified
+responses are scored by speed and consistency of verification.
 
 ## Role of a Miner
 
-A miner is a node that is responsible for generating a output from a query and a
-deterministic sampling params.
+A miner is a node that is responsible for generating a output from a query, both
+organic and synthetic.
 
 ## Role of a Validator
 
 A validator is a node that is responsible for verifying a miner's output. The
-validator will send a request to a miner with a query and deterministic sampling
-params. The miner will then send back a response with the output. The validator
-will then compare the output to the ground truth output. If the outputs are
-*similar enough* in respect to Jaro Winkler Similarity, then the miner has
-completed the challenge.
+validator will send an openai compliant request to a miner with. The miner will
+then send back a response with the output. The validator will then use the proof
+of work values of the response to verify that each miners response is accurate.
+Validators will keep score of each miners response time and use their averages
+to assign scores each epoch.
 
 # Features of Targon
 
-## Inference Request
+## Full OpenAi Compliance
 
-An inference request is a request sent by a validator to a miner. The inference
-request contains a query and inference sampling params. The miner will then
-generate an output from the query and deterministic sampling params that is then
-streamed back to the validator.
+Validators can query miners directly using any openai package, and Epistula
+headers. Below is boilerplate for querying a miner in python.
 
-> *CAVEAT:* Every Interval (360 blocks) there will be a random amount of
-> inference samples by the validator. The validator will then compare the
-> outputs to the ground truth outputs. The Jaro-Winkler Simalarity of the
-> outputs will be used to determine the reward for the miner if the miner is
-> running an appropriate model. If the miner fails verification, their score
-> will be 0.
-
-## Jaro-Winkler Similarity
-
-The Jaro-Winkler Similarity is a string metric measuring edit distance between
-two strings. Jaro-Winkler Similarity is defined as:
-
-```math
-S_w = S_j + P * L * (1 - S_j)
+```py
+miner = openai.AsyncOpenAI(
+    base_url=f"http://{axon.ip}:{axon.port}/v1",
+    api_key="sn4",
+    max_retries=0,
+    timeout=Timeout(12, connect=5, read=5),
+    http_client=openai.DefaultAsyncHttpxClient(
+        event_hooks={
+            "request": [
+                # This injects Epistula headers right before the request is sent.
+                # wallet.hotkey is the public / private keypair
+                create_header_hook(wallet.hotkey, axon.hotkey_ss58)
+            ]
+        }
+    ),
+)
 ```
-
-```bash
-where: 
-S_w = Jaro-Winkler Similarity
-S_j = Jaro Similarity
-P = Scaling Factor
-L = Length of the matching prefix up to a max of 4 characters
-
-```
-
-Jaro Similarity is the measure of similarity between two strings. The value of
-Jaro distance ranged from 0 to 1 where 0 means no similarity and 1 means very
-similar.
-
-The Jaro Similarity is calculated using the following formula:
-
-```math
-S_j = 1/3((m/abs(s1)) + (m/abs(s2)) + (m-t)/m))
-
-```
-
-```bash
-where:
-S_j = Jaro Similarity
-m = number of matching characters
-t = half of the number of transpositions
-s1 = length of first string
-s2 = length of second string
-
-```
-
-In the context of Targon, the scaling factor for our Jaro-Winkler calculation
-was set to 0.25.
-
-> *Note:*
-> [Jaro-Winkler Similarity](https://en.wikipedia.org/wiki/Jaro%E2%80%93Winkler_distance%5D)
-> is not a mathematical metric, as it fails the Triangle Inequality.
 
 # How to Contribute
 
