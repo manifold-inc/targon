@@ -15,14 +15,14 @@ you implicitly agree to these terms and conditions.
    - [Install PM2](#install-pm2)
    - [Install Targon](#install-targon-on-your-machine)
 1. [How to Run Targon](#how-to-run-targon)
-   - [Running a VLLM](#running-a-vllm)
+   - [Running VLLM](#vllm)
    - [Running a Miner](#running-a-miner)
    - [Running a Validator](#running-a-validator)
 1. [What is a Deterministic Verification Network?](#what-is-a-deterministic-verification-network)
    - [Role of a Miner](#role-of-a-miner)
    - [Role of a Validator](#role-of-a-validator)
 1. [Features of Targon](#features-of-targon)
-   - [Full OpenAi Compliance](#full-openai-compliance)
+   - [Full OpenAI Compliance](#full-openai-compliance)
    - [Targon-Hub](#targon-hub)
 1. [How to Contribute](#how-to-contribute)
 
@@ -368,7 +368,7 @@ to assign scores each epoch.
 
 # Features of Targon
 
-## Full OpenAi Compliance
+## Full OpenAI Compliance
 
 Validators can query miners directly using any openai package, and Epistula
 headers. Below is boilerplate for querying a miner in python.
