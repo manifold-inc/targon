@@ -127,6 +127,10 @@ docker. It is recommended to add an environment variable for the api key.
 > also pass to your miner/validator. This ensures that no one else can access
 > your vllm instance
 
+> **NOTE** Some features like --tensor-parallel-size might not work without
+> manual changes to vllm in coordination with powv. We suggest validators run the
+> fork with minimal to no extra paramaters.
+
 Install [docker](https://docs.docker.com/install/) and run
 
 ```bash
