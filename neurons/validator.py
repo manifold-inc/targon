@@ -46,7 +46,7 @@ class Validator(BaseNeuron):
     db_organics: Optional[asyncpg.Connection]
     neuron_type = NeuronType.Validator
 
-    def __init__(self, config=None, load_dataset=False):
+    def __init__(self, config=None, load_dataset=True):
         super().__init__(config)
         ## Typesafety
         assert self.config.netuid
