@@ -2,10 +2,13 @@ from httpx import Timeout
 import asyncio
 import openai
 from neurons.validator import Validator
+from targon.protocol import Endpoints
 from targon.utils import create_header_hook
 
 
-MINER_UID= -1
+MINER_UID = -1
+
+
 async def main():
     validator = Validator(load_dataset=False)
     axon_info = validator.metagraph.axons[MINER_UID]
@@ -22,13 +25,33 @@ async def main():
             }
         ),
     )
+    prompt = "What is the x y problem"
     res = await miner.completions.create(
-        prompt="What is the x y problem",
+        prompt=prompt,
         model="NousResearch/Meta-Llama-3.1-8B-Instruct",
         stream=True,
     )
+    tokens = []
     async for chunk in res:
-        print(chunk)
+        if chunk.choices[0].text is None:
+            continue
+        choice = chunk.choices[0]
+        if choice.model_extra is None:
+            continue
+        token_ids = choice.model_extra.get("token_ids") or []
+        token_id = token_ids[0] if len(token_ids) > 0 else -1
+        tokens.append(
+            (
+                choice.text or "",
+                token_id,
+                choice.model_extra.get("powv") or -1,
+            )
+        )
+        print(choice.text, token_id, choice.model_extra.get("powv") or -1)
+    print(validator.check_tokens({"prompt": prompt}, tokens, Endpoints.COMPLETION))
+    print(validator.check_tokens({"prompt": prompt}, tokens, Endpoints.COMPLETION))
+    print(validator.check_tokens({"prompt": prompt}, tokens, Endpoints.COMPLETION))
+
 
 if __name__ == "__main__":
     asyncio.run(main())
