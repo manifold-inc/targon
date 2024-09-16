@@ -316,6 +316,7 @@ class Validator(BaseNeuron):
                     case Endpoints.CHAT:
                         chat = await miner.chat.completions.create(**request)
                         async for chunk in chat:
+                            bt.logging.info(str(chunk))
                             if start_token_time == 0:
                                 start_token_time = time.time()
                             choice = chunk.choices[0]
@@ -333,6 +334,7 @@ class Validator(BaseNeuron):
                     case Endpoints.COMPLETION:
                         comp = await miner.completions.create(**request)
                         async for chunk in comp:
+                            bt.logging.info(str(chunk))
                             if start_token_time == 0:
                                 start_token_time = time.time()
                             choice = chunk.choices[0]
@@ -342,7 +344,7 @@ class Validator(BaseNeuron):
                             token_id = token_ids[0] if len(token_ids) > 0 else -1
                             stats.tokens.append(
                                 (
-                                    choice.delta.content or "",
+                                    choice.text or "",
                                     token_id,
                                     choice.model_extra.get("powv") or -1,
                                 )
