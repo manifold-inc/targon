@@ -401,6 +401,9 @@ class Validator(BaseNeuron):
         assert self.config.neuron
         response_tokens = []
         num_tokens = len(response)
+        if num_tokens == 0:
+            bt.logging.info("No tokens to check")
+            return False
         index = random.randint(0, num_tokens - 1)
         for i in range(index):
             response_tokens.append((response[i][0], response[i][1]))
