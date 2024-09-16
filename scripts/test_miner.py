@@ -1,13 +1,25 @@
+from typing import List
 from httpx import Timeout
 import traceback
 import httpx
 import openai
+from openai.types.chat import ChatCompletionMessageParam
 from neurons.validator import Validator
 from targon.epistula import generate_header
 from targon.protocol import Endpoints
 
 
 MINER_UID = -1
+
+messages: List[ChatCompletionMessageParam] = [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {
+        "role": "user",
+        "content": f"What is the deffinition of the x y problem ",
+    },
+]
+model = "NousResearch/Meta-Llama-3.1-8B-Instruct"
+prompt = "def print_hello_world():"
 
 def create_header_hook(hotkey, axon_hotkey):
     def add_headers(request: httpx.Request):
@@ -33,14 +45,14 @@ def main():
             ),
         )
         prompt = "What is the x y problem"
-        res = miner.completions.create(
-            prompt=prompt,
-            model="NousResearch/Meta-Llama-3.1-8B-Instruct",
+        res = miner.chat.completions.create(
+            messages=messages,
+            model=model,
             stream=True,
         )
         tokens = []
         for chunk in res:
-            if chunk.choices[0].text is None:
+            if chunk.choices[0].delta.content is None:
                 continue
             choice = chunk.choices[0]
             if choice.model_extra is None:
@@ -49,15 +61,15 @@ def main():
             token_id = token_ids[0] if len(token_ids) > 0 else -1
             tokens.append(
                 (
-                    choice.text or "",
+                    choice.delta.content or "",
                     token_id,
                     choice.model_extra.get("powv") or -1,
                 )
             )
-            print(choice.text, token_id, choice.model_extra.get("powv") or -1)
-        print(validator.check_tokens({"prompt": prompt}, tokens, Endpoints.COMPLETION))
-        print(validator.check_tokens({"prompt": prompt}, tokens, Endpoints.COMPLETION))
-        print(validator.check_tokens({"prompt": prompt}, tokens, Endpoints.COMPLETION))
+            print(choice.delta.content, token_id, choice.model_extra.get("powv") or -1)
+        print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
+        print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
+        print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
     except Exception as e:
         print(e)
         print(traceback.format_exc())
