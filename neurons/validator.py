@@ -314,7 +314,7 @@ class Validator(BaseNeuron):
                     case Endpoints.CHAT:
                         chat = await miner.chat.completions.create(**request)
                         async for chunk in chat:
-                            if chunk.choices[0].delta.content is None:
+                            if chunk.choices[0].delta.content == '' and len(stats.tokens) == 0:
                                 continue
                             if start_token_time == 0:
                                 start_token_time = time.time()
@@ -333,7 +333,7 @@ class Validator(BaseNeuron):
                     case Endpoints.COMPLETION:
                         comp = await miner.completions.create(**request)
                         async for chunk in comp:
-                            if chunk.choices[0].text is None:
+                            if chunk.choices[0].text == '' and len(stats.tokens) == 0:
                                 continue
                             if start_token_time == 0:
                                 start_token_time = time.time()
@@ -475,7 +475,7 @@ class Validator(BaseNeuron):
             random.seed(urandom(100))
             seed = random.randint(10000, 10000000)
             temperature = random.random() * 1.5
-            max_tokens = random.randint(1024, 1024 * 2)
+            max_tokens = random.randint(512, 1920)
 
             random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0][
                 "value"
