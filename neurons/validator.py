@@ -470,7 +470,7 @@ class Validator(BaseNeuron):
     def generate_request(self, endpoint: Endpoints):
         try:
             assert self.config.neuron
-            assert self.dataset
+            assert self.dataset is not None
             # Generate a random seed for reproducibility in sampling and text generation
             random.seed(urandom(100))
             seed = random.randint(10000, 10000000)
