@@ -21,11 +21,14 @@ messages: List[ChatCompletionMessageParam] = [
 model = "NousResearch/Meta-Llama-3.1-8B-Instruct"
 prompt = "def print_hello_world():"
 
+
 def create_header_hook(hotkey, axon_hotkey):
     def add_headers(request: httpx.Request):
         for key, header in generate_header(hotkey, request.read(), axon_hotkey).items():
             request.headers[key] = header
+
     return add_headers
+
 
 def main():
     try:
@@ -52,7 +55,7 @@ def main():
         )
         tokens = []
         for chunk in res:
-            if chunk.choices[0].delta.content is None:
+            if chunk.choices[0].delta.content == "" and len(tokens) == 0:
                 continue
             choice = chunk.choices[0]
             if choice.model_extra is None:
