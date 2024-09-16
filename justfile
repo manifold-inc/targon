@@ -5,11 +5,10 @@ default:
   @just list
 
 validator:
-  python3 neurons/validator.py --wallet.name validator --netuid 40 --subtensor.network test --neuron.model_endpoint http://localhost:9000/v1 --neuron.port 8080 --neuron.epoch_length 101 --logging.trace --autoupdate_off --mock
+  python3 neurons/validator.py --wallet.name validator --netuid 40 --subtensor.network test --neuron.model_endpoint http://localhost:9000/v1 --neuron.port 8080 --neuron.epoch_length 101 --logging.trace --autoupdate_off --mock --neuron.api_key abc123
 
 miner num="0":
-  python neurons/miner.py --wallet.name miner --netuid 40 --wallet.hotkey new-miner{{num}} --subtensor.network test --neuron.model_endpoint http://localhost:9001/v1 --axon.port 700{{num}} --autoupdate_off
+  python neurons/miner.py --wallet.name miner --netuid 40 --wallet.hotkey new-miner{{num}} --subtensor.network test --neuron.model_endpoint http://localhost:9001/v1 --axon.port 700{{num}} --autoupdate_off --neuron.api_key abc123
 
 script script_name opts="":
   python3 scripts/{{script_name}}.py --wallet.name validator --netuid 40 --subtensor.network test --neuron.model_endpoint http://localhost:9000/v1 --neuron.port 8080 --neuron.epoch_length 101 --logging.trace {{opts}}
-
