@@ -314,7 +314,10 @@ class Validator(BaseNeuron):
                     case Endpoints.CHAT:
                         chat = await miner.chat.completions.create(**request)
                         async for chunk in chat:
-                            if chunk.choices[0].delta.content == '' and len(stats.tokens) == 0:
+                            if (
+                                chunk.choices[0].delta.content == ""
+                                or chunk.choices[0].delta.content is None
+                            ) and len(stats.tokens) == 0:
                                 continue
                             if start_token_time == 0:
                                 start_token_time = time.time()
@@ -333,7 +336,10 @@ class Validator(BaseNeuron):
                     case Endpoints.COMPLETION:
                         comp = await miner.completions.create(**request)
                         async for chunk in comp:
-                            if chunk.choices[0].text == '' and len(stats.tokens) == 0:
+                            if (
+                                chunk.choices[0].text == ""
+                                or chunk.choices[0].text is None
+                            ) and len(stats.tokens) == 0:
                                 continue
                             if start_token_time == 0:
                                 start_token_time = time.time()
@@ -506,6 +512,7 @@ class Validator(BaseNeuron):
                 "temperature": temperature,
                 "model": self.config.neuron.model_name,
                 "stream": True,
+                "logprobs": True,
                 **create_search_prompt(completion, endpoint),
             }
         except openai.APIConnectionError as e:

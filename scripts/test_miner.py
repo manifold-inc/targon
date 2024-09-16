@@ -47,15 +47,16 @@ def main():
                 }
             ),
         )
-        prompt = "What is the x y problem"
         res = miner.chat.completions.create(
             messages=messages,
             model=model,
             stream=True,
+            logprobs=True,
+            max_tokens=200
         )
         tokens = []
         for chunk in res:
-            if chunk.choices[0].delta.content == "" and len(tokens) == 0:
+            if chunk.choices[0].delta.content is None:
                 continue
             choice = chunk.choices[0]
             if choice.model_extra is None:
@@ -70,6 +71,12 @@ def main():
                 )
             )
             print(choice.delta.content, token_id, choice.model_extra.get("powv") or -1)
+        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
+        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
+        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
+        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
+        print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
+        print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
         print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
         print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
         print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
