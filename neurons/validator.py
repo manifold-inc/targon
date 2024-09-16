@@ -103,7 +103,8 @@ class Validator(BaseNeuron):
             )
         else:
             df = dd.read_parquet(
-                "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet")
+                "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
+            )
         self.dataset = df.compute()
 
         bt.logging.info(
@@ -126,7 +127,6 @@ class Validator(BaseNeuron):
     ):
         try:
             r_nanoid = generate(size=48)
-            # @SAROKAN make sure the new fields line up w/ DB and injestor.
             responses = [
                 {
                     "r_nanoid": r_nanoid,
@@ -321,10 +321,13 @@ class Validator(BaseNeuron):
                             choice = chunk.choices[0]
                             if choice.model_extra is None:
                                 continue
+                            token_ids = choice.model_extra.get("token_ids") or []
+                            token_id = token_ids[0] if len(token_ids) > 0 else -1
                             stats.tokens.append(
                                 (
                                     choice.delta.content or "",
-                                    choice.model_extra.get("powv"),
+                                    token_id,
+                                    choice.model_extra.get("powv") or -1,
                                 )
                             )
                     case Endpoints.COMPLETION:
@@ -335,10 +338,13 @@ class Validator(BaseNeuron):
                             choice = chunk.choices[0]
                             if choice.model_extra is None:
                                 continue
+                            token_ids = choice.model_extra.get("token_ids") or []
+                            token_id = token_ids[0] if len(token_ids) > 0 else -1
                             stats.tokens.append(
                                 (
-                                    choice.text or "",
-                                    choice.model_extra.get("powv"),
+                                    choice.delta.content or "",
+                                    token_id,
+                                    choice.model_extra.get("powv") or -1,
                                 )
                             )
             except openai.APIConnectionError as e:
@@ -389,7 +395,7 @@ class Validator(BaseNeuron):
     def check_tokens(
         self,
         request,
-        response: List[Tuple[str, int]],
+        response: List[Tuple[str, int, int]],
         endpoint: Endpoints = Endpoints.CHAT,
     ) -> Optional[bool]:
         assert self.config.neuron
@@ -397,8 +403,8 @@ class Validator(BaseNeuron):
         num_tokens = len(response)
         index = random.randint(0, num_tokens - 1)
         for i in range(index):
-            response_tokens.append(response[i][0])
-        powv = response[index][1]
+            response_tokens.append((response[i][0], response[i][1]))
+        powv = response[index][2]
         if powv is None:
             return False
         match endpoint:
@@ -410,7 +416,7 @@ class Validator(BaseNeuron):
                     headers={"Content-Type": "application/json"},
                     data=json.dumps(
                         {
-                            "version": '1',
+                            "version": "1",
                             "messages": messages,
                             "model": self.config.neuron.model_name,
                             "response": response_tokens,
@@ -431,7 +437,7 @@ class Validator(BaseNeuron):
                     headers={"Content-Type": "application/json"},
                     data=json.dumps(
                         {
-                            "version": '1',
+                            "version": "1",
                             "prompt": prompt,
                             "model": self.config.neuron.model_name,
                             "response": response_tokens,
