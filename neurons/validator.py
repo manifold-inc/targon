@@ -335,7 +335,7 @@ class Validator(BaseNeuron):
                     case Endpoints.COMPLETION:
                         comp = await miner.completions.create(**request)
                         async for chunk in comp:
-                            if chunk.choices[0].delta.content is None:
+                            if chunk.choices[0].text is None:
                                 continue
                             if start_token_time == 0:
                                 start_token_time = time.time()
