@@ -139,9 +139,11 @@ docker run --runtime nvidia --gpus all \
     --env "VLLM_API_KEY=<make up your own>" \
     -p 8000:8000 \
     --ipc=host \
-    manifold/vllm-openai:powv \
+    manifoldlabs/vllm-openai:powv \
     --model NousResearch/Meta-Llama-3.1-8B-Instruct
 ```
+
+https://hub.docker.com/r/manifoldlabs/vllm-openai
 
 #### PM2
 
