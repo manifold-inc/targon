@@ -8,7 +8,7 @@ MINER_UID= -1
 
 if __name__ == "__main__":
     validator = Validator(load_dataset=False)
-    axon_info = validator.metagraph.axons[]
+    axon_info = validator.metagraph.axons[MINER_UID]
     miner = openai.OpenAI(
         base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
         api_key="sn4",
