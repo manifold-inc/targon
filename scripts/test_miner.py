@@ -1,25 +1,30 @@
 from httpx import Timeout
 import traceback
-import asyncio
+import httpx
 import openai
 from neurons.validator import Validator
+from targon.epistula import generate_header
 from targon.protocol import Endpoints
-from targon.utils import create_header_hook
 
 
 MINER_UID = -1
 
+def create_header_hook(hotkey, axon_hotkey):
+    def add_headers(request: httpx.Request):
+        for key, header in generate_header(hotkey, request.read(), axon_hotkey).items():
+            request.headers[key] = header
+    return add_headers
 
-async def main():
+def main():
     try:
         validator = Validator(load_dataset=False)
         axon_info = validator.metagraph.axons[MINER_UID]
-        miner = openai.AsyncOpenAI(
+        miner = openai.OpenAI(
             base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
             api_key="sn4",
             max_retries=0,
             timeout=Timeout(12, connect=5, read=5),
-            http_client=openai.DefaultAsyncHttpxClient(
+            http_client=openai.DefaultHttpxClient(
                 event_hooks={
                     "request": [
                         create_header_hook(validator.wallet.hotkey, axon_info.hotkey)
@@ -28,13 +33,13 @@ async def main():
             ),
         )
         prompt = "What is the x y problem"
-        res = await miner.completions.create(
+        res = miner.completions.create(
             prompt=prompt,
             model="NousResearch/Meta-Llama-3.1-8B-Instruct",
             stream=True,
         )
         tokens = []
-        async for chunk in res:
+        for chunk in res:
             if chunk.choices[0].text is None:
                 continue
             choice = chunk.choices[0]
@@ -59,4 +64,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(main())
+    main()
