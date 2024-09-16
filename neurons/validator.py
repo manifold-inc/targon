@@ -46,7 +46,7 @@ class Validator(BaseNeuron):
     db_organics: Optional[asyncpg.Connection]
     neuron_type = NeuronType.Validator
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, load_dataset=False):
         super().__init__(config)
         ## Typesafety
         assert self.config.netuid
@@ -93,19 +93,17 @@ class Validator(BaseNeuron):
             if self.miner_tps.get(miner) == None:
                 self.miner_tps[miner] = []
 
-        ## SET DATASET
-        # @CARRO / @josh todo
-        # choose multiple datasets
         bt.logging.info("⌛️", "Loading dataset")
-        if self.config.mock:
-            df = dd.read_parquet(
-                "hf://datasets/manifoldlabs/Infinity-Instruct/0625/*.parquet"
-            )
-        else:
-            df = dd.read_parquet(
-                "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
-            )
-        self.dataset = df.compute()
+        if load_dataset:
+            if self.config.mock:
+                df = dd.read_parquet(
+                    "hf://datasets/manifoldlabs/Infinity-Instruct/0625/*.parquet"
+                )
+            else:
+                df = dd.read_parquet(
+                    "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
+                )
+            self.dataset = df.compute()
 
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
@@ -472,6 +470,7 @@ class Validator(BaseNeuron):
     def generate_request(self, endpoint: Endpoints):
         try:
             assert self.config.neuron
+            assert self.dataset
             # Generate a random seed for reproducibility in sampling and text generation
             random.seed(urandom(100))
             seed = random.randint(10000, 10000000)

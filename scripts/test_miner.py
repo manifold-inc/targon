@@ -1,30 +1,31 @@
-import asyncio
+from httpx import Timeout
+import openai
 from neurons.validator import Validator
-from targon.protocol import Endpoints
+from targon.utils import create_header_hook
 
 
-MINER_UIDS = []
+MINER_UID= -1
 
 if __name__ == "__main__":
-    validator = Validator()
-    miner_uids = []
-    res = asyncio.get_event_loop().run_until_complete(
-        validator.query_miners(miner_uids, Endpoints.CHAT)
+    validator = Validator(load_dataset=False)
+    axon_info = validator.metagraph.axons[]
+    miner = openai.OpenAI(
+        base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
+        api_key="sn4",
+        max_retries=0,
+        timeout=Timeout(12, connect=5, read=5),
+        http_client=openai.DefaultHttpxClient(
+            event_hooks={
+                "request": [
+                    create_header_hook(validator.wallet.hotkey, axon_info.hotkey)
+                ]
+            }
+        ),
     )
-
-    if res is None:
-        print("No response from miner")
-        exit()
-    stats, request, endpoint = res
-    print(request)
-    for uid, stat in stats:
-        if not request.get("max_tokens"):
-            continue
-        tps = min(len(stat.tokens), request.get("max_tokens",0)) / stat.total_time
-        blob = f"UID: {uid:>3}  \t"
-        # blob += f"Ground Truth: {ground_truth}\n\n"
-        # blob += f"Miner response: {stat.response}\n"
-        blob += f"WPS: {tps:>5.2f} "
-        blob += f"Total Time: {stat.total_time:>5.2f} "
-        blob += f"Verified: {stat.verified}"
-        print(blob)
+    res = miner.completions.create(
+        prompt="What is the x y problem",
+        model="NousResearch/Meta-Llama-3.1-8B-Instruct",
+        stream=True,
+    )
+    for chunk in res:
+        print(chunk)
