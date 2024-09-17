@@ -40,7 +40,7 @@ from bittensor.utils.weight_utils import (
 
 INGESTOR_URL = "http://177.54.155.247:8000"
 
-VLLM_POWV_VERSION = '2'
+VLLM_POWV_VERSION = "2"
 
 
 class Validator(BaseNeuron):
@@ -294,8 +294,6 @@ class Validator(BaseNeuron):
             verified=False,
         )
         try:
-            end_send_message_time = None
-            start_token_time = 0
             axon_info = self.metagraph.axons[uid]
             miner = openai.AsyncOpenAI(
                 base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
@@ -310,6 +308,7 @@ class Validator(BaseNeuron):
                     }
                 ),
             )
+            start_token_time = 0
             start_send_message_time = time.time()
             try:
                 match endpoint:
@@ -364,8 +363,10 @@ class Validator(BaseNeuron):
                 bt.logging.trace(f"Unknown Error when sending to miner {uid}: {e}")
                 stats.error = str(e)
 
+            if start_token_time == 0:
+                start_token_time = time.time()
             end_token_time = time.time()
-            time_to_first_token = start_token_time - start_send_message_time
+            time_to_first_token = start_send_message_time - start_token_time
             time_for_all_tokens = end_token_time - start_token_time
 
             stats.time_to_first_token = time_to_first_token
