@@ -364,11 +364,8 @@ class Validator(BaseNeuron):
                 bt.logging.trace(f"Unknown Error when sending to miner {uid}: {e}")
                 stats.error = str(e)
 
-            if end_send_message_time is None:
-                end_send_message_time = time.time()
-                start_token_time = end_send_message_time
             end_token_time = time.time()
-            time_to_first_token = end_send_message_time - start_send_message_time
+            time_to_first_token = start_token_time - start_send_message_time
             time_for_all_tokens = end_token_time - start_token_time
 
             stats.time_to_first_token = time_to_first_token
