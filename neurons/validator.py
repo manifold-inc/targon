@@ -40,6 +40,8 @@ from bittensor.utils.weight_utils import (
 
 INGESTOR_URL = "http://177.54.155.247:8000"
 
+VLLM_POWV_VERSION = '2'
+
 
 class Validator(BaseNeuron):
     miner_tps: Dict[int, Any]
@@ -431,7 +433,7 @@ class Validator(BaseNeuron):
                     headers=headers,
                     data=json.dumps(
                         {
-                            "version": "1",
+                            "version": VLLM_POWV_VERSION,
                             "messages": messages,
                             "model": self.config.neuron.model_name,
                             "response": response_tokens,
@@ -452,7 +454,7 @@ class Validator(BaseNeuron):
                     headers=headers,
                     data=json.dumps(
                         {
-                            "version": "1",
+                            "version": VLLM_POWV_VERSION,
                             "prompt": prompt,
                             "model": self.config.neuron.model_name,
                             "response": response_tokens,
