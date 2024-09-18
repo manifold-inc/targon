@@ -366,15 +366,14 @@ class Validator(BaseNeuron):
             if start_token_time == 0:
                 start_token_time = time.time()
             end_token_time = time.time()
-            time_to_first_token = start_send_message_time - start_token_time
+            time_to_first_token = start_token_time - start_send_message_time
             time_for_all_tokens = end_token_time - start_token_time
-
+            if stats.error:
+                return uid, stats
             stats.time_to_first_token = time_to_first_token
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
             stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
-            if stats.error:
-                return uid, stats
             verified = self.check_tokens(request, stats.tokens, endpoint=endpoint)
             stats.verified = verified or False
             return uid, stats
