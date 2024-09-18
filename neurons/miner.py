@@ -2,7 +2,7 @@ import traceback
 import time
 from bittensor.subtensor import serve_extrinsic
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
-import httpx
+import aiohttp
 import netaddr
 import requests
 from starlette.background import BackgroundTask
@@ -36,29 +36,28 @@ class Miner(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
-        self.client = httpx.AsyncClient(
-            base_url=self.config.neuron.model_endpoint,
-            headers={"Authorization": f"Bearer {self.config.neuron.api_key}"},
-        )
+        self.client = None
+        self.base_url = self.config.neuron.model_endpoint
+
+    async def _stream(url, json_data):
+        async with self.client.post(url, json=json_data) as response:
+            async for chunk in response.content:
+                yield chunk
 
     async def create_chat_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Chat Completion request!")
-        req = self.client.build_request(
-            "POST", "/chat/completions", content=await request.body()
-        )
-        r = await self.client.send(req, stream=True)
+        content = await request.body()
+        json_data = json.loads(content.decode('utf-8'))
         return StreamingResponse(
-            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
+            _stream(f"{self.base_url}/chat/completions", json_data), background=BackgroundTask(r.aclose), headers=r.headers
         )
 
     async def create_completion(self, request: Request):
         bt.logging.info("\u2713", "Getting Completion request!")
-        req = self.client.build_request(
-            "POST", "/completions", content=await request.body()
-        )
-        r = await self.client.send(req, stream=True)
+        content = await request.body()
+        json_data = json.loads(content.decode('utf-8'))
         return StreamingResponse(
-            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
+            _stream(f"{self.base_url}/completions", json_data), background=BackgroundTask(r.aclose), headers=r.headers
         )
 
     async def determine_epistula_version_and_verify(self, request: Request):
@@ -67,6 +66,11 @@ class Miner(BaseNeuron):
             await self.verify_request(request)
             return
         raise HTTPException(status_code=400, detail="Unknown Epistula version")
+
+    async def create_session(self):
+        if not self.client:
+            self.client = aiohttp.ClientSession(headers={"Authorization": f"Bearer {self.config.neuron.api_key}"})
+        return
 
     async def verify_request(
         self,
@@ -150,13 +154,13 @@ class Miner(BaseNeuron):
         router.add_api_route(
             "/v1/chat/completions",
             self.create_chat_completion,
-            dependencies=[Depends(self.determine_epistula_version_and_verify)],
+            dependencies=[Depends(self.determine_epistula_version_and_verify), Depends(self.create_session)],
             methods=["POST"],
         )
         router.add_api_route(
             "/v1/completions",
             self.create_completion,
-            dependencies=[Depends(self.determine_epistula_version_and_verify)],
+            dependencies=[Depends(self.determine_epistula_version_and_verify), Depends(self.create_session)],
             methods=["POST"],
         )
         app.include_router(router)
