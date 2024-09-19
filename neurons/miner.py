@@ -39,7 +39,7 @@ class Miner(BaseNeuron):
         self.client = None
         self.base_url = self.config.neuron.model_endpoint
 
-    async def _stream(self, url, json_data):
+    async def _stream(url, json_data):
         async with self.client.post(url, json=json_data) as response:
             async for chunk in response.content:
                 yield chunk
@@ -49,7 +49,7 @@ class Miner(BaseNeuron):
         content = await request.body()
         json_data = json.loads(content.decode('utf-8'))
         return StreamingResponse(
-            self._stream(f"{self.base_url}/chat/completions", json_data), background=BackgroundTask(r.aclose), headers=r.headers
+            _stream(f"{self.base_url}/chat/completions", json_data), background=BackgroundTask(r.aclose), headers=r.headers
         )
 
     async def create_completion(self, request: Request):
@@ -57,7 +57,7 @@ class Miner(BaseNeuron):
         content = await request.body()
         json_data = json.loads(content.decode('utf-8'))
         return StreamingResponse(
-            self._stream(f"{self.base_url}/completions", json_data), background=BackgroundTask(r.aclose), headers=r.headers
+            _stream(f"{self.base_url}/completions", json_data), background=BackgroundTask(r.aclose), headers=r.headers
         )
 
     async def determine_epistula_version_and_verify(self, request: Request):
