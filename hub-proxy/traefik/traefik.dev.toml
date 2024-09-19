@@ -1,9 +1,0 @@
-[entryPoints]
-  [entryPoints.web]
-    address = ":80"
-
-[accessLog]
-
-[providers]
-  [providers.docker]
-    exposedByDefault = false
