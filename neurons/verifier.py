@@ -47,7 +47,7 @@ class RequestType(Enum):
 
 
 class VerificationRequest(BaseModel):
-    request_type: RequestType
+    request_type: str
     model: str = MODEL_NAME
     request_params: RequestParams
     output_sequence: List[OutputItem]
@@ -222,7 +222,7 @@ async def verify(request: VerificationRequest) -> Dict:
     # Tokenize the input sequence.
     input_text = (
         request.request_params.prompt
-        if request.request_type == RequestType.completion
+        if request.request_type == RequestType.completion.value
         else TOKENIZER.apply_chat_template(
             request.request_params.messages, tokenize=False
         )

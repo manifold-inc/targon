@@ -430,7 +430,7 @@ class Validator(BaseNeuron):
                 {
                     "model": self.config.neuron.model_name,
                     "request_type": endpoint.value,
-                    "request_param": request_params,
+                    "request_params": request_params,
                     "output_sequence": responses,
                 }
             ),
