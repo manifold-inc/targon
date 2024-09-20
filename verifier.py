@@ -42,8 +42,8 @@ class OutputItem(BaseModel):
 
 
 class RequestType(Enum):
-    chat = "chat"
-    completion = "completion"
+    CHAT = "CHAT"
+    COMPLETION = "COMPLETION"
 
 
 class VerificationRequest(BaseModel):
@@ -222,7 +222,7 @@ async def verify(request: VerificationRequest) -> Dict:
     # Tokenize the input sequence.
     input_text = (
         request.request_params.prompt
-        if request.request_type == RequestType.completion.value
+        if request.request_type == RequestType.COMPLETION.value
         else TOKENIZER.apply_chat_template(
             request.request_params.messages, tokenize=False
         )
