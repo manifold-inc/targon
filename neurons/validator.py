@@ -1,6 +1,7 @@
 from os import urandom
 from aiohttp import ClientConnectionError
 from httpx import Timeout
+from openai.types.chat import ChatCompletionChunk
 from requests import post
 import json
 import copy
@@ -327,12 +328,17 @@ class Validator(BaseNeuron):
                                 continue
                             token_ids = choice.model_extra.get("token_ids") or []
                             token_id = token_ids[0] if len(token_ids) > 0 else -1
+                            logprobs = 0
+                            choiceprobs = choice.logprobs
+                            if choiceprobs is not None:
+                                if choiceprobs.content:
+                                    logprobs = choiceprobs.content[0].logprob
                             stats.tokens.append(
                                 {
                                     "text": choice.delta.content or "",
                                     "token_id": token_id,
                                     "powv": choice.model_extra.get("powv") or -1,
-                                    "logprob": choice.logprobs,
+                                    "logprob": logprobs,
                                 }
                             )
                     case Endpoints.COMPLETION:
@@ -350,12 +356,17 @@ class Validator(BaseNeuron):
                                 continue
                             token_ids = choice.model_extra.get("token_ids") or []
                             token_id = token_ids[0] if len(token_ids) > 0 else -1
+                            logprobs = 0
+                            choiceprobs = choice.logprobs
+                            if choiceprobs is not None:
+                                if choiceprobs.content:
+                                    logprobs = choiceprobs.content[0].logprob
                             stats.tokens.append(
                                 {
                                     "text": choice.text or "",
                                     "token_id": token_id,
                                     "powv": choice.model_extra.get("powv") or -1,
-                                    "logprob": choice.logprobs,
+                                    "logprob": logprobs,
                                 }
                             )
             except openai.APIConnectionError as e:
