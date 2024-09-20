@@ -14,7 +14,7 @@ services:
           devices:
             - driver: nvidia
               device_ids:
-                - "0"
+                - "1"
               capabilities: [gpu]
   vllm-2:
     image: vllm/vllm-openai:latest
@@ -31,7 +31,7 @@ services:
           devices:
             - driver: nvidia
               device_ids:
-                - "1"
+                - "2"
               capabilities: [gpu]
 volumes:
   hf_cache:

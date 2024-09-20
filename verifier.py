@@ -169,7 +169,6 @@ def verify_logprobs_fast(
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)][
             item.token_id
         ].logprob
-        # print(F"EXPECTED: {expected_logprob}")
         produced_logprob = item.logprob
         delta = abs(produced_logprob - expected_logprob)
         score = (1.0 - delta) ** 2
