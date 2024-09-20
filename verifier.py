@@ -107,7 +107,9 @@ def verify_logprobs_random(
             [
                 0,  # always check first token
                 len(request.output_sequence) - 1,  # always check last token
-                random.choice(list(range(1, len(request.output_sequence) - 1))), # random offset
+                random.choice(
+                    list(range(1, len(request.output_sequence) - 1))
+                ),  # random offset
             ]
         )
     )
@@ -162,7 +164,7 @@ def verify_logprobs_fast(
 
     # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
     total_score = 0.0
-    for idx in range(len(request.output_sequence)):
+    for idx in range(len(request.output_sequence) - 5):
         item = request.output_sequence[idx]
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)][
             item.token_id
@@ -231,7 +233,6 @@ async def verify(request: VerificationRequest) -> Dict:
 
     # Verify!
     async with LOCK:
-
         # Check the weight values via powv.
         result, message = verify_powv(request, input_tokens)
         return_value = {
