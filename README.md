@@ -209,11 +209,20 @@ is defaulted to true to force incoming requests to have a permit.
 
 ### PM2
 
-Running a validator through PM2 will require the LLM instance of your choice to
-be running.
+Running a validator through PM2 also requires running the verifier via pm2. Note that
+this no longer requires manifolds vllm as a validator. These should be on the same machine.
+
+Validator Instance:
 
 ```bash
 pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY]
+
+```
+
+Verification endpoint:
+
+```bash
+pm2 start verifier.py --name verifier --interperter uvicorn -- verifier:app --host 0.0.0.0 --port 7777
 
 ```
 
