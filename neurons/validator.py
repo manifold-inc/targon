@@ -425,6 +425,7 @@ class Validator(BaseNeuron):
         assert self.config.neuron
         res = post(
             self.config.neuron.verify_endpoint + "/verify",
+            headers={"Content-Type": "application/json"},
             data=json.dumps(
                 {
                     "model": self.config.neuron.model_name,
