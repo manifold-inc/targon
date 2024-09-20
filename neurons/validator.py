@@ -415,7 +415,7 @@ class Validator(BaseNeuron):
         self,
         request_params,
         responses: List[Dict[str, int]],
-        endpoint: Endpoints = Endpoints.CHAT,
+        endpoint: Endpoints
     ) -> Optional[Dict]:
         assert self.config.neuron
         res = post(
