@@ -52,7 +52,6 @@ def init_vllm():
 
     def generate_question(messages, sampling_params):
         output = MODEL_WRAPPER.chat(messages=messages, sampling_params=sampling_params)[0].outputs[0].text
-        print(output)
         return output
 
 
@@ -91,8 +90,6 @@ def init_vllm():
                     return False, error_msg
                 output_sum += item.token_id
 
-        # All clear.
-        print("Successfully verified powv!")
         return (
             True,
             f"Successfully verified powv for {len(request.output_sequence)} outputs",
@@ -128,15 +125,13 @@ def init_vllm():
             full_text = input_text + "".join(
                 [item.text for item in request.output_sequence[0:idx]]
             )
-            output = MODEL_WRAPPER.generate([full_text], sampling_params)[0].outputs[0]
+            output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0].outputs[0]
 
             # The miner's output token should be in the logprobs...
             top_tokens = []
             for lp in output.logprobs:
                 top_tokens += list(lp.keys())
             if request.output_sequence[idx].token_id not in top_tokens:
-                message = f"Token output at index {idx} [{request.output_sequence[idx]}] not found in top {TOP_LOGPROBS} top logprobs: {top_tokens}"
-                print(message)
                 return False, message
         return (
             True,
@@ -163,7 +158,7 @@ def init_vllm():
 
         # Generate output for a single token, which will return input logprobs based on prompt_logprobs=1
         full_text = input_text + "".join([item.text for item in request.output_sequence])
-        output = MODEL_WRAPPER.generate([full_text], sampling_params)[0]
+        output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
 
         # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
         total_score = 0.0
@@ -180,18 +175,11 @@ def init_vllm():
             if score >= 0.9:
                 score = 1.0
 
-            # Log low scores.
-            elif score <= LOGPROB_LOG_THRESHOLD:
-                print(
-                    f"Low logprob score for output sequence {idx} {expected_logprob=} {produced_logprob=}"
-                )
-
             total_score += score
 
         average_score = total_score / len(request.output_sequence)
         if average_score < LOGPROB_FAILURE_THRESHOLD:
             message = f"Low average logprob score: {average_score}"
-            print(message)
             return False, message
         return (
             True,
