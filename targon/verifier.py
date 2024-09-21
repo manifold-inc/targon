@@ -9,6 +9,8 @@ from vllm import LLM, SamplingParams
 from vllm.config import ModelConfig
 from vllm.entrypoints.chat_utils import parse_chat_messages, parse_chat_messages_futures
 
+from targon.protocol import Endpoints
+
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", "NousResearch/Meta-Llama-3.1-8B-Instruct")
 # Constants.
@@ -159,6 +161,9 @@ def init_vllm():
         the ground truth according to this particular GPU/software pairing.
         """
 
+        if request.request_type == Endpoints.CHAT.value:
+            # Remove bos token
+            input_tokens = input_tokens[1:]
         # Set up sampling parameters for the "fast" check, which just compares input logprobs against output logprobs.
         sampling_params = SamplingParams(
             temperature=request.request_params.temperature,
