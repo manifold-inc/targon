@@ -161,9 +161,6 @@ def init_vllm():
         the ground truth according to this particular GPU/software pairing.
         """
 
-        if request.request_type == Endpoints.CHAT.value:
-            # Remove bos token
-            input_tokens = input_tokens[1:]
         # Set up sampling parameters for the "fast" check, which just compares input logprobs against output logprobs.
         sampling_params = SamplingParams(
             temperature=request.request_params.temperature,
@@ -178,6 +175,11 @@ def init_vllm():
             [item.text for item in request.output_sequence]
         )
         output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
+        assert output.prompt_logprobs is not None
+
+        if request.request_type == Endpoints.CHAT.value:
+            # Remove bos token
+            output.prompt_logprobs = output.prompt_logprobs[1:]
 
         # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
         total_score = 0.0
