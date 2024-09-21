@@ -175,10 +175,6 @@ def init_vllm():
         output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
         assert output.prompt_logprobs is not None
 
-        if request.request_type == Endpoints.CHAT.value:
-            # Remove bos token
-            output.prompt_logprobs = output.prompt_logprobs[1:]
-
         # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
         total_score = 0.0
         idxs = min(
