@@ -183,7 +183,7 @@ def init_vllm():
 
         # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
         total_score = 0.0
-        for idx in range(len(request.output_sequence) - 1):
+        for idx in range(len(output.prompt_logprobs) - len(input_tokens) - 3):
             item = request.output_sequence[idx]
             expected_logprob = output.prompt_logprobs[idx + len(input_tokens)].get(
                 item.token_id
@@ -239,12 +239,14 @@ def init_vllm():
             request.request_params.prompt
             if request.request_type == RequestType.COMPLETION.value
             else TOKENIZER.apply_chat_template(
-                request.request_params.messages, tokenize=False, add_special_tokens=False
+                request.request_params.messages,
+                tokenize=False,
+                add_special_tokens=False,
             )
         )
         assert isinstance(input_text, str)
         if input_text.startswith(TOKENIZER.bos_token):
-            input_text = input_text[len(TOKENIZER.bos_token):]
+            input_text = input_text[len(TOKENIZER.bos_token) :]
         input_tokens = TOKENIZER(input_text).input_ids
 
         # Verify!
