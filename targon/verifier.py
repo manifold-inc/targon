@@ -44,16 +44,27 @@ class VerificationRequest(BaseModel):
     request_params: RequestParams
     output_sequence: List[OutputItem]
 
+
 def init_vllm():
-    MODEL_WRAPPER = LLM(model=MODEL_NAME, enforce_eager=True)
+    MODEL_WRAPPER = LLM(
+        model=MODEL_NAME,
+        enforce_eager=True,
+        gpu_memory_utilization=0.4,
+        max_model_len=4096,
+    )
     TOKENIZER = MODEL_WRAPPER.get_tokenizer()
     MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model
     MODEL_NUM_PARAMS = sum(1 for _ in MODEL.parameters())
 
     def generate_question(messages, sampling_params):
-        output = MODEL_WRAPPER.chat(messages=messages, sampling_params=sampling_params, use_tqdm=False)[0].outputs[0].text
+        output = (
+            MODEL_WRAPPER.chat(
+                messages=messages, sampling_params=sampling_params, use_tqdm=False
+            )[0]
+            .outputs[0]
+            .text
+        )
         return output
-
 
     def verify_powv(
         request: VerificationRequest, input_tokens: List[int]
@@ -65,7 +76,7 @@ def init_vllm():
 
         # Iterate through output sequence, checking powv values.
         output_sum = 0
-        for idx in range(len(request.output_sequence)):
+        for idx in range(len(request.output_sequence) - 1):
             item = request.output_sequence[idx]
             powv = 0
             token_sum = input_sum + output_sum
@@ -84,9 +95,7 @@ def init_vllm():
                 weight_index = input_sum % len(weights)
                 powv = math.floor(weights[weight_index] * token_sum)
                 if powv != item.powv:
-                    error_msg = (
-                        f"Failed powv check at output index {idx}: {powv} vs {item.powv}"
-                    )
+                    error_msg = f"Failed powv check at output index {idx}: {powv} vs {item.powv}"
                     return False, error_msg
                 output_sum += item.token_id
 
@@ -94,7 +103,6 @@ def init_vllm():
             True,
             f"Successfully verified powv for {len(request.output_sequence)} outputs",
         )
-
 
     def verify_logprobs_random(
         request: VerificationRequest, input_text: str
@@ -125,19 +133,21 @@ def init_vllm():
             full_text = input_text + "".join(
                 [item.text for item in request.output_sequence[0:idx]]
             )
-            output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0].outputs[0]
+            output = MODEL_WRAPPER.generate(
+                [full_text], sampling_params, use_tqdm=False
+            )[0].outputs[0]
 
             # The miner's output token should be in the logprobs...
             top_tokens = []
             for lp in output.logprobs:
                 top_tokens += list(lp.keys())
             if request.output_sequence[idx].token_id not in top_tokens:
+                message = f"Token output at index {idx} [{request.output_sequence[idx]}] not found in top {TOP_LOGPROBS} top logprobs: {top_tokens}"
                 return False, message
         return (
             True,
             f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}",
         )
-
 
     def verify_logprobs_fast(
         request: VerificationRequest, input_text: str, input_tokens: List[int]
@@ -157,16 +167,22 @@ def init_vllm():
         )
 
         # Generate output for a single token, which will return input logprobs based on prompt_logprobs=1
-        full_text = input_text + "".join([item.text for item in request.output_sequence])
+        full_text = input_text + "".join(
+            [item.text for item in request.output_sequence]
+        )
         output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
 
         # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
         total_score = 0.0
-        for idx in range(len(request.output_sequence) - 5):
+        for idx in range(len(request.output_sequence) - 1):
             item = request.output_sequence[idx]
-            expected_logprob = output.prompt_logprobs[idx + len(input_tokens)][
+            expected_logprob = output.prompt_logprobs[idx + len(input_tokens)].get(
                 item.token_id
-            ].logprob
+            )
+            if expected_logprob is not None:
+                expected_logprob = expected_logprob.logprob
+            else:
+                expected_logprob = 0
             produced_logprob = item.logprob
             delta = abs(produced_logprob - expected_logprob)
             score = (1.0 - delta) ** 2
@@ -186,14 +202,13 @@ def init_vllm():
             f"Successfully verified logprob for {len(request.output_sequence)} outputs with {average_score=}",
         )
 
-
     async def verify(request: VerificationRequest) -> Dict:
         """Verify a miner's output."""
 
         # If the miner didn't return any outputs, fail.
         if len(request.output_sequence) < 3:
             return {
-                "status": "fail",
+                "verified": False,
                 "reason": "Output sequence too short!",
             }
         if (
@@ -201,12 +216,12 @@ def init_vllm():
             and len(request.output_sequence) > request.request_params.max_tokens
         ):
             return {
-                "status": "fail",
+                "verified": False,
                 "reason": "Too many tokens produced!",
             }
         if request.model != MODEL_NAME:
             return {
-                "status": "fail",
+                "verified": False,
                 "reason": "Unable to verify model={request.model}, since we are using {MODEL_NAME}",
             }
 
@@ -218,7 +233,7 @@ def init_vllm():
                 request.request_params.messages, tokenize=False
             )
         )
-        input_tokens = TOKENIZER(input_text).input_ids
+        input_tokens = TOKENIZER(input_text, add_special_tokens=False).input_ids
 
         # Verify!
         async with LOCK:
@@ -238,7 +253,9 @@ def init_vllm():
                 return return_value
 
             # Fast(ish) logprob check, based on input sequence processing.
-            result, message = verify_logprobs_fast(request, str(input_text), input_tokens)
+            result, message = verify_logprobs_fast(
+                request, str(input_text), input_tokens
+            )
             return_value.update(
                 {
                     "logprob_fast_pass": result,
@@ -262,4 +279,6 @@ def init_vllm():
 
             return_value.update({"verified": True})
             return return_value
+
     return verify, generate_question
+
