@@ -339,7 +339,7 @@ class Validator(BaseNeuron):
                                 {
                                     "text": choice.delta.content or "",
                                     "token_id": token_id,
-                                    "powv": choice.model_extra.get("powv") or 0,
+                                    "powv": choice.model_extra.get("powv", -1),
                                     "logprob": logprobs,
                                 }
                             )
@@ -362,7 +362,7 @@ class Validator(BaseNeuron):
                                 {
                                     "text": choice.text or "",
                                     "token_id": token_id,
-                                    "powv": choice.model_extra.get("powv") or 0,
+                                    "powv": choice.model_extra.get("powv", -1),
                                     "logprob": choice.logprobs.token_logprobs[0],
                                 }
                             )
