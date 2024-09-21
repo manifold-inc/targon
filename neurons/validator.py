@@ -265,6 +265,7 @@ class Validator(BaseNeuron):
     async def query_miners(self, miner_uids, endpoint: Endpoints):
         assert self.config.database
         request = self.generate_request(endpoint)
+        bt.logging.info(f"{endpoint}: {request}")
         if not request:
             return None
         tasks = []
