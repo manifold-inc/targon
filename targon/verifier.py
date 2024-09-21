@@ -1,3 +1,4 @@
+from functools import lru_cache
 import random
 import math
 import os
@@ -51,10 +52,11 @@ def init_vllm():
     MODEL_NUM_PARAMS = sum(1 for _ in MODEL.parameters())
 
     def generate_question(messages, sampling_params):
-        output = MODEL_WRAPPER.chat(messages=messages, sampling_params=sampling_params)[0].outputs[0].text
+        output = MODEL_WRAPPER.chat(messages=messages, sampling_params=sampling_params, use_tqdm=False)[0].outputs[0].text
         return output
 
 
+    @lru_cache
     def verify_powv(
         request: VerificationRequest, input_tokens: List[int]
     ) -> Tuple[bool, str]:
@@ -96,6 +98,7 @@ def init_vllm():
         )
 
 
+    @lru_cache
     def verify_logprobs_random(
         request: VerificationRequest, input_text: str
     ) -> Tuple[bool, str]:
@@ -139,6 +142,7 @@ def init_vllm():
         )
 
 
+    @lru_cache
     def verify_logprobs_fast(
         request: VerificationRequest, input_text: str, input_tokens: List[int]
     ) -> Tuple[bool, str]:
