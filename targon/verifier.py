@@ -6,8 +6,6 @@ from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
-from vllm.config import ModelConfig
-from vllm.entrypoints.chat_utils import parse_chat_messages, parse_chat_messages_futures
 
 from targon.protocol import Endpoints
 
