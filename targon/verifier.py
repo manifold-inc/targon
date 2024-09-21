@@ -23,9 +23,9 @@ LOCK = asyncio.Lock()
 class RequestParams(BaseModel):
     messages: Optional[List[Dict[str, str]]] = None
     prompt: Optional[str] = None
-    temperature: Optional[float] = 0.0
-    seed: Optional[int] = 42
-    max_tokens: Optional[int] = None
+    temperature: float = 0.0
+    seed: int = 42
+    max_tokens: int
 
 
 class OutputItem(BaseModel):
@@ -269,16 +269,19 @@ def init_vllm():
                 return return_value
 
             # Slow(ish) random logprob spotchecks.
-            result, message = verify_logprobs_random(request, str(input_text))
-            return_value.update(
-                {
-                    "logprob_random_pass": result,
-                    "logprob_random_message": message,
-                }
-            )
-            if not result:
-                return_value.update({"verified": False})
-                return return_value
+            if request.request_params.temperature < .5:
+                result, message = verify_logprobs_random(request, str(input_text))
+                return_value.update(
+                    {
+                        "logprob_random_pass": result,
+                        "logprob_random_message": message,
+                    }
+                )
+                if not result:
+                    return_value.update({"verified": False})
+                    return return_value
+            else:
+                return_value.update({"logprob_random_message": "Temperature too high to check"})
 
             return_value.update({"verified": True})
             return return_value
