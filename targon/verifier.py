@@ -1,4 +1,3 @@
-from functools import lru_cache
 import random
 import math
 import os
@@ -56,7 +55,6 @@ def init_vllm():
         return output
 
 
-    @lru_cache
     def verify_powv(
         request: VerificationRequest, input_tokens: List[int]
     ) -> Tuple[bool, str]:
@@ -98,7 +96,6 @@ def init_vllm():
         )
 
 
-    @lru_cache
     def verify_logprobs_random(
         request: VerificationRequest, input_text: str
     ) -> Tuple[bool, str]:
@@ -142,7 +139,6 @@ def init_vllm():
         )
 
 
-    @lru_cache
     def verify_logprobs_fast(
         request: VerificationRequest, input_text: str, input_tokens: List[int]
     ) -> Tuple[bool, str]:
