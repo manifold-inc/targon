@@ -232,11 +232,13 @@ def init_vllm():
         if request.request_type == RequestType.CHAT.value:
             input_text = TOKENIZER.apply_chat_template(
                 conversation=request.request_params.messages,
-                chat_template=TOKENIZER.chat_template,
-                tokenizer=TOKENIZER,
                 tokenize=False,
             )
-        input_tokens = TOKENIZER(input_text).input_ids
+            input_tokens = TOKENIZER.apply_chat_template(
+                conversation=request.request_params.messages,
+            )
+        else:
+            input_tokens = TOKENIZER(input_text).input_ids
 
         # Verify!
         async with LOCK:
@@ -269,7 +271,7 @@ def init_vllm():
                 return return_value
 
             # Slow(ish) random logprob spotchecks.
-            if request.request_params.temperature < .5:
+            if request.request_params.temperature < 0.5:
                 result, message = verify_logprobs_random(request, str(input_text))
                 return_value.update(
                     {
@@ -281,7 +283,9 @@ def init_vllm():
                     return_value.update({"verified": False})
                     return return_value
             else:
-                return_value.update({"logprob_random_message": "Temperature too high to check"})
+                return_value.update(
+                    {"logprob_random_message": "Temperature too high to check"}
+                )
 
             return_value.update({"verified": True})
             return return_value
