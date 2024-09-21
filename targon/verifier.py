@@ -235,17 +235,17 @@ def init_vllm():
             }
 
         # Tokenize the input sequence.
-        input_text = request.request_params.prompt
-        if request.request_type == RequestType.CHAT.value:
-            input_text = TOKENIZER.apply_chat_template(
-                conversation=request.request_params.messages,
-                tokenize=False,
+        input_text = (
+            request.request_params.prompt
+            if request.request_type == RequestType.COMPLETION.value
+            else TOKENIZER.apply_chat_template(
+                request.request_params.messages, tokenize=False, add_special_tokens=False
             )
-            input_tokens = TOKENIZER.apply_chat_template(
-                conversation=request.request_params.messages,
-            )
-        else:
-            input_tokens = TOKENIZER(input_text).input_ids
+        )
+        assert isinstance(input_text, str)
+        if input_text.startswith(TOKENIZER.bos_token):
+            input_text = input_text[len(TOKENIZER.bos_token):]
+        input_tokens = TOKENIZER(input_text).input_ids
 
         # Verify!
         async with LOCK:
