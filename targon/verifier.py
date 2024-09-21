@@ -233,7 +233,7 @@ def init_vllm():
                 request.request_params.messages, tokenize=False
             )
         )
-        input_tokens = TOKENIZER(input_text, add_special_tokens=False).input_ids
+        input_tokens = TOKENIZER(input_text).input_ids
 
         # Verify!
         async with LOCK:
