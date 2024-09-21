@@ -183,12 +183,11 @@ def init_vllm():
 
         # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
         total_score = 0.0
-        for idx in range(
-            min(
-                len(output.prompt_logprobs) - len(input_tokens) - 3,
-                len(request.output_sequence) - 1,
-            )
-        ):
+        idxs = min(
+            len(output.prompt_logprobs) - len(input_tokens) - 3,
+            len(request.output_sequence) - 1,
+        )
+        for idx in range(idxs):
             item = request.output_sequence[idx]
             expected_logprob = output.prompt_logprobs[idx + len(input_tokens)].get(
                 item.token_id
@@ -207,7 +206,7 @@ def init_vllm():
 
             total_score += score
 
-        average_score = total_score / len(request.output_sequence)
+        average_score = total_score / idxs
         if average_score < LOGPROB_FAILURE_THRESHOLD:
             message = f"Low average logprob score: {average_score}"
             return False, message
