@@ -1,8 +1,6 @@
 from os import urandom
 from aiohttp import ClientConnectionError
 from httpx import Timeout
-from openai.types.chat import ChatCompletionChunk
-from requests import post
 import json
 import copy
 import time
@@ -12,6 +10,7 @@ import asyncio
 from asyncpg.connection import asyncpg
 from bittensor.dendrite import aiohttp
 import openai
+from vllm import SamplingParams
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import generate_header
@@ -23,6 +22,7 @@ from targon.utils import (
     print_info,
     safe_mean_score,
 )
+from targon.verifier import OutputItem, VerificationRequest, init_vllm
 from targon.protocol import Endpoints, InferenceStats
 import traceback
 import numpy as np
@@ -38,6 +38,7 @@ from targon import (
 from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
+
 
 INGESTOR_URL = "http://177.54.155.247:8000"
 
@@ -111,6 +112,7 @@ class Validator(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+        self.verify_response, self.generate_question = init_vllm()
         try:
             self.db_organics = None
             if self.config.database.organics_url:
@@ -337,7 +339,7 @@ class Validator(BaseNeuron):
                                 {
                                     "text": choice.delta.content or "",
                                     "token_id": token_id,
-                                    "powv": choice.model_extra.get("powv") or -1,
+                                    "powv": choice.model_extra.get("powv") or 0,
                                     "logprob": logprobs,
                                 }
                             )
@@ -360,7 +362,7 @@ class Validator(BaseNeuron):
                                 {
                                     "text": choice.text or "",
                                     "token_id": token_id,
-                                    "powv": choice.model_extra.get("powv") or -1,
+                                    "powv": choice.model_extra.get("powv") or 0,
                                     "logprob": choice.logprobs.token_logprobs[0],
                                 }
                             )
@@ -382,7 +384,7 @@ class Validator(BaseNeuron):
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
             stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
-            verified = self.check_tokens(request, stats.tokens, endpoint=endpoint)
+            verified = await self.check_tokens(request, stats.tokens, endpoint=endpoint)
             stats.verified = (
                 verified.get("verified", False) if verified is not None else False
             )
@@ -411,26 +413,18 @@ class Validator(BaseNeuron):
             bt.logging.info("Cached")
 
     @fail_with_none("Failed to check tokens")
-    def check_tokens(
-        self,
-        request_params,
-        responses: List[Dict[str, int]],
-        endpoint: Endpoints
+    async def check_tokens(
+        self, request_params, responses: List[Dict], endpoint: Endpoints
     ) -> Optional[Dict]:
         assert self.config.neuron
-        res = post(
-            self.config.neuron.verify_endpoint + "/verify",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(
-                {
-                    "model": self.config.neuron.model_name,
-                    "request_type": endpoint.value,
-                    "request_params": request_params,
-                    "output_sequence": responses,
-                }
-            ),
+        return await self.verify_response(
+            VerificationRequest(
+                model=self.config.neuron.model_name,
+                request_type=endpoint.value,
+                request_params=request_params,
+                output_sequence=[OutputItem(**x) for x in responses],
+            )
         )
-        res.json()
 
     def shutdown(self):
         if self.db_organics:
@@ -454,20 +448,12 @@ class Validator(BaseNeuron):
             messages = create_query_prompt(random_row_text)
 
             # If this fails, it gets caught in the same try/catch as ground truth generation
-            res = self.client.chat.completions.create(
-                model=self.config.neuron.model_name,
-                messages=messages,
-                stream=False,
-                temperature=0.5,
-                seed=seed,
-                max_tokens=random.randint(16, 64),
+            res = self.generate_question(
+                messages,
+                SamplingParams(
+                    temperature=0.5, seed=seed, max_tokens=random.randint(16, 64)
+                ),
             )
-
-            # Create a final search prompt using the query and sources
-            completion = res.choices[0].message.content
-            if completion is None:
-                bt.logging.error(str(res))
-                raise Exception("No completion")
 
             # Create sampling parameters using the generated seed and token limit
             return {
@@ -477,7 +463,7 @@ class Validator(BaseNeuron):
                 "model": self.config.neuron.model_name,
                 "stream": True,
                 "logprobs": True,
-                **create_search_prompt(completion, endpoint),
+                **create_search_prompt(res, endpoint),
             }
         except openai.APIConnectionError as e:
             bt.logging.error(
