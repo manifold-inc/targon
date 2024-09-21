@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
+from vllm.config import ModelConfig
+from vllm.entrypoints.chat_utils import parse_chat_messages, parse_chat_messages_futures
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", "NousResearch/Meta-Llama-3.1-8B-Instruct")
@@ -226,13 +228,14 @@ def init_vllm():
             }
 
         # Tokenize the input sequence.
-        input_text = (
-            request.request_params.prompt
-            if request.request_type == RequestType.COMPLETION.value
-            else TOKENIZER.apply_chat_template(
-                request.request_params.messages, tokenize=False
+        input_text = request.request_params.prompt
+        if request.request_type == RequestType.CHAT.value:
+            input_text = TOKENIZER.apply_chat_template(
+                conversation=request.request_params.messages,
+                chat_template=TOKENIZER.chat_template,
+                tokenizer=TOKENIZER,
+                tokenize=False,
             )
-        )
         input_tokens = TOKENIZER(input_text).input_ids
 
         # Verify!
@@ -281,4 +284,3 @@ def init_vllm():
             return return_value
 
     return verify, generate_question
-
