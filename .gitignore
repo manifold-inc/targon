@@ -12,5 +12,5 @@ output.txt
 play.py
 packages
 *.pickle
-cache.json
+*.json
 *.npy
