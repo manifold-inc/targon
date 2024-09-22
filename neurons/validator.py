@@ -390,7 +390,7 @@ class Validator(BaseNeuron):
                 verified.get("verified", False) if verified is not None else False
             )
             if not stats.verified:
-                bt.logging.error(f"{endpoint.value}: "+str(verified))
+                bt.logging.error(f"{uid} {endpoint.value}: " + str(verified))
             if stats.error is None and not stats.verified:
                 stats.error = str(verified)
             return uid, stats
