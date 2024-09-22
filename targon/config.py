@@ -137,14 +137,6 @@ def add_validator_args(parser):
     )
 
     parser.add_argument(
-        "--neuron.verify_endpoint",
-        type=str,
-        help="The endpoint to use for verification",
-        default="http://127.0.0.1:7777",
-    )
-
-
-    parser.add_argument(
         "--database.organics_url",
         type=str,
         help="Database URL to score organic queries",
