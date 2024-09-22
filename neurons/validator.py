@@ -276,6 +276,8 @@ class Validator(BaseNeuron):
         stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
+            if not stat.verified and stat.error:
+                bt.logging.info(stat.error)
             if stat.verified and stat.total_time != 0:
                 self.miner_tps[uid].append(stat.tps)
                 continue
@@ -389,8 +391,6 @@ class Validator(BaseNeuron):
             stats.verified = (
                 verified.get("verified", False) if verified is not None else False
             )
-            if not stats.verified:
-                bt.logging.error(f"{uid} {endpoint.value}: " + str(verified))
             if stats.error is None and not stats.verified:
                 stats.error = str(verified)
             return uid, stats
