@@ -211,6 +211,8 @@ is defaulted to true to force incoming requests to have a permit.
 
 Validators are simply run through pm2, enabling auto restarts and auto updates.
 
+**No vllm instance needed**
+
 Validator Instance:
 
 ```bash
