@@ -209,19 +209,19 @@ is defaulted to true to force incoming requests to have a permit.
 
 ### PM2
 
-Running a validator through PM2 will require the LLM instance of your choice to
-be running.
+Running a validator through PM2 also requires running the verifier via pm2. Note that
+this no longer requires manifolds vllm as a validator. These should be on the same machine.
+
+Validator Instance:
 
 ```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY]
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME]
 
 ```
 
 > Please replace the following with your specific configuration:
 >
 > - \[WALLET_NAME\]
-> - \[MODEL_ENDPOINT\]
-> - \[NEURON_API_KEY\]
 
 ### Targon Hub
 
@@ -267,7 +267,7 @@ Please reach out to the SN4 team for help setting up targon hub in sn4 chat or
 [our discord](https://discord.gg/manifold)
 
 ```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --database.url [DB_CONNECTION_STRING]
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --database.url [DB_CONNECTION_STRING]
 ```
 
 As your validator runs, you will start seeing records being added into your
@@ -284,7 +284,7 @@ Validator Autoupdate is implemented and defaulted to run once weights have been
 set. To **disable**, please add the flag to your command line build:
 
 ```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --autoupdate false
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --autoupdate_off
 ```
 
 ### Miner Autoupdate
@@ -321,12 +321,8 @@ from targon.updater import autoupdate
 1. **--neuron.epoch_length** ==> Default epoch length (how often we set weights,
    measured in 12 second blocks). *Defaults to 360*
 1. **--mock** ==> Mock neuron and all network components. *Defaults to False*
-1. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
-   CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
 1. **--neuron.model_name** ==> Name of the model used for completion. *Defaults
    to "NousResearch/Meta-Llama-3.1-8B-Instruct"*
-1. **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
-   "12345"*
 
 ### Miner Args
 
@@ -334,6 +330,10 @@ from targon.updater import autoupdate
    \- wallet-hot) / neuron.name. *Defaults to miner*
 1. **--blacklist.force_validator.permit** ==> If set, forces incoming requests
    to have a permit. *Defaults to True*
+1. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
+   CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
+1. **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
+   "12345"*
 
 ### Validator Args
 

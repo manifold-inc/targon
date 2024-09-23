@@ -34,5 +34,5 @@ class InferenceStats(BaseModel):
 
 
 class Endpoints(Enum):
-    CHAT = 'CHAT',
+    CHAT = 'CHAT'
     COMPLETION = 'COMPLETION'
