@@ -209,8 +209,9 @@ is defaulted to true to force incoming requests to have a permit.
 
 ### PM2
 
-Running a validator through PM2 also requires running the verifier via pm2. Note that
-this no longer requires manifolds vllm as a validator. These should be on the same machine.
+Validators are simply run through pm2, enabling auto restarts and auto updates.
+
+**No vllm instance needed**
 
 Validator Instance:
 
