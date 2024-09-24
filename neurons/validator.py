@@ -468,14 +468,6 @@ class Validator(BaseNeuron):
                 "logprobs": True,
                 **create_search_prompt(res, endpoint),
             }
-        except openai.APIConnectionError as e:
-            bt.logging.error(
-                f"Failed to connect to LLM server with connection string {self.client.base_url}: {e.message}"
-            )
-            bt.logging.error(
-                "Make sure an open ai compliant server is running at the above url, or fix --neuron.model_endpoint"
-            )
-            return None
         except Exception as e:
             bt.logging.error(f"Error generating dataset: {e}")
             bt.logging.error(traceback.format_exc())
