@@ -14,3 +14,6 @@ packages
 *.pickle
 cache.json
 *.npy
+/venv
+pyrightconfig.json
+.vscode/settings.json
