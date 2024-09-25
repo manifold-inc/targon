@@ -48,11 +48,7 @@ def main():
             ),
         )
         res = miner.chat.completions.create(
-            messages=messages,
-            model=model,
-            stream=True,
-            logprobs=True,
-            max_tokens=200
+            messages=messages, model=model, stream=True, logprobs=True, max_tokens=200
         )
         tokens = []
         for chunk in res:
@@ -71,10 +67,18 @@ def main():
                 )
             )
             print(choice.delta.content, token_id, choice.model_extra.get("powv") or -1)
-        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
-        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
-        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
-        print(validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT))
+        print(
+            validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT)
+        )
+        print(
+            validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT)
+        )
+        print(
+            validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT)
+        )
+        print(
+            validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT)
+        )
         print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
         print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))
         print(validator.check_tokens({"messages": messages}, tokens, Endpoints.CHAT))

@@ -5,6 +5,7 @@ from math import ceil
 from typing import Annotated, Any, Dict, List, Optional, Union
 
 import time
+import httpx
 from substrateinterface import Keypair
 
 
@@ -90,3 +91,13 @@ def verify_signature_v2(
     if not verified:
         return "Signature Mismatch"
     return None
+
+
+def create_header_hook(hotkey, axon_hotkey):
+    async def add_headers(request: httpx.Request):
+        for key, header in generate_header(hotkey, request.read(), axon_hotkey).items():
+            request.headers[key] = header
+
+    return add_headers
+
+

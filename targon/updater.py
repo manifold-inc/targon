@@ -23,8 +23,9 @@ import requests
 import bittensor as bt
 import targon
 
-def autoupdate( branch: str = "main" ):
-    '''
+
+def autoupdate(branch: str = "main"):
+    """
     Automatically updates the Targon codebase to the latest version available on the specified branch.
 
     This function checks the remote repository for the latest version of Targon by fetching the VERSION file from the specified branch.
@@ -39,12 +40,12 @@ def autoupdate( branch: str = "main" ):
     - It requires git to be installed and accessible from the command line.
     - The function will restart the application using the same command-line arguments it was originally started with.
     - If the update fails, manual intervention is required to resolve the issue and restart the application.
-    '''
+    """
     bt.logging.info("Checking for updates...")
     try:
         response = requests.get(
             f"https://raw.githubusercontent.com/manifold-inc/targon/{branch}/VERSION?token={time.time()}",
-            headers={'Cache-Control': 'no-cache'}
+            headers={"Cache-Control": "no-cache"},
         )
         response.raise_for_status()
         repo_version = response.content.decode()

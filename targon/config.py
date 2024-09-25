@@ -20,6 +20,9 @@
 import os
 import bittensor as bt
 
+import requests
+
+
 def validate_config_and_neuron_path(config):
     r"""Checks/validates the config namespace object."""
     full_path = os.path.expanduser(
@@ -46,8 +49,16 @@ def add_args(parser):
     parser.add_argument("--netuid", type=int, help="Subnet netuid", default=4)
 
     parser.add_argument(
-        "--neuron.epoch_length",
+        "--neuron.name",
+        type=str,
+        help="Neuron Name",
+        default="targon",
+    )
+
+    parser.add_argument(
+        "--epoch-length",
         type=int,
+        dest="epoch_length",
         help="The default epoch length (how often we set weights, measured in 12 second blocks).",
         default=360,
     )
@@ -60,26 +71,7 @@ def add_args(parser):
     )
 
     parser.add_argument(
-        "--neuron.model_endpoint",
-        type=str,
-        help="The endpoint to use for the OpenAI Compatible client.",
-        default="http://127.0.0.1:8000/v1",
-    )
-
-    parser.add_argument(
-        "--neuron.model_name",
-        type=str,
-        help="The name of the model used for completion",
-        default="NousResearch/Meta-Llama-3.1-8B-Instruct",
-    )
-    parser.add_argument(
-        "--neuron.api_key",
-        type=str,
-        help="API key for openai compatable api",
-        default="12345",
-    )
-    parser.add_argument(
-        "--autoupdate_off",
+        "--autoupdate-off",
         action="store_false",
         dest="autoupdate",
         help="Disable automatic updates to Targon on latest version on Main.",
@@ -91,17 +83,26 @@ def add_miner_args(parser):
     """Add miner specific arguments to the parser."""
 
     parser.add_argument(
-        "--neuron.name",
+        "--model-endpoint",
+        dest="model_endpoint",
         type=str,
-        help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default="miner",
+        help="The endpoint to use for the OpenAI Compatible client.",
+        default="http://127.0.0.1:8000/v1",
     )
 
     parser.add_argument(
-        "--blacklist.force_validator_permit",
+        "--force-validator-permit",
+        dest="force_validator_permit",
         action="store_false",
         help="If set, we will force incoming requests to have a permit.",
         default=True,
+    )
+    parser.add_argument(
+        "--api-key",
+        dest="api_key",
+        type=str,
+        help="API key for openai compatable api",
+        default="12345",
     )
 
 
@@ -109,36 +110,80 @@ def add_validator_args(parser):
     """Add validator specific arguments to the parser."""
 
     parser.add_argument(
-        "--neuron.name",
-        type=str,
-        help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default="validator",
-    )
-
-    parser.add_argument(
-        "--neuron.cache_file",
+        "--cache-file",
+        dest="cache_file",
         type=str,
         help="File to save scores, and other misc data that can persist through validator restarts",
         default="cache.json",
     )
 
     parser.add_argument(
-        "--neuron.timeout",
+        "--miner-timeout",
+        dest="miner_timeout",
         type=float,
         help="The timeout for each forward call in seconds.",
         default=12,
     )
 
     parser.add_argument(
-        "--neuron.vpermit_tao_limit",
+        "--vpermit-tao-limit",
+        dest="vpermit_tao_limit",
         type=int,
         help="The maximum number of TAO allowed to query a validator with a vpermit.",
         default=4096,
     )
 
     parser.add_argument(
-        "--database.organics_url",
+        "--database.url",
+        dest="database.url",
         type=str,
         help="Database URL to score organic queries",
         default=None,
     )
+
+    parser.add_argument(
+        "--models.mode",
+        dest="models.mode",
+        type=str,
+        help="Which method to use when fetching models",
+        choices=["endpoint", "config", "default"],
+        default="default",
+    )
+    parser.add_argument(
+        "--models.endpoint",
+        dest="models.endpoint",
+        type=str,
+        help="Endpoint to query for models",
+        default="https://targon.sybil.com/api/models",
+    )
+
+
+def get_models_from_endpoint(endpoint: str):
+    try:
+        res = requests.get(endpoint)
+        bt.logging.info(res.text)
+        res = res.json()
+        if not isinstance(res, list):
+            raise Exception(
+                f"Unexpected type received from endpoint. Must be type list. got {res}"
+            )
+        return res
+    except Exception as e:
+        bt.logging.error(f"Failed to get models from {endpoint}: {str(e)}")
+    return None
+
+
+def get_models_from_config():
+    filename = "models.txt"
+    try:
+        with open(filename, "r") as file:
+            models = file.read().strip().split("\n")
+            if not len(models):
+                bt.logging.error("No models in models file")
+    except IOError:
+        bt.logging.info("No model file found")
+    except EOFError:
+        bt.logging.warning("Curropted models file")
+    except Exception as e:
+        bt.logging.error(f"Failed reading model file: {e}")
+    return None

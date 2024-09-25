@@ -25,24 +25,37 @@ class Miner(BaseNeuron):
         if self.fast_api:
             self.fast_api.stop()
 
+    def log_on_block(self, block):
+        print_info(
+            self.metagraph,
+            self.wallet.hotkey.ss58_address,
+            block,
+        )
+
     def __init__(self, config=None):
         super().__init__(config)
         ## Typesafety
         assert self.config.netuid
-        assert self.config.neuron
         assert self.config.logging
+        assert self.config.model_endpoint
+
+        # Register log callback
+        self.block_callbacks.append(self.log_on_block)
 
         ## BITTENSOR INITIALIZATION
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
         self.client = httpx.AsyncClient(
-            base_url=self.config.neuron.model_endpoint,
-            headers={"Authorization": f"Bearer {self.config.neuron.api_key}"},
+            base_url=self.config.model_endpoint,
+            headers={"Authorization": f"Bearer {self.config.api_key}"},
         )
 
     async def create_chat_completion(self, request: Request):
-        bt.logging.info("\u2713", "Getting Chat Completion request!")
+        bt.logging.info(
+            "\u2713",
+            f"Getting Chat Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!",
+        )
         req = self.client.build_request(
             "POST", "/chat/completions", content=await request.body()
         )
@@ -52,7 +65,7 @@ class Miner(BaseNeuron):
         )
 
     async def create_completion(self, request: Request):
-        bt.logging.info("\u2713", "Getting Completion request!")
+        bt.logging.info("\u2713", f"Getting Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!")
         req = self.client.build_request(
             "POST", "/completions", content=await request.body()
         )
@@ -89,8 +102,10 @@ class Miner(BaseNeuron):
 
         uid = self.metagraph.hotkeys.index(signed_by)
         stake = self.metagraph.S[uid].item()
-        if not self.config.mock and stake < 10000:
-            bt.logging.warning(f"Blacklisting request from {signed_by} [uid={uid}], not enough stake -- {stake}")
+        if self.config.force_validator_permit and stake < 10000:
+            bt.logging.warning(
+                f"Blacklisting request from {signed_by} [uid={uid}], not enough stake -- {stake}"
+            )
             raise HTTPException(status_code=401, detail="Stake below minimum: {stake}")
 
         # If anything is returned here, we can throw
@@ -112,10 +127,6 @@ class Miner(BaseNeuron):
         assert self.config.netuid
         assert self.config.subtensor
         assert self.config.axon
-        assert self.config.neuron
-
-        # Check that miner is registered on the network.
-        self.sync_metagraph()
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
@@ -174,18 +185,8 @@ class Miner(BaseNeuron):
 
         # This loop maintains the miner's operations until intentionally stopped.
         try:
-            while not self.should_exit:
-                # Print Logs for Miner
-                print_info(
-                    self.metagraph,
-                    self.wallet.hotkey.ss58_address,
-                    self.subtensor.block,
-                )
-                # Wait before checking again.
-                time.sleep(12)
-
-                # Sync metagraph if stale
-                self.sync_metagraph()
+            while not self.exit_context.isExiting:
+                time.sleep(1)
         except Exception as e:
             bt.logging.error(str(e))
             bt.logging.error(traceback.format_exc())

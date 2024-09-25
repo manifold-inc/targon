@@ -1,9 +1,10 @@
 import argparse
+from typing import Callable, List
 import bittensor as bt
 import copy
 
 from nest_asyncio import asyncio
-from openai import AsyncOpenAI, OpenAI
+from substrateinterface import SubstrateInterface
 from targon import (
     add_args,
     add_validator_args,
@@ -16,24 +17,21 @@ import signal
 from targon import (
     __spec_version__ as spec_version,
 )
+from targon.metagraph import run_block_callback_thread
+from targon.utils import ExitContext
 
 
 class NeuronType(Enum):
-    Validator = 'VALIDATOR'
+    Validator = "VALIDATOR"
     Miner = "MINER"
+
 
 class BaseNeuron:
     config: "bt.config"
     neuron_type: NeuronType
-    should_exit = False
+    exit_context = ExitContext()
     next_sync_block = None
-
-    def exit_gracefully(self, *_):
-        if self.should_exit:
-            bt.logging.info("Forcefully exiting")
-            exit()
-        bt.logging.info("Exiting Gracefully at end of cycle")
-        self.should_exit = True
+    block_callbacks: List[Callable] = []
 
     def check_registered(self):
         if not self.subtensor.is_hotkey_registered(
@@ -46,25 +44,20 @@ class BaseNeuron:
             )
             exit()
 
-    def should_sync_metagraph(self):
-        if self.next_sync_block is None:
-            self.next_sync_block = self.subtensor.block + 30
-            return True
-
-        if self.next_sync_block > self.subtensor.block:
+    def maybe_sync_metagraph(self, block):
+        assert self.config.neuron
+        if block % self.config.epoch_length:
             return False
-        self.next_sync_block = self.subtensor.block + 30
-        return True
 
-    def sync_metagraph(self):
         # Ensure miner or validator hotkey is still registered on the network.
         self.check_registered()
-        if self.should_sync_metagraph():
-            bt.logging.info("Resyncing Metagraph")
-            self.metagraph.sync(subtensor=self.subtensor)
-            return True
-        return False
+        bt.logging.info("Resyncing Metagraph")
+        self.metagraph.sync(subtensor=self.subtensor)
+        return True
 
+    def run_callbacks(self, block):
+        for callback in self.block_callbacks:
+            callback(block)
 
     def __init__(self, config=None):
         # Add parser args
@@ -86,14 +79,15 @@ class BaseNeuron:
         validate_config_and_neuron_path(self.config)
 
         ## Add kill signals
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
+        signal.signal(signal.SIGINT, self.exit_context.startExit)
+        signal.signal(signal.SIGTERM, self.exit_context.startExit)
 
         ## Typesafety
         assert self.config.logging
         assert self.config.neuron
         assert self.config.netuid
         assert self.config.axon
+        assert self.config.subtensor
 
         ## LOGGING
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
@@ -117,3 +111,13 @@ class BaseNeuron:
         ## CHECK IF REGG'D
         self.check_registered()
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+
+        ## Substrate, Subtensor and Metagraph
+        self.substrate = SubstrateInterface(
+            ss58_format=bt.__ss58_format__,
+            use_remote_preset=True,
+            url=self.config.subtensor.chain_endpoint,
+            type_registry=bt.__type_registry__,
+        )
+        self.block_callbacks.append(self.maybe_sync_metagraph)
+        run_block_callback_thread(self.substrate, self.run_callbacks)

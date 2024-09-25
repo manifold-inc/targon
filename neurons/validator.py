@@ -1,184 +1,159 @@
-from os import urandom
-from aiohttp import ClientConnectionError
-from httpx import Timeout
 import json
-import copy
-import time
 import random
 import asyncio
+from time import sleep
 
 from asyncpg.connection import asyncpg
-from bittensor.dendrite import aiohttp
-import openai
-from vllm import SamplingParams
 from neurons.base import BaseNeuron, NeuronType
-from targon.dataset import create_query_prompt, create_search_prompt
-from targon.epistula import generate_header
+from targon.cache import load_cache
+from targon.config import get_models_from_config, get_models_from_endpoint
+from targon.dataset import download_dataset
+from targon.docker import down_containers, load_docker, sync_output_checkers
+from targon.ingestor import send_stats_to_ingestor
+from targon.math import get_weights
+from targon.metagraph import (
+    create_set_weights,
+    get_miner_uids,
+    resync_hotkeys,
+)
+from targon.request import check_tokens, generate_request, handle_inference
 from targon.updater import autoupdate
 from targon.utils import (
-    create_header_hook,
     fail_with_none,
-    normalize,
     print_info,
-    safe_mean_score,
 )
-from targon.verifier import OutputItem, VerificationRequest, init_vllm
-from targon.protocol import Endpoints, InferenceStats
+from targon.types import Endpoints, InferenceStats
 import traceback
-import numpy as np
-import dask.dataframe as dd
 import bittensor as bt
-from nanoid import generate
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from targon import (
     __version__,
     __spec_version__ as spec_version,
 )
-from bittensor.utils.weight_utils import (
-    process_weights_for_netuid,
-)
-
-
-INGESTOR_URL = "http://177.54.155.247:8000"
-
-VLLM_POWV_VERSION = "2"
 
 
 class Validator(BaseNeuron):
-    miner_tps: Dict[int, Any]
-    db_organics: Optional[asyncpg.Connection]
     neuron_type = NeuronType.Validator
+    miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
+    db: Optional[asyncpg.Connection]
+    verification_ports: Dict[str, int]
+    step = 0
+    lock_waiting = False
+    lock_halt = False
 
-    def __init__(self, config=None, load_dataset=True):
+    def __init__(self, config=None, run_init=True):
         super().__init__(config)
         ## Typesafety
-        assert self.config.netuid
-        assert self.config.neuron
-        assert self.config.axon
-        assert self.config.database
-
-        ## BITTENSOR INITIALIZATION
-        self.dendrite = bt.dendrite(wallet=self.wallet)
+        self.set_weights = create_set_weights(spec_version, self.config.netuid)
 
         ## CHECK IF REGG'D
         if not self.metagraph.validator_permit[self.uid]:
             bt.logging.error("Validator does not have vpermit")
             exit()
+        if run_init:
+            self.init()
+
+    def init(self):
+        assert self.config.netuid
+        assert self.config.cache_file
+        assert self.config.vpermit_tao_limit
+        assert self.config.database
+        assert self.config.subtensor
+        ## LOAD DOCKER
+        self.client = load_docker()
 
         ## SET MISC PARAMS
-        self.hotkeys = self.metagraph.hotkeys
         self.next_forward_block = None
         self.last_posted_weights = self.metagraph.last_update[self.uid]
         bt.logging.info(f"Last updated at block {self.last_posted_weights}")
 
-        ## STATS
-        self.miner_tps = {}
-
-        try:
-            with open(self.config.neuron.cache_file, "r") as file:
-                loaded_data: Dict[str, Any] = json.load(file)
-                # Only load cache if fresh
-                if loaded_data.get("block_saved", 0) > self.subtensor.block - 360:
-                    miner_tps: Dict[str, List[float]] = loaded_data.get("miner_tps", {})
-                    self.miner_tps = dict([(int(k), v) for k, v in miner_tps.items()])
-                    bt.logging.info("Loading cached data")
-                    bt.logging.trace(str(self.miner_tps))
-        except IOError:
-            bt.logging.info("No cache file found")
-        except EOFError:
-            bt.logging.warning("Curropted pickle file")
-        except Exception as e:
-            bt.logging.error(f"Failed reading cache file: {e}")
-            bt.logging.error(traceback.format_exc())
-
-        miners = self.get_miner_uids()
-        for miner in miners:
-            if self.miner_tps.get(miner) == None:
-                self.miner_tps[miner] = []
-
-        bt.logging.info("⌛️", "Loading dataset")
-        if load_dataset:
-            if self.config.mock:
-                df = dd.read_parquet(
-                    "hf://datasets/manifoldlabs/Infinity-Instruct/0625/*.parquet"
-                )
-            else:
-                df = dd.read_parquet(
-                    "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
-                )
-            self.dataset = df.compute()
-
-        bt.logging.info(
-            "\N{grinning face with smiling eyes}", "Successfully Initialized!"
+        ## LOAD MINER SCORES CACHE
+        miners = get_miner_uids(self.metagraph, self.uid, self.config.vpermit_tao_limit)
+        self.miner_tps = load_cache(
+            self.config.cache_file, self.subtensor.block, miners
         )
-        self.verify_response, self.generate_question = init_vllm()
+
+        ## LOAD DATASET
+        bt.logging.info("⌛️", "Loading dataset")
+        self.dataset = download_dataset(not not self.config.mock)
+
+        ## CONNECT TO ORGANICS DB
         try:
-            self.db_organics = None
-            if self.config.database.organics_url:
-                self.db_organics = self.loop.run_until_complete(
-                    asyncpg.connect(self.config.database.organics_url)
+            self.db = None
+            if self.config.database.url:
+                self.db = self.loop.run_until_complete(
+                    asyncpg.connect(self.config.database.url)
                 )
         except Exception as e:
             bt.logging.error(f"Failed to initialize organics database: {e}")
 
-    async def send_stats_to_ingestor(
-        self,
-        stats: List[Tuple[int, InferenceStats]],
-        req: Dict[str, Any],
-        endpoint: Endpoints,
-    ):
-        try:
-            r_nanoid = generate(size=48)
-            responses = [
-                {
-                    "r_nanoid": r_nanoid,
-                    "hotkey": self.metagraph.axons[uid].hotkey,
-                    "coldkey": self.metagraph.axons[uid].coldkey,
-                    "uid": int(uid),
-                    "stats": stat and stat.model_dump(),
-                }
-                for uid, stat in stats
+        ## REGISTER BLOCK CALLBACKS
+        self.block_callbacks.extend(
+            [
+                self.log_on_block,
+                self.autoupdate_on_block,
+                self.set_weights_on_interval,
+                self.sync_output_checkers_on_interval,
+                self.resync_hotkeys_on_interval,
             ]
-            request = {
-                "r_nanoid": r_nanoid,
-                "block": self.subtensor.block,
-                "request": req,
-                "request_endpoint": str(endpoint),
-                "version": spec_version,
-                "hotkey": self.wallet.hotkey.ss58_address,
-            }
-            # Prepare the data
-            body = {
-                "request": request,
-                "responses": responses,
-            }
-            headers = generate_header(self.wallet.hotkey, body)
-            # Send request to the FastAPI server
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    f"{INGESTOR_URL}/ingest", headers=headers, json=body
-                ) as response:
-                    if response.status == 200:
-                        bt.logging.info("Records ingested successfully.")
-                    else:
-                        error_detail = await response.text()
-                        bt.logging.error(
-                            f"Error sending records: {response.status} - {error_detail}"
-                        )
+        )
 
-        except ClientConnectionError:
-            bt.logging.error("Error conecting to ingestor, offline.")
-        except Exception as e:
-            bt.logging.error(f"Error in send_stats_to_ingestor: {e}")
-            bt.logging.error(traceback.format_exc())
+        ## DONE
+        bt.logging.info(
+            "\N{grinning face with smiling eyes}", "Successfully Initialized!"
+        )
+
+    def resync_hotkeys_on_interval(self, block):
+        if block % self.config.epoch_length:
+            return
+        resync_hotkeys(self.metagraph, self.miner_tps)
+
+    def sync_output_checkers_on_interval(self, block):
+        if block % self.config.epoch_length:
+            return
+        self.verification_ports = sync_output_checkers(self.client, self.get_models())
+
+    def set_weights_on_interval(self, block):
+        if block % self.config.epoch_length:
+            return
+        self.lock_halt = True
+        while not self.lock_waiting:
+            sleep(1)
+        self.set_weights(
+            self.wallet,
+            self.metagraph,
+            self.subtensor,
+            get_weights(self.miner_tps, list(self.verification_ports.keys())),
+        )
+
+        # Only keep last 15 scores
+        for uid in self.miner_tps:
+            for model in self.miner_tps[uid]:
+                self.miner_tps[uid][model] = self.miner_tps[uid][model][-15:]
+        self.lock_halt = False
+
+    def log_on_block(self, block):
+        blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
+        print_info(
+            self.metagraph,
+            self.wallet.hotkey.ss58_address,
+            block,
+        )
+        bt.logging.info(
+            f"Forward Block: {self.subtensor.block} | Blocks till Set Weights: {blocks_till}"
+        )
+
+    def autoupdate_on_block(self, *_):
+        # Check to see if we need to update
+        if self.config.autoupdate:
+            autoupdate(branch="main")
 
     def run(self):
         assert self.config.subtensor
         assert self.config.neuron
         assert self.config.database
-        if self.sync_metagraph():
-            self.resync_hotkeys()
+        assert self.config.vpermit_tao_limit
         bt.logging.info(
             f"Running validator on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
@@ -188,221 +163,122 @@ class Validator(BaseNeuron):
         # This loop maintains the validator's operations until intentionally stopped.
         step = 0
         miner_subset = 36
-        miner_uids = self.get_miner_uids()
-        random.shuffle(miner_uids)
-        miner_uids = miner_uids[:miner_subset]
-        while not self.should_exit:
-            blocks_till = self.config.neuron.epoch_length - (
-                self.subtensor.block % self.config.neuron.epoch_length
-            )
-            if self.last_posted_weights != self.subtensor.block:
-                bt.logging.info(
-                    f"Forward Block: {self.subtensor.block} | Step {step} |  Blocks till Set Weights: {blocks_till}"
-                )
+        miner_uids = None
 
-            # Set weights
-            # Gives wiggle room for out of sync validators
-            if (
-                self.subtensor.block % self.config.neuron.epoch_length == 0
-                or self.last_posted_weights + (self.config.neuron.epoch_length * 2)
-                < self.subtensor.block
-            ):
-                if self.last_posted_weights == self.subtensor.block:
-                    continue
-                bt.logging.info(
-                    f"Last set weights: {self.last_posted_weights}, current: {self.subtensor.block}"
-                )
-                self.last_posted_weights = self.subtensor.block
+        # Ensure everything is setup
+        self.verification_ports = sync_output_checkers(self.client, self.get_models())
+        resync_hotkeys(self.metagraph, self.miner_tps)
 
-                # Sync metagraph before setting weights
-                if self.sync_metagraph():
-                    self.resync_hotkeys()
-                self.set_weights()
-
-                # Only keep last 15 scores
-                for uid in self.miner_tps.keys():
-                    self.miner_tps[uid] = self.miner_tps[uid][-15:]
-
-            # Stop querying if close to weight set block
-            if blocks_till < 5 or blocks_till == self.config.neuron.epoch_length:
-                continue
-
-            # Sync metagraph if needed
-            if self.sync_metagraph():
-                self.resync_hotkeys()
-
-            # Check to see if we need to update
-            if self.config.autoupdate:
-                autoupdate(branch="main")
-
-            # Score organic queries every few steps
-            # TODO: Readd organics
-            # if not step % 25 and self.config.database.organics_url:
-            # self.loop.run_until_complete(self.score_organic())
-
-            print_info(
-                self.metagraph,
-                self.wallet.hotkey.ss58_address,
-                self.subtensor.block,
-                isMiner=False,
-            )
+        while not self.exit_context.isExiting:
+            # Mutex for setting weights
+            if self.lock_halt:
+                self.lock_waiting = True
+                while self.lock_halt:
+                    sleep(1)
+                self.lock_waiting = False
 
             # get random set of miner uids every other step
-            if step % 2:
-                miner_uids = self.get_miner_uids()
+            if step % 2 or miner_uids is None:
+                miner_uids = get_miner_uids(
+                    self.metagraph, self.uid, self.config.vpermit_tao_limit
+                )
                 random.shuffle(miner_uids)
                 miner_uids = miner_uids[:miner_subset]
+
             endpoint = random.choice(list(Endpoints))
-            res = self.loop.run_until_complete(self.query_miners(miner_uids, endpoint))
+            model_name = random.choice(self.get_models())
+            res = self.loop.run_until_complete(
+                self.query_miners(miner_uids, model_name, endpoint)
+            )
             if res is not None:
-                self.loop.run_until_complete(self.send_stats_to_ingestor(*res))
+                self.loop.run_until_complete(
+                    send_stats_to_ingestor(
+                        self.metagraph, self.subtensor, self.wallet, *res, spec_version
+                    )
+                )
             self.save_scores()
             step += 1
 
         # Exiting
         self.shutdown()
 
-    async def query_miners(self, miner_uids, endpoint: Endpoints):
+    async def verify_response(self, uid, request, endpoint, stat: InferenceStats):
+        # Verify
+        # We do this out of the handle_inference loop to not block other requests
+        verification_port = self.verification_ports.get(request["model"], None)
+        if verification_port is None:
+            bt.logging.error(
+                "Send request to a miner without verification port for model"
+            )
+            return uid, None
+        verified = await check_tokens(
+            request, stat.tokens, uid, endpoint=endpoint, port=verification_port
+        )
+        if verified is None:
+            return uid, None
+        stat.verified = (
+            verified.get("verified", False) if verified is not None else False
+        )
+        if stat.error is None and not stat.verified:
+            stat.error = str(verified)
+        return uid, stat
+
+    async def query_miners(
+        self, miner_uids: List[int], model_name: str, endpoint: Endpoints
+    ):
         assert self.config.database
-        request = self.generate_request(endpoint)
+        request = generate_request(
+            self.dataset, model_name, endpoint, self.verification_ports[model_name]
+        )
         bt.logging.info(f"{endpoint}: {request}")
         if not request:
             return None
+
+        # We do these in separate groups for better response timings
         tasks = []
         for uid in miner_uids:
             tasks.append(
-                asyncio.create_task(self.handle_inference(request, uid, endpoint))
+                asyncio.create_task(
+                    handle_inference(
+                        self.metagraph, self.wallet, request, uid, endpoint
+                    )
+                )
             )
-        stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+        responses: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+
+        tasks = []
+        for uid, stat in responses:
+            tasks.append(
+                asyncio.create_task(self.verify_response(uid, request, endpoint, stat))
+            )
+        stats: List[Tuple[int, Optional[InferenceStats]]] = await asyncio.gather(*tasks)
+
         for uid, stat in stats:
+            if not stat:
+                continue
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if not stat.verified and stat.error:
                 bt.logging.info(stat.error)
+
+            # UID is not in our miner tps list
+            if self.miner_tps.get(uid) is None:
+                self.miner_tps[uid] = {request["model"]: []}
+            # This uid doesnt have reccords of this model
+            if self.miner_tps[uid].get(request["model"]) is None:
+                self.miner_tps[uid][request["model"]] = []
+
             if stat.verified and stat.total_time != 0:
-                self.miner_tps[uid].append(stat.tps)
+                self.miner_tps[uid][request["model"]].append(stat.tps)
                 continue
-            self.miner_tps[uid].append(None)
+            self.miner_tps[uid][request["model"]].append(None)
         return (stats, request, endpoint)
-
-    async def handle_inference(
-        self,
-        request,
-        uid: int,
-        endpoint: Endpoints,
-    ):
-        assert self.config.neuron
-        stats = InferenceStats(
-            time_to_first_token=0,
-            time_for_all_tokens=0,
-            tps=0,
-            total_time=0,
-            tokens=[],
-            verified=False,
-        )
-        try:
-            axon_info = self.metagraph.axons[uid]
-            miner = openai.AsyncOpenAI(
-                base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
-                api_key="sn4",
-                max_retries=0,
-                timeout=Timeout(12, connect=5, read=5),
-                http_client=openai.DefaultAsyncHttpxClient(
-                    event_hooks={
-                        "request": [
-                            create_header_hook(self.wallet.hotkey, axon_info.hotkey)
-                        ]
-                    }
-                ),
-            )
-            start_token_time = 0
-            start_send_message_time = time.time()
-            try:
-                match endpoint:
-                    case Endpoints.CHAT:
-                        chat = await miner.chat.completions.create(**request)
-                        async for chunk in chat:
-                            if (
-                                chunk.choices[0].delta.content == ""
-                                or chunk.choices[0].delta.content is None
-                            ) and len(stats.tokens) == 0:
-                                continue
-                            if start_token_time == 0:
-                                start_token_time = time.time()
-                            choice = chunk.choices[0]
-                            if choice.model_extra is None:
-                                continue
-                            token_ids = choice.model_extra.get("token_ids") or []
-                            token_id = token_ids[0] if len(token_ids) > 0 else -1
-                            logprobs = 0
-                            choiceprobs = choice.logprobs
-                            if choiceprobs is not None:
-                                if choiceprobs.content:
-                                    logprobs = choiceprobs.content[0].logprob
-                            stats.tokens.append(
-                                {
-                                    "text": choice.delta.content or "",
-                                    "token_id": token_id,
-                                    "powv": choice.model_extra.get("powv", -1),
-                                    "logprob": logprobs,
-                                }
-                            )
-                    case Endpoints.COMPLETION:
-                        comp = await miner.completions.create(**request)
-                        async for chunk in comp:
-                            if (
-                                chunk.choices[0].text == ""
-                                or chunk.choices[0].text is None
-                            ) and len(stats.tokens) == 0:
-                                continue
-                            if start_token_time == 0:
-                                start_token_time = time.time()
-                            choice = chunk.choices[0]
-                            if choice.model_extra is None:
-                                continue
-                            token_ids = choice.model_extra.get("token_ids") or []
-                            token_id = token_ids[0] if len(token_ids) > 0 else -1
-                            stats.tokens.append(
-                                {
-                                    "text": choice.text or "",
-                                    "token_id": token_id,
-                                    "powv": choice.model_extra.get("powv", -1),
-                                    "logprob": choice.logprobs.token_logprobs[0],
-                                }
-                            )
-            except openai.APIConnectionError as e:
-                bt.logging.trace(f"Miner {uid} failed request: {e}")
-                stats.error = str(e)
-            except Exception as e:
-                bt.logging.trace(f"Unknown Error when sending to miner {uid}: {e}")
-                stats.error = str(e)
-
-            if start_token_time == 0:
-                start_token_time = time.time()
-            end_token_time = time.time()
-            time_to_first_token = start_token_time - start_send_message_time
-            time_for_all_tokens = end_token_time - start_token_time
-            if stats.error:
-                return uid, stats
-            stats.time_to_first_token = time_to_first_token
-            stats.time_for_all_tokens = time_for_all_tokens
-            stats.total_time = end_token_time - start_send_message_time
-            stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
-            verified = await self.check_tokens(request, stats.tokens, endpoint=endpoint)
-            stats.verified = (
-                verified.get("verified", False) if verified is not None else False
-            )
-            if stats.error is None and not stats.verified:
-                stats.error = str(verified)
-            return uid, stats
-        except Exception as e:
-            bt.logging.error(f"Error in forward: {e}")
-            bt.logging.error(traceback.format_exc())
-            return uid, stats
 
     @fail_with_none("Failed writing to cache file")
     def save_scores(self):
-        assert self.config.neuron
-        with open(self.config.neuron.cache_file, "w") as file:
+        assert self.config.cache_file
+        if self.exit_context.isExiting:
+            return
+        with open(self.config.cache_file, "w") as file:
             bt.logging.info("Caching scores...")
             json.dump(
                 {
@@ -415,158 +291,41 @@ class Validator(BaseNeuron):
             file.flush()
             bt.logging.info("Cached")
 
-    @fail_with_none("Failed to check tokens")
-    async def check_tokens(
-        self, request_params, responses: List[Dict], endpoint: Endpoints
-    ) -> Optional[Dict]:
-        assert self.config.neuron
-        return await self.verify_response(
-            VerificationRequest(
-                model=self.config.neuron.model_name,
-                request_type=endpoint.value,
-                request_params=request_params,
-                output_sequence=[OutputItem(**x) for x in responses],
-            )
-        )
-
     def shutdown(self):
-        if self.db_organics:
+        if self.db:
             bt.logging.info("Closing organics db connection")
-            self.loop.run_until_complete(self.db_organics.close())
+            self.loop.run_until_complete(self.db.close())
+        down_containers(self.client)
 
-    def generate_request(self, endpoint: Endpoints):
-        try:
-            assert self.config.neuron
-            assert self.dataset is not None
-            # Generate a random seed for reproducibility in sampling and text generation
-            random.seed(urandom(100))
-            seed = random.randint(10000, 10000000)
-            temperature = random.random() * 1.5
-            max_tokens = random.randint(512, 1920)
+    def get_models(self) -> List[str]:
+        """
+        List of models and sizes of models
+        Miners are scored based
+        - How large is the model
+        - How many models are we testing them on
+        - How fast
 
-            random_row_text = self.dataset.sample(n=1)["conversations"].iloc[0][0][
-                "value"
-            ]
-            # Generate a query from the sampled text and perform text generation
-            messages = create_query_prompt(random_row_text)
+        Ask miners what models they are running
+        score based on what models valis want
+        Let valis inspect what most popular models are
+        - Top valis manually decide via model leasing
+        - Minor valis follow along for consensus
+        """
+        assert self.config.models
 
-            # If this fails, it gets caught in the same try/catch as ground truth generation
-            res = self.generate_question(
-                messages,
-                SamplingParams(
-                    temperature=0.5, seed=seed, max_tokens=random.randint(16, 64)
-                ),
-            )
-
-            # Create sampling parameters using the generated seed and token limit
-            return {
-                "seed": seed,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "model": self.config.neuron.model_name,
-                "stream": True,
-                "logprobs": True,
-                **create_search_prompt(res, endpoint),
-            }
-        except Exception as e:
-            bt.logging.error(f"Error generating dataset: {e}")
-            bt.logging.error(traceback.format_exc())
-            return None
-
-    @fail_with_none("Failed getting Weights")
-    def get_weights(self) -> Tuple[List[int], List[float]]:
-        tps = {
-            miner: safe_mean_score(self.miner_tps[miner][-15:])
-            for miner in self.miner_tps
-        }
-        tps_list = list(tps.values())
-        if len(tps_list) == 0:
-            bt.logging.warning("Not setting weights, no responses from miners")
-            return [], []
-        uids: List[int] = sorted(tps.keys())
-        rewards = [tps[uid] for uid in uids]
-
-        bt.logging.info(f"All wps: {tps}")
-        if sum(rewards) < 1 / 1e9:
-            bt.logging.warning("No one gave responses worth scoring")
-            return [], []
-        raw_weights = normalize(rewards)
-        bt.logging.info(f"Raw Weights: {raw_weights}")
-        return uids, raw_weights
-
-    @fail_with_none("Failed setting weights")
-    def set_weights(self):
-        assert self.config.netuid
-        weights = self.get_weights()
-        if weights is None:
-            return None
-        uids, raw_weights = weights
-        if not len(uids):
-            bt.logging.info("No UIDS to score")
-            return
-
-        # Set the weights on chain via our subtensor connection.
-        (
-            processed_weight_uids,
-            processed_weights,
-        ) = process_weights_for_netuid(
-            uids=np.asarray(uids),
-            weights=np.asarray(raw_weights),
-            netuid=self.config.netuid,
-            subtensor=self.subtensor,
-            metagraph=self.metagraph,
-        )
-
-        bt.logging.info("Setting Weights: " + str(processed_weights))
-        bt.logging.info("Weight Uids: " + str(processed_weight_uids))
-        result, message = self.subtensor.set_weights(
-            wallet=self.wallet,
-            netuid=self.config.netuid,
-            uids=processed_weight_uids,  # type: ignore
-            weights=processed_weights,
-            wait_for_finalization=False,
-            wait_for_inclusion=False,
-            version_key=spec_version,
-            max_retries=1,
-        )
-        if result is True:
-            bt.logging.info("set_weights on chain successfully!")
-        else:
-            bt.logging.error(f"set_weights failed {message}")
-
-    @fail_with_none("Failed resyncing hotkeys")
-    def resync_hotkeys(self):
-        bt.logging.info(
-            "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
-        )
-        # Zero out all hotkeys that have been replaced.
-        for uid, hotkey in enumerate(self.hotkeys):
-            if self.miner_tps.get(uid) == None:
-                self.miner_tps[uid] = []
-            if hotkey != self.metagraph.hotkeys[uid]:
-                self.miner_tps[uid] = []
-
-        # Update the hotkeys.
-        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-
-    def get_miner_uids(self) -> List[int]:
-        available_uids = []
-        assert self.config.neuron
-
-        for uid in range(int(self.metagraph.n.item())):
-            if uid == self.uid:
-                continue
-
-            # Filter non serving axons.
-            if not self.metagraph.axons[uid].is_serving:
-                continue
-            # Filter validator permit > 1024 stake.
-            if self.metagraph.validator_permit[uid]:
-                if self.metagraph.S[uid] > self.config.neuron.vpermit_tao_limit:
-                    continue
-            available_uids.append(uid)
-            continue
-        return available_uids
+        match self.config.models.mode:
+            case "config":
+                models = get_models_from_config()
+                if not models:
+                    raise Exception("No models")
+                return models
+            case "endpoint":
+                models = get_models_from_endpoint(self.config.models.endpoint)
+                if not models:
+                    raise Exception("No models")
+                return models
+            case _:
+                return ["NousResearch/Meta-Llama-3.1-8B-Instruct"]
 
 
 if __name__ == "__main__":
