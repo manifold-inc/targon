@@ -28,25 +28,18 @@ you implicitly agree to these terms and conditions.
 
 # Recommended Compute Requirements
 
-The following table shows the suggested compute providers for running a
-validator or miner.
+For validators we recommend a 8xA100, although a 1xA100 could also be used. We
+plan on focusing on bringing these costs down in the coming updates.
 
-| Provider   | Cost   | Location | Machine Type    | Rating |
-| ---------- | ------ | -------- | --------------- | ------ |
-| TensorDock | Low    | Global   | VM & Container  | 4/5    |
-| Latitude   | Medium | Global   | Bare Metal      | 5/5    |
-| Paperspace | High   | Global   | VM & Bare Metal | 4.5/5  |
-| GCP        | High   | Global   | VM & Bare Metal | 3/5    |
-| Azure      | High   | Global   | VM & Bare Metal | 3/5    |
-| AWS        | High   | Global   | VM & Bare Metal | 3/5    |
-| Runpod     | Low    | Global   | VM & Container  | 5/5    |
+For miners, A100 or H100s are common choices. Benchmarking is up to the miner to
+determine what GPU works best for their optimizations.
 
-#### Minimum Viable Compute Requirements
+#### Minimum Viable Compute Recommendations
 
 - **VRAM:** 80 GB
 - **Storage:** 200 GB
 - **RAM:** 16 GB
-- **CPU**: 4
+- **CPU**: 4 core
 
 # Installation
 
@@ -113,7 +106,7 @@ You have now installed Targon. You can now run a validator or a miner.
 
 # How to Run Targon
 
-## Running manifolds VLLM
+## Running manifolds VLLM for Miners
 
 ### VLLM
 
@@ -128,8 +121,8 @@ docker. It is recommended to add an environment variable for the api key.
 > your vllm instance
 
 > **NOTE** Some features like --tensor-parallel-size might not work without
-> manual changes to vllm in coordination with powv. We suggest validators run the
-> fork with minimal to no extra paramaters.
+> manual changes to vllm in coordination with powv. We suggest validators run
+> the fork with minimal to no extra paramaters.
 
 Install [docker](https://docs.docker.com/install/) and run
 
@@ -155,7 +148,7 @@ cd vllm-powv
 pip install jsonschema
 
 # If this fails, you may need to set the path for cuda. This may be different per
-# system.
+# system. 
 #
 # CUDACXX=/usr/local/cuda-12/bin/nvcc pip install -e .
 pip install -e .
@@ -182,7 +175,7 @@ to guess, and probably random. Whatever you decide, pass it in to both
 Running a miner through PM2 will require the vLLM instance to be running.
 
 ```bash
-pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --neuron.model_endpoint [MODEL_ENDPOINT] --neuron.api_key [NEURON_API_KEY] --axon.port [AXON_PORT] --logging.trace
+pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --model-endpoint [MODEL_ENDPOINT] --api_key [API_KEY] --axon.port [AXON PORT] --logging.trace
 ```
 
 > Please replace the following with your specific configuration:
@@ -190,7 +183,7 @@ pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [
 > - \[WALLET_NAME\]
 > - \[WALLET_HOTKEY\]
 > - \[MODEL_ENDPOINT\]
-> - \[NEURON_API_KEY\]
+> - \[API_KEY\]
 > - \[AXON_PORT\]
 
 NOTE: Trace logging is very verbose. You can use `--logging.info` instead for
@@ -199,7 +192,7 @@ less log bloat.
 Additionally:
 
 ```bash
---blacklist.force_validator_permit [TRUE/FALSE]
+--force-validator-permit [TRUE/FALSE]
 
 ```
 
@@ -210,6 +203,10 @@ is defaulted to true to force incoming requests to have a permit.
 ### PM2
 
 Validators are simply run through pm2, enabling auto restarts and auto updates.
+A validator should be run on atleast an A100, but the larger the better, as
+larger clusters can handle more models. The machine should have
+[nvidia-smi / cuda](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#ubuntu)
+installed along with [docker](https://docs.docker.com/engine/install/ubuntu/).
 
 **No vllm instance needed**
 
@@ -224,7 +221,96 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 >
 > - \[WALLET_NAME\]
 
-### Targon Hub
+## Explanation of Args
+
+### Shared Args
+
+1. **--netuid** ==> Subnet Netuid. *Defaults to 4*
+1. **--epoch-length** ==> Default epoch length (how often we set weights,
+   measured in 12 second blocks). *Defaults to 360*
+1. **--mock** ==> Mock neuron and all network components. *Defaults to False*
+
+### Miner Args
+
+1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
+   \- wallet-hot) / neuron.name. *Defaults to miner*
+1. **--force_validator.permit** ==> If set, forces incoming requests to have a
+   permit. *Defaults to True*
+1. **--model-endpoint** ==> Endpoint to use for the OpenAi CompatibleClient.
+   *Defaults to "http://127.0.0.1:8000/v1"*
+1. **--api-key** ==> API key for OpenAi Compatible API. *Defaults to "12345"*
+
+### Validator Args
+
+1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
+   \- wallet-hot) / neuron.name. *Defaults to validator*
+1. **--timeout** ==> The timeout for each forward call in seconds. *Defaults to
+   8*
+1. **--vpermit-tao-limit** ==> The maximum number of TAO allowed to query a
+   validator with a permit. *Defaults to 4096*
+1. **--cache-file** ==> Pickle file to save score cache to. *Defaults to
+   cache.pickle*
+1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
+1. **--autoupdate-off** ==> Disable automatic updates to Targon on latest
+   version on Main if set. *Defaults to True*
+1. **--models.mode** ==> Mode to use for determining what models to run. Can be
+   one of:`default`, or `config`.
+   - `endpoint`: defaults to `https://targon.sybil.com/api/models`. This will
+     mimic the manifold validator
+   - `default`: only run NousResearch/Meta-Llama-3.1-8B-Instruct
+   - `config`: parse a text file with a list of models separated by newlines
+1. **--models.endpoint** ==> Only used when models.mode is `endpoint`. Sets the
+   api endpoint to ping for list of models. Defaults to targon hub.
+
+> Example model config file
+>
+> ```
+> NousResearch/Meta-Llama-3.1-8B-Instruct
+> NousResearch/Meta-Llama-3.1-70B-Instruct
+> NousResearch/Meta-Llama-3.1-405B-Instruct
+> ```
+
+## Autoupdate
+
+Autoupdate is implemented in targon/utils.py. This is to ensure that your
+codebase matches the latest version on Main of the Targon Github Repository.
+
+### Validator Autoupdate
+
+Validator Autoupdate is implemented and defaulted to run once weights have been
+set. To **disable**, please add the flag to your command line build:
+
+```bash
+pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --autoupdate-off
+```
+
+### Miner Autoupdate
+
+Miner Autoupdate is **not** implemented. Miners will need to check the Targon
+repository and update themselves as new versions are released. If interested in
+utilizing the autoupdate feature that Validators use, please follow the steps
+below:
+
+*NOTE*: This will not be maintained by the Manifold Labs Team.
+
+1. Import the autoupdate function into your miner script (neurons/miner.py) at
+   the top of the file.
+
+```python
+from targon.updater import autoupdate
+```
+
+3. Call the function at a place of your choosing.
+
+```python
+    if self.config.autoupdate:
+        autoupdate(branch="main")
+
+```
+
+4. Relaunch your miner with the changes.
+
+### Targon Hub (WIP)
 
 The goal of the hub is to give validators a simple way to directly generate
 revenue off of their bittensor bandwidth. This is designed as a template for
@@ -274,89 +360,12 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 As your validator runs, you will start seeing records being added into your
 Supabase database. This will be directly what your Targon Hub will query.
 
-## Autoupdate
-
-Autoupdate is implemented in targon/utils.py. This is to ensure that your
-codebase matches the latest version on Main of the Targon Github Repository.
-
-### Validator Autoupdate
-
-Validator Autoupdate is implemented and defaulted to run once weights have been
-set. To **disable**, please add the flag to your command line build:
-
-```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --autoupdate_off
-```
-
-### Miner Autoupdate
-
-Miner Autoupdate is **not** implemented. Miners will need to check the Targon
-repository and update themselves as new versions are released. If interested in
-utilizing the autoupdate feature that Validators use, please follow the steps
-below:
-
-*NOTE*: This will not be maintained by the Manifold Labs Team.
-
-1. Import the autoupdate function into your miner script (neurons/miner.py) at
-   the top of the file.
-
-```python
-from targon.updater import autoupdate
-```
-
-3. Call the function at a place of your choosing.
-
-```python
-    if self.config.autoupdate:
-        autoupdate(branch="main")
-
-```
-
-4. Relaunch your miner with the changes.
-
-## Explanation of Args
-
-### Shared Args
-
-1. **--netuid** ==> Subnet Netuid. *Defaults to 4*
-1. **--neuron.epoch_length** ==> Default epoch length (how often we set weights,
-   measured in 12 second blocks). *Defaults to 360*
-1. **--mock** ==> Mock neuron and all network components. *Defaults to False*
-1. **--neuron.model_name** ==> Name of the model used for completion. *Defaults
-   to "NousResearch/Meta-Llama-3.1-8B-Instruct"*
-
-### Miner Args
-
-1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
-   \- wallet-hot) / neuron.name. *Defaults to miner*
-1. **--blacklist.force_validator.permit** ==> If set, forces incoming requests
-   to have a permit. *Defaults to True*
-1. **--neuron.model_endpoint** ==> Endpoint to use for the OpenAi
-   CompatibleClient. *Defaults to "http://127.0.0.1:8000/v1"*
-1. **--neuron.api_key** ==> API key for OpenAi Compatible API. *Defaults to
-   "12345"*
-
-### Validator Args
-
-1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
-   \- wallet-hot) / neuron.name. *Defaults to validator*
-1. **--neuron.timeout** ==> The timeout for each forward call in seconds.
-   *Defaults to 8*
-1. **--neuron.sample_size** ==> The number of miners to query in a single step.
-   *Defaults to 48*
-1. **--nueron.vpermit_tao_limit** ==> The maximum number of TAO allowed to query
-   a validator with a permit. *Defaults to 4096*
-1. **--nueron.cache_file** ==> Pickle file to save score cache to. *Defaults to
-   cache.pickle*
-1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
-1. **--autoupdate_off** ==> Disable automatic updates to Targon on latest
-   version on Main if set. *Defaults to True*
-
 # What is A Deterministic Verification Network
 
 Targon uses a novel, in-house proof-of-work value to verify model responses.
-These are generated just like log-probs, and can be used to verify with 99.99%
-accuracy that a response was generated with the model requested. Verified
+These are generated just like log-probs, and can be used to verify with high
+accuracy that a response was generated with the model requested. We use this in
+combination with a fast and slow version of log-prob verification. Verified
 responses are scored by speed and consistency of verification.
 
 ## Role of a Miner
@@ -391,6 +400,9 @@ miner = openai.AsyncOpenAI(
             "request": [
                 # This injects Epistula headers right before the request is sent.
                 # wallet.hotkey is the public / private keypair
+                #
+                # You can find this function in the `epistula.py` file in 
+                # the targon repo
                 create_header_hook(wallet.hotkey, axon.hotkey_ss58)
             ]
         }

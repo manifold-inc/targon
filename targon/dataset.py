@@ -1,10 +1,12 @@
 import os
+import logging
 import random
 from datetime import datetime
 from typing import Dict, Iterable, Union
 from openai.types.chat import ChatCompletionMessageParam
+import dask.dataframe as dd
 
-from targon.protocol import Endpoints
+from targon.types import Endpoints
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 NAMES = [line.strip() for line in open(os.path.join(BASE_DIR, "names.txt")).readlines()]
@@ -64,3 +66,18 @@ Assistant should always start the response with "Search query: "
 
     # Apply the chat template without tokenization
     return chats
+
+
+def download_dataset(isMock: bool):
+    logger = logging.getLogger('huggingface_hub.utils._http')
+    logger.setLevel(logging.CRITICAL + 1)
+
+    if isMock:
+        df = dd.read_parquet(  # type: ignore
+            "hf://datasets/manifoldlabs/Infinity-Instruct/0625/*.parquet"
+        )
+    else:
+        df = dd.read_parquet(  # type: ignore
+            "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
+        )
+    return df.compute()

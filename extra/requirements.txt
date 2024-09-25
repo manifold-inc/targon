@@ -1,0 +1,4 @@
+
+bittensor==7.1.2
+openai==1.44.1
+nanoid==2.0.0

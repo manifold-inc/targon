@@ -32,7 +32,6 @@ class InferenceStats(BaseModel):
     error: Optional[str] = None
 
 
-
 class Endpoints(Enum):
-    CHAT = 'CHAT'
-    COMPLETION = 'COMPLETION'
+    CHAT = "CHAT"
+    COMPLETION = "COMPLETION"
