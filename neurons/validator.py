@@ -1,7 +1,6 @@
 from os import urandom
 from aiohttp import ClientConnectionError
 from httpx import Timeout
-from requests import post
 import json
 import copy
 import time
@@ -11,6 +10,7 @@ import asyncio
 from asyncpg.connection import asyncpg
 from bittensor.dendrite import aiohttp
 import openai
+from vllm import SamplingParams
 from neurons.base import BaseNeuron, NeuronType
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import generate_header
@@ -22,6 +22,7 @@ from targon.utils import (
     print_info,
     safe_mean_score,
 )
+from targon.verifier import OutputItem, VerificationRequest, init_vllm
 from targon.protocol import Endpoints, InferenceStats
 import traceback
 import numpy as np
@@ -37,6 +38,7 @@ from targon import (
 from bittensor.utils.weight_utils import (
     process_weights_for_netuid,
 )
+
 
 INGESTOR_URL = "http://177.54.155.247:8000"
 
@@ -110,6 +112,7 @@ class Validator(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+        self.verify_response, self.generate_question = init_vllm()
         try:
             self.db_organics = None
             if self.config.database.organics_url:
@@ -262,6 +265,7 @@ class Validator(BaseNeuron):
     async def query_miners(self, miner_uids, endpoint: Endpoints):
         assert self.config.database
         request = self.generate_request(endpoint)
+        bt.logging.info(f"{endpoint}: {request}")
         if not request:
             return None
         tasks = []
@@ -272,6 +276,8 @@ class Validator(BaseNeuron):
         stats: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
         for uid, stat in stats:
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
+            if not stat.verified and stat.error:
+                bt.logging.info(stat.error)
             if stat.verified and stat.total_time != 0:
                 self.miner_tps[uid].append(stat.tps)
                 continue
@@ -327,12 +333,18 @@ class Validator(BaseNeuron):
                                 continue
                             token_ids = choice.model_extra.get("token_ids") or []
                             token_id = token_ids[0] if len(token_ids) > 0 else -1
+                            logprobs = 0
+                            choiceprobs = choice.logprobs
+                            if choiceprobs is not None:
+                                if choiceprobs.content:
+                                    logprobs = choiceprobs.content[0].logprob
                             stats.tokens.append(
-                                (
-                                    choice.delta.content or "",
-                                    token_id,
-                                    choice.model_extra.get("powv") or -1,
-                                )
+                                {
+                                    "text": choice.delta.content or "",
+                                    "token_id": token_id,
+                                    "powv": choice.model_extra.get("powv", -1),
+                                    "logprob": logprobs,
+                                }
                             )
                     case Endpoints.COMPLETION:
                         comp = await miner.completions.create(**request)
@@ -350,11 +362,12 @@ class Validator(BaseNeuron):
                             token_ids = choice.model_extra.get("token_ids") or []
                             token_id = token_ids[0] if len(token_ids) > 0 else -1
                             stats.tokens.append(
-                                (
-                                    choice.text or "",
-                                    token_id,
-                                    choice.model_extra.get("powv") or -1,
-                                )
+                                {
+                                    "text": choice.text or "",
+                                    "token_id": token_id,
+                                    "powv": choice.model_extra.get("powv", -1),
+                                    "logprob": choice.logprobs.token_logprobs[0],
+                                }
                             )
             except openai.APIConnectionError as e:
                 bt.logging.trace(f"Miner {uid} failed request: {e}")
@@ -374,8 +387,12 @@ class Validator(BaseNeuron):
             stats.time_for_all_tokens = time_for_all_tokens
             stats.total_time = end_token_time - start_send_message_time
             stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
-            verified = self.check_tokens(request, stats.tokens, endpoint=endpoint)
-            stats.verified = verified or False
+            verified = await self.check_tokens(request, stats.tokens, endpoint=endpoint)
+            stats.verified = (
+                verified.get("verified", False) if verified is not None else False
+            )
+            if stats.error is None and not stats.verified:
+                stats.error = str(verified)
             return uid, stats
         except Exception as e:
             bt.logging.error(f"Error in forward: {e}")
@@ -399,73 +416,18 @@ class Validator(BaseNeuron):
             bt.logging.info("Cached")
 
     @fail_with_none("Failed to check tokens")
-    def check_tokens(
-        self,
-        request,
-        response: List[Tuple[str, int, int]],
-        endpoint: Endpoints = Endpoints.CHAT,
-    ) -> Optional[bool]:
+    async def check_tokens(
+        self, request_params, responses: List[Dict], endpoint: Endpoints
+    ) -> Optional[Dict]:
         assert self.config.neuron
-        response_tokens = []
-        num_tokens = len(response)
-        if num_tokens == 0:
-            bt.logging.info("No tokens to check")
-            return False
-        index = random.randint(0, num_tokens - 1)
-        for i in range(index):
-            response_tokens.append((response[i][0], response[i][1]))
-        powv = response[index][2]
-        if powv is None:
-            return False
-        headers = {
-            "Authorization": f"Bearer {self.config.neuron.api_key}",
-            "Content-Type": "application/json",
-        }
-        match endpoint:
-            case Endpoints.CHAT:
-                messages = request.get("messages")
-                assert isinstance(messages, list)
-                res = post(
-                    self.config.neuron.model_endpoint + "/chat/completions/verify",
-                    headers=headers,
-                    data=json.dumps(
-                        {
-                            "version": VLLM_POWV_VERSION,
-                            "messages": messages,
-                            "model": self.config.neuron.model_name,
-                            "response": response_tokens,
-                            "powv": powv,
-                        }
-                    ),
-                )
-                res = res.json()
-                if isinstance(res, dict):
-                    bt.logging.error(str(res))
-                    return None
-                return res
-            case Endpoints.COMPLETION:
-                prompt = request.get("prompt")
-                assert isinstance(prompt, str)
-                res = post(
-                    self.config.neuron.model_endpoint + "/completions/verify",
-                    headers=headers,
-                    data=json.dumps(
-                        {
-                            "version": VLLM_POWV_VERSION,
-                            "prompt": prompt,
-                            "model": self.config.neuron.model_name,
-                            "response": response_tokens,
-                            "powv": powv,
-                        }
-                    ),
-                )
-                res = res.json()
-                if isinstance(res, dict):
-                    bt.logging.error(str(res))
-                    return None
-                return res
-            case _:
-                raise Exception(f"Unknown Endpoint {endpoint}")
+        return await self.verify_response(
+            VerificationRequest(
+                model=self.config.neuron.model_name,
+                request_type=endpoint.value,
+                request_params=request_params,
+                output_sequence=[OutputItem(**x) for x in responses],
+            )
+        )
 
     def shutdown(self):
         if self.db_organics:
@@ -489,20 +451,12 @@ class Validator(BaseNeuron):
             messages = create_query_prompt(random_row_text)
 
             # If this fails, it gets caught in the same try/catch as ground truth generation
-            res = self.client.chat.completions.create(
-                model=self.config.neuron.model_name,
-                messages=messages,
-                stream=False,
-                temperature=0.5,
-                seed=seed,
-                max_tokens=random.randint(16, 64),
+            res = self.generate_question(
+                messages,
+                SamplingParams(
+                    temperature=0.5, seed=seed, max_tokens=random.randint(16, 64)
+                ),
             )
-
-            # Create a final search prompt using the query and sources
-            completion = res.choices[0].message.content
-            if completion is None:
-                bt.logging.error(str(res))
-                raise Exception("No completion")
 
             # Create sampling parameters using the generated seed and token limit
             return {
@@ -512,16 +466,8 @@ class Validator(BaseNeuron):
                 "model": self.config.neuron.model_name,
                 "stream": True,
                 "logprobs": True,
-                **create_search_prompt(completion, endpoint),
+                **create_search_prompt(res, endpoint),
             }
-        except openai.APIConnectionError as e:
-            bt.logging.error(
-                f"Failed to connect to LLM server with connection string {self.client.base_url}: {e.message}"
-            )
-            bt.logging.error(
-                "Make sure an open ai compliant server is running at the above url, or fix --neuron.model_endpoint"
-            )
-            return None
         except Exception as e:
             bt.logging.error(f"Error generating dataset: {e}")
             bt.logging.error(traceback.format_exc())

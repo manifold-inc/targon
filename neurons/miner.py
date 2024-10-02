@@ -89,7 +89,7 @@ class Miner(BaseNeuron):
 
         uid = self.metagraph.hotkeys.index(signed_by)
         stake = self.metagraph.S[uid].item()
-        if stake < 10000:
+        if not self.config.mock and stake < 10000:
             bt.logging.warning(f"Blacklisting request from {signed_by} [uid={uid}], not enough stake -- {stake}")
             raise HTTPException(status_code=401, detail="Stake below minimum: {stake}")
 

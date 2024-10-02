@@ -117,9 +117,3 @@ class BaseNeuron:
         ## CHECK IF REGG'D
         self.check_registered()
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
-
-        # Initialize OpenAI client
-        self.client = OpenAI(
-            base_url=self.config.neuron.model_endpoint,
-            api_key=self.config.neuron.api_key,
-        )
