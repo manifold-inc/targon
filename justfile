@@ -19,3 +19,4 @@ up:
 
 build_verifier:
   cd verifier && docker build -t manifoldlabs/sn4-verifier .
+  docker push manifoldlabs/sn4-verifier
