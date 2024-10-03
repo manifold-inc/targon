@@ -193,7 +193,7 @@ class Validator(BaseNeuron):
             if res is not None:
                 self.loop.run_until_complete(
                     send_stats_to_ingestor(
-                        self.metagraph, self.subtensor, self.wallet, *res, spec_version
+                        self.metagraph, self.subtensor, self.wallet, *res, spec_version, list(self.verification_ports.keys())
                     )
                 )
             self.save_scores()

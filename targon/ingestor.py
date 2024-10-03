@@ -19,6 +19,7 @@ async def send_stats_to_ingestor(
     req: Dict[str, Any],
     endpoint: Endpoints,
     version: int,
+    models: List[str],
 ):
     try:
         r_nanoid = generate(size=48)
@@ -41,10 +42,7 @@ async def send_stats_to_ingestor(
             "hotkey": wallet.hotkey.ss58_address,
         }
         # Prepare the data
-        body = {
-            "request": request,
-            "responses": responses,
-        }
+        body = {"request": request, "responses": responses, "models": models}
         headers = generate_header(wallet.hotkey, body)
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
