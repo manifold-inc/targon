@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
+import bittensor as bt
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", "NousResearch/Meta-Llama-3.1-8B-Instruct")
@@ -88,6 +89,9 @@ def verify_powv(
     """
     Check the returned `powv` values against the ground truth.
     """
+    bt.logging.info(
+                        f"-----------> Request (30 Lines) : {str(request)[:160*30]} |  List of input tokens: {str(input_tokens)}"
+                    )
     input_sum = sum(input_tokens)
 
     # Iterate through output sequence, checking powv values.
