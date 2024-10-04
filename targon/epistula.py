@@ -93,11 +93,10 @@ def verify_signature_v2(
     return None
 
 
-def create_header_hook(hotkey, axon_hotkey):
+def create_header_hook(hotkey, axon_hotkey, model):
     async def add_headers(request: httpx.Request):
         for key, header in generate_header(hotkey, request.read(), axon_hotkey).items():
             request.headers[key] = header
+        request.headers["X-Targon-Model"] = model
 
     return add_headers
-
-
