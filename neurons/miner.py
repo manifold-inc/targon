@@ -119,7 +119,7 @@ class Miner(BaseNeuron):
 
         uid = self.metagraph.hotkeys.index(signed_by)
         stake = self.metagraph.S[uid].item()
-        if self.config.force_validator_permit and stake < 10000:
+        if not self.config.no_force_validator_permit and stake < 10000:
             bt.logging.warning(
                 f"Blacklisting request from {signed_by} [uid={uid}], not enough stake -- {stake}"
             )
