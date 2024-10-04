@@ -46,6 +46,7 @@ class Miner(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+        bt.logging.info(self.config.model_endpoint)
         self.client = httpx.AsyncClient(
             base_url=self.config.model_endpoint,
             headers={"Authorization": f"Bearer {self.config.api_key}"},
