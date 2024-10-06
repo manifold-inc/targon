@@ -14,7 +14,7 @@ import json
 
 
 def create_header_hook(hotkey, axon_hotkey, model):
-    async def add_headers(request: httpx.Request):
+    def add_headers(request: httpx.Request):
         for key, header in generate_header(hotkey, request.read(), axon_hotkey).items():
             request.headers[key] = header
         request.headers["X-Targon-Model"] = model
