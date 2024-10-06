@@ -185,7 +185,7 @@ def verify_logprobs_fast(
         seed=request.request_params.seed,
         max_tokens=1,
         logprobs=1,
-        prompt_logprobs=1,
+        prompt_logprobs=5,
     )
 
     # Generate output for a single token, which will return input logprobs based on prompt_logprobs=1
