@@ -38,9 +38,9 @@ from targon import (
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
+    miner_models: Dict[int, List[str]]
     db: Optional[asyncpg.Connection]
     verification_ports: Dict[str, int]
-    step = 0
     lock_waiting = False
     lock_halt = False
 
@@ -114,6 +114,7 @@ class Validator(BaseNeuron):
         miner_uids = get_miner_uids(
             self.metagraph, self.uid, self.config.vpermit_tao_limit
         )
+        self.miner_models = {}
         for uid in miner_uids:
             axon_info = self.metagraph.axons[uid]
             body = list(self.verification_ports.keys())
@@ -124,6 +125,14 @@ class Validator(BaseNeuron):
                 headers=headers,
                 json=body,
             )
+            headers = generate_header(self.wallet.hotkey, b"", axon_info.hotkey)
+            res = requests.get(
+                f"http://{axon_info.ip}:{axon_info.port}/models/list",
+                headers=headers,
+            )
+            if res.status_code != 200 or not isinstance(models := res.json(), list):
+                models = []
+            self.miner_models[uid] = models
 
     def resync_hotkeys_on_interval(self, block):
         if block % self.config.epoch_length:
@@ -182,13 +191,12 @@ class Validator(BaseNeuron):
         bt.logging.info(f"Validator starting at block: {self.subtensor.block}")
 
         # This loop maintains the validator's operations until intentionally stopped.
-        step = 0
         miner_subset = 36
-        miner_uids = None
 
         # Ensure everything is setup
         self.verification_ports = sync_output_checkers(self.client, self.get_models())
         resync_hotkeys(self.metagraph, self.miner_tps)
+        self.send_models_to_miners_on_interval(0)
 
         while not self.exit_context.isExiting:
             # Mutex for setting weights
@@ -198,16 +206,30 @@ class Validator(BaseNeuron):
                     sleep(1)
                 self.lock_waiting = False
 
-            # get random set of miner uids every other step
-            if step % 2 or miner_uids is None:
-                miner_uids = get_miner_uids(
-                    self.metagraph, self.uid, self.config.vpermit_tao_limit
-                )
-                random.shuffle(miner_uids)
-                miner_uids = miner_uids[:miner_subset]
-
             endpoint = random.choice(list(Endpoints))
             model_name = random.choice(list(self.verification_ports.keys()))
+            uids = get_miner_uids(
+                self.metagraph, self.uid, self.config.vpermit_tao_limit
+            )
+            random.shuffle(uids)
+            miner_uids = []
+            for uid in uids:
+                if len(miner_uids) > miner_subset:
+                    break
+
+                # Make sure tps array exists
+                if self.miner_tps[uid].get(model_name) is None:
+                    self.miner_tps[uid][model_name] = []
+
+                if model_name not in self.miner_models.get(uid, []):
+                    self.miner_tps[uid][model_name].append(None)
+                    continue
+                miner_uids.append(uid)
+
+            # Skip if no miners running this model
+            if not len(miner_uids):
+                continue
+
             res = self.loop.run_until_complete(
                 self.query_miners(miner_uids, model_name, endpoint)
             )
@@ -223,7 +245,6 @@ class Validator(BaseNeuron):
                     )
                 )
             self.save_scores()
-            step += 1
 
         # Exiting
         self.shutdown()

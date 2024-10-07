@@ -91,6 +91,13 @@ class Miner(BaseNeuron):
 
         return "", 200
 
+    async def list_models(self):
+        #
+        # Return models the miner is running
+        #
+
+        return [], 200
+
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
         if version == "2":
@@ -190,6 +197,12 @@ class Miner(BaseNeuron):
         router.add_api_route(
             "/models",
             self.receive_models,
+            dependencies=[Depends(self.determine_epistula_version_and_verify)],
+            methods=["POST"],
+        )
+        router.add_api_route(
+            "/models/list",
+            self.list_models,
             dependencies=[Depends(self.determine_epistula_version_and_verify)],
             methods=["POST"],
         )
