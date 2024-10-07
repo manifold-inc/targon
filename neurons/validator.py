@@ -207,7 +207,7 @@ class Validator(BaseNeuron):
                 miner_uids = miner_uids[:miner_subset]
 
             endpoint = random.choice(list(Endpoints))
-            model_name = random.choice(self.get_models())
+            model_name = random.choice(list(self.verification_ports.keys()))
             res = self.loop.run_until_complete(
                 self.query_miners(miner_uids, model_name, endpoint)
             )
