@@ -86,7 +86,7 @@ async def handle_inference(
             timeout=Timeout(12, connect=5, read=5),
             http_client=openai.DefaultAsyncHttpxClient(
                 event_hooks={
-                    "request": [create_header_hook(wallet.hotkey, axon_info.hotkey)]
+                    "request": [create_header_hook(wallet.hotkey, axon_info.hotkey, request['model'])]
                 }
             ),
         )

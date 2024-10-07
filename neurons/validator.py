@@ -4,11 +4,13 @@ import asyncio
 from time import sleep
 
 from asyncpg.connection import asyncpg
+import requests
 from neurons.base import BaseNeuron, NeuronType
 from targon.cache import load_cache
 from targon.config import get_models_from_config, get_models_from_endpoint
 from targon.dataset import download_dataset
 from targon.docker import down_containers, load_docker, sync_output_checkers
+from targon.epistula import generate_header
 from targon.ingestor import send_stats_to_ingestor
 from targon.math import get_weights
 from targon.metagraph import (
@@ -96,6 +98,7 @@ class Validator(BaseNeuron):
                 self.set_weights_on_interval,
                 self.sync_output_checkers_on_interval,
                 self.resync_hotkeys_on_interval,
+                self.send_models_to_miners_on_interval,
             ]
         )
 
@@ -103,6 +106,24 @@ class Validator(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+
+    def send_models_to_miners_on_interval(self, block):
+        assert self.config.vpermit_tao_limit
+        if block % self.config.epoch_length:
+            return
+        miner_uids = get_miner_uids(
+            self.metagraph, self.uid, self.config.vpermit_tao_limit
+        )
+        for uid in miner_uids:
+            axon_info = self.metagraph.axons[uid]
+            body = list(self.verification_ports.keys())
+            headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
+            headers["Content-Type"] = "application/json"
+            requests.post(
+                f"http://{axon_info.ip}:{axon_info.port}/models",
+                headers=headers,
+                json=body,
+            )
 
     def resync_hotkeys_on_interval(self, block):
         if block % self.config.epoch_length:
@@ -193,7 +214,12 @@ class Validator(BaseNeuron):
             if res is not None:
                 self.loop.run_until_complete(
                     send_stats_to_ingestor(
-                        self.metagraph, self.subtensor, self.wallet, *res, spec_version, list(self.verification_ports.keys())
+                        self.metagraph,
+                        self.subtensor,
+                        self.wallet,
+                        *res,
+                        spec_version,
+                        list(self.verification_ports.keys()),
                     )
                 )
             self.save_scores()

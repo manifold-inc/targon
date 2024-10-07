@@ -45,15 +45,14 @@ def estimate_max_size(model_name):
     return bytes_to_mib(total_size)
 
 
+MANIFOLD_VERIFIER = "manifoldlabs/sn4-verifier"
+
+
 def load_docker():
     client = docker.from_env()
     try:
-        client.images.pull("manifoldlabs/sn4-verifier")  # type: ignore
-        containers: List[Container] = client.containers.list(  # type: ignore
-            filters={"ancestor": "manifoldlabs/sn4-verifier"}
-        )
-        for container in containers:
-            container.remove()
+        client.images.pull(MANIFOLD_VERIFIER)  # type: ignore
+        down_containers(client)
     except Exception as e:
         bt.logging.error(str(e))
     return client
@@ -79,15 +78,12 @@ def get_free_gpus() -> List[Tuple[int, int, int]]:
     return gpus
 
 
-MANIFOLD_VERIFIER = "manifoldlabs/sn4-verifier"
-
-
 def down_containers(client: DockerClient):
     containers: List[Container] = client.containers.list(  # type: ignore
         filters={"ancestor": MANIFOLD_VERIFIER}
     )
     for container in containers:
-        container.remove()
+        container.remove(force=True)
 
 
 def sync_output_checkers(

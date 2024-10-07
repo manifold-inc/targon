@@ -91,11 +91,11 @@ def add_miner_args(parser):
     )
 
     parser.add_argument(
-        "--force-validator-permit",
-        dest="force_validator_permit",
-        action="store_false",
-        help="If set, we will force incoming requests to have a permit.",
-        default=True,
+        "--no-force-validator-permit",
+        dest="no_force_validator_permit",
+        action="store_true",
+        help="If set, we will not force incoming requests to have a permit.",
+        default=False,
     )
     parser.add_argument(
         "--api-key",
