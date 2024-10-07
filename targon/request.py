@@ -141,6 +141,8 @@ async def handle_inference(
                         choice = chunk.choices[0]
                         if choice.model_extra is None:
                             continue
+                        if choice.logprobs is None:
+                            continue
                         token_ids = choice.model_extra.get("token_ids") or []
                         token_id = token_ids[0] if len(token_ids) > 0 else -1
                         stats.tokens.append(
