@@ -114,6 +114,13 @@ def sync_output_checkers(
     # Load all models
     bt.logging.info(f"Starting {list(needed_models)}")
     for model in needed_models:
+        container_name = re.sub(r"[\W_]", "-", model).lower()
+
+        # Delete if existing and out of date
+        existing_containers: List[Container] = client.containers.list(filters={"name": std_model})  # type: ignore
+        if len(existing_containers):
+            existing_containers[0].remove(force=True)
+
         # Determine GPU free
         free_gpus = get_free_gpus()
         required_vram = estimate_max_size(model)
@@ -150,7 +157,7 @@ def sync_output_checkers(
                 "start_period": int(1e9 * 15),
             },
             "auto_remove": True,
-            "name": re.sub(r"[\W_]", "-", model).lower(),
+            "name": container_name,
             "extra_hosts": {"host.docker.internal": "host-gateway"},
             "labels": {"model": str(model), "port": str(min_port)},
             "device_requests": [
