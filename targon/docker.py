@@ -51,7 +51,6 @@ def load_docker():
     client = docker.from_env()
     try:
         client.images.pull(MANIFOLD_VERIFIER)  # type: ignore
-        down_containers(client)
     except Exception as e:
         bt.logging.error(str(e))
     return client
@@ -187,4 +186,5 @@ def sync_output_checkers(
             break
         bt.logging.info("Checking again in 5 seconds")
         sleep(5)
+    bt.logging.info("Successfully started verifiers")
     return verification_ports
