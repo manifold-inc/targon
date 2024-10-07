@@ -258,11 +258,12 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
    - `endpoint`: defaults to `https://targon.sybil.com/api/models`. This will
      mimic the manifold validator
    - `default`: only run NousResearch/Meta-Llama-3.1-8B-Instruct
-   - `config`: parse a text file with a list of models separated by newlines
+   - `config`: parse a text file named `models.txt` with a list of models separated by newlines
 1. **--models.endpoint** ==> Only used when models.mode is `endpoint`. Sets the
    api endpoint to ping for list of models. Defaults to targon hub.
 
 > Example model config file
+> `models.txt`
 >
 > ```
 > NousResearch/Meta-Llama-3.1-8B-Instruct
