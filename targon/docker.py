@@ -187,4 +187,7 @@ def sync_output_checkers(
         bt.logging.info("Checking again in 5 seconds")
         sleep(5)
     bt.logging.info("Successfully started verifiers")
+    if len(list(verification_ports.keys())) == 0:
+        bt.logging.error("No verification ports")
+        exit()
     return verification_ports
