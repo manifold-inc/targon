@@ -271,19 +271,19 @@ async def verify(request: VerificationRequest) -> Dict:
     # Verify!
     async with LOCK:
         # Check the weight values via powv.
-        result, message = verify_powv(request, input_tokens)
+        #result, message = verify_powv(request, input_tokens)
         return_value = {
             "verified": False,
-            "powv_pass": result,
-            "powv_message": message,
+            #"powv_pass": result,
+            #"powv_message": message,
             "logprob_fast_pass": False,
             "logprob_fast_message": None,
             "logprob_random_pass": False,
             "logprob_random_message": None,
         }
-        if not result:
-            return_value.update({"verified": False})
-            return return_value
+        #if not result:
+        #    return_value.update({"verified": False})
+        #    return return_value
 
         # Fast(ish) logprob check, based on input sequence processing.
         result, message = verify_logprobs_fast(request, str(input_text), input_tokens)

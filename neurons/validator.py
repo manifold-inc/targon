@@ -294,28 +294,34 @@ class Validator(BaseNeuron):
         request = generate_request(
             self.dataset, model_name, endpoint, self.verification_ports[model_name]
         )
-        bt.logging.info(f"{endpoint}: {request}")
         if not request:
             return None
 
+        bt.logging.info(f"{model_name} - {endpoint}: {request}")
+
         # We do these in separate groups for better response timings
         tasks = []
-        for uid in miner_uids:
-            tasks.append(
-                asyncio.create_task(
-                    handle_inference(
-                        self.metagraph, self.wallet, request, uid, endpoint
+        try:
+            for uid in miner_uids:
+                tasks.append(
+                    asyncio.create_task(
+                        handle_inference(
+                            self.metagraph, self.wallet, request, uid, endpoint
+                        )
                     )
                 )
-            )
-        responses: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+            responses: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
 
-        tasks = []
-        for uid, stat in responses:
-            tasks.append(
-                asyncio.create_task(self.verify_response(uid, request, endpoint, stat))
-            )
-        stats: List[Tuple[int, Optional[InferenceStats]]] = await asyncio.gather(*tasks)
+            tasks = []
+            for uid, stat in responses:
+                tasks.append(
+                    asyncio.create_task(self.verify_response(uid, request, endpoint, stat))
+                )
+            stats: List[Tuple[int, Optional[InferenceStats]]] = await asyncio.gather(*tasks)
+        except Exception:
+            bt.logging.error(f"Failed sending requests: {traceback.format_exc()}")
+            stats = []
+
 
         for uid, stat in stats:
             if not stat:

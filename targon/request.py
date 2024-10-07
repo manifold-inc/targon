@@ -102,6 +102,8 @@ async def handle_inference(
                 case Endpoints.CHAT:
                     chat = await miner.chat.completions.create(**request)
                     async for chunk in chat:
+                        if chunk.choices[0].delta is None:
+                            continue
                         if (
                             chunk.choices[0].delta.content == ""
                             or chunk.choices[0].delta.content is None
