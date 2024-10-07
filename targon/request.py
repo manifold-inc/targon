@@ -86,7 +86,11 @@ async def handle_inference(
             timeout=Timeout(12, connect=5, read=5),
             http_client=openai.DefaultAsyncHttpxClient(
                 event_hooks={
-                    "request": [create_header_hook(wallet.hotkey, axon_info.hotkey, request['model'])]
+                    "request": [
+                        create_header_hook(
+                            wallet.hotkey, axon_info.hotkey, request["model"]
+                        )
+                    ]
                 }
             ),
         )
@@ -117,7 +121,7 @@ async def handle_inference(
                         stats.tokens.append(
                             {
                                 "text": choice.delta.content or "",
-                                "token_id": token_id,
+                                "token_id": token_id or 0,
                                 "powv": choice.model_extra.get("powv", -1),
                                 "logprob": logprobs,
                             }
@@ -139,9 +143,9 @@ async def handle_inference(
                         stats.tokens.append(
                             {
                                 "text": choice.text or "",
-                                "token_id": token_id,
+                                "token_id": token_id or 0,
                                 "powv": choice.model_extra.get("powv", -1),
-                                "logprob": choice.logprobs.token_logprobs[0],
+                                "logprob": choice.logprobs.token_logprobs[0] or 0,
                             }
                         )
         except openai.APIConnectionError as e:
