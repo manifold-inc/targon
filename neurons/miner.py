@@ -89,14 +89,14 @@ class Miner(BaseNeuron):
         # Add extra logic here for how your miner should handle the model list.
         #
 
-        return "", 200
+        return ""
 
     async def list_models(self):
         #
         # Return models the miner is running
         #
 
-        return [], 200
+        return []
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
