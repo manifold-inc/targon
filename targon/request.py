@@ -41,7 +41,8 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
                 },
             )
             if response.status_code != 200:
-                bt.logging.error(response.text)
+                bt.logging.error(f"Failed to generate request for {model_name}")
+                return None
             res = response.json().get("text")
         except Exception:
             bt.logging.error(f"Failed to generate request for {model_name}")
