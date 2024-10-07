@@ -12,3 +12,4 @@ nanoid==2.0.0
 dask[dataframe]==2024.8.0
 vllm==0.6.0
 accelerate==0.34.2
+docker==7.1.0
