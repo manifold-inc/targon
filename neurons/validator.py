@@ -109,7 +109,6 @@ class Validator(BaseNeuron):
         )
 
     def send_models_to_miners_on_interval(self, block):
-        bt.logging.info("Broadcasting models to all miners")
         assert self.config.vpermit_tao_limit
         if block % self.config.epoch_length:
             return
@@ -120,6 +119,7 @@ class Validator(BaseNeuron):
             self.metagraph, self.uid, self.config.vpermit_tao_limit
         )
         self.miner_models = {}
+        bt.logging.info("Broadcasting models to all miners")
         for uid in miner_uids:
             bt.logging.info(f"Broadcasting models {uid}")
             axon_info = self.metagraph.axons[uid]
