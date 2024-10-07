@@ -43,6 +43,7 @@ class Validator(BaseNeuron):
     verification_ports: Dict[str, int]
     lock_waiting = False
     lock_halt = False
+    is_runing = False
 
     def __init__(self, config=None, run_init=True):
         super().__init__(config)
@@ -111,6 +112,9 @@ class Validator(BaseNeuron):
         assert self.config.vpermit_tao_limit
         if block % self.config.epoch_length:
             return
+
+        if block != 0 and not self.is_runing:
+            return
         miner_uids = get_miner_uids(
             self.metagraph, self.uid, self.config.vpermit_tao_limit
         )
@@ -135,11 +139,15 @@ class Validator(BaseNeuron):
             self.miner_models[uid] = models
 
     def resync_hotkeys_on_interval(self, block):
+        if not self.is_runing:
+            return
         if block % self.config.epoch_length:
             return
         resync_hotkeys(self.metagraph, self.miner_tps)
 
     def sync_output_checkers_on_interval(self, block):
+        if not self.is_runing:
+            return
         if block % self.config.epoch_length:
             return
         self.verification_ports = sync_output_checkers(self.client, self.get_models())
@@ -198,6 +206,7 @@ class Validator(BaseNeuron):
         resync_hotkeys(self.metagraph, self.miner_tps)
         self.send_models_to_miners_on_interval(0)
 
+        self.is_runing = True
         while not self.exit_context.isExiting:
             # Mutex for setting weights
             if self.lock_halt:
