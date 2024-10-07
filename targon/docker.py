@@ -164,30 +164,30 @@ def sync_output_checkers(
             ],
         }
         containers.append(client.containers.run(**config))  # type: ignore
-        verification_ports[model] = min_port
-
-    bt.logging.info("Waiting for containers to startup")
-    while True:
-        ready = True
-        models = list(verification_ports.keys())
-        for model in models:
+        while True:
+            ready = True
             std_model = re.sub(r"[\W_]", "-", model).lower()
             containers: List[Container] = client.containers.list(filters={"name": std_model})  # type: ignore
-
             if not len(containers):
                 bt.logging.info(
                     f"Failed starting container {std_model}: Removing from verifiers"
                 )
-                verification_ports.pop(model, None)
-                continue
+                break
             (container,) = containers
+            if container.health == "unhealthy":
+                bt.logging.info(
+                    f"Failed starting container {std_model}: Removing from verifiers"
+                )
+                break
             if container.health != "healthy":
                 bt.logging.info(f"{container.name}: {container.health}")
                 ready = False
-        if ready:
-            break
-        bt.logging.info("Checking again in 5 seconds")
-        sleep(5)
+            if ready:
+                verification_ports[model] = min_port
+                break
+            bt.logging.info("Checking again in 5 seconds")
+            sleep(5)
+
     bt.logging.info("Successfully started verifiers")
     if len(list(verification_ports.keys())) == 0:
         bt.logging.error("No verification ports")
