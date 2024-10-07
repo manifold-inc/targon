@@ -14,3 +14,4 @@ packages
 *.pickle
 *.json
 *.npy
+models.txt
