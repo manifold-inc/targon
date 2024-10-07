@@ -10,7 +10,6 @@ from docker.client import DockerClient
 
 from docker.models.containers import Container
 from docker.types import DeviceRequest
-from docker.types.containers import Healthcheck
 
 
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
@@ -117,7 +116,7 @@ def sync_output_checkers(
         container_name = re.sub(r"[\W_]", "-", model).lower()
 
         # Delete if existing and out of date
-        existing_containers: List[Container] = client.containers.list(filters={"name": std_model})  # type: ignore
+        existing_containers: List[Container] = client.containers.list(filters={"name": container_name})  # type: ignore
         if len(existing_containers):
             existing_containers[0].remove(force=True)
 
