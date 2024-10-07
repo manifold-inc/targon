@@ -40,6 +40,7 @@ validator or miner.
 | Azure      | High   | Global   | VM & Bare Metal | 3/5    |
 | AWS        | High   | Global   | VM & Bare Metal | 3/5    |
 | Runpod     | Low    | Global   | VM & Container  | 5/5    |
+| PrimeIntellect | Very Low | Global | VM & Container | 5/5 |
 
 #### Minimum Viable Compute Requirements
 
