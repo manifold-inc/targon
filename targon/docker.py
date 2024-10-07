@@ -153,6 +153,7 @@ def sync_output_checkers(
                 "interval": int(1e9 * 10),
                 "retries": 15,
                 "start_period": int(1e9 * 45),
+                "start_interval": int(1e9 * 30),
             },
             "auto_remove": True,
             "name": container_name,
@@ -168,7 +169,8 @@ def sync_output_checkers(
     bt.logging.info("Waiting for containers to startup")
     while True:
         ready = True
-        for model in verification_ports.keys():
+        models = list(verification_ports.keys())
+        for model in models:
             std_model = re.sub(r"[\W_]", "-", model).lower()
             containers: List[Container] = client.containers.list(filters={"name": std_model})  # type: ignore
 
