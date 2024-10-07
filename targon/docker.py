@@ -133,7 +133,7 @@ def sync_output_checkers(
         # Find Port
         while min_port in used_ports:
             min_port += 1
-            used_ports.append(min_port)
+        used_ports.append(min_port)
 
         memory_util = round((required_vram * 1.2) / gpu[2], 3)
 
