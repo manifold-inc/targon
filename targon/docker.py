@@ -168,7 +168,7 @@ def sync_output_checkers(
     bt.logging.info("Waiting for containers to startup")
     while True:
         ready = True
-        for i, model in enumerate(verification_ports.keys()):
+        for model in verification_ports.keys():
             std_model = re.sub(r"[\W_]", "-", model).lower()
             containers: List[Container] = client.containers.list(filters={"name": std_model})  # type: ignore
 
@@ -176,7 +176,7 @@ def sync_output_checkers(
                 bt.logging.info(
                     f"Failed starting container {std_model}: Removing from verifiers"
                 )
-                containers.pop(i)
+                verification_ports.pop(model, None)
                 continue
             (container,) = containers
             if container.health != "healthy":
