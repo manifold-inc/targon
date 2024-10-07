@@ -15,3 +15,6 @@ packages
 *.json
 *.npy
 models.txt
+/venv
+pyrightconfig.json
+.vscode/settings.json

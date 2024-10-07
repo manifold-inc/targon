@@ -33,6 +33,17 @@ plan on focusing on bringing these costs down in the coming updates.
 
 For miners, A100 or H100s are common choices. Benchmarking is up to the miner to
 determine what GPU works best for their optimizations.
+=======
+| Provider   | Cost   | Location | Machine Type    | Rating |
+| ---------- | ------ | -------- | --------------- | ------ |
+| TensorDock | Low    | Global   | VM & Container  | 4/5    |
+| Latitude   | Medium | Global   | Bare Metal      | 5/5    |
+| Paperspace | High   | Global   | VM & Bare Metal | 4.5/5  |
+| GCP        | High   | Global   | VM & Bare Metal | 3/5    |
+| Azure      | High   | Global   | VM & Bare Metal | 3/5    |
+| AWS        | High   | Global   | VM & Bare Metal | 3/5    |
+| Runpod     | Low    | Global   | VM & Container  | 5/5    |
+| PrimeIntellect | Very Low | Global | VM & Container | 5/5 |
 
 #### Minimum Viable Compute Recommendations
 
