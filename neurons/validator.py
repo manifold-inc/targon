@@ -4,7 +4,7 @@ import asyncio
 from time import sleep
 
 from asyncpg.connection import asyncpg
-import requests
+import httpx
 from neurons.base import BaseNeuron, NeuronType
 from targon.cache import load_cache
 from targon.config import get_models_from_config, get_models_from_endpoint
@@ -109,6 +109,7 @@ class Validator(BaseNeuron):
         )
 
     def send_models_to_miners_on_interval(self, block):
+        bt.logging.info("Broadcasting models to all miners")
         assert self.config.vpermit_tao_limit
         if block % self.config.epoch_length:
             return
@@ -120,23 +121,29 @@ class Validator(BaseNeuron):
         )
         self.miner_models = {}
         for uid in miner_uids:
+            bt.logging.info(f"Broadcasting models {uid}")
             axon_info = self.metagraph.axons[uid]
             body = list(self.verification_ports.keys())
             headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             headers["Content-Type"] = "application/json"
-            requests.post(
-                f"http://{axon_info.ip}:{axon_info.port}/models",
-                headers=headers,
-                json=body,
-            )
-            headers = generate_header(self.wallet.hotkey, b"", axon_info.hotkey)
-            res = requests.get(
-                f"http://{axon_info.ip}:{axon_info.port}/models/list",
-                headers=headers,
-            )
-            if res.status_code != 200 or not isinstance(models := res.json(), list):
-                models = []
-            self.miner_models[uid] = models
+            try:
+                httpx.post(
+                    f"http://{axon_info.ip}:{axon_info.port}/models",
+                    headers=headers,
+                    json=body,
+                    timeout=3,
+                )
+                headers = generate_header(self.wallet.hotkey, b"", axon_info.hotkey)
+                res = httpx.get(
+                    f"http://{axon_info.ip}:{axon_info.port}/models/list",
+                    headers=headers,
+                    timeout=3,
+                )
+                if res.status_code != 200 or not isinstance(models := res.json(), list):
+                    models = []
+                self.miner_models[uid] = models
+            except Exception:
+                self.miner_models[uid] = []
 
     def resync_hotkeys_on_interval(self, block):
         if not self.is_runing:
