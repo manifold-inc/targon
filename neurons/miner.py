@@ -79,7 +79,7 @@ class Miner(BaseNeuron):
         )
 
     async def receive_models(self, request: Request):
-        models = request.json()
+        models = await request.json()
         bt.logging.info(
             "\u2713",
             f"Received model list from {request.headers.get('Epistula-Signed-By', '')[:8]}: {models}",
@@ -201,10 +201,10 @@ class Miner(BaseNeuron):
             methods=["POST"],
         )
         router.add_api_route(
-            "/models/list",
+            "/models",
             self.list_models,
             dependencies=[Depends(self.determine_epistula_version_and_verify)],
-            methods=["POST"],
+            methods=["GET"],
         )
         app.include_router(router)
         fast_config = uvicorn.Config(

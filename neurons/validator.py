@@ -135,7 +135,7 @@ class Validator(BaseNeuron):
                 )
                 headers = generate_header(self.wallet.hotkey, b"", axon_info.hotkey)
                 res = httpx.get(
-                    f"http://{axon_info.ip}:{axon_info.port}/models/list",
+                    f"http://{axon_info.ip}:{axon_info.port}/models",
                     headers=headers,
                     timeout=3,
                 )
