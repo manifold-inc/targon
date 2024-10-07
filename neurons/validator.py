@@ -144,6 +144,7 @@ class Validator(BaseNeuron):
                 self.miner_models[uid] = models
             except Exception:
                 self.miner_models[uid] = []
+        bt.logging.info("Miner models: " + str(self.miner_models))
 
     def resync_hotkeys_on_interval(self, block):
         if not self.is_runing:
