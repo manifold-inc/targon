@@ -101,6 +101,7 @@ def sync_output_checkers(
     existing = []
 
     # delete any unused containers
+    used_ports = []
     for container in containers:
         bt.logging.info(f"Found {container.name}")
         model = container.labels.get("model")
@@ -113,6 +114,7 @@ def sync_output_checkers(
             container.remove(force=True)
             continue
         port = int(container.labels.get("port", 0))
+        used_ports.append(port)
         verification_ports[model] = {"port": port}
         endpoints = requests.get(f"http://localhost:{port}/endpoints").json()
         endpoints = [Endpoints(e.upper()) for e in endpoints]
@@ -120,7 +122,6 @@ def sync_output_checkers(
         existing.append(model)
     bt.logging.info(f"Existing: {existing}, needed: {models}")
     needed_models = set(models) - set(existing)
-    used_ports = list(verification_ports.values())
     min_port = 5555
 
     # Load all models
