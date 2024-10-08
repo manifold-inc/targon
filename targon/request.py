@@ -129,7 +129,7 @@ async def handle_inference(
                                 "text": choice.delta.content or "",
                                 "token_id": token_id or 0,
                                 "powv": powv,
-                                "logprob": logprobs,
+                                "logprob": logprobs or 0,
                             }
                         )
                 case Endpoints.COMPLETION:
