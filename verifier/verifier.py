@@ -2,6 +2,7 @@ import random
 import math
 import os
 import asyncio
+import traceback
 from fastapi import FastAPI
 from pydantic import BaseModel
 from enum import Enum
@@ -13,11 +14,14 @@ MODEL_NAME = os.getenv("MODEL", None)
 if MODEL_NAME is None:
     exit()
 
-GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 1))
+GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 0))
+if GPU_MEMORY_UTIL == 0:
+    exit()
 # Constants.
 LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.85
 TOP_LOGPROBS = 7
+print(MODEL_NAME, GPU_MEMORY_UTIL)
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
@@ -85,7 +89,7 @@ def generate_question(req: GenerateRequest):
         )
         return {"text": output}
     except Exception as e:
-        print("Failed generate request", e)
+        print("Failed generate request", str(e), traceback.format_exc())
     return {"text": None}
 
 

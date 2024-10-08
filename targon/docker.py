@@ -145,6 +145,7 @@ def sync_output_checkers(
             "environment": [f"MODEL={model}", f"GPU_MEMORY_UTIL={memory_util}"],
             "runtime": "nvidia",
             "detach": True,
+            "ipc": "host",
             "healthcheck": {
                 "test": [
                     "CMD-SHELL",
