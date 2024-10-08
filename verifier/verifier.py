@@ -35,6 +35,10 @@ MODEL_NUM_PARAMS = sum(1 for _ in MODEL.parameters())
 LOCK = asyncio.Lock()
 LOCK_GENERATE = asyncio.Lock()
 
+ENDPOINTS = ["completion"]
+if TOKENIZER.chat_template is not None:
+    ENDPOINTS.append("chat")
+
 
 class RequestParams(BaseModel):
     messages: Optional[List[Dict[str, str]]] = None
@@ -338,6 +342,11 @@ async def verify(request: VerificationRequest) -> Dict:
 
         return_value.update({"verified": True})
         return return_value
+
+
+@app.get("/endpoints")
+def endpoints():
+    return ENDPOINTS
 
 
 @app.get("/")

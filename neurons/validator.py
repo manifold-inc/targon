@@ -28,7 +28,7 @@ from targon.types import Endpoints, InferenceStats
 import traceback
 import bittensor as bt
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from targon import (
     __version__,
     __spec_version__ as spec_version,
@@ -40,7 +40,7 @@ class Validator(BaseNeuron):
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
     miner_models: Dict[int, List[str]]
     db: Optional[asyncpg.Connection]
-    verification_ports: Dict[str, int]
+    verification_ports: Dict[str, Dict[str, Any]]
     lock_waiting = False
     lock_halt = False
     is_runing = False
@@ -223,8 +223,8 @@ class Validator(BaseNeuron):
                     sleep(1)
                 self.lock_waiting = False
 
-            endpoint = random.choice(list(Endpoints))
             model_name = random.choice(list(self.verification_ports.keys()))
+            endpoint = random.choice(self.verification_ports[model_name]["endpoints"])
             uids = get_miner_uids(
                 self.metagraph, self.uid, self.config.vpermit_tao_limit
             )
@@ -269,7 +269,9 @@ class Validator(BaseNeuron):
     async def verify_response(self, uid, request, endpoint, stat: InferenceStats):
         # Verify
         # We do this out of the handle_inference loop to not block other requests
-        verification_port = self.verification_ports.get(request["model"], None)
+        verification_port = self.verification_ports.get(
+            request["model"], {"port": None}
+        ).get("port")
         if verification_port is None:
             bt.logging.error(
                 "Send request to a miner without verification port for model"
@@ -291,8 +293,14 @@ class Validator(BaseNeuron):
         self, miner_uids: List[int], model_name: str, endpoint: Endpoints
     ):
         assert self.config.database
+
+        verification_port: Optional[int] = self.verification_ports.get(
+            model_name, {"port": None}
+        ).get("port")
+        if verification_port is None:
+            return None
         request = generate_request(
-            self.dataset, model_name, endpoint, self.verification_ports[model_name]
+            self.dataset, model_name, endpoint, verification_port
         )
         if not request:
             return None
@@ -315,13 +323,16 @@ class Validator(BaseNeuron):
             tasks = []
             for uid, stat in responses:
                 tasks.append(
-                    asyncio.create_task(self.verify_response(uid, request, endpoint, stat))
+                    asyncio.create_task(
+                        self.verify_response(uid, request, endpoint, stat)
+                    )
                 )
-            stats: List[Tuple[int, Optional[InferenceStats]]] = await asyncio.gather(*tasks)
+            stats: List[Tuple[int, Optional[InferenceStats]]] = await asyncio.gather(
+                *tasks
+            )
         except Exception:
             bt.logging.error(f"Failed sending requests: {traceback.format_exc()}")
             stats = []
-
 
         for uid, stat in stats:
             if not stat:

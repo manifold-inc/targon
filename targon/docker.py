@@ -10,6 +10,7 @@ from docker.client import DockerClient
 
 from docker.models.containers import Container, Image
 from docker.types import DeviceRequest
+import requests
 
 
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
@@ -82,7 +83,7 @@ def down_containers(client: DockerClient):
 
 def sync_output_checkers(
     client: docker.DockerClient, models: List[str]
-) -> Dict[str, int]:
+) -> Dict[str, Dict[str, Any]]:
     image_sha = None
     try:
         image: Image = client.images.pull(MANIFOLD_VERIFIER)  # type: ignore
@@ -109,7 +110,7 @@ def sync_output_checkers(
             bt.logging.info(f"Removing {container.name}: {model}")
             container.remove(force=True)
             continue
-        verification_ports[model] = int(container.labels.get("port", 0))
+        verification_ports[model] = {"port": int(container.labels.get("port", 0))}
         existing.append(model)
     bt.logging.info(f"Existing: {existing}, needed: {models}")
     needed_models = set(models) - set(existing)
@@ -191,12 +192,15 @@ def sync_output_checkers(
                 bt.logging.info(f"{container.name}: {container.health}")
                 ready = False
             if ready:
-                verification_ports[model] = min_port
+                verification_ports[model] = {"port": min_port}
+                endpoints = requests.get(f"http://localhost:{min_port}").json()
+                verification_ports[model]['endpoints'] = endpoints
                 break
             bt.logging.info("Checking again in 5 seconds")
             sleep(5)
 
     bt.logging.info("Successfully started verifiers")
+    bt.logging.info(str(verification_ports))
     if len(list(verification_ports.keys())) == 0:
         bt.logging.error("No verification ports")
         exit()
