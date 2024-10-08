@@ -12,6 +12,8 @@ from docker.models.containers import Container, Image
 from docker.types import DeviceRequest
 import requests
 
+from targon.types import Endpoints
+
 
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     bt.logging.info(f"Need: {required}, have: {gpus}")
@@ -113,6 +115,7 @@ def sync_output_checkers(
         port = int(container.labels.get("port", 0))
         verification_ports[model] = {"port": port}
         endpoints = requests.get(f"http://localhost:{port}/endpoints").json()
+        endpoints = [Endpoints(e.upper()) for e in endpoints]
         verification_ports[model]["endpoints"] = endpoints
         existing.append(model)
     bt.logging.info(f"Existing: {existing}, needed: {models}")
@@ -199,6 +202,7 @@ def sync_output_checkers(
                 endpoints = requests.get(
                     f"http://localhost:{min_port}/endpoints"
                 ).json()
+                endpoints = [Endpoints(e.upper()) for e in endpoints]
                 verification_ports[model]["endpoints"] = endpoints
                 break
             bt.logging.info("Checking again in 5 seconds")
