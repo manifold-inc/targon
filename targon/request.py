@@ -199,6 +199,9 @@ async def check_tokens(
                 "output_sequence": responses,
             },
         ).json()
+        if err := result.get("error") is not None:
+            bt.logging.error(str(err))
+            return None
         return result
     except Exception as e:
         bt.logging.error(f"{uid}: " + str(e))

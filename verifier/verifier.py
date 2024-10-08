@@ -184,7 +184,7 @@ def verify_logprobs_random(
 
 def verify_logprobs_fast(
     request: VerificationRequest, input_text: str, input_tokens: List[int]
-) -> Tuple[bool, str]:
+) -> Optional[Tuple[bool, str]]:
     """
     Compare the produced logprob values against the ground truth, or at least
     the ground truth according to this particular GPU/software pairing.
@@ -200,9 +200,17 @@ def verify_logprobs_fast(
     )
 
     # Generate output for a single token, which will return input logprobs based on prompt_logprobs=1
-    full_text = input_text + "".join([item.text for item in request.output_sequence])
-    output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
-    assert output.prompt_logprobs is not None
+    output = None
+    for _ in range(5):
+        full_text = input_text + "".join(
+            [item.text for item in request.output_sequence]
+        )
+        output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
+        if output.prompt_logprobs is not None:
+            break
+
+    if not output or output.prompt_logprobs is None:
+        return None
 
     # The actual logprobs should be *very* close, but typically not 100% because of GPU/driver/etc. differences.
     total_score = 0.0
@@ -297,7 +305,10 @@ async def verify(request: VerificationRequest) -> Dict:
         #    return return_value
 
         # Fast(ish) logprob check, based on input sequence processing.
-        result, message = verify_logprobs_fast(request, str(input_text), input_tokens)
+        res = verify_logprobs_fast(request, str(input_text), input_tokens)
+        if res is None:
+            return {"error": "Failed to check log probs"}
+        result, message = res
         return_value.update(
             {
                 "logprob_fast_pass": result,
