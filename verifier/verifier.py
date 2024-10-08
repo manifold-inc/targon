@@ -33,6 +33,7 @@ MODEL_NUM_PARAMS = sum(1 for _ in MODEL.parameters())
 
 # Lock to ensure atomicity.
 LOCK = asyncio.Lock()
+LOCK_GENERATE = asyncio.Lock()
 
 
 class RequestParams(BaseModel):
@@ -77,20 +78,20 @@ app = FastAPI()
 
 
 @app.post("/generate")
-def generate_question(req: GenerateRequest):
-    print(req.messages)
-    try:
-        output = (
-            MODEL_WRAPPER.chat(
-                messages=req.messages, sampling_params=SamplingParams(**req.sampling_params.model_dump()), use_tqdm=False  # type: ignore
-            )[0]
-            .outputs[0]
-            .text
-        )
-        return {"text": output}
-    except Exception as e:
-        print("Failed generate request", str(e), traceback.format_exc())
-    return {"text": None}
+async def generate_question(req: GenerateRequest):
+    async with LOCK_GENERATE:
+        try:
+            output = (
+                MODEL_WRAPPER.chat(
+                    messages=req.messages, sampling_params=SamplingParams(**req.sampling_params.model_dump()), use_tqdm=False  # type: ignore
+                )[0]
+                .outputs[0]
+                .text
+            )
+            return {"text": output}
+        except Exception as e:
+            print("Failed generate request", str(e), traceback.format_exc())
+        return {"text": None}
 
 
 def verify_powv(
