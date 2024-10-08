@@ -193,7 +193,7 @@ def sync_output_checkers(
                 ready = False
             if ready:
                 verification_ports[model] = {"port": min_port}
-                endpoints = requests.get(f"http://localhost:{min_port}").json()
+                endpoints = requests.get(f"http://localhost:{min_port}/endpoints").json()
                 verification_ports[model]['endpoints'] = endpoints
                 break
             bt.logging.info("Checking again in 5 seconds")
