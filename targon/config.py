@@ -174,12 +174,14 @@ def get_models_from_endpoint(endpoint: str):
 
 
 def get_models_from_config():
-    filename = "models.txt"
+    filename = "./models.txt"
     try:
         with open(filename, "r") as file:
             models = file.read().strip().split("\n")
             if not len(models):
                 bt.logging.error("No models in models file")
+            else:
+                bt.logging.info(f"Found models {str(models)}")
     except IOError:
         bt.logging.info("No model file found")
     except EOFError:

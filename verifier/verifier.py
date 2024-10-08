@@ -9,7 +9,10 @@ from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
 
 # Load the model.
-MODEL_NAME = os.getenv("MODEL", "NousResearch/Meta-Llama-3.1-8B-Instruct")
+MODEL_NAME = os.getenv("MODEL", None)
+if MODEL_NAME is None:
+    exit()
+
 GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 1))
 # Constants.
 LOGPROB_LOG_THRESHOLD = 0.65
@@ -18,8 +21,7 @@ TOP_LOGPROBS = 7
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
-    gpu_memory_utilization=0.4,
-    max_model_len=4096,
+    gpu_memory_utilization=GPU_MEMORY_UTIL,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
 MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
@@ -271,17 +273,17 @@ async def verify(request: VerificationRequest) -> Dict:
     # Verify!
     async with LOCK:
         # Check the weight values via powv.
-        #result, message = verify_powv(request, input_tokens)
+        # result, message = verify_powv(request, input_tokens)
         return_value = {
             "verified": False,
-            #"powv_pass": result,
-            #"powv_message": message,
+            # "powv_pass": result,
+            # "powv_message": message,
             "logprob_fast_pass": False,
             "logprob_fast_message": None,
             "logprob_random_pass": False,
             "logprob_random_message": None,
         }
-        #if not result:
+        # if not result:
         #    return_value.update({"verified": False})
         #    return return_value
 
@@ -316,6 +318,7 @@ async def verify(request: VerificationRequest) -> Dict:
         return_value.update({"verified": True})
         return return_value
 
-@app.get('/')
+
+@app.get("/")
 def ping():
     return "", 200
