@@ -74,14 +74,19 @@ app = FastAPI()
 
 @app.post("/generate")
 def generate_question(req: GenerateRequest):
-    output = (
-        MODEL_WRAPPER.chat(
-            messages=req.messages, sampling_params=SamplingParams(**req.sampling_params.model_dump()), use_tqdm=False  # type: ignore
-        )[0]
-        .outputs[0]
-        .text
-    )
-    return {"text": output}
+    print(req.messages)
+    try:
+        output = (
+            MODEL_WRAPPER.chat(
+                messages=req.messages, sampling_params=SamplingParams(**req.sampling_params.model_dump()), use_tqdm=False  # type: ignore
+            )[0]
+            .outputs[0]
+            .text
+        )
+        return {"text": output}
+    except Exception as e:
+        print("Failed generate request", e)
+    return {"text": None}
 
 
 def verify_powv(
