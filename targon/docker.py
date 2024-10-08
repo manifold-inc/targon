@@ -8,7 +8,7 @@ import subprocess
 from accelerate.commands import estimate
 from docker.client import DockerClient
 
-from docker.models.containers import Container
+from docker.models.containers import Container, Image
 from docker.types import DeviceRequest
 
 
@@ -49,10 +49,6 @@ MANIFOLD_VERIFIER = "manifoldlabs/sn4-verifier"
 
 def load_docker():
     client = docker.from_env()
-    try:
-        client.images.pull(MANIFOLD_VERIFIER)  # type: ignore
-    except Exception as e:
-        bt.logging.error(str(e))
     return client
 
 
@@ -87,9 +83,16 @@ def down_containers(client: DockerClient):
 def sync_output_checkers(
     client: docker.DockerClient, models: List[str]
 ) -> Dict[str, int]:
+    image_sha = None
+    try:
+        image: Image = client.images.pull(MANIFOLD_VERIFIER)  # type: ignore
+        if image.attrs is not None:
+            image_sha = image.attrs.get("Id", None)
+    except Exception as e:
+        bt.logging.error(str(e))
     bt.logging.info(f"Syncing {models}")
     containers: List[Container] = client.containers.list(  # type: ignore
-        filters={"ancestor": MANIFOLD_VERIFIER}
+        filters={"label": "model"}
     )
     verification_ports = {}
     existing = []
@@ -98,7 +101,11 @@ def sync_output_checkers(
     for container in containers:
         bt.logging.info(f"Found {container.name}")
         model = container.labels.get("model")
-        if model not in models:
+        if model not in models or (
+            image_sha is not None
+            and container.attrs is not None
+            and container.attrs.get("Image") != image_sha
+        ):
             bt.logging.info(f"Removing {container.name}: {model}")
             container.remove(force=True)
             continue
