@@ -110,7 +110,10 @@ def sync_output_checkers(
             bt.logging.info(f"Removing {container.name}: {model}")
             container.remove(force=True)
             continue
-        verification_ports[model] = {"port": int(container.labels.get("port", 0))}
+        port = int(container.labels.get("port", 0))
+        verification_ports[model] = {"port": port}
+        endpoints = requests.get(f"http://localhost:{port}/endpoints").json()
+        verification_ports[model]["endpoints"] = endpoints
         existing.append(model)
     bt.logging.info(f"Existing: {existing}, needed: {models}")
     needed_models = set(models) - set(existing)
@@ -193,8 +196,10 @@ def sync_output_checkers(
                 ready = False
             if ready:
                 verification_ports[model] = {"port": min_port}
-                endpoints = requests.get(f"http://localhost:{min_port}/endpoints").json()
-                verification_ports[model]['endpoints'] = endpoints
+                endpoints = requests.get(
+                    f"http://localhost:{min_port}/endpoints"
+                ).json()
+                verification_ports[model]["endpoints"] = endpoints
                 break
             bt.logging.info("Checking again in 5 seconds")
             sleep(5)
