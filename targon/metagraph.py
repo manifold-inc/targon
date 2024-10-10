@@ -73,8 +73,8 @@ def create_set_weights(version: int, netuid):
             netuid=netuid,
             uids=processed_weight_uids,  # type: ignore
             weights=processed_weights,
-            wait_for_finalization=True,
-            wait_for_inclusion=True,
+            wait_for_finalization=False,
+            wait_for_inclusion=False,
             version_key=version,
             max_retries=1,
         )
