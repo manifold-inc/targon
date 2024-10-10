@@ -170,7 +170,7 @@ class Validator(BaseNeuron):
             self.wallet,
             self.metagraph,
             self.subtensor,
-            get_weights(self.miner_tps, list(self.verification_ports.keys())),
+            get_weights(self.miner_models, self.miner_tps, list(self.verification_ports.keys())),
         )
 
         # Only keep last 15 scores

@@ -32,15 +32,16 @@ def safe_mean_score(data):
 
 @fail_with_none("Failed getting Weights")
 def get_weights(
-    miner_tps: Dict[int, Dict[str, List[Optional[float]]]], models: List[str]
+    miner_models: Dict[int, List[str]],
+    miner_tps: Dict[int, Dict[str, List[Optional[float]]]],
+    models: List[str],
 ) -> Tuple[List[int], List[float]]:
-
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
     tps = {}
     for uid in miner_tps:
         tps[uid] = 0
-        for model in miner_tps[uid]:
+        for model in miner_models[uid]:
             if model not in models:
                 continue
             tps[uid] += safe_mean_score(miner_tps[uid][model][-15:])
