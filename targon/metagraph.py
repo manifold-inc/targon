@@ -1,3 +1,4 @@
+import time
 from typing import Callable, Dict, List, Tuple
 import numpy as np
 import bittensor as bt
@@ -68,20 +69,23 @@ def create_set_weights(version: int, netuid):
 
         bt.logging.info("Setting Weights: " + str(processed_weights))
         bt.logging.info("Weight Uids: " + str(processed_weight_uids))
-        result, message = subtensor.set_weights(
-            wallet=wallet,
-            netuid=netuid,
-            uids=processed_weight_uids,  # type: ignore
-            weights=processed_weights,
-            wait_for_finalization=False,
-            wait_for_inclusion=False,
-            version_key=version,
-            max_retries=1,
-        )
-        if result is True:
-            bt.logging.info("set_weights on chain successfully!")
-        else:
-            bt.logging.error(f"set_weights failed {message}")
+        for _ in range(3):
+            result, message = subtensor.set_weights(
+                wallet=wallet,
+                netuid=netuid,
+                uids=processed_weight_uids,  # type: ignore
+                weights=processed_weights,
+                wait_for_finalization=False,
+                wait_for_inclusion=False,
+                version_key=version,
+                max_retries=1,
+            )
+            if result is True:
+                bt.logging.info("set_weights on chain successfully!")
+                break
+            else:
+                bt.logging.error(f"set_weights failed {message}")
+            time.sleep(15)
 
     return set_weights
 
@@ -109,4 +113,4 @@ def run_block_callback_thread(substrate, callback: Callable):
     )
     subscription_thread.start()
     bt.logging.info("Block subscription started in background thread.")
-    return  subscription_thread
+    return subscription_thread
