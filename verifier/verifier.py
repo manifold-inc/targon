@@ -85,13 +85,35 @@ app = FastAPI()
 async def generate_question(req: GenerateRequest):
     async with LOCK_GENERATE:
         try:
-            output = (
-                MODEL_WRAPPER.chat(
-                    messages=req.messages, sampling_params=SamplingParams(**req.sampling_params.model_dump()), use_tqdm=False  # type: ignore
-                )[0]
-                .outputs[0]
-                .text
-            )
+            if "chat" in ENDPOINTS:
+                output = (
+                    MODEL_WRAPPER.chat(
+                        messages=req.messages, sampling_params=SamplingParams(**req.sampling_params.model_dump()), use_tqdm=False  # type: ignore
+                    )[0]
+                    .outputs[0]
+                    .text
+                )
+            else:
+                prompt = ""
+                for message in req.messages:
+                    prompt += (
+                        message.get("role", "")
+                        + ": "
+                        + message.get("content", "")
+                        + "\n"
+                    )
+                prompt += "\nResponse: "
+                output = (
+                    MODEL_WRAPPER.generate(
+                        prompts=prompt,
+                        sampling_params=SamplingParams(
+                            **req.sampling_params.model_dump()
+                        ),
+                        use_tqdm=False,
+                    )[0]
+                    .outputs[0]
+                    .text
+                )
             return {"text": output}
         except Exception as e:
             print("Failed generate request", str(e), traceback.format_exc())
