@@ -109,3 +109,4 @@ def run_block_callback_thread(substrate, callback: Callable):
     )
     subscription_thread.start()
     bt.logging.info("Block subscription started in background thread.")
+    return  subscription_thread

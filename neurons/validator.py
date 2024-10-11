@@ -5,6 +5,7 @@ from time import sleep
 
 from asyncpg.connection import asyncpg
 import httpx
+from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
 from targon.cache import load_cache
 from targon.config import get_models_from_config, get_models_from_endpoint
@@ -17,6 +18,7 @@ from targon.metagraph import (
     create_set_weights,
     get_miner_uids,
     resync_hotkeys,
+    run_block_callback_thread,
 )
 from targon.request import check_tokens, generate_request, handle_inference
 from targon.updater import autoupdate
@@ -95,7 +97,6 @@ class Validator(BaseNeuron):
         self.block_callbacks.extend(
             [
                 self.log_on_block,
-                self.autoupdate_on_block,
                 self.set_weights_on_interval,
                 self.sync_output_checkers_on_interval,
                 self.resync_hotkeys_on_interval,
@@ -170,7 +171,9 @@ class Validator(BaseNeuron):
             self.wallet,
             self.metagraph,
             self.subtensor,
-            get_weights(self.miner_models, self.miner_tps, list(self.verification_ports.keys())),
+            get_weights(
+                self.miner_models, self.miner_tps, list(self.verification_ports.keys())
+            ),
         )
 
         # Only keep last 15 scores
@@ -189,11 +192,6 @@ class Validator(BaseNeuron):
         bt.logging.info(
             f"Forward Block: {self.subtensor.block} | Blocks till Set Weights: {blocks_till}"
         )
-
-    def autoupdate_on_block(self, *_):
-        # Check to see if we need to update
-        if self.config.autoupdate:
-            autoupdate(branch="main")
 
     def run(self):
         assert self.config.subtensor
@@ -216,6 +214,20 @@ class Validator(BaseNeuron):
 
         self.is_runing = True
         while not self.exit_context.isExiting:
+            if self.config.autoupdate:
+                autoupdate(branch="main")
+            # Make sure our substrate thread is alive
+            if not self.substrate_thread.is_alive():
+                self.substrate = SubstrateInterface(
+                    ss58_format=bt.__ss58_format__,
+                    use_remote_preset=True,
+                    url=self.config.subtensor.chain_endpoint,
+                    type_registry=bt.__type_registry__,
+                )
+                self.substrate_thread = run_block_callback_thread(
+                    self.substrate, self.run_callbacks
+                )
+
             # Mutex for setting weights
             if self.lock_halt:
                 self.lock_waiting = True

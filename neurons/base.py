@@ -1,4 +1,5 @@
 import argparse
+from threading import Thread
 from typing import Callable, List
 import bittensor as bt
 import copy
@@ -32,6 +33,7 @@ class BaseNeuron:
     exit_context = ExitContext()
     next_sync_block = None
     block_callbacks: List[Callable] = []
+    substrate_thread: Thread
 
     def check_registered(self):
         if not self.subtensor.is_hotkey_registered(
@@ -120,4 +122,4 @@ class BaseNeuron:
             type_registry=bt.__type_registry__,
         )
         self.block_callbacks.append(self.maybe_sync_metagraph)
-        run_block_callback_thread(self.substrate, self.run_callbacks)
+        self.substrate_thread = run_block_callback_thread(self.substrate, self.run_callbacks)
