@@ -26,6 +26,7 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
     # Generate a query from the sampled text and perform text generation
     messages = create_query_prompt(random_row_text)
     res: Optional[str] = None
+    response = None
     for _ in range(3):
         try:
             response = post(
@@ -48,7 +49,9 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
             bt.logging.error(f"Failed to generate request for {model_name}")
         break
     if res is None:
-        bt.logging.error("Failed to generate prompt")
+        bt.logging.error(
+            f"Failed to generate prompt for {model_name}: {endpoint}: {response}"
+        )
         return None
 
     # Create sampling parameters using the generated seed and token limit

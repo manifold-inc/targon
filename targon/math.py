@@ -41,9 +41,14 @@ def get_weights(
     tps = {}
     for uid in miner_tps:
         tps[uid] = 0
-        for model in miner_models[uid]:
+        for model in miner_models.get(uid, []):
             if model not in models:
                 continue
+            if miner_tps.get(uid) is None:
+                continue
+            if miner_tps[uid].get(model) is None:
+                continue
+
             tps[uid] += safe_mean_score(miner_tps[uid][model][-15:])
 
     tps_list = list(tps.values())
