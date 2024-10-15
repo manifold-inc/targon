@@ -160,56 +160,7 @@ def verify_powv(
         f"Successfully verified powv for {len(request.output_sequence)} outputs",
     )
 
-
-def verify_logprobs_random(
-    request: VerificationRequest, input_text: str
-) -> Tuple[bool, str]:
-    """
-    Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
-    """
-    indices_to_check = list(
-        sorted(
-            [
-                0,  # always check first token
-                len(request.output_sequence) - 1,  # always check last token
-                random.choice(
-                    list(range(1, len(request.output_sequence) - 1))
-                ),  # random offset
-            ]
-        )
-    )
-
-    # Generate a single token at each index, comparing logprobs.
-    sampling_params = SamplingParams(
-        temperature=request.request_params.temperature,
-        seed=request.request_params.seed,
-        max_tokens=1,
-        logprobs=TOP_LOGPROBS,
-    )
-    for idx in indices_to_check:
-        full_text = input_text + "".join(
-            [item.text for item in request.output_sequence[0:idx]]
-        )
-        output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[
-            0
-        ].outputs[0]
-
-        # The miner's output token should be in the logprobs...
-        top_tokens = []
-        if output.logprobs is None:
-            continue
-        for lp in output.logprobs:
-            top_tokens += list(lp.keys())
-        if request.output_sequence[idx].token_id not in top_tokens:
-            message = f"Token output at index {idx} [{request.output_sequence[idx]}] not found in top {TOP_LOGPROBS} top logprobs: {top_tokens}"
-            return False, message
-    return (
-        True,
-        f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}",
-    )
-
-
-def verify_logprobs_fast(
+def verify_logprobs(
     request: VerificationRequest, input_text: str, input_tokens: List[int]
 ) -> Optional[Tuple[bool, str]]:
     """
@@ -320,45 +271,26 @@ async def verify(request: VerificationRequest) -> Dict:
             "verified": False,
             # "powv_pass": result,
             # "powv_message": message,
-            "logprob_fast_pass": False,
-            "logprob_fast_message": None,
-            "logprob_random_pass": False,
-            "logprob_random_message": None,
+            "logprob_pass": False,
+            "logprob_message": None,
         }
         # if not result:
         #    return_value.update({"verified": False})
         #    return return_value
 
-        # Fast(ish) logprob check, based on input sequence processing.
-        res = verify_logprobs_fast(request, str(input_text), input_tokens)
+        # Logprob checks.
+        res = verify_logprobs(request, str(input_text), input_tokens)
         if res is None:
             return {"error": "Failed to check log probs"}
         result, message = res
         return_value.update(
             {
-                "logprob_fast_pass": result,
-                "logprob_fast_message": message,
+                "logprob_pass": result,
+                "logprob_message": message,
             }
         )
         if not result:
             return return_value
-
-        # Slow(ish) random logprob spotchecks.
-        if request.request_params.temperature < 0.5:
-            result, message = verify_logprobs_random(request, str(input_text))
-            return_value.update(
-                {
-                    "logprob_random_pass": result,
-                    "logprob_random_message": message,
-                }
-            )
-            if not result:
-                return_value.update({"verified": False})
-                return return_value
-        else:
-            return_value.update(
-                {"logprob_random_message": "Temperature too high to check"}
-            )
 
         return_value.update({"verified": True})
         return return_value
