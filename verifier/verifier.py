@@ -254,8 +254,7 @@ def verify_logprobs_fast(
             continue
         expected_logprob = expected_logprob.logprob
         produced_logprob = item.logprob
-        delta = abs(produced_logprob - expected_logprob)
-        score = (1.0 - delta) ** 2
+        score = 1.0 - min(1.0, abs(math.exp(expected_logprob) - math.exp(produced_logprob)))
 
         # To accomodate architectural difference and such, we'll give a perfect score if >= 0.9
         if score >= 0.9:
