@@ -119,11 +119,11 @@ async def handle_inference(
                             continue
                         token_ids = choice.model_extra.get("token_ids") or []
                         token_id = token_ids[0] if len(token_ids) > 0 else -1
-                        logprobs = 0
+                        logprob = -100
                         choiceprobs = choice.logprobs
                         if choiceprobs is not None:
                             if choiceprobs.content:
-                                logprobs = choiceprobs.content[0].logprob
+                                logprob = choiceprobs.content[0].logprob
                         powv = choice.model_extra.get("powv", -1)
                         if powv is None:
                             powv = -1
@@ -132,7 +132,7 @@ async def handle_inference(
                                 "text": choice.delta.content or "",
                                 "token_id": token_id or 0,
                                 "powv": powv,
-                                "logprob": logprobs or 0,
+                                "logprob": logprob,
                             }
                         )
                 case Endpoints.COMPLETION:
@@ -154,12 +154,15 @@ async def handle_inference(
                         powv = choice.model_extra.get("powv", -1)
                         if powv is None:
                             powv = -1
+                        logprob = -100
+                        if choice.logprobs.token_logprobs:
+                            logprob = choice.logprobs.token_logprobs[0]
                         stats.tokens.append(
                             {
                                 "text": choice.text or "",
                                 "token_id": token_id or 0,
                                 "powv": powv,
-                                "logprob": choice.logprobs.token_logprobs[0] or 0,
+                                "logprob": logprob,
                             }
                         )
         except openai.APIConnectionError as e:
