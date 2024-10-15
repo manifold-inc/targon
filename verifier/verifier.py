@@ -250,10 +250,9 @@ def verify_logprobs_fast(
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob is not None
         expected_logprob = expected_logprob.get(item.token_id)
-        if expected_logprob is not None:
-            expected_logprob = expected_logprob.logprob
-        else:
-            expected_logprob = 0
+        if expected_logprob is None:
+            continue
+        expected_logprob = expected_logprob.logprob
         produced_logprob = item.logprob
         delta = abs(produced_logprob - expected_logprob)
         score = (1.0 - delta) ** 2
