@@ -20,7 +20,7 @@ if GPU_MEMORY_UTIL == 0:
 # Constants.
 LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.85
-TOP_LOGPROBS = 7
+TOP_LOGPROBS = 10
 print(MODEL_NAME, GPU_MEMORY_UTIL)
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
@@ -160,6 +160,53 @@ def verify_powv(
         f"Successfully verified powv for {len(request.output_sequence)} outputs",
     )
 
+def verify_logprobs_random(
+    request: VerificationRequest, input_text: str
+) -> Tuple[bool, str]:
+    """
+    Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
+    """
+    indices_to_check = list(
+        sorted(
+            [
+                0,  # always check first token
+                len(request.output_sequence) - 1,  # always check last token
+                random.choice(
+                    list(range(1, len(request.output_sequence) - 1))
+                ),  # random offset
+            ]
+        )
+    )
+
+    # Generate a single token at each index, comparing logprobs.
+    sampling_params = SamplingParams(
+        temperature=request.request_params.temperature,
+        seed=request.request_params.seed,
+        max_tokens=1,
+        logprobs=TOP_LOGPROBS,
+    )
+    for idx in indices_to_check:
+        full_text = input_text + "".join(
+            [item.text for item in request.output_sequence[0:idx]]
+        )
+        output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[
+            0
+        ].outputs[0]
+
+        # The miner's output token should be in the logprobs...
+        top_tokens = []
+        if output.logprobs is None:
+            continue
+        for lp in output.logprobs:
+            top_tokens += list(lp.keys())
+        if request.output_sequence[idx].token_id not in top_tokens:
+            message = f"Token output at index {idx} [{request.output_sequence[idx]}] not found in top {TOP_LOGPROBS} top logprobs: {top_tokens}"
+            return False, message
+    return (
+        True,
+        f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}",
+    )
+
 def verify_logprobs(
     request: VerificationRequest, input_text: str, input_tokens: List[int]
 ) -> Optional[Tuple[bool, str]]:
@@ -266,20 +313,22 @@ async def verify(request: VerificationRequest) -> Dict:
     # Verify!
     async with LOCK:
         # Check the weight values via powv.
-        # result, message = verify_powv(request, input_tokens)
+        result, message = verify_powv(request, input_tokens)
         return_value = {
             "verified": False,
-            # "powv_pass": result,
-            # "powv_message": message,
+            "powv_pass": result,
+            "powv_message": message,
+            "logprob_fast_pass": False,
+            "logprob_fast_message": None,
             "logprob_pass": False,
             "logprob_message": None,
         }
-        # if not result:
-        #    return_value.update({"verified": False})
-        #    return return_value
+        if not result:
+           return_value.update({"verified": False})
+           return return_value
 
         # Logprob checks.
-        res = verify_logprobs(request, str(input_text), input_tokens)
+        res = verify_logprobs_random(request, str(input_text))
         if res is None:
             return {"error": "Failed to check log probs"}
         result, message = res
@@ -287,6 +336,19 @@ async def verify(request: VerificationRequest) -> Dict:
             {
                 "logprob_pass": result,
                 "logprob_message": message,
+            }
+        )
+        if not result:
+            return return_value
+
+        res = verify_logprobs(request, str(input_text), input_tokens)
+        if res is None:
+            return {"error": "Failed to check log probs"}
+        result, message = res
+        return_value.update(
+            {
+                "logprob_fast_pass": result,
+                "logprob_fast_message": message,
             }
         )
         if not result:
