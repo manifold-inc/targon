@@ -160,6 +160,7 @@ def verify_powv(
         f"Successfully verified powv for {len(request.output_sequence)} outputs",
     )
 
+
 def verify_logprobs_random(
     request: VerificationRequest, input_text: str
 ) -> Tuple[bool, str]:
@@ -207,6 +208,7 @@ def verify_logprobs_random(
         f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}",
     )
 
+
 def verify_logprobs(
     request: VerificationRequest, input_text: str, input_tokens: List[int]
 ) -> Optional[Tuple[bool, str]]:
@@ -252,7 +254,9 @@ def verify_logprobs(
             continue
         expected_logprob = expected_logprob.logprob
         produced_logprob = item.logprob
-        score = 1.0 - min(1.0, abs(math.exp(expected_logprob) - math.exp(produced_logprob)))
+        score = 1.0 - min(
+            1.0, abs(math.exp(expected_logprob) - math.exp(produced_logprob))
+        )
 
         # To accomodate architectural difference and such, we'll give a perfect score if >= 0.9
         if score >= 0.9:
@@ -320,27 +324,12 @@ async def verify(request: VerificationRequest) -> Dict:
             "powv_message": message,
             "logprob_fast_pass": False,
             "logprob_fast_message": None,
-            "logprob_pass": False,
-            "logprob_message": None,
         }
         if not result:
-           return_value.update({"verified": False})
-           return return_value
-
-        # Logprob checks.
-        res = verify_logprobs_random(request, str(input_text))
-        if res is None:
-            return {"error": "Failed to check log probs"}
-        result, message = res
-        return_value.update(
-            {
-                "logprob_pass": result,
-                "logprob_message": message,
-            }
-        )
-        if not result:
+            return_value.update({"verified": False})
             return return_value
 
+        # Logprob checks.
         res = verify_logprobs(request, str(input_text), input_tokens)
         if res is None:
             return {"error": "Failed to check log probs"}
@@ -349,6 +338,23 @@ async def verify(request: VerificationRequest) -> Dict:
             {
                 "logprob_fast_pass": result,
                 "logprob_fast_message": message,
+            }
+        )
+        if not result:
+            return return_value
+
+        if request.request_params.temperature > 0.75:
+            return_value.update({"verified": True})
+            return return_value
+
+        res = verify_logprobs_random(request, str(input_text))
+        if res is None:
+            return {"error": "Failed to check log probs"}
+        result, message = res
+        return_value.update(
+            {
+                "logprob_pass": result,
+                "logprob_message": message,
             }
         )
         if not result:
