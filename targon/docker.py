@@ -16,11 +16,23 @@ from targon.types import Endpoints
 
 
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
+    "[GPU_ID, free, total] in MB"
     bt.logging.info(f"Need: {required}, have: {gpus}")
     gpus.sort(key=lambda x: x[1])
+    unused = []
     for gpu in gpus:
         if gpu[1] >= required * 1.2:
-            return gpu
+            return [gpu]
+        if gpu[1] / gpu[2] > 0.9:
+            unused.append(gpu)
+
+    total_free = 0
+    next_gpus = []
+    for gpu in unused:
+        total_free += gpu[1]
+        next_gpus.append(gpu)
+        if total_free > required * 1.2:
+            return next_gpus
     return None
 
 
@@ -140,8 +152,8 @@ def sync_output_checkers(
         if required_vram is None:
             bt.logging.error(f"Failed to find model {model}")
             continue
-        gpu = get_gpu_with_space(free_gpus, required_vram)
-        if gpu is None:
+        gpus = get_gpu_with_space(free_gpus, required_vram)
+        if gpus is None:
             bt.logging.info(f"Not enough space to run {model}")
             continue
 
@@ -150,10 +162,14 @@ def sync_output_checkers(
             min_port += 1
         used_ports.append(min_port)
 
-        memory_util = round((required_vram * 1.2) / gpu[2], 3)
+        memory_util = 1
+        if len(gpus) == 1:
+            memory_util = round((required_vram * 1.2) / gpus[0][2], 3)
 
         # Init new container
-        bt.logging.info(f"Loading {model} on gpu {gpu[0]} using {memory_util}% vram")
+        bt.logging.info(
+            f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]} using {memory_util}% vram"
+        )
         config: Dict[str, Any] = {
             "image": MANIFOLD_VERIFIER,
             "ports": {f"80/tcp": min_port},
@@ -176,7 +192,9 @@ def sync_output_checkers(
             "extra_hosts": {"host.docker.internal": "host-gateway"},
             "labels": {"model": str(model), "port": str(min_port)},
             "device_requests": [
-                DeviceRequest(device_ids=[str(gpu[0])], capabilities=[["gpu"]])
+                DeviceRequest(
+                    device_ids=[str(gpu[0]) for gpu in gpus], capabilities=[["gpu"]]
+                )
             ],
         }
         containers.append(client.containers.run(**config))  # type: ignore
