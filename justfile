@@ -17,6 +17,11 @@ up:
   docker compose -f docker-compose.testnet.yml build
   docker compose -f docker-compose.testnet.yml up -d
 
-build_verifier:
-  cd verifier && docker build -t manifoldlabs/sn4-verifier .
-  docker push manifoldlabs/sn4-verifier
+build_verifier tag='latest':
+  cd verifier && docker build -t manifoldlabs/sn4-verifier:{{tag}} .
+
+run_verifier model port gpu tag:
+  docker run --ports {{port}}:80 -e MODEL={{model}} -e GPU_MEMORY_UTIL=.9 --runtime=nvidia --ipc=host --gpus='"device={{gpu}}"' -d manifoldlabs/sn4-verifier:{{tag}}
+
+push_verifier: build_verifier
+  docker push manifoldlabs/sn4-verifier:latest
