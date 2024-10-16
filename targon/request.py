@@ -19,7 +19,7 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
     # Generate a random seed for reproducibility in sampling and text generation
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
-    temperature = random.random() * 1.5
+    temperature = random.random()
     max_tokens = random.randint(512, 1920)
 
     random_row_text = dataset.sample(n=1)["conversations"].iloc[0][0]["value"]
@@ -192,11 +192,11 @@ async def handle_inference(
 
 @fail_with_none("Failed to check tokens")
 async def check_tokens(
-    request, responses: List[Dict], uid, endpoint: Endpoints, port: int
+        request, responses: List[Dict], uid, endpoint: Endpoints, port: int, url='http://localhost'
 ) -> Optional[Dict]:
     try:
         result = post(
-            f"http://localhost:{port}/verify",
+            f"{url}:{port}/verify",
             headers={"Content-Type": "application/json"},
             json={
                 "model": request.get("model"),

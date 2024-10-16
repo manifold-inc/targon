@@ -19,7 +19,7 @@ if GPU_MEMORY_UTIL == 0:
     exit()
 # Constants.
 LOGPROB_LOG_THRESHOLD = 0.65
-LOGPROB_FAILURE_THRESHOLD = 0.85
+LOGPROB_FAILURE_THRESHOLD = 0.75
 TOP_LOGPROBS = 10
 TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
 print(MODEL_NAME, GPU_MEMORY_UTIL)
@@ -27,7 +27,7 @@ MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
     gpu_memory_utilization=GPU_MEMORY_UTIL,
-    tensor_parallel_size=TENSOR_PARALLEL
+    tensor_parallel_size=TENSOR_PARALLEL,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
 MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
@@ -130,7 +130,7 @@ def verify_powv(
     """
     input_sum = sum(input_tokens)
     if TENSOR_PARALLEL > 1:
-        return (True, '')
+        return (True, "")
 
     # Iterate through output sequence, checking powv values.
     output_sum = 0
@@ -201,6 +201,7 @@ def verify_logprobs_random(
         # The miner's output token should be in the logprobs...
         top_tokens = []
         if output.logprobs is None:
+            print("No log probs to check")
             continue
         for lp in output.logprobs:
             top_tokens += list(lp.keys())
@@ -249,6 +250,7 @@ def verify_logprobs(
         len(output.prompt_logprobs) - len(input_tokens) - 3,
         len(request.output_sequence) - 1,
     )
+    perfect_tokens = 0
     for idx in range(idxs):
         item = request.output_sequence[idx]
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
@@ -262,6 +264,10 @@ def verify_logprobs(
             1.0, abs(math.exp(expected_logprob) - math.exp(produced_logprob))
         )
 
+        # Prevents over fitting smaller models
+        if produced_logprob == 0:
+            perfect_tokens += 1
+
         # To accomodate architectural difference and such, we'll give a perfect score if >= 0.9
         if score >= 0.9:
             score = 1.0
@@ -269,12 +275,20 @@ def verify_logprobs(
         total_score += score
 
     average_score = total_score / idxs
-    if average_score < LOGPROB_FAILURE_THRESHOLD:
-        message = f"Low average logprob score: {average_score}"
-        return False, message
+    passes = average_score >= LOGPROB_FAILURE_THRESHOLD
+    perfect_avg = perfect_tokens / idxs
+    message = (
+        f"Successfully verified logprob for {len(request.output_sequence)} outputs with {average_score} and {perfect_avg}% perfect tokens"
+        if passes
+        else f"Low average logprob score: {average_score}"
+    )
+    if passes and perfect_avg >= (1 - min(request.request_params.temperature, 0.6)):
+        message = f"Overfitted response tokens. {perfect_avg}% perfect"
+        passes = False
+
     return (
-        True,
-        f"Successfully verified logprob for {len(request.output_sequence)} outputs with {average_score=}",
+        passes,
+        message,
     )
 
 
