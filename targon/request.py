@@ -1,3 +1,4 @@
+import numpy as np
 from os import urandom
 import time
 import traceback
@@ -76,6 +77,7 @@ async def handle_inference(
     stats = InferenceStats(
         time_to_first_token=0,
         time_for_all_tokens=0,
+        stream_quality=0,
         tps=0,
         total_time=0,
         tokens=[],
@@ -100,6 +102,7 @@ async def handle_inference(
         )
         start_token_time = 0
         start_send_message_time = time.time()
+        token_times = []
         try:
             match endpoint:
                 case Endpoints.CHAT:
@@ -135,6 +138,7 @@ async def handle_inference(
                                 "logprob": logprob,
                             }
                         )
+                        token_times.append(time.time())
                 case Endpoints.COMPLETION:
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
@@ -165,6 +169,7 @@ async def handle_inference(
                                 "logprob": logprob,
                             }
                         )
+                        token_times.append(time.time())
         except openai.APIConnectionError as e:
             bt.logging.trace(f"Miner {uid} failed request: {e}")
             stats.error = str(e)
@@ -182,7 +187,40 @@ async def handle_inference(
         stats.time_to_first_token = time_to_first_token
         stats.time_for_all_tokens = time_for_all_tokens
         stats.total_time = end_token_time - start_send_message_time
-        stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
+        stats_token_count = min(len(stats.tokens), request["max_tokens"])
+        stats.tps = stats_token_count / stats.total_time
+
+        # Calculate a "streaming quality" score - a good user experience in LLM apps
+        # typically consists of a good time to first token, fairly consistent times
+        # between each token, and of course overall TPS.  Stream quality here is for
+        # the former 2 aspects of good UX.
+
+        # Variation in actual TPS vs TPS calculated only after having received the first.
+        tps_from_first = min(len(stats.tokens), request["max_tokens"]) / time_for_all_tokens
+        tps_divergence = max(1.0, stats.tps / tps_from_first)
+
+        # Calculate a smoothness factor, not including first token.
+        token_deltas = [
+            token_times[idx+1] - token_times[idx]
+            for idx in range(len(token_times) - 1)
+        ]
+        std = np.std(token_deltas[1:])
+        mean = np.mean(token_deltas[1:])
+        smoothness = sum([
+            1 if mean - std <= value <= mean + std
+            else 1.0 - max(1.0, abs(value - mean) / std / 10.0)
+        ]) / stats_token_count
+
+        # Time to half of tokens.
+        half_time = np.median(token_times) - start_send_message_time
+        half_delay_ratio = half_time / stats.total_time
+
+        # Give zero score here if it's unlikely to have been streamed.
+        if stats_token_count >= 10 and (tps_divergence <= 0.5 or half_delay_ratio >= 0.90):
+            stats.stream_quality = 0.0
+        else:
+            stats.stream_quality = np.mean([tps_divergence, smoothness, half_delay_ratio])
+
         return uid, stats
     except Exception as e:
         bt.logging.error(f"{uid}: Error in forward for: {e}")

@@ -25,6 +25,7 @@ from typing import Any, List, Optional
 class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
+    stream_quality: float
     total_time: float
     tps: float
     tokens: List[Any]
