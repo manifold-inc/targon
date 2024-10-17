@@ -40,17 +40,15 @@ def get_weights(
     # All models, more models served = higher score. *then* it becomes a speed game.
     scores = {}
     for uid in miner_scores:
-        scores[uid] = []
-        for model in models:
-            scores[uid].append(0)
-            if model not in miner_models.get(uid, []):
+        scores[uid] = 0
+        for model in miner_models.get(uid, []):
+            if model not in models:
                 continue
             if miner_scores.get(uid) is None:
                 continue
             if miner_scores[uid].get(model) is None:
                 continue
-            scores[uid][-1] = safe_mean_score(miner_scores[uid][model][-15:])
-        scores[uid] = np.mean(scores[uid])
+            scores[uid] += safe_mean_score(miner_scores[uid][model][-15:])
 
     scores_list = list(scores.values())
     if len(scores_list) == 0:
