@@ -30,14 +30,14 @@ def get_miner_uids(
 
 
 @fail_with_none("Failed resyncing hotkeys")
-def resync_hotkeys(metagraph: "bt.metagraph", miner_tps: Dict):
+def resync_hotkeys(metagraph: "bt.metagraph", miner_scores: Dict):
     bt.logging.info("re-syncing hotkeys")
     # Zero out all hotkeys that have been replaced.
     for uid, hotkey in enumerate(metagraph.hotkeys):
-        if miner_tps.get(uid) is None:
-            miner_tps[uid] = {}
+        if miner_scores.get(uid) is None:
+            miner_scores[uid] = {}
         if hotkey != metagraph.hotkeys[uid]:
-            miner_tps[uid] = {}
+            miner_scores[uid] = {}
 
 
 def create_set_weights(version: int, netuid):

@@ -39,7 +39,7 @@ from targon import (
 
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
-    miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
+    miner_scores: Dict[int, Dict[str, List[Optional[float]]]]
     miner_models: Dict[int, List[str]]
     db: Optional[asyncpg.Connection]
     verification_ports: Dict[str, Dict[str, Any]]
@@ -75,7 +75,7 @@ class Validator(BaseNeuron):
 
         ## LOAD MINER SCORES CACHE
         miners = get_miner_uids(self.metagraph, self.uid, self.config.vpermit_tao_limit)
-        self.miner_tps = load_cache(
+        self.miner_scores = load_cache(
             self.config.cache_file, self.subtensor.block, miners
         )
 
@@ -152,7 +152,7 @@ class Validator(BaseNeuron):
             return
         if block % self.config.epoch_length:
             return
-        resync_hotkeys(self.metagraph, self.miner_tps)
+        resync_hotkeys(self.metagraph, self.miner_scores)
 
     def sync_output_checkers_on_interval(self, block):
         if not self.is_runing:
@@ -172,14 +172,14 @@ class Validator(BaseNeuron):
             self.metagraph,
             self.subtensor,
             get_weights(
-                self.miner_models, self.miner_tps, list(self.verification_ports.keys())
+                self.miner_models, self.miner_scores, list(self.verification_ports.keys())
             ),
         )
 
         # Only keep last 15 scores
-        for uid in self.miner_tps:
-            for model in self.miner_tps[uid]:
-                self.miner_tps[uid][model] = self.miner_tps[uid][model][-15:]
+        for uid in self.miner_scores:
+            for model in self.miner_scores[uid]:
+                self.miner_scores[uid][model] = self.miner_scores[uid][model][-15:]
         self.lock_halt = False
 
     def log_on_block(self, block):
@@ -209,7 +209,7 @@ class Validator(BaseNeuron):
 
         # Ensure everything is setup
         self.verification_ports = sync_output_checkers(self.client, self.get_models())
-        resync_hotkeys(self.metagraph, self.miner_tps)
+        resync_hotkeys(self.metagraph, self.miner_scores)
         self.send_models_to_miners_on_interval(0)
 
         self.is_runing = True
@@ -247,11 +247,11 @@ class Validator(BaseNeuron):
                     break
 
                 # Make sure tps array exists
-                if self.miner_tps[uid].get(model_name) is None:
-                    self.miner_tps[uid][model_name] = []
+                if self.miner_scores[uid].get(model_name) is None:
+                    self.miner_scores[uid][model_name] = []
 
                 if model_name not in self.miner_models.get(uid, []):
-                    self.miner_tps[uid][model_name].append(None)
+                    self.miner_scores[uid][model_name].append(None)
                     continue
                 miner_uids.append(uid)
 
@@ -353,17 +353,17 @@ class Validator(BaseNeuron):
             if not stat.verified and stat.error:
                 bt.logging.info(stat.error)
 
-            # UID is not in our miner tps list
-            if self.miner_tps.get(uid) is None:
-                self.miner_tps[uid] = {request["model"]: []}
+            # UID is not in our miner scores list
+            if self.miner_scores.get(uid) is None:
+                self.miner_scores[uid] = {request["model"]: []}
             # This uid doesnt have reccords of this model
-            if self.miner_tps[uid].get(request["model"]) is None:
-                self.miner_tps[uid][request["model"]] = []
+            if self.miner_scores[uid].get(request["model"]) is None:
+                self.miner_scores[uid][request["model"]] = []
 
             if stat.verified and stat.total_time != 0:
-                self.miner_tps[uid][request["model"]].append(stat.tps)
+                self.miner_scores[uid][request["model"]].append(stat.tps * stats.stream_quality)
                 continue
-            self.miner_tps[uid][request["model"]].append(None)
+            self.miner_scores[uid][request["model"]].append(None)
         return (stats, request, endpoint)
 
     @fail_with_none("Failed writing to cache file")
@@ -375,7 +375,7 @@ class Validator(BaseNeuron):
             bt.logging.info("Caching scores...")
             json.dump(
                 {
-                    "miner_tps": self.miner_tps,
+                    "miner_scores": self.miner_scores,
                     "block_saved": self.subtensor.block,
                     "version": spec_version,
                 },
