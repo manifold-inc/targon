@@ -192,11 +192,11 @@ less log bloat.
 Additionally:
 
 ```bash
---force-validator-permit [TRUE/FALSE]
+--no-force-validator-permit [TRUE/FALSE]
 
 ```
 
-is defaulted to true to force incoming requests to have a permit.
+is defaulted to false to force incoming requests to have a permit. Set this to true if you are having trouble getting requests from validators on the 'test' network.
 
 ## Running a Validator
 
