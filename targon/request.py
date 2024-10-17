@@ -195,9 +195,16 @@ async def handle_inference(
         # between each token, and of course overall TPS.  Stream quality here is for
         # the former 2 aspects of good UX.
 
-        # Variation in actual TPS vs TPS calculated only after having received the first.
-        tps_from_first = min(len(stats.tokens), request["max_tokens"]) / time_for_all_tokens
-        tps_divergence = max(1.0, stats.tps / tps_from_first)
+        # Variation in actual TPS vs TPS calculated only after having received the first few percentage.
+        tps_divergence_score = 1.0
+        if token_count > 60:
+            fifth_idx = math.ceil(token_count * 0.05)
+            last_95th_tps = int(token_count * 0.95) / (token_times[-1] - token_times[fifth_idx])
+            tps_divergence_score = max(1.0, stats.tps / last_95th_tps)
+
+        # We expect around up to 20% slowness for the first token, so we'll reward that ballpark.
+        if tps_divergence_score > 0.8:
+            tps_divergence_score = 1.0
 
         # Calculate a smoothness factor, not including first token.
         token_deltas = [
@@ -208,18 +215,14 @@ async def handle_inference(
         mean = np.mean(token_deltas[1:])
         smoothness = sum([
             1 if mean - std <= value <= mean + std
-            else 1.0 - max(1.0, abs(value - mean) / std / 10.0)
+            else 1.0 - max(1.5, abs(value - mean) / std / 10.0)
         ]) / stats_token_count
 
-        # Time to half of tokens.
-        half_time = np.median(token_times) - start_send_message_time
-        half_delay_ratio = half_time / stats.total_time
-
         # Give zero score here if it's unlikely to have been streamed.
-        if stats_token_count >= 10 and (tps_divergence <= 0.5 or half_delay_ratio >= 0.90):
+        if stats_token_count >= 25 and tps_divergence <= 0.25:
             stats.stream_quality = 0.0
         else:
-            stats.stream_quality = np.mean([tps_divergence, smoothness, half_delay_ratio])
+            stats.stream_quality = np.mean([tps_divergence, smoothness])
 
         return uid, stats
     except Exception as e:
