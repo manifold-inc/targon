@@ -266,14 +266,6 @@ def find_repeated_subsequences(token_list):
                 final_subsequences[subseq] = count
     return final_subsequences
 
-def find_subsequence_indices(search, corpus):
-    indices = []
-    search_length = len(search)
-    for i in range(len(corpus) - search_length + 1):
-        if corpus[i:i + search_length] == search:
-            indices.append(i)
-    return indices
-
 def verify_logprobs(
     request: VerificationRequest, input_text: str, input_tokens: List[int]
 ) -> Optional[Tuple[bool, str]]:
@@ -312,19 +304,22 @@ def verify_logprobs(
     )
     perfect_tokens = 0
     highest_logprobs = []
-    all_expected_tokens = []
     eos_expected = []
     eos_token_id = getattr(TOKENIZER, "eos_token_id", "-1")
+    output_tokens = [item.token_id for item in request.output_sequence]
     for idx in range(idxs):
         item = request.output_sequence[idx]
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob is not None
-        highest_logprobs.append(max(list(expected_logprob.values())))
-        all_expected_tokens.append(list(expected_logprob))
-        expected_logprob = expected_logprob.get(item.token_id)
+        highest_logprobs.append(max([lp.logprob for lp in expected_logprob.values()]))
         eos_logprob = expected_logprob.get(eos_token_id)
-        if eos_logprob is not None and eos_logprob == highest_logprobs[-1]:
-            eos_expected.append(eos_logprob)
+        expected_logprob = expected_logprob.get(item.token_id)
+        if eos_logprob is not None and eos_logprob.logprob == highest_logprobs[-1]:
+            print(f"Expected EOS: {eos_logprob.logprob} vs {highest_logprobs[-1]}")
+            print(output.prompt_logprobs[idx + len(input_tokens)])
+            print(TOKENIZER.decode(output_tokens[:idx]))
+            print("")
+            eos_expected.append(eos_logprob.logprob)
         if expected_logprob is None:
             continue
         expected_logprob = expected_logprob.logprob
@@ -351,11 +346,10 @@ def verify_logprobs(
             zscore = (eos_logprob - mean_top_logprob) / top_logprob_std
             if zscore >= 5:
                 return False, f"EOS token skipped [{eos_logprob=} {zscore=}]"
-    if len(eos_expected) >= 3:
+    if len(eos_expected) >= 7:
         return False, f"EOS token expected {len(eos_expected)} times before end of stream"
 
     # Check for token repetition.
-    output_tokens = [item.token_id for item in request.output_sequence]
     repeats = find_repeated_subsequences(output_tokens)
     for subseq, count in repeats.items():
         repeated_text = TOKENIZER.decode(subseq)
@@ -366,21 +360,8 @@ def verify_logprobs(
 
         # How much of the total output does the repeated text account for?
         ratio = (len(subseq) * count) / len(output_tokens)
-
         if ratio >= 0.75:
             return False, f"Found phrase repeated {count} times accounting for {ratio} of overall output: {repeated_text}"
-
-        # Does the logprob consistently fail after repeated text?
-        post_repetition_fail = 0
-        for index in find_subsequence_indices(subseq, output_tokens):
-            if index + len(subseq) < len(output_tokens):
-                expected = all_expected_tokens[index + len(subseq) + len(input_tokens)]
-                produced = output_tokens[index + len(subseq)]
-                if produced not in expected:
-                    post_repetition_fail += 1
-        fail_ratio = post_repetition_fail / count
-        if fail_ratio >= 0.75:
-            return False, f"Token following repeated text consistently fails logprobs with {fail_ratio=}: {repeated_text}"
 
     average_score = total_score / idxs
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
@@ -398,7 +379,6 @@ def verify_logprobs(
         passes,
         message,
     )
-
 
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
