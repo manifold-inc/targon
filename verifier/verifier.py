@@ -1,3 +1,4 @@
+from collections import defaultdict
 import random
 import math
 import os
@@ -214,6 +215,64 @@ def verify_logprobs_random(
         f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}",
     )
 
+def find_repeated_subsequences(token_list):
+    repeated_subsequences = {}
+    subseq_positions = defaultdict(list)
+    n = len(token_list)
+    for length in range(15, n + 1):
+        subseq_counts = defaultdict(int)
+        positions = defaultdict(list)
+        for i in range(n - length + 1):
+            subseq = tuple(token_list[i:i + length])
+            subseq_counts[subseq] += 1
+            positions[subseq].append(i)
+        for subseq, count in subseq_counts.items():
+            if count > 1:
+                repeated_subsequences[subseq] = count
+                subseq_positions[subseq] = positions[subseq]
+    counts_to_subseqs = defaultdict(list)
+    for subseq, count in repeated_subsequences.items():
+        counts_to_subseqs[count].append(subseq)
+    final_subsequences = {}
+    for count, subseqs in counts_to_subseqs.items():
+        subseqs.sort(key=len, reverse=True)
+        included_subseqs = []
+        for i, subseq in enumerate(subseqs):
+            is_subsumed = False
+            for larger_subseq in included_subseqs:
+                if len(subseq) >= len(larger_subseq):
+                    continue
+                larger_positions = subseq_positions[larger_subseq]
+                subseq_positions_current = subseq_positions[subseq]
+                larger_positions_set = set(larger_positions)
+                mapping_exists = True
+                offset = len(larger_subseq) - len(subseq)
+                for pos in subseq_positions_current:
+                    found = False
+                    for delta in range(offset + 1):
+                        if (pos - delta) in larger_positions_set:
+                            idx = pos - delta
+                            if token_list[idx:idx + len(larger_subseq)][delta:delta + len(subseq)] == list(subseq):
+                                found = True
+                                break
+                    if not found:
+                        mapping_exists = False
+                        break
+                if mapping_exists:
+                    is_subsumed = True
+                    break
+            if not is_subsumed:
+                included_subseqs.append(subseq)
+                final_subsequences[subseq] = count
+    return final_subsequences
+
+def find_subsequence_indices(search, corpus):
+    indices = []
+    search_length = len(search)
+    for i in range(len(corpus) - search_length + 1):
+        if corpus[i:i + search_length] == search:
+            indices.append(i)
+    return indices
 
 def verify_logprobs(
     request: VerificationRequest, input_text: str, input_tokens: List[int]
@@ -253,6 +312,7 @@ def verify_logprobs(
     )
     perfect_tokens = 0
     highest_logprobs = []
+    all_expected_tokens = []
     eos_expected = []
     eos_token_id = getattr(TOKENIZER, "eos_token_id", "-1")
     for idx in range(idxs):
@@ -260,6 +320,7 @@ def verify_logprobs(
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob is not None
         highest_logprobs.append(max(list(expected_logprob.values())))
+        all_expected_tokens.append(list(expected_logprob))
         expected_logprob = expected_logprob.get(item.token_id)
         eos_logprob = expected_logprob.get(eos_token_id)
         if eos_logprob is not None and eos_logprob == highest_logprobs[-1]:
@@ -291,7 +352,35 @@ def verify_logprobs(
             if zscore >= 5:
                 return False, f"EOS token skipped [{eos_logprob=} {zscore=}]"
     if len(eos_expected) >= 3:
-        return False f"EOS token expected {len(eos_expected)} times before end of stream"
+        return False, f"EOS token expected {len(eos_expected)} times before end of stream"
+
+    # Check for token repetition.
+    output_tokens = [item.token_id for item in request.output_sequence]
+    repeats = find_repeated_subsequences(output_tokens)
+    for subseq, count in repeats.items():
+        repeated_text = TOKENIZER.decode(subseq)
+
+        # How many times was this subsequence repeated?
+        if count >= 10:
+            return False, f"Found phrase repeated {count} times: {repeated_text}"
+
+        # How much of the total output does the repeated text account for?
+        ratio = (len(subseq) * count) / len(output_tokens)
+
+        if ratio >= 0.75:
+            return False, f"Found phrase repeated {count} times accounting for {ratio} of overall output: {repeated_text}"
+
+        # Does the logprob consistently fail after repeated text?
+        post_repetition_fail = 0
+        for index in find_subsequence_indices(subseq, output_tokens):
+            if index + len(subseq) < len(output_tokens):
+                expected = all_expected_tokens[index + len(subseq) + len(input_tokens)]
+                produced = output_tokens[index + len(subseq)]
+                if produced not in expected:
+                    post_repetition_fail += 1
+        fail_ratio = post_repetition_fail / count
+        if fail_ratio >= 0.75:
+            return False, f"Token following repeated text consistently fails logprobs with {fail_ratio=}: {repeated_text}"
 
     average_score = total_score / idxs
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
