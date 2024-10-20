@@ -3,6 +3,7 @@ import math
 import os
 import asyncio
 import traceback
+import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
 from enum import Enum
@@ -251,11 +252,18 @@ def verify_logprobs(
         len(request.output_sequence) - 1,
     )
     perfect_tokens = 0
+    highest_logprobs = []
+    eos_expected = []
+    eos_token_id = getattr(TOKENIZER, "eos_token_id", "-1")
     for idx in range(idxs):
         item = request.output_sequence[idx]
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob is not None
+        highest_logprobs.append(max(list(expected_logprob.values())))
         expected_logprob = expected_logprob.get(item.token_id)
+        eos_logprob = expected_logprob.get(eos_token_id)
+        if eos_logprob is not None and eos_logprob == highest_logprobs[-1]:
+            eos_expected.append(eos_logprob)
         if expected_logprob is None:
             continue
         expected_logprob = expected_logprob.logprob
@@ -273,6 +281,14 @@ def verify_logprobs(
             score = 1.0
 
         total_score += score
+
+    # Check for skipped EOS tokens.
+    mean_top_logprob = np.mean(highest_logprobs)
+    top_logprob_std = np.std(highest_logprobs)
+    for eos_logprob in eos_expected and top_logprob_std != 0:
+        zscore = (eos_logprob - mean_top_logprob) / top_logprob_std
+        if zscore >= 5:
+            return False, f"EOS token skipped [{eos_logprob=} {zscore=}]"
 
     average_score = total_score / idxs
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
