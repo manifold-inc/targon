@@ -339,8 +339,8 @@ def verify_logprobs(
     top_logprob_std = np.std(highest_logprobs)
     if top_logprob_std:
         for eos_logprob in eos_expected:
-            zscore = (eos_logprob - mean_top_logprob) / top_logprob_std
-            if zscore >= 5:
+            zscore = (abs(eos_logprob) - (mean_top_logprob)) / top_logprob_std
+            if zscore >= 3:
                 return False, f"EOS token skipped [{eos_logprob=} {zscore=}]"
     if len(eos_expected) >= 7:
         return False, f"EOS token expected {len(eos_expected)} times before end of stream"
