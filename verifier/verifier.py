@@ -315,10 +315,6 @@ def verify_logprobs(
         eos_logprob = expected_logprob.get(eos_token_id)
         expected_logprob = expected_logprob.get(item.token_id)
         if eos_logprob is not None and eos_logprob.logprob == highest_logprobs[-1]:
-            print(f"Expected EOS: {eos_logprob.logprob} vs {highest_logprobs[-1]}")
-            print(output.prompt_logprobs[idx + len(input_tokens)])
-            print(TOKENIZER.decode(output_tokens[:idx]))
-            print("")
             eos_expected.append(eos_logprob.logprob)
         if expected_logprob is None:
             continue
