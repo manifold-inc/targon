@@ -289,6 +289,8 @@ def verify_logprobs(
         zscore = (eos_logprob - mean_top_logprob) / top_logprob_std
         if zscore >= 5:
             return False, f"EOS token skipped [{eos_logprob=} {zscore=}]"
+    if len(eos_expected) >= 3:
+        return False f"EOS token expected {len(eos_expected)} times before end of stream"
 
     average_score = total_score / idxs
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
