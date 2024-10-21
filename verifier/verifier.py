@@ -291,7 +291,7 @@ def verify_logprobs(
         message,
     )
 
-def count_repeating_sequences(token_ids: List[int], min_repeat_length: int=5) -> int:
+def count_repeating_sequences(token_ids: List[int], min_repeat_length: int = 9) -> int:
     """
     Counts the number of distinct repeating sequences in a list of token IDs.
 
@@ -299,7 +299,7 @@ def count_repeating_sequences(token_ids: List[int], min_repeat_length: int=5) ->
 
     Args:
         token_ids (List[int]): A list of integer token IDs to analyze.
-        min_repeat_length (int, optional): The minimum length of subsequences to consider for repetition. Defaults to 5.
+        min_repeat_length (int, optional): The minimum length of subsequences to consider for repetition. Defaults to 9.
 
     Returns:
         int: The count of distinct repeating sequences found in the input list.
@@ -307,7 +307,6 @@ def count_repeating_sequences(token_ids: List[int], min_repeat_length: int=5) ->
     repeating_sequences = {}
     sequence_length = len(token_ids)
 
-    # Iterate through the sequence to find all subsequences of length >= 5
     for length in range(min_repeat_length, sequence_length + 1):
         i = 0
         while i <= sequence_length - length:
@@ -316,27 +315,21 @@ def count_repeating_sequences(token_ids: List[int], min_repeat_length: int=5) ->
             for j in range(i + length, sequence_length - length + 1):
                 if tuple(token_ids[j : j + length]) == subsequence:
                     if subsequence not in repeating_sequences:
-                        repeating_sequences[subsequence] = (
-                            2  # Initial occurrence + 1 repeat
-                        )
+                        repeating_sequences[subsequence] = 2
                     else:
                         repeating_sequences[subsequence] += 1
                     found = True
-                    break  # Stop after finding the first repeat
-            if found:
-                # Skip the entire subsequence after a match is found
-                i += length
-            else:
-                i += 1
+                    break
+            i += length if found else 1
 
-    # Filter out any subsequences that are extended versions of shorter ones
-    filtered_sequences = {}
-    for seq, count in repeating_sequences.items():
-        if not any(seq[:i] in repeating_sequences for i in range(1, len(seq))):
-            filtered_sequences[seq] = count
-            
+    # Filter out any subsequences that are extensions of shorter repeating sequences
+    filtered_sequences = {
+        seq: count
+        for seq, count in repeating_sequences.items()
+        if all(seq[:i] not in repeating_sequences for i in range(1, len(seq)))
+    }
     # Return the count of distinct repeating sequences
-    return len(filtered_sequences)  
+    return len(filtered_sequences)
 
 
 @app.post("/verify")
@@ -384,18 +377,21 @@ async def verify(request: VerificationRequest) -> Dict:
         return_value = {
             "verified": False,
             "powv_pass": False,
-            "powv_message": "Powv not checked",
+            "powv_message": None,
             "logprob_fast_pass": False,
             "logprob_fast_message": None,
-            "repeated_tokens": False,
+            "repeat_check_pass": False,
+            "repeat_check_message": None,
         }
         # Check for repeating sequences of token ids.
         max_repeats = 0
-        repeating_token_sequences = count_repeating_sequences(input_tokens)
+        repeating_token_sequences = count_repeating_sequences(input_tokens) # set min repeat length if you wish
         if repeating_token_sequences > max_repeats:
-            return_value["repeated_tokens"] = True
+            return_value["repeat_check_message"] = f"Failed Repeating sequence check: {repeating_token_sequences} sequences repeated."
             return_value.update({"verified": False})
             return return_value
+        
+        return_value["repeat_check_pass"] = True
         
         # Check the weight values via powv.
         result, message = verify_powv(request, input_tokens)
