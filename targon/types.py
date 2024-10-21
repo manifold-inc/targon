@@ -30,6 +30,7 @@ class InferenceStats(BaseModel):
     tokens: List[Any]
     verified: bool
     error: Optional[str] = None
+    likely_streamed: bool
 
 
 class Endpoints(Enum):

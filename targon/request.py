@@ -1,3 +1,4 @@
+import math
 from os import urandom
 import time
 import traceback
@@ -80,6 +81,7 @@ async def handle_inference(
         total_time=0,
         tokens=[],
         verified=False,
+        likely_streamed = True,
     )
     try:
         axon_info = metagraph.axons[uid]
@@ -100,6 +102,7 @@ async def handle_inference(
         )
         start_token_time = 0
         start_send_message_time = time.time()
+        token_times = []
         try:
             match endpoint:
                 case Endpoints.CHAT:
@@ -135,6 +138,7 @@ async def handle_inference(
                                 "logprob": logprob,
                             }
                         )
+                        token_times.append(time.time())
                 case Endpoints.COMPLETION:
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
@@ -165,6 +169,7 @@ async def handle_inference(
                                 "logprob": logprob,
                             }
                         )
+                        token_times.append(time.time())
         except openai.APIConnectionError as e:
             bt.logging.trace(f"Miner {uid} failed request: {e}")
             stats.error = str(e)
@@ -183,6 +188,14 @@ async def handle_inference(
         stats.time_for_all_tokens = time_for_all_tokens
         stats.total_time = end_token_time - start_send_message_time
         stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
+
+        # Detect when response was fully generated, then streamed, which leads to
+        # poor user experience (slow time to N tokens vs total time).
+        token_count = len(stats.tokens)
+        if token_count > 60:
+            time_to_5th_percent = token_times[math.ceil(token_count * 0.05)] - start_send_message_time
+            if time_to_5th_percent / stats.total_time >= 0.85:
+                stats.likely_streamed = False
         return uid, stats
     except Exception as e:
         bt.logging.error(f"{uid}: Error in forward for: {e}")
