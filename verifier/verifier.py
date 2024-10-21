@@ -216,54 +216,66 @@ def verify_logprobs_random(
     )
 
 def find_repeated_subsequences(token_list):
-    repeated_subsequences = {}
-    subseq_positions = defaultdict(list)
     n = len(token_list)
-    for length in range(15, n + 1):
-        subseq_counts = defaultdict(int)
-        positions = defaultdict(list)
-        for i in range(n - length + 1):
-            subseq = tuple(token_list[i:i + length])
-            subseq_counts[subseq] += 1
-            positions[subseq].append(i)
-        for subseq, count in subseq_counts.items():
-            if count > 1:
-                repeated_subsequences[subseq] = count
-                subseq_positions[subseq] = positions[subseq]
-    counts_to_subseqs = defaultdict(list)
-    for subseq, count in repeated_subsequences.items():
-        counts_to_subseqs[count].append(subseq)
+
+    # Squeeze token into int list in range [0, (unique token count)]
+    token_to_int = {}
+    int_token_list = []
+    current_int = 0
+    for token in token_list:
+        if token not in token_to_int:
+            token_to_int[token] = current_int
+            current_int += 1
+        int_token_list.append(token_to_int[token])
+
+    # Generate suffix array.
+    suffixes = [(int_token_list[i:], i) for i in range(n)]
+    suffixes.sort()  # O(n log n)
+    SA = [suffix[1] for suffix in suffixes]
+
+    # Discover longest common prefixes.
+    rank = [0]*n
+    for i in range(n):
+        rank[SA[i]] = i
+    LCP = [0]*(n-1)
+    h = 0
+    for i in range(n):
+        if rank[i] > 0:
+            j = SA[rank[i]-1]
+            while i + h < n and j + h < n and int_token_list[i + h] == int_token_list[j + h]:
+                h += 1
+            LCP[rank[i]-1] = h
+            if h > 0:
+                h -= 1
+
+    # Find repeats.
+    repeats = defaultdict(list)
+    stack = []
+    for i in range(len(LCP)):
+        lcp_length = LCP[i]
+        if lcp_length >= 15:
+            positions = [SA[i], SA[i+1]]
+            j = i+1
+            min_lcp = lcp_length
+            while j < len(LCP) and LCP[j] >= 15:
+                min_lcp = min(min_lcp, LCP[j])
+                positions.append(SA[j+1])
+                j += 1
+            substr = tuple(token_list[SA[i]:SA[i]+min_lcp])
+            repeats[substr].extend(positions)
+            i = j
+
+    # De-dupe.
     final_subsequences = {}
-    for count, subseqs in counts_to_subseqs.items():
-        subseqs.sort(key=len, reverse=True)
-        included_subseqs = []
-        for i, subseq in enumerate(subseqs):
-            is_subsumed = False
-            for larger_subseq in included_subseqs:
-                if len(subseq) >= len(larger_subseq):
-                    continue
-                larger_positions = subseq_positions[larger_subseq]
-                subseq_positions_current = subseq_positions[subseq]
-                larger_positions_set = set(larger_positions)
-                mapping_exists = True
-                offset = len(larger_subseq) - len(subseq)
-                for pos in subseq_positions_current:
-                    found = False
-                    for delta in range(offset + 1):
-                        if (pos - delta) in larger_positions_set:
-                            idx = pos - delta
-                            if token_list[idx:idx + len(larger_subseq)][delta:delta + len(subseq)] == list(subseq):
-                                found = True
-                                break
-                    if not found:
-                        mapping_exists = False
-                        break
-                if mapping_exists:
-                    is_subsumed = True
-                    break
-            if not is_subsumed:
-                included_subseqs.append(subseq)
-                final_subsequences[subseq] = count
+    for substr, positions in repeats.items():
+        unique_positions = sorted(set(positions))
+        substr_length = len(substr)
+        valid_positions = []
+        for pos in unique_positions:
+            if pos + substr_length <= n:
+                valid_positions.append(pos)
+        if len(valid_positions) > 1:
+            final_subsequences[substr] = len(valid_positions)
     return final_subsequences
 
 def verify_logprobs(
