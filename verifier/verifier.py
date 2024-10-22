@@ -12,11 +12,11 @@ from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
 
 # Load the model.
-MODEL_NAME = os.getenv("MODEL", None)
+MODEL_NAME = os.getenv("MODEL", "NousResearch/Meta-Llama-3.1-8B-Instruct")
 if MODEL_NAME is None:
     exit()
 
-GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 0))
+GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 0.85))
 if GPU_MEMORY_UTIL == 0:
     exit()
 # Constants.
@@ -24,12 +24,12 @@ LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.75
 TOP_LOGPROBS = 10
 TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
-print(MODEL_NAME, GPU_MEMORY_UTIL)
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
     gpu_memory_utilization=GPU_MEMORY_UTIL,
     tensor_parallel_size=TENSOR_PARALLEL,
+    max_model_len=1024, #2048,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
 MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
@@ -173,15 +173,13 @@ def verify_logprobs_random(
     """
     Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
     """
+    indices = list(range(1, len(request.output_sequence) - 1))
     indices_to_check = list(
         sorted(
             [
                 0,  # always check first token
                 len(request.output_sequence) - 1,  # always check last token
-                random.choice(
-                    list(range(1, len(request.output_sequence) - 1))
-                ),  # random offset
-            ]
+            ] + random.sample(indices, min(len(indices), 3))
         )
     )
 
@@ -292,7 +290,7 @@ def verify_logprobs(
         seed=request.request_params.seed,
         max_tokens=1,
         logprobs=1,
-        prompt_logprobs=5,
+        prompt_logprobs=3,
     )
 
     # Generate output for a single token, which will return input logprobs based on prompt_logprobs=1
@@ -330,6 +328,9 @@ def verify_logprobs(
             eos_expected.append(eos_logprob.logprob)
         if expected_logprob is None:
             continue
+        rank = expected_logprob.rank
+        if rank >= 100:
+            return False, f"Found extraordinarily improbable token '{TOKENIZER.decode([item.token_id])}' at index {idx}: {rank=}"
         expected_logprob = expected_logprob.logprob
         produced_logprob = item.logprob
         score = 1.0 - min(
@@ -359,23 +360,9 @@ def verify_logprobs(
     if len(eos_expected) >= 7:
         return False, f"EOS token expected {len(eos_expected)} times before end of stream"
 
-    # Check for token repetition.
-    repeats = find_repeated_subsequences(output_tokens)
-    for subseq, count in repeats.items():
-        repeated_text = TOKENIZER.decode(subseq)
-
-        # How many times was this subsequence repeated?
-        if count >= 10:
-            return False, f"Found phrase repeated {count} times: {repeated_text}"
-
-        # How much of the total output does the repeated text account for?
-        ratio = (len(subseq) * count) / len(output_tokens)
-        if ratio >= 0.75:
-            return False, f"Found phrase repeated {count} times accounting for {ratio} of overall output: {repeated_text}"
-
-    average_score = total_score / idxs
+    average_score = round(total_score / idxs, 5)
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
-    perfect_avg = perfect_tokens / idxs
+    perfect_avg = round(perfect_tokens / idxs, 5)
     message = (
         f"Successfully verified logprob for {len(request.output_sequence)} outputs with {average_score} and {perfect_avg}% perfect tokens"
         if passes
@@ -389,6 +376,20 @@ def verify_logprobs(
         passes,
         message,
     )
+
+def verify_repetition(output_tokens):
+    for subseq, count in find_repeated_subsequences(output_tokens).items():
+        repeated_text = TOKENIZER.decode(subseq)
+
+        # How many times was this subsequence repeated?
+        if count >= 10:
+            return False, f"Found phrase repeated {count} times: {repeated_text}"
+
+        # How much of the total output does the repeated text account for?
+        ratio = (len(subseq) * count) / len(output_tokens)
+        if ratio >= 0.75:
+            return False, f"Found phrase repeated {count} times accounting for {ratio} of overall output: {repeated_text}"
+    return True, "Reasonable token repetition."
 
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
@@ -432,18 +433,11 @@ async def verify(request: VerificationRequest) -> Dict:
 
     # Verify!
     async with LOCK:
-        # Check the weight values via powv.
-        result, message = verify_powv(request, input_tokens)
         return_value = {
             "verified": False,
-            "powv_pass": result,
-            "powv_message": message,
             "logprob_fast_pass": False,
             "logprob_fast_message": None,
         }
-        if not result:
-            return_value.update({"verified": False})
-            return return_value
 
         # Logprob checks.
         res = verify_logprobs(request, str(input_text), input_tokens)
@@ -459,6 +453,19 @@ async def verify(request: VerificationRequest) -> Dict:
         if not result:
             return return_value
 
+        # Token repetition check.
+        output_tokens = [item.token_id for item in request.output_sequence]
+        result, message = verify_repetition(output_tokens)
+        return_value.update(
+            {
+                "repetition_pass": result,
+                "repetition_message": message,
+            }
+        )
+        if not result:
+            return return_value
+
+        # Random logprob check.
         if request.request_params.temperature > 0.75:
             return_value.update({"verified": True})
             return return_value
