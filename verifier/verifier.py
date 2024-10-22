@@ -12,11 +12,11 @@ from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
 
 # Load the model.
-MODEL_NAME = os.getenv("MODEL", "NousResearch/Meta-Llama-3.1-8B-Instruct")
+MODEL_NAME = os.getenv("MODEL")
 if MODEL_NAME is None:
     exit()
 
-GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 0.85))
+GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL"))
 if GPU_MEMORY_UTIL == 0:
     exit()
 # Constants.
@@ -29,7 +29,6 @@ MODEL_WRAPPER = LLM(
     enforce_eager=True,
     gpu_memory_utilization=GPU_MEMORY_UTIL,
     tensor_parallel_size=TENSOR_PARALLEL,
-    max_model_len=1024, #2048,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
 MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
