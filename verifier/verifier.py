@@ -12,11 +12,11 @@ from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
 
 # Load the model.
-MODEL_NAME = os.getenv("MODEL")
+MODEL_NAME = os.getenv("MODEL", None)
 if MODEL_NAME is None:
     exit()
 
-GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL"))
+GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 0))
 if GPU_MEMORY_UTIL == 0:
     exit()
 # Constants.
