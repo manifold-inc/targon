@@ -162,7 +162,7 @@ def verify_logprobs_random(
         for lp in output.logprobs:
             top_tokens += list(lp.keys())
         if request.output_sequence[idx].token_id not in top_tokens:
-            message = f"Token output at index {idx} [{TOKENIZER.decode([request.output_sequence[idx]])}] not found in top {top_logprobs} logprobs: {[TOKENIZER.decode([token]) for token in top_tokens]}"
+            message = f"Token output at index {idx} [{TOKENIZER.decode([request.output_sequence[idx].token_id])}] not found in top {top_logprobs} logprobs: {[TOKENIZER.decode([token]) for token in top_tokens]}"
             return False, message
     return (
         True,
