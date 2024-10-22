@@ -22,7 +22,6 @@ if GPU_MEMORY_UTIL == 0:
 # Constants.
 LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.75
-TOP_LOGPROBS = 10
 TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
@@ -242,12 +241,13 @@ def verify_logprobs(
     """
 
     # Set up sampling parameters for the "fast" check, which just compares input logprobs against output logprobs.
+    top_logprobs = int(request.request_params.temperature * 10) + 3
     sampling_params = SamplingParams(
         temperature=request.request_params.temperature,
         seed=request.request_params.seed,
         max_tokens=1,
-        logprobs=1,
-        prompt_logprobs=5,
+        logprobs=top_logprobs,
+        prompt_logprobs=top_logprobs,
     )
 
     # Generate output for a single token, which will return input logprobs based on prompt_logprobs=1
@@ -293,6 +293,8 @@ def verify_logprobs(
             return False, f"Found extraordinarily improbable token '{TOKENIZER.decode([item.token_id])}' at index {idx}: {rank=}"
         elif rank >= 25:
             really_low_prob += 1
+        elif rank > top_logprobs:
+            continue
         if rank != 1:
             not_first += 1
         expected_logprob = expected_logprob.logprob
@@ -320,6 +322,14 @@ def verify_logprobs(
     if ratio >= 0.5:
         return False, f"{not_first} of {len(output_tokens)} [{ratio=}] tokens were not rank 1."
 
+    # Check if miner prematurely stopped generating, meaning the single output token generated
+    # from the "throwaway" above was NOT an EOS/EOT token.
+    if eos_token_id > 0 or eot_token_id > 0:
+        if len(output_tokens) < request.request_params.max_tokens:
+            last_token_probs = output.outputs[0].logprobs[0]
+            if eos_token_id not in last_token_probs and eot_token_id not in last_token_probs:
+                return False, "Premature end of generation, EOS/EOT unlikely after last token."
+    
     # Calculate average score.
     average_score = round(total_score / idxs, 5)
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
