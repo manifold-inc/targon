@@ -123,49 +123,6 @@ async def generate_question(req: GenerateRequest):
         return {"text": None}
 
 
-def verify_powv(
-    request: VerificationRequest, input_tokens: List[int]
-) -> Tuple[bool, str]:
-    """
-    Check the returned `powv` values against the ground truth.
-    """
-    input_sum = sum(input_tokens)
-    if TENSOR_PARALLEL > 1:
-        return (True, "")
-
-    # Iterate through output sequence, checking powv values.
-    output_sum = 0
-    for idx in range(len(request.output_sequence) - 1):
-        item = request.output_sequence[idx]
-        powv = 0
-        token_sum = input_sum + output_sum
-        param_index = token_sum % MODEL_NUM_PARAMS
-        for k, param in enumerate(MODEL.parameters()):
-            if k != param_index:
-                continue
-            if param.dim() == 1:
-                weights = param.tolist()
-            else:
-                tensor_index = output_sum % param.size()[0]
-                weights = param[tensor_index].tolist()
-            if len(weights) == 0:
-                param_index += 1
-                continue
-            weight_index = input_sum % len(weights)
-            powv = math.floor(weights[weight_index] * token_sum)
-            if powv != item.powv:
-                error_msg = (
-                    f"Failed powv check at output index {idx}: {powv} vs {item.powv}"
-                )
-                return False, error_msg
-            output_sum += item.token_id
-
-    return (
-        True,
-        f"Successfully verified powv for {len(request.output_sequence)} outputs",
-    )
-
-
 def verify_logprobs_random(
     request: VerificationRequest, input_text: str
 ) -> Tuple[bool, str]:
@@ -183,11 +140,12 @@ def verify_logprobs_random(
     )
 
     # Generate a single token at each index, comparing logprobs.
+    top_logprobs = int(request.request_params.temperature * 10) + 3
     sampling_params = SamplingParams(
         temperature=request.request_params.temperature,
         seed=request.request_params.seed,
         max_tokens=1,
-        logprobs=TOP_LOGPROBS,
+        logprobs=top_logprobs,
     )
     for idx in indices_to_check:
         full_text = input_text + "".join(
@@ -205,7 +163,7 @@ def verify_logprobs_random(
         for lp in output.logprobs:
             top_tokens += list(lp.keys())
         if request.output_sequence[idx].token_id not in top_tokens:
-            message = f"Token output at index {idx} [{request.output_sequence[idx]}] not found in top {TOP_LOGPROBS} top logprobs: {top_tokens}"
+            message = f"Token output at index {idx} [{TOKENIZER.decode([request.output_sequence[idx]])}] not found in top {top_logprobs} logprobs: {[TOKENIZER.decode([token]) for token in top_tokens]}"
             return False, message
     return (
         True,
@@ -289,7 +247,7 @@ def verify_logprobs(
         seed=request.request_params.seed,
         max_tokens=1,
         logprobs=1,
-        prompt_logprobs=3,
+        prompt_logprobs=5,
     )
 
     # Generate output for a single token, which will return input logprobs based on prompt_logprobs=1
@@ -312,24 +270,31 @@ def verify_logprobs(
         len(request.output_sequence) - 1,
     )
     perfect_tokens = 0
-    highest_logprobs = []
-    eos_expected = []
-    eos_token_id = getattr(TOKENIZER, "eos_token_id", "-1")
+    eos_token_id = getattr(TOKENIZER, "eos_token_id", -1)
+    eot_token_id = TOKENIZER.get_vocab().get("<|eot_id|>", -1)
     output_tokens = [item.token_id for item in request.output_sequence]
+    really_low_prob = 0
+    not_first = 0
     for idx in range(idxs):
         item = request.output_sequence[idx]
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob is not None
-        highest_logprobs.append(max([lp.logprob for lp in expected_logprob.values()]))
         eos_logprob = expected_logprob.get(eos_token_id)
+        eot_logprob = expected_logprob.get(eot_token_id)
+        if not eos_logprob and eot_logprob or (eos_logprob and eot_logprob and eot_logprob.rank < eos_logprob.rank):
+            eos_logprob = eot_logprob
         expected_logprob = expected_logprob.get(item.token_id)
-        if eos_logprob is not None and eos_logprob.logprob == highest_logprobs[-1]:
-            eos_expected.append(eos_logprob.logprob)
+        if eos_logprob and (not expected_logprob or eos_logprob.rank < expected_logprob.rank):
+            return False, f"Expected EOS/EOT token at index {idx}"
         if expected_logprob is None:
             continue
         rank = expected_logprob.rank
-        if rank >= 100:
+        if rank >= 75:
             return False, f"Found extraordinarily improbable token '{TOKENIZER.decode([item.token_id])}' at index {idx}: {rank=}"
+        elif rank >= 25:
+            really_low_prob += 1
+        if rank != 1:
+            not_first += 1
         expected_logprob = expected_logprob.logprob
         produced_logprob = item.logprob
         score = 1.0 - min(
@@ -344,21 +309,18 @@ def verify_logprobs(
         if score >= 0.9:
             score = 1.0
 
+        # Logprobs rarely match well for high temps so we can use rank instead.
+        if rank == 1 and request.request_params.temperature >= 0.9 and produced_logprob != 0:
+            score = 1.0
+
         total_score += score
 
-    # Check for skipped EOS tokens.
-    mean_top_logprob = np.mean(highest_logprobs)
-    top_logprob_std = np.std(highest_logprobs)
-    if top_logprob_std:
-        for eos_logprob in eos_expected:
-            if eos_logprob < mean_top_logprob:
-                continue
-            zscore = (eos_logprob - mean_top_logprob) / top_logprob_std
-            if zscore >= 3:
-                return False, f"EOS token skipped [{eos_logprob=} {zscore=}]"
-    if len(eos_expected) >= 7:
-        return False, f"EOS token expected {len(eos_expected)} times before end of stream"
+    # Check if miner produced non-top ranking tokens more than top-ranking tokens.
+    ratio = not_first / len(output_tokens)
+    if ratio >= 0.5:
+        return False, f"{not_first} of {len(output_tokens)} [{ratio=}] tokens were not rank 1."
 
+    # Calculate average score.
     average_score = round(total_score / idxs, 5)
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
     perfect_avg = round(perfect_tokens / idxs, 5)
@@ -369,6 +331,9 @@ def verify_logprobs(
     )
     if passes and perfect_avg >= (1 - min(request.request_params.temperature, 0.6)):
         message = f"Overfitted response tokens. {perfect_avg}% perfect"
+        passes = False
+    if really_low_prob >= 5:
+        message = f"Found {really_low_prob} highly improbable tokens."
         passes = False
 
     return (
