@@ -127,14 +127,10 @@ async def handle_inference(
                         if choiceprobs is not None:
                             if choiceprobs.content:
                                 logprob = choiceprobs.content[0].logprob
-                        powv = choice.model_extra.get("powv", -1)
-                        if powv is None:
-                            powv = -1
                         stats.tokens.append(
                             {
                                 "text": choice.delta.content or "",
                                 "token_id": token_id or 0,
-                                "powv": powv,
                                 "logprob": logprob,
                             }
                         )
@@ -155,9 +151,6 @@ async def handle_inference(
                             continue
                         token_ids = choice.model_extra.get("token_ids") or []
                         token_id = token_ids[0] if len(token_ids) > 0 else -1
-                        powv = choice.model_extra.get("powv", -1)
-                        if powv is None:
-                            powv = -1
                         logprob = -100
                         if choice.logprobs.token_logprobs:
                             logprob = choice.logprobs.token_logprobs[0]
@@ -165,7 +158,6 @@ async def handle_inference(
                             {
                                 "text": choice.text or "",
                                 "token_id": token_id or 0,
-                                "powv": powv,
                                 "logprob": logprob,
                             }
                         )

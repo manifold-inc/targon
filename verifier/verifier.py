@@ -4,7 +4,6 @@ import math
 import os
 import asyncio
 import traceback
-import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
 from enum import Enum
@@ -53,7 +52,6 @@ class RequestParams(BaseModel):
 class OutputItem(BaseModel):
     text: str
     logprob: float
-    powv: int
     token_id: int
 
 
@@ -134,7 +132,8 @@ def verify_logprobs_random(
             [
                 0,  # always check first token
                 len(request.output_sequence) - 1,  # always check last token
-            ] + random.sample(indices, min(len(indices), 3))
+            ]
+            + random.sample(indices, min(len(indices), 3))
         )
     )
 
@@ -169,72 +168,10 @@ def verify_logprobs_random(
         f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}",
     )
 
-def find_repeated_subsequences(token_list):
-    n = len(token_list)
-
-    # Squeeze token into int list in range [0, (unique token count)]
-    token_to_int = {}
-    int_token_list = []
-    current_int = 0
-    for token in token_list:
-        if token not in token_to_int:
-            token_to_int[token] = current_int
-            current_int += 1
-        int_token_list.append(token_to_int[token])
-
-    # Generate suffix array.
-    suffixes = [(int_token_list[i:], i) for i in range(n)]
-    suffixes.sort()  # O(n log n)
-    SA = [suffix[1] for suffix in suffixes]
-
-    # Discover longest common prefixes.
-    rank = [0]*n
-    for i in range(n):
-        rank[SA[i]] = i
-    LCP = [0]*(n-1)
-    h = 0
-    for i in range(n):
-        if rank[i] > 0:
-            j = SA[rank[i]-1]
-            while i + h < n and j + h < n and int_token_list[i + h] == int_token_list[j + h]:
-                h += 1
-            LCP[rank[i]-1] = h
-            if h > 0:
-                h -= 1
-
-    # Find repeats.
-    repeats = defaultdict(list)
-    stack = []
-    for i in range(len(LCP)):
-        lcp_length = LCP[i]
-        if lcp_length >= 15:
-            positions = [SA[i], SA[i+1]]
-            j = i+1
-            min_lcp = lcp_length
-            while j < len(LCP) and LCP[j] >= 15:
-                min_lcp = min(min_lcp, LCP[j])
-                positions.append(SA[j+1])
-                j += 1
-            substr = tuple(token_list[SA[i]:SA[i]+min_lcp])
-            repeats[substr].extend(positions)
-            i = j
-
-    # De-dupe.
-    final_subsequences = {}
-    for substr, positions in repeats.items():
-        unique_positions = sorted(set(positions))
-        substr_length = len(substr)
-        valid_positions = []
-        for pos in unique_positions:
-            if pos + substr_length <= n:
-                valid_positions.append(pos)
-        if len(valid_positions) > 1:
-            final_subsequences[substr] = len(valid_positions)
-    return final_subsequences
 
 def verify_logprobs(
     request: VerificationRequest, input_text: str, input_tokens: List[int]
-) -> Optional[Tuple[bool, str]]:
+) -> Optional[Tuple[bool, str, str]]:
     """
     Compare the produced logprob values against the ground truth, or at least
     the ground truth according to this particular GPU/software pairing.
@@ -271,7 +208,7 @@ def verify_logprobs(
     )
     perfect_tokens = 0
     eos_token_id = getattr(TOKENIZER, "eos_token_id", -1)
-    eot_token_id = TOKENIZER.get_vocab().get("<|eot_id|>", -1)
+    eot_token_id = TOKENIZER.get_vocab().get("<|eot_id|>", -1)  # type: ignore
     output_tokens = [item.token_id for item in request.output_sequence]
     really_low_prob = 0
     not_first = 0
@@ -281,16 +218,40 @@ def verify_logprobs(
         assert expected_logprob is not None
         eos_logprob = expected_logprob.get(eos_token_id)
         eot_logprob = expected_logprob.get(eot_token_id)
-        if not eos_logprob and eot_logprob or (eos_logprob and eot_logprob and eot_logprob.rank < eos_logprob.rank):
+        if (
+            not eos_logprob
+            and eot_logprob
+            or (
+                eos_logprob
+                and eot_logprob
+                and eot_logprob.rank != None
+                and eos_logprob.rank != None
+                and eot_logprob.rank < eos_logprob.rank
+            )
+        ):
             eos_logprob = eot_logprob
         expected_logprob = expected_logprob.get(item.token_id)
-        if eos_logprob and (not expected_logprob or eos_logprob.rank < expected_logprob.rank):
-            return False, f"Expected EOS/EOT token at index {idx}"
+        if eos_logprob and (
+            not expected_logprob
+            or (
+                eos_logprob
+                and expected_logprob.rank != None
+                and eos_logprob.rank != None
+                and eos_logprob.rank < expected_logprob.rank
+                and expected_logprob.rank > 10
+            )
+        ):
+            return False, f"Expected EOS/EOT token at index {idx}", "SKIPPED_EOS_EOT"
         if expected_logprob is None:
             continue
         rank = expected_logprob.rank
+        assert rank != None
         if rank >= 75:
-            return False, f"Found extraordinarily improbable token '{TOKENIZER.decode([item.token_id])}' at index {idx}: {rank=}"
+            return (
+                False,
+                f"Found extraordinarily improbable token '{TOKENIZER.decode([item.token_id])}' at index {idx}: {rank=}",
+                "UNLIKELY_TOKEN",
+            )
         elif rank >= 25:
             really_low_prob += 1
         elif rank > top_logprobs:
@@ -312,7 +273,11 @@ def verify_logprobs(
             score = 1.0
 
         # Logprobs rarely match well for high temps so we can use rank instead.
-        if rank == 1 and request.request_params.temperature >= 0.9 and produced_logprob != 0:
+        if (
+            rank == 1
+            and request.request_params.temperature >= 0.9
+            and produced_logprob != 0
+        ):
             score = 1.0
 
         total_score += score
@@ -320,50 +285,50 @@ def verify_logprobs(
     # Check if miner produced non-top ranking tokens more than top-ranking tokens.
     ratio = not_first / len(output_tokens)
     if ratio >= 0.5:
-        return False, f"{not_first} of {len(output_tokens)} [{ratio=}] tokens were not rank 1."
+        return (
+            False,
+            f"{not_first} of {len(output_tokens)} [{ratio=}] tokens were not rank 1.",
+            "UNLIKELY_TOKENS",
+        )
 
     # Check if miner prematurely stopped generating, meaning the single output token generated
     # from the "throwaway" above was NOT an EOS/EOT token.
     if eos_token_id > 0 or eot_token_id > 0:
         if len(output_tokens) < request.request_params.max_tokens:
-            last_token_probs = output.outputs[0].logprobs[0]
-            if eos_token_id not in last_token_probs and eot_token_id not in last_token_probs:
-                return False, "Premature end of generation, EOS/EOT unlikely after last token."
-    
+            last_token_probs = []
+            if output:
+                last_token_probs = output.outputs[0]
+                last_token_probs = (
+                    last_token_probs.logprobs[0]
+                    if last_token_probs and last_token_probs.logprobs
+                    else []
+                )
+            if (
+                eos_token_id not in last_token_probs
+                and eot_token_id not in last_token_probs
+                and len(last_token_probs) != 0
+            ):
+                return (
+                    False,
+                    "Premature end of generation, EOS/EOT unlikely after last token.",
+                    "EARLY_END",
+                )
+
     # Calculate average score.
     average_score = round(total_score / idxs, 5)
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
     perfect_avg = round(perfect_tokens / idxs, 5)
-    message = (
-        f"Successfully verified logprob for {len(request.output_sequence)} outputs with {average_score} and {perfect_avg}% perfect tokens"
-        if passes
-        else f"Low average logprob score: {average_score}"
-    )
-    if passes and perfect_avg >= (1 - min(request.request_params.temperature, 0.6)):
-        message = f"Overfitted response tokens. {perfect_avg}% perfect"
-        passes = False
+    if passes and perfect_avg >= (1 - min(request.request_params.temperature * .5, 0.6)):
+        return False, f"Overfitted response tokens. {perfect_avg}% perfect", "OVERFIT"
     if really_low_prob >= 5:
-        message = f"Found {really_low_prob} highly improbable tokens."
-        passes = False
+        return (
+            False,
+            f"Found {really_low_prob} highly improbable tokens.",
+            "UNLIKELY_TOKEN",
+        )
 
-    return (
-        passes,
-        message,
-    )
+    return True, "", ""
 
-def verify_repetition(output_tokens):
-    for subseq, count in find_repeated_subsequences(output_tokens).items():
-        repeated_text = TOKENIZER.decode(subseq)
-
-        # How many times was this subsequence repeated?
-        if count >= 10:
-            return False, f"Found phrase repeated {count} times: {repeated_text}"
-
-        # How much of the total output does the repeated text account for?
-        ratio = (len(subseq) * count) / len(output_tokens)
-        if ratio >= 0.75:
-            return False, f"Found phrase repeated {count} times accounting for {ratio} of overall output: {repeated_text}"
-    return True, "Reasonable token repetition."
 
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
@@ -373,7 +338,7 @@ async def verify(request: VerificationRequest) -> Dict:
     if len(request.output_sequence) < 3:
         return {
             "verified": False,
-            "reason": "Output sequence too short!",
+            "error": "Output sequence too short!",
         }
     if (
         request.request_params.max_tokens
@@ -381,12 +346,12 @@ async def verify(request: VerificationRequest) -> Dict:
     ):
         return {
             "verified": False,
-            "reason": "Too many tokens produced!",
+            "error": "Too many tokens produced!",
         }
     if request.model != MODEL_NAME:
         return {
             "verified": False,
-            "reason": "Unable to verify model={request.model}, since we are using {MODEL_NAME}",
+            "error": "Unable to verify model={request.model}, since we are using {MODEL_NAME}",
         }
 
     # Tokenize the input sequence.
@@ -409,31 +374,19 @@ async def verify(request: VerificationRequest) -> Dict:
     async with LOCK:
         return_value = {
             "verified": False,
-            "logprob_fast_pass": False,
-            "logprob_fast_message": None,
+            "error": None,
         }
 
         # Logprob checks.
         res = verify_logprobs(request, str(input_text), input_tokens)
         if res is None:
-            return {"error": "Failed to check log probs"}
-        result, message = res
+            return {"error": "Failed to check log probs", "cause": "INTERNAL"}
+        result, message, cause = res
         return_value.update(
             {
-                "logprob_fast_pass": result,
-                "logprob_fast_message": message,
-            }
-        )
-        if not result:
-            return return_value
-
-        # Token repetition check.
-        output_tokens = [item.token_id for item in request.output_sequence]
-        result, message = verify_repetition(output_tokens)
-        return_value.update(
-            {
-                "repetition_pass": result,
-                "repetition_message": message,
+                "verified": result,
+                "cause": cause,
+                "error": message,
             }
         )
         if not result:
@@ -441,24 +394,26 @@ async def verify(request: VerificationRequest) -> Dict:
 
         # Random logprob check.
         if request.request_params.temperature > 0.75:
-            return_value.update({"verified": True})
-            return return_value
+            return {"verified": True}
 
         res = verify_logprobs_random(request, str(input_text))
         if res is None:
-            return {"error": "Failed to check log probs"}
+            return {
+                "error": "Failed to check log probs",
+                "cause": "INTERNAL_ERROR",
+            }
         result, message = res
         return_value.update(
             {
-                "logprob_pass": result,
-                "logprob_message": message,
+                "verified": result,
+                "cause": "LOGPROB_RANDOM",
+                "error": message,
             }
         )
         if not result:
             return return_value
 
-        return_value.update({"verified": True})
-        return return_value
+        return {"verified": True}
 
 
 @app.get("/endpoints")
