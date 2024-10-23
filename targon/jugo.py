@@ -8,7 +8,7 @@ from targon.epistula import generate_header
 from targon.types import Endpoints, InferenceStats
 import bittensor as bt
 
-INGESTOR_URL = "http://177.54.155.247:8000"
+JUGO_URL = "https://jugo.sybil.com"
 
 
 async def send_stats_to_ingestor(
@@ -47,7 +47,7 @@ async def send_stats_to_ingestor(
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{INGESTOR_URL}/ingest", headers=headers, json=body
+                f"{JUGO_URL}/", headers=headers, json=body
             ) as response:
                 if response.status == 200:
                     bt.logging.info("Records ingested successfully.")
