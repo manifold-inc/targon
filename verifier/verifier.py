@@ -52,7 +52,7 @@ class RequestParams(BaseModel):
 class OutputItem(BaseModel):
     text: str
     logprob: float
-    token_id: int
+    token_id: int = -1
 
 
 class RequestType(Enum):
@@ -318,7 +318,9 @@ def verify_logprobs(
     average_score = round(total_score / idxs, 5)
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
     perfect_avg = round(perfect_tokens / idxs, 5)
-    if passes and perfect_avg >= (1 - min(request.request_params.temperature * .5, 0.6)):
+    if passes and perfect_avg >= (
+        1 - min(request.request_params.temperature * 0.5, 0.6)
+    ):
         return False, f"Overfitted response tokens. {perfect_avg}% perfect", "OVERFIT"
     if really_low_prob >= 5:
         return (
@@ -351,7 +353,7 @@ async def verify(request: VerificationRequest) -> Dict:
     if request.model != MODEL_NAME:
         return {
             "verified": False,
-            "error": "Unable to verify model={request.model}, since we are using {MODEL_NAME}",
+            "error": f"Unable to verify model={request.model}, since we are using {MODEL_NAME}",
         }
 
     # Tokenize the input sequence.
@@ -369,6 +371,9 @@ async def verify(request: VerificationRequest) -> Dict:
         if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
             input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
     input_tokens = TOKENIZER(input_text).input_ids
+    vocab = TOKENIZER.get_vocab()  # type: ignore
+    for output in request.output_sequence:
+        output.token_id = vocab.get(output.text, -1)
 
     # Verify!
     async with LOCK:
