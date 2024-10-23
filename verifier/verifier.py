@@ -339,6 +339,7 @@ async def verify(request: VerificationRequest) -> Dict:
         return {
             "verified": False,
             "error": "Output sequence too short!",
+            "cause": "TOO_SHORT"
         }
     if (
         request.request_params.max_tokens
@@ -347,11 +348,13 @@ async def verify(request: VerificationRequest) -> Dict:
         return {
             "verified": False,
             "error": "Too many tokens produced!",
+            "cause": "TOO_LONG"
         }
     if request.model != MODEL_NAME:
         return {
             "verified": False,
             "error": "Unable to verify model={request.model}, since we are using {MODEL_NAME}",
+            'cause': "INTERNAL_ERROR"
         }
 
     # Tokenize the input sequence.
