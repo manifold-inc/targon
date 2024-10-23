@@ -371,9 +371,9 @@ async def verify(request: VerificationRequest) -> Dict:
         if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
             input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
     input_tokens = TOKENIZER(input_text).input_ids
-    vocab = TOKENIZER.get_vocab()  # type: ignore
     for output in request.output_sequence:
-        output.token_id = vocab.get(output.text, -1)
+        output.token_id = TOKENIZER.convert_tokens_to_ids(output.text)  # type: ignore
+        print(output.token_id)
 
     # Verify!
     async with LOCK:
