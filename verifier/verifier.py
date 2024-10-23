@@ -380,7 +380,7 @@ async def verify(request: VerificationRequest) -> Dict:
         # Logprob checks.
         res = verify_logprobs(request, str(input_text), input_tokens)
         if res is None:
-            return {"error": "Failed to check log probs", "cause": "INTERNAL"}
+            return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
         result, message, cause = res
         return_value.update(
             {
