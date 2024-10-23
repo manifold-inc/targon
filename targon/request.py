@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from httpx import Timeout
 import openai
+from openai.types.chat import ChatCompletionChunk
 from requests import post
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import create_header_hook
@@ -81,7 +82,7 @@ async def handle_inference(
         total_time=0,
         tokens=[],
         verified=False,
-        likely_streamed = True,
+        likely_streamed=True,
     )
     try:
         axon_info = metagraph.axons[uid]
@@ -120,13 +121,15 @@ async def handle_inference(
                         choice = chunk.choices[0]
                         if choice.model_extra is None:
                             continue
-                        token_ids = choice.model_extra.get("token_ids") or []
-                        token_id = token_ids[0] if len(token_ids) > 0 else -1
+                        token_id = -1
                         logprob = -100
                         choiceprobs = choice.logprobs
                         if choiceprobs is not None:
                             if choiceprobs.content:
                                 logprob = choiceprobs.content[0].logprob
+                                token_parts = choiceprobs.content[0].token.split(":")
+                                if len(token_parts) > 1:
+                                    token_id = int(token_parts[1])
                         stats.tokens.append(
                             {
                                 "text": choice.delta.content or "",
@@ -185,7 +188,9 @@ async def handle_inference(
         # poor user experience (slow time to N tokens vs total time).
         token_count = len(stats.tokens)
         if token_count > 60:
-            time_to_5th_percent = token_times[math.ceil(token_count * 0.05)] - start_send_message_time
+            time_to_5th_percent = (
+                token_times[math.ceil(token_count * 0.05)] - start_send_message_time
+            )
             if time_to_5th_percent / stats.total_time >= 0.85:
                 stats.likely_streamed = False
         return uid, stats
@@ -197,7 +202,12 @@ async def handle_inference(
 
 @fail_with_none("Failed to check tokens")
 async def check_tokens(
-        request, responses: List[Dict], uid, endpoint: Endpoints, port: int, url='http://localhost'
+    request,
+    responses: List[Dict],
+    uid,
+    endpoint: Endpoints,
+    port: int,
+    url="http://localhost",
 ) -> Optional[Dict]:
     try:
         result = post(
