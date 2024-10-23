@@ -63,10 +63,9 @@ def main():
                 (
                     choice.delta.content or "",
                     token_id,
-                    choice.model_extra.get("powv") or -1,
                 )
             )
-            print(choice.delta.content, token_id, choice.model_extra.get("powv") or -1)
+            print(choice.delta.content, token_id)
         print(
             validator.check_tokens({"messages": messages[:20]}, tokens, Endpoints.CHAT)
         )

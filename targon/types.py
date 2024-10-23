@@ -29,8 +29,9 @@ class InferenceStats(BaseModel):
     tps: float
     tokens: List[Any]
     verified: bool
-    error: Optional[str] = None
     likely_streamed: bool
+    error: Optional[str] = None
+    cause: Optional[str] = None
 
 
 class Endpoints(Enum):

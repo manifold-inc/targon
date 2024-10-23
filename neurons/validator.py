@@ -283,6 +283,7 @@ class Validator(BaseNeuron):
         if not stat.likely_streamed:
             stat.verified = False
             stat.error = "Response was not properly streamed."
+            stat.cause = 'BAD_STREAM'
             return uid, stat
 
         # Verify
@@ -304,7 +305,8 @@ class Validator(BaseNeuron):
             verified.get("verified", False) if verified is not None else False
         )
         if stat.error is None and not stat.verified:
-            stat.error = str(verified)
+            stat.error = str(verified.get('error'))
+            stat.cause = str(verified.get('cause'))
         return uid, stat
 
     async def query_miners(
@@ -357,7 +359,7 @@ class Validator(BaseNeuron):
                 continue
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if not stat.verified and stat.error:
-                bt.logging.info(stat.error)
+                bt.logging.info(stat.cause)
 
             # UID is not in our miner tps list
             if self.miner_tps.get(uid) is None:

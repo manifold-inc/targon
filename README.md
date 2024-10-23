@@ -106,68 +106,6 @@ You have now installed Targon. You can now run a validator or a miner.
 
 # How to Run Targon
 
-## Running manifolds VLLM for Miners
-
-### VLLM
-
-#### Docker
-
-In order to run Targon, you must have the manifold vLLM fork instance that
-includes powv tokens up and running. The easiest way is to run the vllm fork via
-docker. It is recommended to add an environment variable for the api key.
-
-> **NOTE**: The api key passed to vllm is your made up api key that you will
-> also pass to your miner/validator. This ensures that no one else can access
-> your vllm instance
-
-> **NOTE** Some features like --tensor-parallel-size might not work without
-> manual changes to vllm in coordination with powv. We suggest validators run
-> the fork with minimal to no extra paramaters.
-
-Install [docker](https://docs.docker.com/install/) and run
-
-```bash
-docker run --runtime nvidia --gpus all \
-    -v ~/.cache/huggingface:/root/.cache/huggingface \
-    --env "VLLM_API_KEY=<make up your own>" \
-    -p 8000:8000 \
-    --ipc=host \
-    manifoldlabs/vllm-openai:powv \
-    --model NousResearch/Meta-Llama-3.1-8B-Instruct
-```
-
-https://hub.docker.com/r/manifoldlabs/vllm-openai
-
-#### PM2
-
-Running without docker currently requires a dev installation of the vllm fork.
-
-```bash
-git clone https://github.com/manifold-inc/vllm-powv.git
-cd vllm-powv
-pip install jsonschema
-
-# If this fails, you may need to set the path for cuda. This may be different per
-# system. 
-#
-# CUDACXX=/usr/local/cuda-12/bin/nvcc pip install -e .
-pip install -e .
-```
-
-Now you are ready to server your VLLM instance to PM2
-
-```bash
-pm2 start vllm --name vllm-serve --interpreter python3 -- serve NousResearch/Meta-Llama-3.1-8B-Instruct --dtype auto --api-key [some-secret-you-also-pass-to-validator] --port 8000
-```
-
-The `--neuron.model_endpoint` for miner / vali using this vllm instance on the
-same machine would be `http://localhost:8000/v1`. **Make sure** to include the
-`/v1` to the end of the URL.
-
-Also note *again* that `--api-key` is defined by you. Set it to something hard
-to guess, and probably random. Whatever you decide, pass it in to both
-`--api-key` in vllm, and `--neuron.api_key` on the miner / vali
-
 ## Running a Miner
 
 ### PM2

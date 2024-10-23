@@ -9,7 +9,7 @@ from starlette.background import BackgroundTask
 from starlette.responses import StreamingResponse
 
 from neurons.base import BaseNeuron, NeuronType
-from targon.epistula import verify_signature_v2
+from targon.epistula import verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
@@ -134,7 +134,7 @@ class Miner(BaseNeuron):
 
         # If anything is returned here, we can throw
         body = await request.body()
-        err = verify_signature_v2(
+        err = verify_signature(
             request.headers.get("Epistula-Request-Signature"),
             body,
             request.headers.get("Epistula-Timestamp"),
