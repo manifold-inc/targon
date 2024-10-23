@@ -11,7 +11,7 @@ import bittensor as bt
 JUGO_URL = "https://jugo.sybil.com"
 
 
-async def send_stats_to_ingestor(
+async def send_stats_to_jugo(
     metagraph: "bt.metagraph",
     subtensor: "bt.subtensor",
     wallet: "bt.wallet",
@@ -50,7 +50,7 @@ async def send_stats_to_ingestor(
                 f"{JUGO_URL}/", headers=headers, json=body
             ) as response:
                 if response.status == 200:
-                    bt.logging.info("Records ingested successfully.")
+                    bt.logging.info("Records sent successfully.")
                 else:
                     error_detail = await response.text()
                     bt.logging.error(
@@ -58,7 +58,7 @@ async def send_stats_to_ingestor(
                     )
 
     except aiohttp.ClientConnectionError:
-        bt.logging.error("Error conecting to ingestor, offline.")
+        bt.logging.error("Error conecting to jugo, offline.")
     except Exception as e:
-        bt.logging.error(f"Error in send_stats_to_ingestor: {e}")
+        bt.logging.error(f"Error in send_stats_to_jugo: {e}")
         bt.logging.error(traceback.format_exc())

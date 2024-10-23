@@ -12,7 +12,7 @@ from targon.config import get_models_from_config, get_models_from_endpoint
 from targon.dataset import download_dataset
 from targon.docker import down_containers, load_docker, sync_output_checkers
 from targon.epistula import generate_header
-from targon.ingestor import send_stats_to_ingestor
+from targon.jugo import send_stats_to_jugo
 from targon.math import get_weights
 from targon.metagraph import (
     create_set_weights,
@@ -264,7 +264,7 @@ class Validator(BaseNeuron):
             )
             if res is not None:
                 self.loop.run_until_complete(
-                    send_stats_to_ingestor(
+                    send_stats_to_jugo(
                         self.metagraph,
                         self.subtensor,
                         self.wallet,
@@ -359,7 +359,7 @@ class Validator(BaseNeuron):
                 continue
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if not stat.verified and stat.error:
-                bt.logging.info(stat.cause)
+                bt.logging.info(str(stat.cause))
 
             # UID is not in our miner tps list
             if self.miner_tps.get(uid) is None:
