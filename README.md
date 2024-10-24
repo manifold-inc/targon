@@ -108,6 +108,9 @@ You have now installed Targon. You can now run a validator or a miner.
 
 ## Running a Miner
 
+
+--return-tokens-as-token-ids # TODO
+
 ### PM2
 
 Running a miner through PM2 will require the vLLM instance to be running.
