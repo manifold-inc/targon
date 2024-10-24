@@ -279,14 +279,8 @@ class Validator(BaseNeuron):
         self.shutdown()
 
     async def verify_response(self, uid, request, endpoint, stat: InferenceStats):
-        # If the response wasn't streamed, set verified to False.
-        if not stat.likely_streamed:
-            stat.verified = False
-            stat.error = "Response was not properly streamed."
-            stat.cause = "BAD_STREAM"
+        if stat.error or stat.cause:
             return uid, stat
-
-        # Verify
         # We do this out of the handle_inference loop to not block other requests
         verification_port = self.verification_ports.get(
             request["model"], {"port": None}

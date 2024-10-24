@@ -81,7 +81,6 @@ async def handle_inference(
         total_time=0,
         tokens=[],
         verified=False,
-        likely_streamed = True,
     )
     try:
         axon_info = metagraph.axons[uid]
@@ -118,19 +117,19 @@ async def handle_inference(
                         if start_token_time == 0:
                             start_token_time = time.time()
                         choice = chunk.choices[0]
-                        if choice.model_extra is None:
-                            continue
-                        token_ids = choice.model_extra.get("token_ids") or []
-                        token_id = token_ids[0] if len(token_ids) > 0 else -1
                         logprob = -100
+                        token_id = -1
                         choiceprobs = choice.logprobs
                         if choiceprobs is not None:
                             if choiceprobs.content:
                                 logprob = choiceprobs.content[0].logprob
+                                token_parts = choiceprobs.content[0].token.split(":")
+                                if len(token_parts) > 1:
+                                    token_id = int(token_parts[1])
                         stats.tokens.append(
                             {
                                 "text": choice.delta.content or "",
-                                "token_id": token_id or 0,
+                                "token_id": token_id,
                                 "logprob": logprob,
                             }
                         )
@@ -145,19 +144,20 @@ async def handle_inference(
                         if start_token_time == 0:
                             start_token_time = time.time()
                         choice = chunk.choices[0]
-                        if choice.model_extra is None:
-                            continue
                         if choice.logprobs is None:
                             continue
-                        token_ids = choice.model_extra.get("token_ids") or []
-                        token_id = token_ids[0] if len(token_ids) > 0 else -1
+                        token_id = -1
                         logprob = -100
                         if choice.logprobs.token_logprobs:
                             logprob = choice.logprobs.token_logprobs[0]
+                        if len(choice.logprobs.tokens) > 0:
+                            token_parts = choice.logprobs.tokens[0].split(":")
+                            if token_parts > 1:
+                                token_id = token_parts[1]
                         stats.tokens.append(
                             {
                                 "text": choice.text or "",
-                                "token_id": token_id or 0,
+                                "token_id": token_id,
                                 "logprob": logprob,
                             }
                         )
@@ -187,9 +187,13 @@ async def handle_inference(
         # poor user experience (slow time to N tokens vs total time).
         token_count = len(stats.tokens)
         if token_count > 60:
-            time_to_5th_percent = token_times[math.ceil(token_count * 0.05)] - start_send_message_time
+            time_to_5th_percent = (
+                token_times[math.ceil(token_count * 0.05)] - start_send_message_time
+            )
             if time_to_5th_percent / stats.total_time >= 0.85:
-                stats.likely_streamed = False
+                stats.verified = False
+                stats.error = "Likely non-streamed response"
+                stats.cause = "BAD_STREAM"
         return uid, stats
     except Exception as e:
         bt.logging.error(f"{uid}: Error in forward for: {e}")
@@ -199,7 +203,12 @@ async def handle_inference(
 
 @fail_with_none("Failed to check tokens")
 async def check_tokens(
-        request, responses: List[Dict], uid, endpoint: Endpoints, port: int, url='http://localhost'
+    request,
+    responses: List[Dict],
+    uid,
+    endpoint: Endpoints,
+    port: int,
+    url="http://localhost",
 ) -> Optional[Dict]:
     try:
         result = post(
