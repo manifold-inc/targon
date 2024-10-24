@@ -150,9 +150,12 @@ async def handle_inference(
                         logprob = -100
                         if choice.logprobs.token_logprobs:
                             logprob = choice.logprobs.token_logprobs[0]
-                        if len(choice.logprobs.tokens) > 0:
+                        if (
+                            choice.logprobs.tokens is not None
+                            and len(choice.logprobs.tokens) > 0
+                        ):
                             token_parts = choice.logprobs.tokens[0].split(":")
-                            if token_parts > 1:
+                            if len(token_parts) > 1:
                                 token_id = int(token_parts[1])
                         stats.tokens.append(
                             {
