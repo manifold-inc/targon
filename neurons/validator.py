@@ -351,7 +351,7 @@ class Validator(BaseNeuron):
         for uid, stat in stats:
             if not stat:
                 continue
-            processed_stats.append(stat)
+            processed_stats.append((uid, stat))
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if not stat.verified and stat.error:
                 bt.logging.info(str(stat.cause))
