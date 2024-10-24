@@ -347,10 +347,11 @@ class Validator(BaseNeuron):
         except Exception:
             bt.logging.error(f"Failed sending requests: {traceback.format_exc()}")
             stats = []
-
+        processed_stats = []
         for uid, stat in stats:
             if not stat:
                 continue
+            processed_stats.append(stat)
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if not stat.verified and stat.error:
                 bt.logging.info(str(stat.cause))
@@ -366,7 +367,7 @@ class Validator(BaseNeuron):
                 self.miner_tps[uid][request["model"]].append(stat.tps)
                 continue
             self.miner_tps[uid][request["model"]].append(None)
-        return (stats, request, endpoint)
+        return (processed_stats, request, endpoint)
 
     @fail_with_none("Failed writing to cache file")
     def save_scores(self):
