@@ -165,9 +165,11 @@ async def handle_inference(
         except openai.APIConnectionError as e:
             bt.logging.trace(f"Miner {uid} failed request: {e}")
             stats.error = str(e)
+            stats.cause = "BAD_STREAM"
         except Exception as e:
             bt.logging.trace(f"Unknown Error when sending to miner {uid}: {e}")
             stats.error = str(e)
+            stats.cause = "BAD_STREAM"
 
         if start_token_time == 0:
             start_token_time = time.time()
