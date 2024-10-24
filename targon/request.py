@@ -153,7 +153,7 @@ async def handle_inference(
                         if len(choice.logprobs.tokens) > 0:
                             token_parts = choice.logprobs.tokens[0].split(":")
                             if token_parts > 1:
-                                token_id = token_parts[1]
+                                token_id = int(token_parts[1])
                         stats.tokens.append(
                             {
                                 "text": choice.text or "",
