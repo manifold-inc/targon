@@ -108,15 +108,36 @@ You have now installed Targon. You can now run a validator or a miner.
 
 ## Running a Miner
 
+Before starting or registering your miner in Targon, first you will want to run
+VLLM serving different images validators are requesting. You can find a list at
+https://stats.sybil.com/stats/validator under the live tab. The more models you
+run, the higher your incentive.
 
---return-tokens-as-token-ids # TODO
+VLLM is the recommended engine, however it is not required. If you are using
+VLLM, make sure yo include the `--return-tokens-as-token-ids` flag, or else your
+responses will fail.
+
+Once you have one (or multiple) models running, modify the default miner code to
+proxy to the proper VLLM instance on each request. Verifiers will include the
+`X-Targon-Model` header so that the miner node does not need to parse the actual
+body.
+
+It is also recommended to modify the `list_models` and `receive_models`
+functions in the base miner code.
+
+- `receive_models`: Validators will send a list of all the models they are
+  requesting each interval.
+- `list_models`: Validators request a list of models your miner is running. Only
+  include what models your actually running
+
+Once this is complete, you are ready to continue starting your miner node.
 
 ### PM2
 
 Running a miner through PM2 will require the vLLM instance to be running.
 
 ```bash
-pm2 start neurons/miner.py --name miner --interperter python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --model-endpoint [MODEL_ENDPOINT] --api_key [API_KEY] --axon.port [AXON PORT] --logging.trace
+pm2 start neurons/miner.py --name miner --interpreter  python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --model-endpoint [MODEL_ENDPOINT] --api_key [API_KEY] --axon.port [AXON PORT] --logging.trace
 ```
 
 > Please replace the following with your specific configuration:
@@ -137,7 +158,9 @@ Additionally:
 
 ```
 
-is defaulted to false to force incoming requests to have a permit. Set this to true if you are having trouble getting requests from validators on the 'test' network.
+is defaulted to false to force incoming requests to have a permit. Set this to
+true if you are having trouble getting requests from validators on the 'test'
+network.
 
 ## Running a Validator
 
@@ -199,12 +222,12 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
    - `endpoint`: defaults to `https://targon.sybil.com/api/models`. This will
      mimic the manifold validator
    - `default`: only run NousResearch/Meta-Llama-3.1-8B-Instruct
-   - `config`: parse a text file named `models.txt` with a list of models separated by newlines
+   - `config`: parse a text file named `models.txt` with a list of models
+     separated by newlines
 1. **--models.endpoint** ==> Only used when models.mode is `endpoint`. Sets the
    api endpoint to ping for list of models. Defaults to targon hub.
 
-> Example model config file
-> `models.txt`
+> Example model config file `models.txt`
 >
 > ```
 > NousResearch/Meta-Llama-3.1-8B-Instruct

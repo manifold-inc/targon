@@ -123,7 +123,12 @@ async def handle_inference(
                         if choiceprobs is not None:
                             if choiceprobs.content:
                                 logprob = choiceprobs.content[0].logprob
-                                token_parts = choiceprobs.content[0].token.split(":")
+                                token = choiceprobs.content[0].token
+                                if token is None:
+                                    continue
+                                if not token.startswith("token_id:"):
+                                    continue
+                                token_parts = token.split(":")
                                 if len(token_parts) > 1:
                                     token_id = int(token_parts[1])
                         stats.tokens.append(
@@ -138,8 +143,7 @@ async def handle_inference(
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
                         if (
-                            chunk.choices[0].text == ""
-                            or chunk.choices[0].text is None
+                            chunk.choices[0].text == "" or chunk.choices[0].text is None
                         ) and len(stats.tokens) == 0:
                             continue
                         if start_token_time == 0:
@@ -156,7 +160,9 @@ async def handle_inference(
                             and len(choice.logprobs.tokens) > 0
                         ):
                             token = choice.logprobs.tokens[0]
-                            if not token.startswith('token_id:'):
+                            if token is None:
+                                continue
+                            if not token.startswith("token_id:"):
                                 continue
                             token_parts = token.split(":")
                             if len(token_parts) > 1:
