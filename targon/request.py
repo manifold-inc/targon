@@ -137,40 +137,38 @@ async def handle_inference(
                 case Endpoints.COMPLETION:
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
-                        try:
-                            if (
-                                chunk.choices[0].text == ""
-                                or chunk.choices[0].text is None
-                            ) and len(stats.tokens) == 0:
+                        if (
+                            chunk.choices[0].text == ""
+                            or chunk.choices[0].text is None
+                        ) and len(stats.tokens) == 0:
+                            continue
+                        if start_token_time == 0:
+                            start_token_time = time.time()
+                        choice = chunk.choices[0]
+                        if choice.logprobs is None:
+                            continue
+                        token_id = -1
+                        logprob = -100
+                        if choice.logprobs.token_logprobs:
+                            logprob = choice.logprobs.token_logprobs[0]
+                        if (
+                            choice.logprobs.tokens is not None
+                            and len(choice.logprobs.tokens) > 0
+                        ):
+                            token = choice.logprobs.tokens[0]
+                            if not token.startswith('token_id:'):
                                 continue
-                            if start_token_time == 0:
-                                start_token_time = time.time()
-                            choice = chunk.choices[0]
-                            if choice.logprobs is None:
-                                continue
-                            choice: openai.types.CompletionChoice
-                            token_id = -1
-                            logprob = -100
-                            if choice.logprobs.token_logprobs:
-                                logprob = choice.logprobs.token_logprobs[0]
-                            if (
-                                choice.logprobs.tokens is not None
-                                and len(choice.logprobs.tokens) > 0
-                            ):
-                                token_parts = choice.logprobs.tokens[0].split(":")
-                                print(choice.logprobs.tokens)
-                                if len(token_parts) > 1:
-                                    token_id = int(token_parts[1])
-                            stats.tokens.append(
-                                {
-                                    "text": choice.text or "",
-                                    "token_id": token_id,
-                                    "logprob": logprob,
-                                }
-                            )
-                            token_times.append(time.time())
-                        except Exception as e:
-                            print(e)
+                            token_parts = token.split(":")
+                            if len(token_parts) > 1:
+                                token_id = int(token_parts[1])
+                        stats.tokens.append(
+                            {
+                                "text": choice.text or "",
+                                "token_id": token_id,
+                                "logprob": logprob,
+                            }
+                        )
+                        token_times.append(time.time())
         except openai.APIConnectionError as e:
             bt.logging.trace(f"Miner {uid} failed request: {e}")
             stats.error = str(e)
