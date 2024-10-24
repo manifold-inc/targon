@@ -154,11 +154,11 @@ In the `miner.py` script you will find a function called `list_models` To serve 
 Here is a hint / incomplete code snippet to get you started:
 ```
 model_port_map = {
-    'gryphe/mythomax-l2-13b': 1001,
-    'NousResearch/Hermes-3-Llama-3.1-8B': 1002,
-    'NTQAI/Nxcode-CQ-7B-orpo': 1003,
-    'deepseek-ai/deepseek-coder-33b-instruct': 1004,
-    'nvidia/Llama-3.1-Nemotron-70B-Instruct-HF': 1005
+    'ExampleName/mythomax-l2-13b': 1001,
+    'ExampleName/Hermes-3-Llama-3.1-8B': 1002,
+    'ExampleName/Nxcode-CQ-7B-orpo': 1003,
+    'ExampleName/deepseek-coder-33b-instruct': 1004,
+    'ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF': 1005
 }
 full_url = f"http://127.0.0.1:{model_port_map.get(body.get('model'), 1000)}{path}"
 ```
