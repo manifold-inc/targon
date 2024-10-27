@@ -367,6 +367,7 @@ async def verify(request: VerificationRequest) -> Dict:
             request.request_params.messages,  # type: ignore
             tokenize=False,
             add_special_tokens=False,
+            add_generation_prompt=True,
         )
     )
     assert isinstance(input_text, str)
