@@ -122,13 +122,32 @@ proxy to the proper VLLM instance on each request. Verifiers will include the
 `X-Targon-Model` header so that the miner node does not need to parse the actual
 body.
 
-It is also recommended to modify the `list_models` and `receive_models`
-functions in the base miner code.
+In the `miner.py` script you will find a function called `list_models`. To serve multiple models you must:
+1. Fill this out to respond to validators with any model you currently have available (below is an example):
+```
+    async def list_models(self):
+        return [
+            "ExampleName/Meta-Llama-3.1-8B-Instruct",
+            "ExampleName/mythomax-l2-13b",
+            "ExampleName/Hermes-3-Llama-3.1-8B",
+            "ExampleName/Nxcode-CQ-7B-orpo",
+            "ExampleName/deepseek-coder-33b-instruct",
+            "ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF",
+        ]
+```
+2. Update the `create_chat_completion` and `create_completion` methods in neurons/miner.py to route to the appropriate vllm upstream server based on the model (which is either in the headers or from the request payload's model param)
 
-- `receive_models`: Validators will send a list of all the models they are
-  requesting each interval.
-- `list_models`: Validators request a list of models your miner is running. Only
-  include what models your actually running
+Here is a hint / incomplete code snippet to get you started:
+```
+model_port_map = {
+    'ExampleName/mythomax-l2-13b': 1001,
+    'ExampleName/Hermes-3-Llama-3.1-8B': 1002,
+    'ExampleName/Nxcode-CQ-7B-orpo': 1003,
+    'ExampleName/deepseek-coder-33b-instruct': 1004,
+    'ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF': 1005
+}
+full_url = f"http://127.0.0.1:{model_port_map.get(body.get('model'), 1000)}{path}"
+```
 
 Once this is complete, you are ready to continue starting your miner node.
 
