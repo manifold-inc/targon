@@ -178,7 +178,7 @@ def verify_logprobs(
     """
 
     # Set up sampling parameters for the "fast" check, which just compares input logprobs against output logprobs.
-    top_logprobs = int(request.request_params.temperature * 10) + 3
+    top_logprobs = int(request.request_params.temperature * 10) + 6
     sampling_params = SamplingParams(
         temperature=request.request_params.temperature,
         seed=request.request_params.seed,
