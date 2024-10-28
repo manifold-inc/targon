@@ -29,7 +29,6 @@ class InferenceStats(BaseModel):
     tps: float
     tokens: List[Any]
     verified: bool
-    likely_streamed: bool
     error: Optional[str] = None
     cause: Optional[str] = None
 

@@ -12,7 +12,7 @@ from targon.config import get_models_from_config, get_models_from_endpoint
 from targon.dataset import download_dataset
 from targon.docker import down_containers, load_docker, sync_output_checkers
 from targon.epistula import generate_header
-from targon.ingestor import send_stats_to_ingestor
+from targon.jugo import send_stats_to_jugo
 from targon.math import get_weights
 from targon.metagraph import (
     create_set_weights,
@@ -264,7 +264,7 @@ class Validator(BaseNeuron):
             )
             if res is not None:
                 self.loop.run_until_complete(
-                    send_stats_to_ingestor(
+                    send_stats_to_jugo(
                         self.metagraph,
                         self.subtensor,
                         self.wallet,
@@ -279,14 +279,8 @@ class Validator(BaseNeuron):
         self.shutdown()
 
     async def verify_response(self, uid, request, endpoint, stat: InferenceStats):
-        # If the response wasn't streamed, set verified to False.
-        if not stat.likely_streamed:
-            stat.verified = False
-            stat.error = "Response was not properly streamed."
-            stat.cause = 'BAD_STREAM'
+        if stat.error or stat.cause:
             return uid, stat
-
-        # Verify
         # We do this out of the handle_inference loop to not block other requests
         verification_port = self.verification_ports.get(
             request["model"], {"port": None}
@@ -305,8 +299,8 @@ class Validator(BaseNeuron):
             verified.get("verified", False) if verified is not None else False
         )
         if stat.error is None and not stat.verified:
-            stat.error = str(verified.get('error'))
-            stat.cause = str(verified.get('cause'))
+            stat.error = verified.get("error")
+            stat.cause = verified.get("cause")
         return uid, stat
 
     async def query_miners(
@@ -353,13 +347,14 @@ class Validator(BaseNeuron):
         except Exception:
             bt.logging.error(f"Failed sending requests: {traceback.format_exc()}")
             stats = []
-
+        processed_stats = []
         for uid, stat in stats:
             if not stat:
                 continue
+            processed_stats.append((uid, stat))
             bt.logging.info(f"{uid}: {stat.verified} | {stat.total_time}")
             if not stat.verified and stat.error:
-                bt.logging.info(stat.cause)
+                bt.logging.info(str(stat.cause))
 
             # UID is not in our miner tps list
             if self.miner_tps.get(uid) is None:
@@ -372,7 +367,7 @@ class Validator(BaseNeuron):
                 self.miner_tps[uid][request["model"]].append(stat.tps)
                 continue
             self.miner_tps[uid][request["model"]].append(None)
-        return (stats, request, endpoint)
+        return (processed_stats, request, endpoint)
 
     @fail_with_none("Failed writing to cache file")
     def save_scores(self):

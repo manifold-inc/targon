@@ -318,7 +318,9 @@ def verify_logprobs(
     average_score = round(total_score / idxs, 5)
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
     perfect_avg = round(perfect_tokens / idxs, 5)
-    if passes and perfect_avg >= (1 - min(request.request_params.temperature * .5, 0.6)):
+    if passes and perfect_avg >= (
+        1 - min(request.request_params.temperature * 0.5, 0.6)
+    ):
         return False, f"Overfitted response tokens. {perfect_avg}% perfect", "OVERFIT"
     if really_low_prob >= 5:
         return (
@@ -339,6 +341,7 @@ async def verify(request: VerificationRequest) -> Dict:
         return {
             "verified": False,
             "error": "Output sequence too short!",
+            "cause": "TOO_SHORT",
         }
     if (
         request.request_params.max_tokens
@@ -347,11 +350,13 @@ async def verify(request: VerificationRequest) -> Dict:
         return {
             "verified": False,
             "error": "Too many tokens produced!",
+            "cause": "TOO_LONG",
         }
     if request.model != MODEL_NAME:
         return {
             "verified": False,
             "error": "Unable to verify model={request.model}, since we are using {MODEL_NAME}",
+            "cause": "INTERNAL_ERROR",
         }
 
     # Tokenize the input sequence.
@@ -380,7 +385,7 @@ async def verify(request: VerificationRequest) -> Dict:
         # Logprob checks.
         res = verify_logprobs(request, str(input_text), input_tokens)
         if res is None:
-            return {"error": "Failed to check log probs", "cause": "INTERNAL"}
+            return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
         result, message, cause = res
         return_value.update(
             {
