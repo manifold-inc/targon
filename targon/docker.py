@@ -172,7 +172,7 @@ def sync_output_checkers(
                 f"GPU_MEMORY_UTIL={memory_util}",
                 f"TENSOR_PARALLEL={len(gpus)}",
             ],
-            "volumes": ["~/.cache/huggingface:/root/.cache/huggingface"],
+            "volumes": ["/var/targon/huggingface/cache:/root/.cache/huggingface"],
             "runtime": "nvidia",
             "detach": True,
             "ipc_mode": "host",
