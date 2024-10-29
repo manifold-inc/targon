@@ -21,7 +21,7 @@ def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     gpus.sort(key=lambda x: x[1])
     unused = []
     for gpu in gpus:
-        if gpu[1] >= required * 1.2:
+        if gpu[1] >= required * 1.05:
             return [gpu]
         if gpu[1] / gpu[2] > 0.9:
             unused.append(gpu)
@@ -178,6 +178,7 @@ def sync_output_checkers(
                 f"GPU_MEMORY_UTIL={memory_util}",
                 f"TENSOR_PARALLEL={len(gpus)}",
             ],
+            "volumes": ["~/.cache/huggingface:/root/.cache/huggingface"],
             "runtime": "nvidia",
             "detach": True,
             "ipc_mode": "host",
