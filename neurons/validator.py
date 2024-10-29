@@ -10,7 +10,7 @@ from neurons.base import BaseNeuron, NeuronType
 from targon.cache import load_cache
 from targon.config import get_models_from_config, get_models_from_endpoint
 from targon.dataset import download_dataset
-from targon.docker import down_containers, load_docker, sync_output_checkers
+from targon.docker import load_docker, sync_output_checkers
 from targon.epistula import generate_header
 from targon.jugo import send_stats_to_jugo
 from targon.math import get_weights
@@ -29,12 +29,15 @@ from targon.utils import (
 from targon.types import Endpoints, InferenceStats
 import traceback
 import bittensor as bt
+from dotenv import load_dotenv
 
 from typing import Any, Dict, List, Optional, Tuple
 from targon import (
     __version__,
     __spec_version__ as spec_version,
 )
+
+load_dotenv()
 
 
 class Validator(BaseNeuron):
@@ -391,7 +394,6 @@ class Validator(BaseNeuron):
         if self.db:
             bt.logging.info("Closing organics db connection")
             self.loop.run_until_complete(self.db.close())
-        down_containers(self.client)
 
     def get_models(self) -> List[str]:
         """

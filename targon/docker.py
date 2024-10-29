@@ -1,4 +1,5 @@
 from time import sleep
+import os
 from typing import Any, Dict, List, Tuple
 import re
 import math
@@ -21,7 +22,7 @@ def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     gpus.sort(key=lambda x: x[1])
     unused = []
     for gpu in gpus:
-        if gpu[1] >= required * 1.05:
+        if gpu[1] >= required * 1.1:
             return [gpu]
         if gpu[1] / gpu[2] > 0.9:
             unused.append(gpu)
@@ -31,7 +32,7 @@ def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     for gpu in unused:
         total_free += gpu[1]
         next_gpus.append(gpu)
-        if total_free > required * 1.2:
+        if total_free > required * 1.1:
             return next_gpus
     return None
 
@@ -87,20 +88,13 @@ def get_free_gpus() -> List[Tuple[int, int, int]]:
     return gpus
 
 
-def down_containers(client: DockerClient):
-    containers: List[Container] = client.containers.list(  # type: ignore
-        filters={"ancestor": MANIFOLD_VERIFIER}
-    )
-    for container in containers:
-        container.remove(force=True)
-
-
 def sync_output_checkers(
     client: docker.DockerClient, models: List[str]
 ) -> Dict[str, Dict[str, Any]]:
     image_sha = None
+    image_name = f"{MANIFOLD_VERIFIER}:{os.getenv('IMAGE_TAG')}"
     try:
-        image: Image = client.images.pull(MANIFOLD_VERIFIER)  # type: ignore
+        image: Image = client.images.pull(image_name)  # type: ignore
         if image.attrs is not None:
             image_sha = image.attrs.get("Id", None)
     except Exception as e:
@@ -164,21 +158,21 @@ def sync_output_checkers(
 
         memory_util = 0.9
         if len(gpus) == 1:
-            memory_util = round((required_vram * 1.2) / gpus[0][2], 3)
+            memory_util = round((required_vram * 1.1) / gpus[0][2], 3)
 
         # Init new container
         bt.logging.info(
             f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]} using {memory_util}% vram"
         )
         config: Dict[str, Any] = {
-            "image": MANIFOLD_VERIFIER,
+            "image": image_name,
             "ports": {f"80/tcp": min_port},
             "environment": [
                 f"MODEL={model}",
                 f"GPU_MEMORY_UTIL={memory_util}",
                 f"TENSOR_PARALLEL={len(gpus)}",
             ],
-            "volumes": ["~/.cache/huggingface:/root/.cache/huggingface"],
+            "volumes": ["/var/targon/huggingface/cache:/root/.cache/huggingface"],
             "runtime": "nvidia",
             "detach": True,
             "ipc_mode": "host",
