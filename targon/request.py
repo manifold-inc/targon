@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from httpx import Timeout
 import openai
-from requests import post
+import requests
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import create_header_hook
 from targon.types import Endpoints, InferenceStats
@@ -30,7 +30,7 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
     response = None
     for _ in range(3):
         try:
-            response = post(
+            response = requests.post(
                 f"http://localhost:{port}/generate",
                 headers={"Content-Type": "application/json"},
                 json={
@@ -224,7 +224,7 @@ async def check_tokens(
     url="http://localhost",
 ) -> Optional[Dict]:
     try:
-        result = post(
+        result = requests.post(
             f"{url}:{port}/verify",
             headers={"Content-Type": "application/json"},
             json={

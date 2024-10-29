@@ -13,7 +13,7 @@ from targon.config import get_models_from_config, get_models_from_endpoint
 from targon.dataset import download_dataset
 from targon.docker import load_docker, sync_output_checkers
 from targon.epistula import generate_header
-from targon.jugo import send_stats_to_jugo
+from targon.jugo import score_organics, send_stats_to_jugo
 from targon.math import get_weights
 from targon.metagraph import (
     create_set_weights,
@@ -50,6 +50,7 @@ class Validator(BaseNeuron):
     lock_waiting = False
     lock_halt = False
     is_runing = False
+    last_bucket_id = None
 
     def __init__(self, config=None, run_init=True):
         super().__init__(config)
@@ -105,6 +106,7 @@ class Validator(BaseNeuron):
                 self.sync_output_checkers_on_interval,
                 self.resync_hotkeys_on_interval,
                 self.send_models_to_miners_on_interval,
+                self.score_organics_on_block,
             ]
         )
 
@@ -165,6 +167,15 @@ class Validator(BaseNeuron):
             return
         self.verification_ports = sync_output_checkers(self.client, self.get_models())
 
+    def score_organics_on_block(self, block):
+        if not self.is_runing:
+            return
+        if block % 20:
+            return
+        asyncio.run(
+            score_organics(self.last_bucket_id, self.verification_ports, self.wallet)
+        )
+
     def set_weights_on_interval(self, block):
         if block % self.config.epoch_length:
             return
@@ -218,7 +229,7 @@ class Validator(BaseNeuron):
 
         self.is_runing = True
         while not self.exit_context.isExiting:
-            if self.config.autoupdate and not os.getenv('NO_UPDATE'):
+            if self.config.autoupdate and not os.getenv("NO_UPDATE"):
                 autoupdate(branch="main")
             # Make sure our substrate thread is alive
             if not self.substrate_thread.is_alive():

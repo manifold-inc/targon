@@ -2,7 +2,7 @@ import json
 from hashlib import sha256
 from uuid import uuid4
 from math import ceil
-from typing import Annotated, Any, Dict, List, Optional, Union
+from typing import Annotated, Any, Dict, Optional
 
 import time
 import httpx
@@ -11,7 +11,7 @@ from substrateinterface import Keypair
 
 def generate_header(
     hotkey: Keypair,
-    body: Union[Dict[Any, Any], List[Any], bytes],
+    body: Any,
     signed_for: Optional[str] = None,
 ) -> Dict[str, Any]:
     timestamp = round(time.time() * 1000)
