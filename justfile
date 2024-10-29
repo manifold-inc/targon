@@ -20,8 +20,11 @@ up:
 build_verifier tag='latest':
   cd verifier && docker build -t manifoldlabs/sn4-verifier:{{tag}} .
 
-run_verifier model port gpu tag:
+run_verifier model port gpu gpus tag:
   docker run -p {{port}}:80 -e MODEL={{model}} -e GPU_MEMORY_UTIL=.9 --runtime=nvidia --ipc=host --gpus='"device={{gpu}}"' -d --name dev_image manifoldlabs/sn4-verifier:{{tag}}
+
+run_verifier_prod model port gpu tag name:
+  docker run -p {{port}}:80 -e MODEL={{model}} -e TENSOR_PARALLEL={{gpus}} -e GPU_MEMORY_UTIL=.9 -l model={{model}} -l port={{port}} --runtime=nvidia --ipc=host --gpus='"device={{gpu}}"' -d --name {{name}} manifoldlabs/sn4-verifier:{{tag}}
 
 push_verifier: build_verifier
   docker push manifoldlabs/sn4-verifier:latest

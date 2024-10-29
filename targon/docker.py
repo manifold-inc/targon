@@ -181,16 +181,6 @@ def sync_output_checkers(
             "runtime": "nvidia",
             "detach": True,
             "ipc_mode": "host",
-            "healthcheck": {
-                "test": [
-                    "CMD-SHELL",
-                    "curl --silent --fail http://localhost/ > /dev/null || exit 1",
-                ],
-                "interval": int(1e9 * 10),
-                "retries": 15,
-                "start_period": int(1e9 * 45),
-                "start_interval": int(1e9 * 30),
-            },
             "auto_remove": True,
             "name": container_name,
             "extra_hosts": {"host.docker.internal": "host-gateway"},
