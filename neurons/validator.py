@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import asyncio
 from time import sleep
@@ -217,7 +218,7 @@ class Validator(BaseNeuron):
 
         self.is_runing = True
         while not self.exit_context.isExiting:
-            if self.config.autoupdate:
+            if self.config.autoupdate and not os.getenv('NO_UPDATE'):
                 autoupdate(branch="main")
             # Make sure our substrate thread is alive
             if not self.substrate_thread.is_alive():
