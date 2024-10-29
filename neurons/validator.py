@@ -50,6 +50,7 @@ class Validator(BaseNeuron):
     lock_waiting = False
     lock_halt = False
     is_runing = False
+    last_bucket_id = None
 
     def __init__(self, config=None, run_init=True):
         super().__init__(config)

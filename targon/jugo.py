@@ -5,6 +5,7 @@ import traceback
 from nanoid import generate
 
 from targon.epistula import generate_header
+from targon.request import check_tokens
 from targon.types import Endpoints, InferenceStats
 import bittensor as bt
 
@@ -62,3 +63,73 @@ async def send_stats_to_jugo(
     except Exception as e:
         bt.logging.error(f"Error in send_stats_to_jugo: {e}")
         bt.logging.error(traceback.format_exc())
+
+
+async def score_organics(last_bucket_id, ports, wallet):
+    async with aiohttp.ClientSession() as session:
+        headers = generate_header(wallet.hotkey, bytes())
+        async with session.get(JUGO_URL, headers=headers) as res:
+            if res.status != 200:
+                return last_bucket_id
+            organics = await res.json()
+    bucket_id = organics.get("bucket_id")
+    if last_bucket_id == bucket_id:
+        return last_bucket_id
+    records = organics.get("records")
+    scores = {}
+    for record in records:
+        uid = record["uid"]
+        if scores.get(uid) is None:
+            scores[uid] = []
+        if not record["success"]:
+            scores[uid].append(-500)
+            continue
+        tokens = []
+        for token in record["response"]:
+            choice = token.get("choices", [{}])[0]
+            text = ""
+            logprob = -100
+            match record["endpoint"]:
+                case "CHAT":
+                    text = choice.get("delta", {}).get("content")
+                    logprobs = choice.get("logprobs", {})
+                    logprob = logprobs.get("content", [{}])[0].get("logprob", -100)
+                    token = logprobs.get("content", [{}])[0].get("token", "")
+                case "COMPLETION":
+                    text = choice.get("text")
+                    logprobs = choice.get("logprobs", {})
+                    logprob = logprobs.get("token_logprobs", -100)[0]
+                    token = logprobs.get("tokens", [""])[0]
+
+            token_id = -1
+            if token.startswith("token_id:"):
+                token_parts = token.split(":")
+                if len(token_parts) > 1:
+                    token_id = int(token_parts[1])
+
+            tokens.append(
+                {
+                    "text": text,
+                    "logprob": logprob,
+                    "token_id": token_id,
+                }
+            )
+            port = ports.get(record["request"]["model"], {}).get("port")
+            if not port:
+                continue
+            res = await check_tokens(
+                record["request"],
+                tokens,
+                record["uid"],
+                Endpoints(record["endpoint"]),
+                port,
+            )
+            if res is None:
+                continue
+            verified = res.get("verified")
+            if verified:
+                scores[uid].append(100)
+            else:
+                scores[uid].append(-100)
+
+    return bucket_id, scores
