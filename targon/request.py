@@ -235,6 +235,7 @@ async def check_tokens(
             },
         ).json()
         if result.get("verified") is None:
+            bt.logging.error(str(result))
             return None
         return result
     except Exception as e:

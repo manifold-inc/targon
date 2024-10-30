@@ -349,13 +349,13 @@ async def verify(request: VerificationRequest) -> Dict:
     ):
         return {
             "verified": False,
-            "error": "Too many tokens produced!",
+            "error": f"Too many tokens produced: {request.request_params.max_tokens} < {len(request.output_sequence)}",
             "cause": "TOO_LONG",
         }
     if request.model != MODEL_NAME:
         return {
             "verified": False,
-            "error": "Unable to verify model={request.model}, since we are using {MODEL_NAME}",
+            "error": f"Unable to verify model={request.model}, since we are using {MODEL_NAME}",
             "cause": "INTERNAL_ERROR",
         }
 

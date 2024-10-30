@@ -50,6 +50,7 @@ class Validator(BaseNeuron):
     lock_waiting = False
     lock_halt = False
     is_runing = False
+    organics = {}
     last_bucket_id = None
 
     def __init__(self, config=None, run_init=True):
@@ -172,7 +173,7 @@ class Validator(BaseNeuron):
             return
         if block % 20:
             return
-        asyncio.run(
+        self.last_bucket_id, self.organics = asyncio.run(
             score_organics(self.last_bucket_id, self.verification_ports, self.wallet)
         )
 
@@ -187,7 +188,7 @@ class Validator(BaseNeuron):
             self.metagraph,
             self.subtensor,
             get_weights(
-                self.miner_models, self.miner_tps, list(self.verification_ports.keys())
+                self.miner_models, self.miner_tps,self.organics, list(self.verification_ports.keys())
             ),
         )
 

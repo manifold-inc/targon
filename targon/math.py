@@ -34,6 +34,7 @@ def safe_mean_score(data):
 def get_weights(
     miner_models: Dict[int, List[str]],
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]],
+    organics: Dict[int, list[int]],
     models: List[str],
 ) -> Tuple[List[int], List[float]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
@@ -41,6 +42,8 @@ def get_weights(
     tps = {}
     for uid in miner_tps:
         tps[uid] = 0
+        if (organic := organics.get(uid)) is not None:
+            tps[uid] = safe_mean_score(organic)
         for model in miner_models.get(uid, []):
             if model not in models:
                 continue
