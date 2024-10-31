@@ -23,5 +23,8 @@ build_verifier tag='latest':
 run_verifier model port gpu tag:
   docker run -p {{port}}:80 -e MODEL={{model}} -e GPU_MEMORY_UTIL=.9 --runtime=nvidia --ipc=host --gpus='"device={{gpu}}"' -v ~/.cache/huggingface:/root/.cache/huggingface -d --name dev_image manifoldlabs/sn4-verifier:{{tag}}
 
+run_verifier_prod model port gpu gpus name memory_util='.9' tag='latest':
+  docker run -p {{port}}:80 -e MODEL={{model}} -e TENSOR_PARALLEL={{gpus}} -e GPU_MEMORY_UTIL={{memory_util}} -l model={{model}} -l port={{port}} --runtime=nvidia --ipc=host --gpus='"device={{gpu}}"' -d --name {{name}} manifoldlabs/sn4-verifier:{{tag}}
+
 push_verifier: build_verifier
   docker push manifoldlabs/sn4-verifier:latest
