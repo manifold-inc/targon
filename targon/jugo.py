@@ -96,7 +96,9 @@ async def score_organics(last_bucket_id, ports, wallet):
                 match record["endpoint"]:
                     case "CHAT":
                         text = choice.get("delta", {}).get("content")
-                        logprobs = choice.get("logprobs", {})
+                        logprobs = choice.get("logprobs")
+                        if logprobs is None:
+                            continue
                         logprob = logprobs.get("content", [{}])[0].get("logprob", -100)
                         token = logprobs.get("content", [{}])[0].get("token", None)
                         if text is None or (text == "" and len(tokens) == 0):
@@ -125,6 +127,12 @@ async def score_organics(last_bucket_id, ports, wallet):
                         "token_id": token_id,
                     }
                 )
+
+            # No response tokens
+            if len(tokens) == 0:
+                scores[uid].append(-100)
+                continue
+
             port = ports.get(model, {}).get("port")
             if not port:
                 continue
