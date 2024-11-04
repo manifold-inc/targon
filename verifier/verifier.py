@@ -354,7 +354,6 @@ async def verify(request: VerificationRequest) -> Dict:
         }
     if request.model != MODEL_NAME:
         return {
-            "verified": False,
             "error": f"Unable to verify model={request.model}, since we are using {MODEL_NAME}",
             "cause": "INTERNAL_ERROR",
         }
