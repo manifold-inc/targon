@@ -13,6 +13,7 @@ from docker.models.containers import Container, Image
 from docker.types import DeviceRequest
 import requests
 
+from targon.env import GPUS, VERIFIER_IMAGE_TAG
 from targon.types import Endpoints
 
 
@@ -85,6 +86,8 @@ def get_free_gpus() -> List[Tuple[int, int, int]]:
 
     lines = [line.split(" ") for line in res.stdout.decode("utf-8").strip().split("\n")]
     gpus = [(i, int(line[0]), int(line[2])) for i, line in enumerate(lines)]
+    if GPUS:
+        gpus = [gpu for gpu in gpus if gpu[0] in GPUS]
     return gpus
 
 
@@ -92,7 +95,7 @@ def sync_output_checkers(
     client: docker.DockerClient, models: List[str]
 ) -> Dict[str, Dict[str, Any]]:
     image_sha = None
-    image_name = f"{MANIFOLD_VERIFIER}:{os.getenv('IMAGE_TAG', 'latest')}"
+    image_name = f"{MANIFOLD_VERIFIER}:{VERIFIER_IMAGE_TAG}"
     try:
         image: Image = client.images.pull(image_name)  # type: ignore
         if image.attrs is not None:
