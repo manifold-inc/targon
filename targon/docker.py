@@ -22,7 +22,7 @@ def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     gpus.sort(key=lambda x: x[1])
     unused = []
     for gpu in gpus:
-        if gpu[1] >= required * 1.1:
+        if gpu[1] >= required * 1.2:
             return [gpu]
         if gpu[1] / gpu[2] > 0.9:
             unused.append(gpu)
@@ -32,7 +32,7 @@ def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     for gpu in unused:
         total_free += gpu[1]
         next_gpus.append(gpu)
-        if total_free > required * 1.1:
+        if total_free > required * 1.2:
             return next_gpus
     return None
 
@@ -158,7 +158,7 @@ def sync_output_checkers(
 
         memory_util = 0.9
         if len(gpus) == 1:
-            memory_util = round((required_vram * 1.1) / gpus[0][2], 3)
+            memory_util = round((required_vram * 1.2) / gpus[0][2], 3)
 
         # Init new container
         bt.logging.info(
@@ -198,9 +198,11 @@ def sync_output_checkers(
                 break
             (container,) = containers
             if container.health == "unhealthy":
-                bt.logging.info(
+                container_logs = container.logs()
+                bt.logging.error(
                     f"Failed starting container {std_model}: Removing from verifiers"
                 )
+                bt.logging.error(container_logs)
                 break
             if container.health != "healthy":
                 bt.logging.info(f"{container.name}: {container.health}")
