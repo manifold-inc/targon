@@ -36,6 +36,9 @@ from targon import (
     __version__,
     __spec_version__ as spec_version,
 )
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
