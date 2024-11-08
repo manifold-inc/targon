@@ -9,7 +9,7 @@ import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
 from targon.cache import load_cache
-from targon.config import get_models_from_config, get_models_from_endpoint
+from targon.config import AUTO_UPDATE, IS_TESTNET, get_models_from_config, get_models_from_endpoint
 from targon.dataset import download_dataset
 from targon.docker import load_docker, sync_output_checkers
 from targon.epistula import generate_header
@@ -30,16 +30,12 @@ from targon.utils import (
 from targon.types import Endpoints, InferenceStats
 import traceback
 import bittensor as bt
-from dotenv import load_dotenv
 
 from typing import Any, Dict, List, Optional, Tuple
 from targon import (
     __version__,
     __spec_version__ as spec_version,
 )
-
-load_dotenv()
-
 
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
@@ -59,7 +55,7 @@ class Validator(BaseNeuron):
         self.set_weights = create_set_weights(spec_version, self.config.netuid)
 
         ## CHECK IF REGG'D
-        if not self.metagraph.validator_permit[self.uid]:
+        if not self.metagraph.validator_permit[self.uid] and not IS_TESTNET:
             bt.logging.error("Validator does not have vpermit")
             exit()
         if run_init:
@@ -230,7 +226,7 @@ class Validator(BaseNeuron):
 
         self.is_runing = True
         while not self.exit_context.isExiting:
-            if self.config.autoupdate and not os.getenv("NO_UPDATE"):
+            if self.config.autoupdate and not AUTO_UPDATE:
                 autoupdate(branch="main")
             # Make sure our substrate thread is alive
             if not self.substrate_thread.is_alive():

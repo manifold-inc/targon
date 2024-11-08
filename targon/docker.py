@@ -13,6 +13,7 @@ from docker.models.containers import Container, Image
 from docker.types import DeviceRequest
 import requests
 
+from targon.config import IMAGE_TAG
 from targon.types import Endpoints
 
 
@@ -92,7 +93,7 @@ def sync_output_checkers(
     client: docker.DockerClient, models: List[str]
 ) -> Dict[str, Dict[str, Any]]:
     image_sha = None
-    image_name = f"{MANIFOLD_VERIFIER}:{os.getenv('IMAGE_TAG', 'latest')}"
+    image_name = f"{MANIFOLD_VERIFIER}:{IMAGE_TAG}"
     try:
         image: Image = client.images.pull(image_name)  # type: ignore
         if image.attrs is not None:

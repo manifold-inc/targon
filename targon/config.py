@@ -22,6 +22,13 @@ import bittensor as bt
 
 import requests
 
+from dotenv import load_dotenv
+load_dotenv()
+
+AUTO_UPDATE = not os.getenv("NO_AUTO_UPDATE", False)
+IMAGE_TAG = os.getenv('IMAGE_TAG', 'latest')
+IS_TESTNET = not not os.getenv("IS_TESTNET", False)
+
 
 def validate_config_and_neuron_path(config):
     r"""Checks/validates the config namespace object."""
