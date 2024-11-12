@@ -31,7 +31,7 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
     for _ in range(3):
         try:
             response = requests.post(
-                f"http://localhost:{port}/generate",
+                f"http://localhost:{port}/llm/generate",
                 headers={"Content-Type": "application/json"},
                 json={
                     "messages": messages,
@@ -225,7 +225,7 @@ async def check_tokens(
 ) -> Optional[Dict]:
     try:
         result = requests.post(
-            f"{url}:{port}/verify",
+            f"{url}:{port}/llm/verify",
             headers={"Content-Type": "application/json"},
             json={
                 "model": request.get("model"),

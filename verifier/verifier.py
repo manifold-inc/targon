@@ -99,7 +99,7 @@ class GenerateRequest(BaseModel):
 app = FastAPI()
 
 
-@app.post("/generate")
+@app.post("/llm/generate")
 async def generate_question(req: GenerateRequest):
     if MODEL_WRAPPER is None:
         print("Failed generate request, endpoint not supported")
@@ -361,7 +361,7 @@ def verify_logprobs(
     return True, "", ""
 
 
-@app.post("/verify/llm")
+@app.post("/llm/verify")
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
     if MODEL_WRAPPER is None or TOKENIZER is None:
