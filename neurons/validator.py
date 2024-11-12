@@ -59,7 +59,7 @@ class Validator(BaseNeuron):
         self.set_weights = create_set_weights(spec_version, self.config.netuid)
 
         ## CHECK IF REGG'D
-        if not self.metagraph.validator_permit[self.uid]:
+        if not self.metagraph.validator_permit[self.uid] :
             bt.logging.error("Validator does not have vpermit")
             exit()
         if run_init:

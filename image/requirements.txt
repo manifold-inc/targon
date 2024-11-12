@@ -1,0 +1,6 @@
+diffusers[torch]==0.31.0
+safetensors==0.4.5
+sentencepiece==0.2.0
+protobuf==5.28.3
+fastapi==0.115.0
+uvicorn==0.30.6
