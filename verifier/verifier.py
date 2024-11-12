@@ -8,37 +8,56 @@ from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 from vllm import LLM, SamplingParams
+from huggingface_hub import HfApi
+import importlib
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
 if MODEL_NAME is None:
     exit()
 
-GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 0))
-if GPU_MEMORY_UTIL == 0:
+api = HfApi()
+model = api.model_info(MODEL_NAME)
+if model is None or model.config is None:
     exit()
+
 # Constants.
+TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
+
+# LLM only
 LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.75
-TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
-MODEL_WRAPPER = LLM(
-    model=MODEL_NAME,
-    enforce_eager=True,
-    gpu_memory_utilization=GPU_MEMORY_UTIL,
-    tensor_parallel_size=TENSOR_PARALLEL,
-)
-TOKENIZER = MODEL_WRAPPER.get_tokenizer()
-MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
-MODEL_NUM_PARAMS = sum(1 for _ in MODEL.parameters())
+MODEL_WRAPPER = None
+TOKENIZER = None
 
 # Lock to ensure atomicity.
 LOCK = asyncio.Lock()
 LOCK_GENERATE = asyncio.Lock()
 
-ENDPOINTS = ["completion"]
-if TOKENIZER.chat_template is not None:
-    ENDPOINTS.append("chat")
+ENDPOINTS = []
 
+# LLM
+match model.pipeline_tag:
+    case "text-to-image":
+        ENDPOINTS.append("image")
+        diffuser_class = model.config["diffusers"]["_class_name"]
+        diffuser = importlib.import_module(f"diffusers.{diffuser_class}")
+        pipe = diffuser.from_pretrained(MODEL_NAME)
+        pipe.to("cuda")
+    case "text-generation":
+        ENDPOINTS.append("completion")
+        MODEL_WRAPPER = LLM(
+            model=MODEL_NAME,
+            enforce_eager=True,
+            gpu_memory_utilization=1,
+            tensor_parallel_size=TENSOR_PARALLEL,
+        )
+        TOKENIZER = MODEL_WRAPPER.get_tokenizer()
+        if TOKENIZER.chat_template is not None:
+            ENDPOINTS.append("chat")
+    case _:
+        print(f"Unknown pipeline {model.pipeline_tag}")
+        exit()
 
 class RequestParams(BaseModel):
     messages: Optional[List[Dict[str, str]]] = None
@@ -82,6 +101,9 @@ app = FastAPI()
 
 @app.post("/generate")
 async def generate_question(req: GenerateRequest):
+    if MODEL_WRAPPER is None:
+        print("Failed generate request, endpoint not supported")
+        return {"text": None}
     async with LOCK_GENERATE:
         try:
             if "chat" in ENDPOINTS:
@@ -125,6 +147,10 @@ def verify_logprobs_random(
     """
     Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
     """
+    if MODEL_WRAPPER is None or TOKENIZER is None:
+        message = "Failed generate request, endpoint not supported"
+        print(message)
+        return False, message
     indices = list(range(1, len(request.output_sequence) - 1))
     indices_to_check = list(
         sorted(
@@ -175,6 +201,10 @@ def verify_logprobs(
     Compare the produced logprob values against the ground truth, or at least
     the ground truth according to this particular GPU/software pairing.
     """
+    if MODEL_WRAPPER is None or TOKENIZER is None:
+        message = "Failed generate request, endpoint not supported"
+        print(message)
+        return None
 
     # Set up sampling parameters for the "fast" check, which just compares input logprobs against output logprobs.
     top_logprobs = int(request.request_params.temperature * 10) + 6
@@ -331,9 +361,14 @@ def verify_logprobs(
     return True, "", ""
 
 
-@app.post("/verify")
+@app.post("/verify/llm")
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
+    if MODEL_WRAPPER is None or TOKENIZER is None:
+        return {
+            "error": f"Unable to verify model={request.model}, since we are using {MODEL_NAME}",
+            "cause": "INTERNAL_ERROR",
+        }
 
     # If the miner didn't return any outputs, fail.
     if len(request.output_sequence) < 3:
