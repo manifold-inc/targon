@@ -23,6 +23,15 @@ import bittensor as bt
 import requests
 
 
+def str2bool(v):
+    return v.lower() in ("yes", "true", "t", "1")
+
+
+AUTO_UPDATE = not str2bool(os.getenv("NO_AUTO_UPDATE", "False"))
+IMAGE_TAG = os.getenv("IMAGE_TAG", "latest")
+IS_TESTNET = str2bool(os.getenv("IS_TESTNET", "False"))
+
+
 def validate_config_and_neuron_path(config):
     r"""Checks/validates the config namespace object."""
     full_path = os.path.expanduser(
