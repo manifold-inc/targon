@@ -6,6 +6,7 @@ from io import BytesIO
 import os
 from huggingface_hub import HfApi
 import diffusers
+import torch
 
 from pydantic import BaseModel
 
@@ -21,8 +22,8 @@ if model is None or model.config is None:
 
 diffuser_class = model.config["diffusers"]["_class_name"]
 diffuser = getattr(diffusers, diffuser_class)
-pipe = diffuser.from_pretrained(MODEL_NAME)
-pipe.to("cuda")
+model = diffuser.from_pretrained(MODEL_NAME)
+model.to("cuda")
 
 
 app = FastAPI()
@@ -44,8 +45,9 @@ class ImageRequest(BaseModel):
 
 @app.post("/v1/images/generations")
 async def generate_question(req: ImageRequest):
+    generator = torch.Generator(device="cuda").manual_seed(4)
     width, height = req.size.value.split("x")
-    image = pipe(prompt=req.prompt, height=int(height), width=int(width)).images[0]  # type: ignore
+    image = model(prompt=req.prompt, height=int(height), width=int(width), generator=generator).images[0]
     buffered = BytesIO()
     image.save(buffered, format="png")
     img_str = base64.b64encode(buffered.getvalue())
