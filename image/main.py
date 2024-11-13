@@ -47,7 +47,9 @@ class ImageRequest(BaseModel):
 async def generate_question(req: ImageRequest):
     generator = torch.Generator(device="cuda").manual_seed(4)
     width, height = req.size.value.split("x")
-    image = model(prompt=req.prompt, height=int(height), width=int(width), generator=generator).images[0]
+    image = model(prompt=req.prompt, height=int(height), width=int(width), generator=generator)
+    print(image)
+    image = image.images[0]
     buffered = BytesIO()
     image.save(buffered, format="png")
     img_str = base64.b64encode(buffered.getvalue())
