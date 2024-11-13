@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY main.py .
 
-ENTRYPOINT ["uvicorn", "verifier:app", "--port", "80", "--host", "0.0.0.0"]
+ENTRYPOINT ["uvicorn", "main:app", "--port", "80", "--host", "0.0.0.0"]
