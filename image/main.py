@@ -20,7 +20,7 @@ if model is None or model.config is None:
 
 
 diffuser_class = model.config["diffusers"]["_class_name"]
-diffuser = diffusers.__dict__[diffuser_class]
+diffuser = getattr(diffusers, diffuser_class)
 pipe = diffuser.from_pretrained(MODEL_NAME)
 pipe.to("cuda")
 
