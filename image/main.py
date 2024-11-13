@@ -5,7 +5,7 @@ import base64
 from io import BytesIO
 import os
 from huggingface_hub import HfApi
-import importlib
+import diffusers
 
 from pydantic import BaseModel
 
@@ -18,8 +18,9 @@ model = api.model_info(MODEL_NAME)
 if model is None or model.config is None:
     exit()
 
+
 diffuser_class = model.config["diffusers"]["_class_name"]
-diffuser = importlib.import_module(f"diffusers.{diffuser_class}")
+diffuser = diffusers.__dict__[diffuser_class]
 pipe = diffuser.from_pretrained(MODEL_NAME)
 pipe.to("cuda")
 
