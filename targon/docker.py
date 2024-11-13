@@ -164,7 +164,7 @@ def sync_output_checkers(
             "image": image_name,
             "ports": {f"80/tcp": min_port},
             "environment": [
-                f"MODEL={model}",
+                f"MODEL_NAME={model}",
                 f"TENSOR_PARALLEL={len(gpus)}",
             ],
             "volumes": ["/var/targon/huggingface/cache:/root/.cache/huggingface"],

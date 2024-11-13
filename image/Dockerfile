@@ -4,7 +4,7 @@ WORKDIR /app
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --start-interval=30s --retries=15 CMD curl --silent --fail http://localhost/ > /dev/null || exit 1
 
-COPY req.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r req.txt
 
 COPY main.py .

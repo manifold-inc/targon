@@ -19,7 +19,7 @@ from vllm import SamplingParams
 LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.75
 
-MODEL_NAME = os.getenv("MODEL", None)
+MODEL_NAME = os.getenv("MODEL_NAME", None)
 if MODEL_NAME is None:
     exit()
 

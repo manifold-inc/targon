@@ -17,7 +17,7 @@ from verifier.image import generate_image_functions
 from verifier.llm import get_llm_functions
 
 # Load the model.
-MODEL_NAME = os.getenv("MODEL", None)
+MODEL_NAME = os.getenv("MODEL_NAME", None)
 if MODEL_NAME is None:
     exit()
 

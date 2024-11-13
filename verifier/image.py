@@ -21,6 +21,7 @@ def generate_image_functions(MODEL_WRAPPER,MODEL_NAME,ENDPOINTS):
         return img_str
 
     async def verify():
+
         pass
     return verify
 
