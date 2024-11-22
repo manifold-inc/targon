@@ -20,14 +20,16 @@ from targon.types import Endpoints
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     "[GPU_ID, free, total] in MB"
     bt.logging.info(f"Need: {required}, have: {gpus}")
-    gpus.sort(key=lambda x: x[1])
-    unused = []
-    for gpu in gpus:
+    
+    # find unsused GPUS
+    unused = [gpu for gpu in gpus if gpu[1] / gpu[2] > 0.9]
+
+    # find first gpu with enough space
+    for gpu in unused:
         if gpu[1] >= required * 1.2:
             return [gpu]
-        if gpu[1] / gpu[2] > 0.9:
-            unused.append(gpu)
-
+    
+    # if we need multiple gpu, only used unused
     total_free = 0
     next_gpus = []
     for gpu in unused:
