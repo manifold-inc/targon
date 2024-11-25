@@ -7,7 +7,6 @@ import docker
 import bittensor as bt
 import subprocess
 from accelerate.commands import estimate
-from docker.client import DockerClient
 
 from docker.models.containers import Container, Image
 from docker.types import DeviceRequest
