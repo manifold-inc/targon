@@ -189,7 +189,7 @@ def sync_output_checkers(
         while True:
             ready = True
             std_model = re.sub(r"[\W_]", "-", model).lower()
-            containers: List[Container] = client.containers.list(filters={"name": std_model})  # type: ignore
+            containers: List[Container] = client.containers.list(filters={"name": std_model}, all=True)  # type: ignore
             if not len(containers):
                 bt.logging.info(
                     f"Failed starting container {std_model}: Removing from verifiers"
