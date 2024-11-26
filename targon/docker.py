@@ -158,20 +158,15 @@ def sync_output_checkers(
             min_port += 1
         used_ports.append(min_port)
 
-        memory_util = 0.9
-        if len(gpus) == 1:
-            memory_util = round((required_vram * 1.2) / gpus[0][2], 3)
-
         # Init new container
         bt.logging.info(
-            f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]} using {memory_util}% vram"
+            f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]}"
         )
         config: Dict[str, Any] = {
             "image": image_name,
             "ports": {f"80/tcp": min_port},
             "environment": [
                 f"MODEL={model}",
-                f"GPU_MEMORY_UTIL={memory_util}",
                 f"TENSOR_PARALLEL={len(gpus)}",
             ],
             "volumes": ["/var/targon/huggingface/cache:/root/.cache/huggingface"],
