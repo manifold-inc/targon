@@ -132,6 +132,9 @@ def sync_output_checkers(
     needed_models = set(models) - set(existing)
     min_port = 5555
 
+    # Clear containers that arent running
+    client.containers.prune()
+
     # Load all models
     bt.logging.info(f"Starting {list(needed_models)}")
     for model in needed_models:
@@ -173,7 +176,6 @@ def sync_output_checkers(
             "runtime": "nvidia",
             "detach": True,
             "ipc_mode": "host",
-            "auto_remove": True,
             "name": container_name,
             "extra_hosts": {"host.docker.internal": "host-gateway"},
             "labels": {"model": str(model), "port": str(min_port)},
@@ -199,7 +201,9 @@ def sync_output_checkers(
                 bt.logging.error(
                     f"Failed starting container {std_model}: Removing from verifiers"
                 )
+                bt.logging.error("---- Verifier Logs ----")
                 bt.logging.error(container_logs)
+                bt.logging.error("-----------------------")
                 break
             if container.health != "healthy":
                 bt.logging.info(f"{container.name}: {container.health}")
