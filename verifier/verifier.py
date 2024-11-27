@@ -12,10 +12,7 @@ from vllm import LLM, SamplingParams
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
 if MODEL_NAME is None:
-    exit()
-
-GPU_MEMORY_UTIL = float(os.getenv("GPU_MEMORY_UTIL", 0))
-if GPU_MEMORY_UTIL == 0:
+    print("No model name provided, exiting.")
     exit()
 # Constants.
 LOGPROB_LOG_THRESHOLD = 0.65
@@ -24,7 +21,7 @@ TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
-    gpu_memory_utilization=GPU_MEMORY_UTIL,
+    gpu_memory_utilization=.9,
     tensor_parallel_size=TENSOR_PARALLEL,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
