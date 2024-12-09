@@ -6,6 +6,7 @@ from threading import Thread
 from time import sleep
 
 from asyncpg.connection import asyncpg
+from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
@@ -272,10 +273,10 @@ class Validator(BaseNeuron):
             # Make sure our substrate thread is alive
             if not self.substrate_thread.is_alive():
                 self.substrate = SubstrateInterface(
-                    ss58_format=bt.__ss58_format__,
+                    ss58_format=SS58_FORMAT,
                     use_remote_preset=True,
                     url=self.config.subtensor.chain_endpoint,
-                    type_registry=bt.__type_registry__,
+                    type_registry=TYPE_REGISTRY,
                 )
                 self.substrate_thread = run_block_callback_thread(
                     self.substrate, self.run_callbacks
@@ -427,18 +428,21 @@ class Validator(BaseNeuron):
         assert self.config.cache_file
         if self.exit_context.isExiting:
             return
-        with open(self.config.cache_file, "w") as file:
-            bt.logging.info("Caching scores...")
-            json.dump(
-                {
-                    "miner_tps": self.miner_tps,
-                    "block_saved": self.subtensor.block,
-                    "version": spec_version,
-                },
-                file,
-            )
-            file.flush()
-            bt.logging.info("Cached")
+        try:
+            with open(self.config.cache_file, "w") as file:
+                bt.logging.info("Caching scores...")
+                json.dump(
+                    {
+                        "miner_tps": self.miner_tps,
+                        "block_saved": self.subtensor.block,
+                        "version": spec_version,
+                    },
+                    file,
+                )
+                file.flush()
+                bt.logging.info("Cached")
+        except Exception as e:
+            bt.logging.error(f"Failed writing to cache file: {e}")
 
     def shutdown(self):
         if self.db:
