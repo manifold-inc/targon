@@ -328,6 +328,7 @@ class Validator(BaseNeuron):
 
             # Skip if no miners running this model
             if not len(miner_uids):
+                bt.logging.info("No miners for this model")
                 continue
 
             res = self.loop.run_until_complete(
@@ -394,9 +395,10 @@ class Validator(BaseNeuron):
             )
             return None
         request = generate_request(
-            self.dataset, model_name, endpoint, verification_port
+            self.dataset, generator_model_name, endpoint, verification_port
         )
         if not request:
+            bt.logging.info("No request was generated")
             return None
 
         bt.logging.info(f"{model_name} - {endpoint}: {request}")
