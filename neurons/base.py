@@ -69,6 +69,7 @@ class BaseNeuron:
         bt.wallet.add_args(parser)
         bt.subtensor.add_args(parser)
         bt.logging.add_args(parser)
+        bt.logging.set_info()
         bt.axon.add_args(parser)
         add_args(parser)
         if self.neuron_type == NeuronType.Validator:
