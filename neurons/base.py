@@ -98,7 +98,6 @@ class BaseNeuron:
             bt.logging.set_debug(True)
         if self.config.logging.trace:
             bt.logging.set_trace(True)
-        bt.turn_console_on()
 
         ## BITTENSOR INITIALIZATION
         self.wallet = bt.wallet(config=self.config)
