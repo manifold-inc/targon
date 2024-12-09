@@ -55,6 +55,7 @@ class Validator(BaseNeuron):
     miner_models: Dict[int, List[str]]
     db: Optional[asyncpg.Connection]
     verification_ports: Dict[str, Dict[str, Any]]
+    models: List[str]
     lock_waiting = False
     lock_halt = False
     is_runing = False
@@ -162,10 +163,10 @@ class Validator(BaseNeuron):
         )
         self.miner_models = {}
         bt.logging.info("Broadcasting models to all miners")
+        body = self.models
         for uid in miner_uids:
             bt.logging.info(f"Broadcasting models {uid}")
             axon_info = self.metagraph.axons[uid]
-            body = list(self.verification_ports.keys())
             headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             headers["Content-Type"] = "application/json"
             try:
@@ -200,7 +201,8 @@ class Validator(BaseNeuron):
             return
         if block % self.config.epoch_length:
             return
-        self.verification_ports = sync_output_checkers(self.client, self.get_models())
+        self.models = self.get_models()
+        self.verification_ports = sync_output_checkers(self.client, self.models)
 
     def score_organics_on_block(self, block):
         if not self.is_runing:
@@ -225,7 +227,7 @@ class Validator(BaseNeuron):
                 self.miner_models,
                 self.miner_tps,
                 self.organics,
-                list(self.verification_ports.keys()),
+                self.models,
             ),
         )
 
@@ -261,7 +263,8 @@ class Validator(BaseNeuron):
         miner_subset = 36
 
         # Ensure everything is setup
-        self.verification_ports = sync_output_checkers(self.client, self.get_models())
+        self.models = self.get_models()
+        self.verification_ports = sync_output_checkers(self.client, self.models)
         resync_hotkeys(self.metagraph, self.miner_tps)
         self.send_models_to_miners_on_interval(0)
 
@@ -289,8 +292,22 @@ class Validator(BaseNeuron):
                     sleep(1)
                 self.lock_waiting = False
 
-            model_name = random.choice(list(self.verification_ports.keys()))
-            endpoint = random.choice(self.verification_ports[model_name]["endpoints"])
+            # Random model, but every three is a model we are verifying for sure
+            model_name = random.choice(self.models)
+            if self.step % 3 == 0:
+                model_name = random.choice(list(self.verification_ports.keys()))
+
+            endpoint_model = list(self.verification_ports.keys())[0]
+            if self.verification_ports.get(model_name) != None:
+                endpoint = random.choice(
+                    self.verification_ports[model_name]["endpoints"]
+                )
+                generator_model_name = model_name
+            else:
+                endpoint = random.choice(
+                    self.verification_ports[endpoint_model]["endpoints"]
+                )
+                generator_model_name = endpoint_model
             uids = get_miner_uids(
                 self.metagraph, self.uid, self.config.vpermit_tao_limit
             )
@@ -311,11 +328,15 @@ class Validator(BaseNeuron):
 
             # Skip if no miners running this model
             if not len(miner_uids):
+                bt.logging.info("No miners for this model")
                 continue
 
             res = self.loop.run_until_complete(
-                self.query_miners(miner_uids, model_name, endpoint)
+                self.query_miners(
+                    miner_uids, model_name, endpoint, generator_model_name
+                )
             )
+            self.save_scores()
             if res is not None:
                 self.loop.run_until_complete(
                     send_stats_to_jugo(
@@ -324,10 +345,9 @@ class Validator(BaseNeuron):
                         self.wallet,
                         *res,
                         spec_version,
-                        list(self.verification_ports.keys()),
+                        self.models,
                     )
                 )
-            self.save_scores()
 
         # Exiting
         self.shutdown()
@@ -358,19 +378,27 @@ class Validator(BaseNeuron):
         return uid, stat
 
     async def query_miners(
-        self, miner_uids: List[int], model_name: str, endpoint: Endpoints
+        self,
+        miner_uids: List[int],
+        model_name: str,
+        endpoint: Endpoints,
+        generator_model_name: str,
     ):
         assert self.config.database
 
         verification_port: Optional[int] = self.verification_ports.get(
-            model_name, {"port": None}
+            generator_model_name, {"port": None}
         ).get("port")
         if verification_port is None:
+            bt.logging.error(
+                f"No generator / verifier found for {generator_model_name}"
+            )
             return None
         request = generate_request(
-            self.dataset, model_name, endpoint, verification_port
+            self.dataset, generator_model_name, endpoint, verification_port
         )
         if not request:
+            bt.logging.info("No request was generated")
             return None
 
         bt.logging.info(f"{model_name} - {endpoint}: {request}")
@@ -387,6 +415,10 @@ class Validator(BaseNeuron):
                     )
                 )
             responses: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
+
+            # Skip scoring if we arent running that model
+            if generator_model_name != model_name:
+                return None
 
             tasks = []
             for uid, stat in responses:

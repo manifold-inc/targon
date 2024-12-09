@@ -11,3 +11,4 @@ dask[dataframe]==2024.8.0
 accelerate==0.34.2
 docker==7.1.0
 python-dotenv==1.0.1
+transformers==4.46.2
