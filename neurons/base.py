@@ -20,6 +20,7 @@ from targon import (
 )
 from targon.metagraph import run_block_callback_thread
 from targon.utils import ExitContext
+from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 
 
 class NeuronType(Enum):
@@ -115,10 +116,10 @@ class BaseNeuron:
 
         ## Substrate, Subtensor and Metagraph
         self.substrate = SubstrateInterface(
-            ss58_format=bt.__ss58_format__,
+            ss58_format=SS58_FORMAT,
             use_remote_preset=True,
             url=self.config.subtensor.chain_endpoint,
-            type_registry=bt.__type_registry__,
+            type_registry=TYPE_REGISTRY,
         )
         self.block_callbacks.append(self.maybe_sync_metagraph)
         self.substrate_thread = run_block_callback_thread(self.substrate, self.run_callbacks)
