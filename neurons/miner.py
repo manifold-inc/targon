@@ -1,6 +1,7 @@
 import traceback
 import time
-from bittensor.subtensor import serve_extrinsic
+from bittensor.core.axon import FastAPIThreadedServer
+from bittensor.core.extrinsics.serving import serve_extrinsic
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import httpx
 import netaddr
@@ -13,8 +14,6 @@ from targon.epistula import verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
-
-from bittensor.axon import FastAPIThreadedServer
 
 
 class Miner(BaseNeuron):
@@ -34,6 +33,7 @@ class Miner(BaseNeuron):
 
     def __init__(self, config=None):
         super().__init__(config)
+        bt.logging.set_info()
         ## Typesafety
         assert self.config.netuid
         assert self.config.logging
