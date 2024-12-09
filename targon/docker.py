@@ -1,4 +1,5 @@
 from time import sleep
+import random
 import os
 from typing import Any, Dict, List, Tuple
 import re
@@ -90,54 +91,40 @@ def get_free_gpus() -> List[Tuple[int, int, int]]:
     return gpus
 
 
-def sync_output_checkers(
-    client: docker.DockerClient, models: List[str]
-) -> Dict[str, Dict[str, Any]]:
-    image_sha = None
-    image_name = f"{MANIFOLD_VERIFIER}:{IMAGE_TAG}"
-    try:
-        image: Image = client.images.pull(image_name)  # type: ignore
-        if image.attrs is not None:
-            image_sha = image.attrs.get("Id", None)
-    except Exception as e:
-        bt.logging.error(str(e))
-    bt.logging.info(f"Syncing {models}")
+def remove_containers(client):
     containers: List[Container] = client.containers.list(  # type: ignore
         filters={"label": "model"}
     )
-    verification_ports = {}
-    existing = []
-
-    # delete any unused containers
-    used_ports = []
     for container in containers:
-        bt.logging.info(f"Found {container.name}")
         model = container.labels.get("model")
-        if model not in models or (
-            image_sha is not None
-            and container.attrs is not None
-            and container.attrs.get("Image") != image_sha
-        ):
-            bt.logging.info(f"Removing {container.name}: {model}")
-            container.remove(force=True)
-            continue
-        port = int(container.labels.get("port", 0))
-        used_ports.append(port)
-        verification_ports[model] = {"port": port}
-        endpoints = requests.get(f"http://localhost:{port}/endpoints").json()
-        endpoints = [Endpoints(e.upper()) for e in endpoints]
-        verification_ports[model]["endpoints"] = endpoints
-        existing.append(model)
-    bt.logging.info(f"Existing: {existing}, needed: {models}")
-    needed_models = set(models) - set(existing)
+        bt.logging.info(f"Removing {container.name}: {model}")
+        container.remove(force=True)
+
+def sync_output_checkers(
+    client: docker.DockerClient, models: List[str]
+) -> Dict[str, Dict[str, Any]]:
+
+    # Get new image hash (if any)
+    image_name = f"{MANIFOLD_VERIFIER}:{IMAGE_TAG}"
+    try:
+        client.images.pull(image_name)  # type: ignore
+    except Exception as e:
+        bt.logging.error(str(e))
+    bt.logging.info(f"Syncing {models}")
+
+    # Remove all containers
+    remove_containers(client)
+    verification_ports = {}
+    used_ports = []
+    random.shuffle(models)
     min_port = 5555
 
     # Clear containers that arent running
     client.containers.prune()
 
     # Load all models
-    bt.logging.info(f"Starting {list(needed_models)}")
-    for model in needed_models:
+    bt.logging.info(f"Starting subset of {list(models)}")
+    for model in models:
         container_name = re.sub(r"[\W_]", "-", model).lower()
 
         # Delete if existing and out of date
