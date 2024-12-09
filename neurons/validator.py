@@ -52,7 +52,6 @@ class Validator(BaseNeuron):
     last_bucket_id = None
 
     def __init__(self, config=None, run_init=True):
-        bt.logging.set_info()
         super().__init__(config)
         ## Typesafety
         self.set_weights = create_set_weights(spec_version, self.config.netuid)

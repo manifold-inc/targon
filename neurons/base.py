@@ -69,7 +69,6 @@ class BaseNeuron:
         bt.wallet.add_args(parser)
         bt.subtensor.add_args(parser)
         bt.logging.add_args(parser)
-        bt.logging.set_info()
         bt.axon.add_args(parser)
         add_args(parser)
         if self.neuron_type == NeuronType.Validator:
@@ -95,7 +94,7 @@ class BaseNeuron:
 
         ## LOGGING
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
-        bt.logging.on()
+        bt.logging.set_info()
         if self.config.logging.debug:
             bt.logging.set_debug(True)
         if self.config.logging.trace:
