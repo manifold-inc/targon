@@ -1,6 +1,8 @@
 import json
 import random
 import asyncio
+import sys
+from threading import Thread
 from time import sleep
 
 from asyncpg.connection import asyncpg
@@ -8,7 +10,13 @@ import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
 from targon.cache import load_cache
-from targon.config import AUTO_UPDATE, IS_TESTNET, get_models_from_config, get_models_from_endpoint
+from targon.config import (
+    AUTO_UPDATE,
+    HEARTBEAT,
+    IS_TESTNET,
+    get_models_from_config,
+    get_models_from_endpoint,
+)
 from targon.dataset import download_dataset
 from targon.docker import load_docker, sync_output_checkers
 from targon.epistula import generate_header
@@ -39,6 +47,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
@@ -50,6 +59,8 @@ class Validator(BaseNeuron):
     is_runing = False
     organics = {}
     last_bucket_id = None
+    heartbeat_thread: Thread
+    step = 0
 
     def __init__(self, config=None, run_init=True):
         super().__init__(config)
@@ -109,10 +120,34 @@ class Validator(BaseNeuron):
             ]
         )
 
+        # Setup heartbeat thread
+        if HEARTBEAT:
+            self.heartbeat_thread = Thread(name="heartbeat", target=self.heartbeat)
+            self.heartbeat_thread.start()
+
         ## DONE
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
+
+    def heartbeat(self):
+        bt.logging.info("Starting Heartbeat")
+        last_step = self.step
+        stuck_count = 0
+        while True:
+            sleep(60)
+            if last_step == self.step:
+                stuck_count += 1
+            if last_step != self.step:
+                stuck_count = 0
+            if stuck_count >= 5:
+                bt.logging.error(
+                    "Heartbeat detecting main process hang, attempting restart"
+                )
+                autoupdate(force=True)
+                sys.exit(0)
+            last_step = self.step
+            bt.logging.info("Heartbeat")
 
     def send_models_to_miners_on_interval(self, block):
         assert self.config.vpermit_tao_limit
@@ -186,7 +221,10 @@ class Validator(BaseNeuron):
             self.metagraph,
             self.subtensor,
             get_weights(
-                self.miner_models, self.miner_tps,self.organics, list(self.verification_ports.keys())
+                self.miner_models,
+                self.miner_tps,
+                self.organics,
+                list(self.verification_ports.keys()),
             ),
         )
 
@@ -228,6 +266,7 @@ class Validator(BaseNeuron):
 
         self.is_runing = True
         while not self.exit_context.isExiting:
+            self.step += 1
             if self.config.autoupdate and not AUTO_UPDATE:
                 autoupdate(branch="main")
             # Make sure our substrate thread is alive

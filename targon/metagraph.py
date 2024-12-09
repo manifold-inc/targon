@@ -101,10 +101,9 @@ def create_subscription_handler(substrate, callback: Callable):
 
 
 def start_subscription(substrate, callback: Callable):
-    while True:
-        return substrate.subscribe_block_headers(
-            create_subscription_handler(substrate, callback)
-        )
+    return substrate.subscribe_block_headers(
+        create_subscription_handler(substrate, callback)
+    )
 
 
 def run_block_callback_thread(substrate, callback: Callable):

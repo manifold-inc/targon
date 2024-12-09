@@ -24,7 +24,7 @@ import bittensor as bt
 import targon
 
 
-def autoupdate(branch: str = "main"):
+def autoupdate(branch: str = "main", force=False):
     """
     Automatically updates the Targon codebase to the latest version available on the specified branch.
 
@@ -55,7 +55,7 @@ def autoupdate(branch: str = "main"):
         bt.logging.info(f"Local version: {targon.__version__}")
         bt.logging.info(f"Latest version: {repo_version}")
 
-        if latest_version > local_version:
+        if latest_version > local_version or force:
             bt.logging.info("A newer version of Targon is available. Updating...")
             base_path = os.path.abspath(__file__)
             while os.path.basename(base_path) != "targon":
