@@ -52,6 +52,14 @@ class Validator(BaseNeuron):
     last_bucket_id = None
 
     def __init__(self, config=None, run_init=True):
+        # Enable TRACE level logging
+        bt.logging.set_trace()
+        # Enable INFO level logging
+        # This is the default level of logging
+        bt.logging.set_info()
+        bt.logging.set_default()
+        # Enable WARNING level logging
+        bt.logging.set_warning()
         super().__init__(config)
         ## Typesafety
         self.set_weights = create_set_weights(spec_version, self.config.netuid)

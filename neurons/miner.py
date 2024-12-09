@@ -33,6 +33,14 @@ class Miner(BaseNeuron):
 
     def __init__(self, config=None):
         super().__init__(config)
+        # Enable TRACE level logging
+        bt.logging.set_trace()
+        # Enable INFO level logging
+        # This is the default level of logging
+        bt.logging.set_info()
+        bt.logging.set_default()
+        # Enable WARNING level logging
+        bt.logging.set_warning()
         ## Typesafety
         assert self.config.netuid
         assert self.config.logging
