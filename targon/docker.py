@@ -172,7 +172,7 @@ def sync_output_checkers(
                 )
             ],
         }
-        containers.append(client.containers.run(**config))  # type: ignore
+        client.containers.run(**config)  # type: ignore
         while True:
             ready = True
             std_model = re.sub(r"[\W_]", "-", model).lower()
