@@ -122,8 +122,12 @@ proxy to the proper VLLM instance on each request. Verifiers will include the
 `X-Targon-Model` header so that the miner node does not need to parse the actual
 body.
 
-In the `miner.py` script you will find a function called `list_models`. To serve multiple models you must:
-1. Fill this out to respond to validators with any model you currently have available (below is an example):
+In the `miner.py` script you will find a function called `list_models`. To serve
+multiple models you must:
+
+1. Fill this out to respond to validators with any model you currently have
+   available (below is an example):
+
 ```
     async def list_models(self):
         return [
@@ -135,9 +139,14 @@ In the `miner.py` script you will find a function called `list_models`. To serve
             "ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF",
         ]
 ```
-2. Update the `create_chat_completion` and `create_completion` methods in neurons/miner.py to route to the appropriate vllm upstream server based on the model (which is either in the headers or from the request payload's model param)
+
+2. Update the `create_chat_completion` and `create_completion` methods in
+   neurons/miner.py to route to the appropriate vllm upstream server based on
+   the model (which is either in the headers or from the request payload's model
+   param)
 
 Here is a hint / incomplete code snippet to get you started:
+
 ```
 model_port_map = {
     'ExampleName/mythomax-l2-13b': 1001,
@@ -254,6 +263,19 @@ pm2 start neurons/validator.py --name validator --interperter python3 -- --walle
 > NousResearch/Meta-Llama-3.1-405B-Instruct
 > ```
 
+## Validator .env
+
+Some more robust settings can be applied via a .env file. Eventually, targon
+aims to move all settings to a .env file instead of cli arguments. Currently,
+the following .env variables are supported with their defaults.
+
+```
+AUTO_UPDATE=False # Turn off autoupdate. Overrides cli flag.
+IMAGE_TAG=latest # Verifier image tag. Useful for testing new updates.
+HEARTBEAT=False # Enable heartbeat. Requires pm2. Set to True to enable heartbeat monitoring.
+IS_TESTNET=False # If validator should run in testnet.
+```
+
 ## Autoupdate
 
 Autoupdate is implemented in targon/utils.py. This is to ensure that your
@@ -294,63 +316,10 @@ from targon.updater import autoupdate
 
 4. Relaunch your miner with the changes.
 
-### Targon Hub (WIP)
-
-The goal of the hub is to give validators a simple way to directly generate
-revenue off of their bittensor bandwidth. This is designed as a template for
-validators to take and create their own branded hubs with, however pull requests
-are still encouraged.
-
-If you are interested in running your own instance of Targon Hub, you will need
-to add an additional flag to save the records of miners' responses to a
-PostgreSQL DB.
-
-**NOTE**: No flag means no database!
-
-```bash
---database.url [DB_CONNECTION_STRING]
-
-```
-
-> Please replace the following with your specific connection URL:
->
-> - \[DB_CONNECTION_STRING\]
-
-Below are steps to create a Supabase connection string to utilze this feature:
-
-1. Either create an account or log in to
-   [Supabase](https://supabase.com/dashboard/sign-in%5D)
-1. You might be asked to create an organization. In which case, choose the
-   options best suited for your use case.
-1. Once completed, create a new project with a secure password and location of
-   your choosing. Save your password, you will need it later. Your project will
-   then take a few minutes to be provisioned.
-1. Once the project has been created, click on the green `Connect` button near
-   the top right of the screen
-1. A modal should open up. Click on connection string, URI, and change the mode
-   from `transaction` to `session` in the dropdown
-1. Copy the connection string shown and insert your password
-1. Clone [Targon Hub](https://github.com/manifold-inc/targon-hub) and follow its
-   setup instructions
-1. Launch the validator with new `--database.url` flag and connection string
-
-Please reach out to the SN4 team for help setting up targon hub in sn4 chat or
-[our discord](https://discord.gg/manifold)
-
-```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --database.url [DB_CONNECTION_STRING]
-```
-
-As your validator runs, you will start seeing records being added into your
-Supabase database. This will be directly what your Targon Hub will query.
-
 # What is A Deterministic Verification Network
 
-Targon uses a novel, in-house proof-of-work value to verify model responses.
-These are generated just like log-probs, and can be used to verify with high
-accuracy that a response was generated with the model requested. We use this in
-combination with a fast and slow version of log-prob verification. Verified
-responses are scored by speed and consistency of verification.
+Validators send queries to miners that are then scored for speed, and verified
+by comparing the logprobs of the responses to a validators own model.
 
 ## Role of a Miner
 
@@ -361,10 +330,11 @@ organic and synthetic.
 
 A validator is a node that is responsible for verifying a miner's output. The
 validator will send an openai compliant request to a miner with. The miner will
-then send back a response with the output. The validator will then use the proof
-of work values of the response to verify that each miners response is accurate.
+then send back a response with the output. The validator will then use the log
+prob values of the response to verify that each miners response is accurate.
 Validators will keep score of each miners response time and use their averages
-to assign scores each epoch.
+to assign scores each epoch. Specifically, miner scores are the sum of the
+average TPS per model.
 
 # Features of Targon
 
