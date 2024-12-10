@@ -23,7 +23,10 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
     temperature = random.random()
     max_tokens = random.randint(512, 1920)
 
-    random_row_text = dataset.sample(n=1)["conversations"].iloc[0][0]["value"]
+    total_rows = len(dataset["train"])
+    random_row_text = dataset["train"][random.randint(0, total_rows - 1)][
+        "conversations"
+    ][0]["value"]
     # Generate a query from the sampled text and perform text generation
     messages = create_query_prompt(random_row_text)
     res: Optional[str] = None

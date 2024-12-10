@@ -7,6 +7,8 @@ from time import sleep
 
 from asyncpg.connection import asyncpg
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
+from datasets import Dataset, DatasetDict
+from datasets.combine import DatasetType
 import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
@@ -63,6 +65,7 @@ class Validator(BaseNeuron):
     last_bucket_id = None
     heartbeat_thread: Thread
     step = 0
+    dataset = None
 
     def __init__(self, config=None, run_init=True):
         super().__init__(config)
@@ -98,7 +101,7 @@ class Validator(BaseNeuron):
 
         ## LOAD DATASET
         bt.logging.info("⌛️", "Loading dataset")
-        self.dataset = download_dataset(not not self.config.mock)
+        self.dataset = download_dataset()
 
         ## CONNECT TO ORGANICS DB
         try:
