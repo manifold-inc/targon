@@ -1,4 +1,5 @@
 import os
+from datasets import load_dataset
 import logging
 import random
 from datetime import datetime
@@ -68,16 +69,8 @@ Assistant should always start the response with "Search query: "
     return chats
 
 
-def download_dataset(isMock: bool):
-    logger = logging.getLogger('huggingface_hub.utils._http')
+def download_dataset():
+    logger = logging.getLogger("huggingface_hub.utils._http")
     logger.setLevel(logging.CRITICAL + 1)
-
-    if isMock:
-        df = dd.read_parquet(  # type: ignore
-            "hf://datasets/manifoldlabs/Infinity-Instruct/0625/*.parquet"
-        )
-    else:
-        df = dd.read_parquet(  # type: ignore
-            "hf://datasets/manifoldlabs/Infinity-Instruct/7M/*.parquet"
-        )
-    return df.compute()
+    ds = load_dataset("manifoldlabs/Infinity-Instruct", "7M")
+    return ds
