@@ -7,8 +7,6 @@ from time import sleep
 
 from asyncpg.connection import asyncpg
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
-from datasets import Dataset, DatasetDict
-from datasets.combine import DatasetType
 import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
