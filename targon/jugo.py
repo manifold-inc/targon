@@ -48,7 +48,7 @@ async def send_stats_to_jugo(
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{JUGO_URL}/", headers=headers, json=body
+                f"{JUGO_URL}/", headers=headers, json=body, timeout=aiohttp.ClientTimeout(60)
             ) as response:
                 if response.status == 200:
                     bt.logging.info("Records sent successfully.")
@@ -70,7 +70,7 @@ async def score_organics(last_bucket_id, ports, wallet):
         body = list(ports.keys())
         headers = generate_header(wallet.hotkey, body)
         async with session.post(
-            JUGO_URL + "/organics", headers=headers, json=body
+            JUGO_URL + "/organics", headers=headers, json=body, timeout=aiohttp.ClientTimeout(60)
         ) as res:
             if res.status != 200:
                 return last_bucket_id
