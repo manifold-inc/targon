@@ -5,7 +5,6 @@ import random
 from datetime import datetime
 from typing import Dict, Iterable, Union
 from openai.types.chat import ChatCompletionMessageParam
-import dask.dataframe as dd
 
 from targon.types import Endpoints
 
