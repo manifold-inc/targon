@@ -185,7 +185,7 @@ class Validator(BaseNeuron):
                 )
                 if res.status_code != 200 or not isinstance(models := res.json(), list):
                     models = []
-                self.miner_models[uid] = models
+                self.miner_models[uid] = list(set(models))
             except Exception:
                 self.miner_models[uid] = []
         bt.logging.info("Miner models: " + str(self.miner_models))
