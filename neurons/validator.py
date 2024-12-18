@@ -202,8 +202,12 @@ class Validator(BaseNeuron):
             return
         if block % self.config.epoch_length:
             return
+        self.lock_halt = True
+        while not self.lock_waiting:
+            sleep(1)
         self.models = self.get_models()
         self.verification_ports = sync_output_checkers(self.client, self.models)
+        self.lock_halt = False
 
     def score_organics_on_block(self, block):
         if not self.is_runing:
