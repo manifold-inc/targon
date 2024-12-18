@@ -219,7 +219,11 @@ class Validator(BaseNeuron):
         )
         if res == None:
             return
-        self.last_bucket_id, self.organics, organic_stats = res
+        bucket_id, organics, organic_stats = res
+        self.last_bucket_id = bucket_id
+        if organics == None or organic_stats == None:
+            return
+        self.organics = organics
         asyncio.run(send_organics_to_jugo(self.wallet, organic_stats))
 
     def set_weights_on_interval(self, block):
