@@ -17,7 +17,7 @@ async def send_organics_to_jugo(
     organics: List[OrganicStats],
 ):
     try:
-        body = {"organics": organics}
+        body = {"organics": [organic.model_dump() for organic in organics]}
         headers = generate_header(wallet.hotkey, body)
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
@@ -146,7 +146,9 @@ async def score_organics(last_bucket_id, ports, wallet):
                             logprobs = choice.get("logprobs")
                             if logprobs is None:
                                 continue
-                            logprob = logprobs.get("content", [{}])[0].get("logprob", -100)
+                            logprob = logprobs.get("content", [{}])[0].get(
+                                "logprob", -100
+                            )
                             token = logprobs.get("content", [{}])[0].get("token", None)
                             if text is None or (text == "" and len(tokens) == 0):
                                 continue
@@ -205,7 +207,7 @@ async def score_organics(last_bucket_id, ports, wallet):
 
                         tps = min(
                             response_tokens_count, record["request"]["max_tokens"]
-                        ) / record.get("total_time")
+                        ) / (int(record.get("total_time")) / 1000)
                         scores[uid].append(tps)
                     except Exception as e:
                         bt.logging.error("Error scoring record: " + str(e))
