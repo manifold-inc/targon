@@ -105,128 +105,132 @@ async def send_stats_to_jugo(
 
 
 async def score_organics(last_bucket_id, ports, wallet):
-    async with aiohttp.ClientSession() as session:
-        body = list(ports.keys())
-        headers = generate_header(wallet.hotkey, body)
-        async with session.post(
-            JUGO_URL + "/organics",
-            headers=headers,
-            json=body,
-            timeout=aiohttp.ClientTimeout(60),
-        ) as res:
-            if res.status != 200:
-                return last_bucket_id
-            res_body = await res.json()
-    bucket_id = res_body.get("bucket_id")
-    organics = res_body.get("organics")
-    if last_bucket_id == bucket_id:
-        return last_bucket_id
-    scores = {}
-    organic_stats = []
-    for model, records in organics.items():
-        for record in records:
-            uid = record["uid"]
-            if scores.get(uid) is None:
-                scores[uid] = []
-            if not record["success"]:
-                scores[uid].append(-500)
-                continue
-            tokens = []
-            for token in record["response"]:
-                choice = token.get("choices", [{}])[0]
-                text = ""
-                logprob = -100
-                match record["endpoint"]:
-                    case "CHAT":
-                        text = choice.get("delta", {}).get("content")
-                        logprobs = choice.get("logprobs")
-                        if logprobs is None:
-                            continue
-                        logprob = logprobs.get("content", [{}])[0].get("logprob", -100)
-                        token = logprobs.get("content", [{}])[0].get("token", None)
-                        if text is None or (text == "" and len(tokens) == 0):
-                            continue
-                    case "COMPLETION":
-                        text = choice.get("text")
-                        logprobs = choice.get("logprobs")
-                        if logprobs is None:
-                            continue
-                        logprob = logprobs.get("token_logprobs", [-100])[0]
-                        token = logprobs.get("tokens", [""])[0]
-                        if text is None or (text == "" and len(tokens) == 0):
-                            continue
-
-                token_id = -1
-                if not token.startswith("token_id:"):
+    try:
+        async with aiohttp.ClientSession() as session:
+            body = list(ports.keys())
+            headers = generate_header(wallet.hotkey, body)
+            async with session.post(
+                JUGO_URL + "/organics",
+                headers=headers,
+                json=body,
+                timeout=aiohttp.ClientTimeout(60),
+            ) as res:
+                if res.status != 200:
+                    return last_bucket_id
+                res_body = await res.json()
+        bucket_id = res_body.get("bucket_id")
+        organics = res_body.get("organics")
+        if last_bucket_id == bucket_id:
+            return last_bucket_id
+        scores = {}
+        organic_stats = []
+        for model, records in organics.items():
+            for record in records:
+                uid = record["uid"]
+                if scores.get(uid) is None:
+                    scores[uid] = []
+                if not record["success"]:
+                    scores[uid].append(-500)
                     continue
-                token_parts = token.split(":")
-                if len(token_parts) > 1:
-                    token_id = int(token_parts[1])
+                tokens = []
+                for token in record["response"]:
+                    choice = token.get("choices", [{}])[0]
+                    text = ""
+                    logprob = -100
+                    match record["endpoint"]:
+                        case "CHAT":
+                            text = choice.get("delta", {}).get("content")
+                            logprobs = choice.get("logprobs")
+                            if logprobs is None:
+                                continue
+                            logprob = logprobs.get("content", [{}])[0].get("logprob", -100)
+                            token = logprobs.get("content", [{}])[0].get("token", None)
+                            if text is None or (text == "" and len(tokens) == 0):
+                                continue
+                        case "COMPLETION":
+                            text = choice.get("text")
+                            logprobs = choice.get("logprobs")
+                            if logprobs is None:
+                                continue
+                            logprob = logprobs.get("token_logprobs", [-100])[0]
+                            token = logprobs.get("tokens", [""])[0]
+                            if text is None or (text == "" and len(tokens) == 0):
+                                continue
 
-                tokens.append(
-                    {
-                        "text": text,
-                        "logprob": logprob,
-                        "token_id": token_id,
-                    }
-                )
-
-            # No response tokens
-            if len(tokens) == 0:
-                scores[uid].append(-100)
-                continue
-
-            port = ports.get(model, {}).get("port")
-            if not port:
-                continue
-            res = await check_tokens(
-                record["request"],
-                tokens,
-                record["uid"],
-                Endpoints(record["endpoint"]),
-                port,
-            )
-            bt.logging.info(str(res))
-            if res is None:
-                continue
-            verified = res.get("verified", False)
-            tps = 0
-            if verified:
-                try:
-                    response_tokens_count = int(record.get("response_tokens", 0))
-
-                    # This shouldnt happen
-                    if response_tokens_count == 0:
+                    token_id = -1
+                    if not token.startswith("token_id:"):
                         continue
+                    token_parts = token.split(":")
+                    if len(token_parts) > 1:
+                        token_id = int(token_parts[1])
 
-                    tps = min(
-                        response_tokens_count, record["request"]["max_tokens"]
-                    ) / record.get("total_time")
-                    scores[uid].append(tps)
-                except Exception as e:
-                    bt.logging.error("Error scoring record: " + str(e))
+                    tokens.append(
+                        {
+                            "text": text,
+                            "logprob": logprob,
+                            "token_id": token_id,
+                        }
+                    )
+
+                # No response tokens
+                if len(tokens) == 0:
+                    scores[uid].append(-100)
                     continue
-            organic_stats.append(
-                OrganicStats(
-                    time_to_first_token=int(record.get("time_to_first_token")),
-                    time_for_all_tokens=int(record.get("total_time"))
-                    - int(record.get("time_to_first_token")),
-                    total_time=int(record.get("total_time")),
-                    tps=tps,
-                    tokens=[],
-                    verified=verified,
-                    error=res.get("error"),
-                    cause=res.get("cause"),
-                    model=model,
-                    max_tokens=record.get("request").get("max_tokens"),
-                    seed=record.get("request").get("seed"),
-                    temperature=record.get("request").get("temperature"),
-                    uid=uid,
-                    hotkey=record.get("hotkey"),
-                    coldkey=record.get("coldkey"),
-                    endpoint=Endpoints(record.get("endpoint")),
-                    total_tokens=record.get("response_tokens"),
+
+                port = ports.get(model, {}).get("port")
+                if not port:
+                    continue
+                res = await check_tokens(
+                    record["request"],
+                    tokens,
+                    record["uid"],
+                    Endpoints(record["endpoint"]),
+                    port,
                 )
-            )
-    bt.logging.info(f"{bucket_id}: {scores}")
-    return bucket_id, scores, organic_stats
+                bt.logging.info(str(res))
+                if res is None:
+                    continue
+                verified = res.get("verified", False)
+                tps = 0
+                if verified:
+                    try:
+                        response_tokens_count = int(record.get("response_tokens", 0))
+
+                        # This shouldnt happen
+                        if response_tokens_count == 0:
+                            continue
+
+                        tps = min(
+                            response_tokens_count, record["request"]["max_tokens"]
+                        ) / record.get("total_time")
+                        scores[uid].append(tps)
+                    except Exception as e:
+                        bt.logging.error("Error scoring record: " + str(e))
+                        continue
+                organic_stats.append(
+                    OrganicStats(
+                        time_to_first_token=int(record.get("time_to_first_token")),
+                        time_for_all_tokens=int(record.get("total_time"))
+                        - int(record.get("time_to_first_token")),
+                        total_time=int(record.get("total_time")),
+                        tps=tps,
+                        tokens=[],
+                        verified=verified,
+                        error=res.get("error"),
+                        cause=res.get("cause"),
+                        model=model,
+                        max_tokens=record.get("request").get("max_tokens"),
+                        seed=record.get("request").get("seed"),
+                        temperature=record.get("request").get("temperature"),
+                        uid=uid,
+                        hotkey=record.get("hotkey"),
+                        coldkey=record.get("coldkey"),
+                        endpoint=Endpoints(record.get("endpoint")),
+                        total_tokens=record.get("response_tokens"),
+                    )
+                )
+        bt.logging.info(f"{bucket_id}: {scores}")
+        return bucket_id, scores, organic_stats
+    except Exception as e:
+        bt.logging.error(str(e))
+        return None

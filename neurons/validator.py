@@ -214,10 +214,13 @@ class Validator(BaseNeuron):
             return
         if block % 20:
             return
-        self.last_bucket_id, self.organics, organic_stats = asyncio.run(
+        res = asyncio.run(
             score_organics(self.last_bucket_id, self.verification_ports, self.wallet)
         )
-        self.loop.run_until_complete(send_organics_to_jugo(self.wallet, organic_stats))
+        if res == None:
+            return
+        self.last_bucket_id, self.organics, organic_stats = res
+        asyncio.run(send_organics_to_jugo(self.wallet, organic_stats))
 
     def set_weights_on_interval(self, block):
         if block % self.config.epoch_length:
