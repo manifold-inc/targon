@@ -116,14 +116,17 @@ async def score_organics(last_bucket_id, ports, wallet):
                 timeout=aiohttp.ClientTimeout(60),
             ) as res:
                 if res.status != 200:
+                    bt.logging.info(f"Error pinging jugo {res.text}")
                     return last_bucket_id, None, None
                 res_body = await res.json()
         bucket_id = res_body.get("bucket_id")
         organics = res_body.get("organics")
         if last_bucket_id == bucket_id:
+            bt.logging.info(f"Already seen this bucket id")
             return last_bucket_id, None, None
         scores = {}
         organic_stats = []
+        bt.logging.info(f"Found {len(organics)} organics")
         for model, records in organics.items():
             for record in records:
                 uid = record["uid"]
