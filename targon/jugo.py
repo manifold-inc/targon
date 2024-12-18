@@ -6,10 +6,40 @@ from nanoid import generate
 
 from targon.epistula import generate_header
 from targon.request import check_tokens
-from targon.types import Endpoints, InferenceStats
+from targon.types import Endpoints, InferenceStats, OrganicStats
 import bittensor as bt
 
-JUGO_URL = "https://jugo.sybil.com"
+JUGO_URL = "https://jugo.targon.com"
+
+
+async def send_organics_to_jugo(
+    wallet: "bt.wallet",
+    organics: List[OrganicStats],
+):
+    try:
+        body = {"organics": organics}
+        headers = generate_header(wallet.hotkey, body)
+        # Send request to the FastAPI server
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{JUGO_URL}/organics/scores",
+                headers=headers,
+                json=body,
+                timeout=aiohttp.ClientTimeout(60),
+            ) as response:
+                if response.status == 200:
+                    bt.logging.info("Records sent successfully.")
+                else:
+                    error_detail = await response.text()
+                    bt.logging.error(
+                        f"Error sending records: {response.status} - {error_detail}"
+                    )
+
+    except aiohttp.ClientConnectionError:
+        bt.logging.error("Error conecting to jugo, offline.")
+    except Exception as e:
+        bt.logging.error(f"Error in send_stats_to_jugo: {e}")
+        bt.logging.error(traceback.format_exc())
 
 
 async def send_stats_to_jugo(
@@ -21,6 +51,7 @@ async def send_stats_to_jugo(
     endpoint: Endpoints,
     version: int,
     models: List[str],
+    miner_tps: Dict[int, Dict[str, List[Optional[float]]]],
 ):
     try:
         r_nanoid = generate(size=48)
@@ -43,12 +74,20 @@ async def send_stats_to_jugo(
             "hotkey": wallet.hotkey.ss58_address,
         }
         # Prepare the data
-        body = {"request": request, "responses": responses, "models": models}
+        body = {
+            "request": request,
+            "responses": responses,
+            "models": models,
+            "scores": miner_tps,
+        }
         headers = generate_header(wallet.hotkey, body)
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{JUGO_URL}/", headers=headers, json=body, timeout=aiohttp.ClientTimeout(60)
+                f"{JUGO_URL}/",
+                headers=headers,
+                json=body,
+                timeout=aiohttp.ClientTimeout(60),
             ) as response:
                 if response.status == 200:
                     bt.logging.info("Records sent successfully.")
@@ -70,7 +109,10 @@ async def score_organics(last_bucket_id, ports, wallet):
         body = list(ports.keys())
         headers = generate_header(wallet.hotkey, body)
         async with session.post(
-            JUGO_URL + "/organics", headers=headers, json=body, timeout=aiohttp.ClientTimeout(60)
+            JUGO_URL + "/organics",
+            headers=headers,
+            json=body,
+            timeout=aiohttp.ClientTimeout(60),
         ) as res:
             if res.status != 200:
                 return last_bucket_id
@@ -80,6 +122,7 @@ async def score_organics(last_bucket_id, ports, wallet):
     if last_bucket_id == bucket_id:
         return last_bucket_id
     scores = {}
+    organic_stats = []
     for model, records in organics.items():
         for record in records:
             uid = record["uid"]
@@ -146,8 +189,44 @@ async def score_organics(last_bucket_id, ports, wallet):
             bt.logging.info(str(res))
             if res is None:
                 continue
-            verified = res.get("verified")
+            verified = res.get("verified", False)
+            tps = 0
             if verified:
-                scores[uid].append(100)
+                try:
+                    response_tokens_count = int(record.get("response_tokens", 0))
+
+                    # This shouldnt happen
+                    if response_tokens_count == 0:
+                        continue
+
+                    tps = min(
+                        response_tokens_count, record["request"]["max_tokens"]
+                    ) / record.get("total_time")
+                    scores[uid].append(tps)
+                except Exception as e:
+                    bt.logging.error("Error scoring record: " + str(e))
+                    continue
+            organic_stats.append(
+                OrganicStats(
+                    time_to_first_token=int(record.get("time_to_first_token")),
+                    time_for_all_tokens=int(record.get("total_time"))
+                    - int(record.get("time_to_first_token")),
+                    total_time=int(record.get("total_time")),
+                    tps=tps,
+                    tokens=[],
+                    verified=verified,
+                    error=res.get("error"),
+                    cause=res.get("cause"),
+                    model=model,
+                    max_tokens=record.get("request").get("max_tokens"),
+                    seed=record.get("request").get("seed"),
+                    temperature=record.get("request").get("temperature"),
+                    uid=uid,
+                    hotkey=record.get("hotkey"),
+                    coldkey=record.get("coldkey"),
+                    endpoint=Endpoints(record.get("endpoint")),
+                    total_tokens=record.get("response_tokens"),
+                )
+            )
     bt.logging.info(f"{bucket_id}: {scores}")
-    return bucket_id, scores
+    return bucket_id, scores, organic_stats

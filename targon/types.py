@@ -22,6 +22,10 @@ from pydantic import BaseModel
 from typing import Any, List, Optional
 
 
+class Endpoints(Enum):
+    CHAT = "CHAT"
+    COMPLETION = "COMPLETION"
+
 class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
@@ -32,7 +36,14 @@ class InferenceStats(BaseModel):
     error: Optional[str] = None
     cause: Optional[str] = None
 
+class OrganicStats(InferenceStats):
+    model: str
+    max_tokens: int
+    seed: int
+    temperature: float
+    uid: int
+    hotkey: str
+    coldkey: str
+    endpoint: Endpoints
+    total_tokens: int
 
-class Endpoints(Enum):
-    CHAT = "CHAT"
-    COMPLETION = "COMPLETION"

@@ -21,7 +21,7 @@ from targon.config import (
 from targon.dataset import download_dataset
 from targon.docker import load_docker, sync_output_checkers
 from targon.epistula import generate_header
-from targon.jugo import score_organics, send_stats_to_jugo
+from targon.jugo import score_organics, send_organics_to_jugo, send_stats_to_jugo
 from targon.math import get_weights
 from targon.metagraph import (
     create_set_weights,
@@ -210,9 +210,10 @@ class Validator(BaseNeuron):
             return
         if block % 20:
             return
-        self.last_bucket_id, self.organics = asyncio.run(
+        self.last_bucket_id, self.organics, organic_stats = asyncio.run(
             score_organics(self.last_bucket_id, self.verification_ports, self.wallet)
         )
+        self.loop.run_until_complete(send_organics_to_jugo(self.wallet, organic_stats))
 
     def set_weights_on_interval(self, block):
         if block % self.config.epoch_length:
@@ -347,6 +348,7 @@ class Validator(BaseNeuron):
                         *res,
                         spec_version,
                         self.models,
+                        self.miner_tps,
                     )
                 )
 
