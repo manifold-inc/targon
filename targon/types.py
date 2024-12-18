@@ -44,6 +44,6 @@ class OrganicStats(InferenceStats):
     uid: int
     hotkey: str
     coldkey: str
-    endpoint: Endpoints
+    endpoint: str
     total_tokens: int
 

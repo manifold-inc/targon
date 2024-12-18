@@ -230,7 +230,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                         uid=uid,
                         hotkey=record.get("hotkey"),
                         coldkey=record.get("coldkey"),
-                        endpoint=Endpoints(record.get("endpoint")),
+                        endpoint=record.get("endpoint"),
                         total_tokens=record.get("response_tokens"),
                     )
                 )
