@@ -1,3 +1,11 @@
+# 4.4.0
+
+- Bittensor 8.5.1
+  - Enables CR3
+- Organics speed based scoring
+  - Organics are now scored based on tps.
+  - Organics are now sent back to jugo once scored
+
 # 4.3.0
 
 - Model Rotation
