@@ -517,13 +517,11 @@ class Validator(BaseNeuron):
                 if not models:
                     raise Exception("No models")
                 return models
-            case "endpoint":
+            case _:
                 models = get_models_from_endpoint(self.config.models.endpoint)
                 if not models:
                     raise Exception("No models")
                 return models
-            case _:
-                return ["NousResearch/Meta-Llama-3.1-8B-Instruct"]
 
 
 if __name__ == "__main__":
