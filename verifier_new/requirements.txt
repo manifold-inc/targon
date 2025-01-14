@@ -1,5 +1,5 @@
 # LLM
-#vllm==0.6.2
+vllm==0.6.2
 fastapi==0.115.0
 openai==1.44.1
 uvicorn==0.30.6
