@@ -30,7 +30,7 @@ push_verifier: build_verifier
   docker push manifoldlabs/sn4-verifier:latest
 
 image:
-  docker run -p 80:80 -e MODEL=black-forest-labs/FLUX.1-schnell -d --gpus all image
+  docker run -p 80:80 -v /var/targon/huggingface/cache:/root/.cache/huggingface -e MODEL=black-forest-labs/FLUX.1-schnell -d --gpus all image
 
 build_image:
   cd image && docker build . -t image
