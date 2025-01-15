@@ -6,8 +6,8 @@ from vllm import LLM
 from huggingface_hub import HfApi
 import importlib
 
-from verifier_new.image import generate_image_functions
-from verifier_new.llm import get_llm_functions
+from image import generate_image_functions
+from llm import get_llm_functions
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL_NAME", None)
