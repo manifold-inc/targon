@@ -12,11 +12,13 @@ from pydantic import BaseModel
 
 MODEL_NAME = os.getenv("MODEL", None)
 if MODEL_NAME is None:
+    print("Missing model name")
     exit()
 
 api = HfApi()
 model = api.model_info(MODEL_NAME)
 if model is None or model.config is None:
+    "Cant find model"
     exit()
 
 
@@ -59,3 +61,5 @@ async def generate_question(req: ImageRequest):
 @app.get("/")
 def ping():
     return "", 200
+
+print("Starting fastapi")

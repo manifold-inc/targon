@@ -5,3 +5,4 @@ protobuf==5.28.3
 fastapi==0.115.0
 uvicorn==0.30.6
 transformers==4.46.2
+huggingface_hub==0.27.0
