@@ -28,3 +28,9 @@ run_verifier_prod model port gpu gpus name memory_util='.9' tag='latest':
 
 push_verifier: build_verifier
   docker push manifoldlabs/sn4-verifier:latest
+
+image:
+  docker run -p 80:80 -e MODEL=black-forest-labs/FLUX.1-schnell -d --gpus all image
+
+build_image:
+  cd image && docker build . -t image
