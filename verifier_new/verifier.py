@@ -5,6 +5,7 @@ from fastapi.routing import APIRouter
 from vllm import LLM
 from huggingface_hub import HfApi
 import importlib
+from diffusers import DiffusionPipeline
 
 from image import generate_image_functions
 from llm import get_llm_functions
@@ -16,6 +17,7 @@ if MODEL_NAME is None:
 
 api = HfApi()
 model = api.model_info(MODEL_NAME)
+
 if model is None or model.config is None:
     exit()
 
@@ -31,9 +33,9 @@ router = APIRouter()
 match model.pipeline_tag:
     case "text-to-image":
         ENDPOINTS.append("image")
-        diffuser_class = model.config["diffusers"]["_class_name"]
-        diffuser = importlib.import_module(f"diffusers.{diffuser_class}")
-        MODEL_WRAPPER = diffuser.from_pretrained(MODEL_NAME)
+        # diffuser_class = model.config["diffusers"]["_class_name"]
+        # diffuser = importlib.import_module(f"diffusers.{diffuser_class}")
+        MODEL_WRAPPER = DiffusionPipeline.from_pretrained(MODEL_NAME)
         MODEL_WRAPPER.to("cuda")
         verify = generate_image_functions(MODEL_WRAPPER, MODEL_NAME, ENDPOINTS)
         router.add_api_route("/image/verify", verify, methods=["POST"])
