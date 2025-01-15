@@ -15,6 +15,7 @@ if MODEL_NAME is None:
     print("Missing model name")
     exit()
 
+print("loading api")
 api = HfApi()
 model = api.model_info(MODEL_NAME)
 if model is None or model.config is None:
@@ -24,7 +25,9 @@ if model is None or model.config is None:
 
 diffuser_class = model.config["diffusers"]["_class_name"]
 diffuser = getattr(diffusers, diffuser_class)
+print("loading from pretrained")
 model = diffuser.from_pretrained(MODEL_NAME)
+print("moving to cuda")
 model.to("cuda")
 
 
@@ -49,7 +52,9 @@ class ImageRequest(BaseModel):
 async def generate_question(req: ImageRequest):
     generator = torch.Generator(device="cuda").manual_seed(4)
     width, height = req.size.value.split("x")
-    image = model(prompt=req.prompt, height=int(height), width=int(width), generator=generator)
+    image = model(
+        prompt=req.prompt, height=int(height), width=int(width), generator=generator
+    )
     print(image)
     image = image.images[0]
     buffered = BytesIO()
@@ -61,5 +66,6 @@ async def generate_question(req: ImageRequest):
 @app.get("/")
 def ping():
     return "", 200
+
 
 print("Starting fastapi")
