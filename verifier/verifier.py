@@ -367,8 +367,9 @@ async def verify(request: VerificationRequest) -> Dict:
     )
     assert isinstance(input_text, str)
     if hasattr(TOKENIZER, "bos_token"):
-        if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
-            input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
+        # Rely on boolean short-circuiting 
+        if TOKENIZER.bos_token is not None and input_text.startswith(TOKENIZER.bos_token): # type: ignore
+            input_text = input_text[len(TOKENIZER.bos_token) :] # type: ignore
     input_tokens = TOKENIZER(input_text).input_ids
 
     # Verify!
