@@ -15,6 +15,7 @@ from targon.config import (
     AUTO_UPDATE,
     HEARTBEAT,
     IS_TESTNET,
+    SLIDING_WINDOW,
     get_models_from_config,
     get_models_from_endpoint,
 )
@@ -244,10 +245,10 @@ class Validator(BaseNeuron):
             ),
         )
 
-        # Only keep last 15 scores
+        # Only keep last 30 scores
         for uid in self.miner_tps:
             for model in self.miner_tps[uid]:
-                self.miner_tps[uid][model] = self.miner_tps[uid][model][-15:]
+                self.miner_tps[uid][model] = self.miner_tps[uid][model][-SLIDING_WINDOW:]
         self.lock_halt = False
 
     def log_on_block(self, block):

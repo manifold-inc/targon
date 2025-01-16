@@ -3,6 +3,7 @@ import bittensor as bt
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 
+from targon.config import SLIDING_WINDOW
 from targon.utils import fail_with_none
 
 
@@ -52,7 +53,7 @@ def get_weights(
             if miner_tps[uid].get(model) is None:
                 continue
 
-            tps[uid] += safe_mean_score(miner_tps[uid][model][-15:])
+            tps[uid] += safe_mean_score(miner_tps[uid][model][-SLIDING_WINDOW:])
 
     tps_list = list(tps.values())
     if len(tps_list) == 0:

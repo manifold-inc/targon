@@ -34,6 +34,8 @@ IMAGE_TAG = os.getenv("IMAGE_TAG", "latest")
 HEARTBEAT = str2bool(os.getenv("HEARTBEAT", "False"))
 IS_TESTNET = str2bool(os.getenv("IS_TESTNET", "False"))
 
+SLIDING_WINDOW = 30
+
 
 def validate_config_and_neuron_path(config):
     r"""Checks/validates the config namespace object."""
