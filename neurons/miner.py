@@ -8,6 +8,7 @@ import netaddr
 import requests
 from starlette.background import BackgroundTask
 from starlette.responses import StreamingResponse
+from starlette.responses import Response
 
 from neurons.base import BaseNeuron, NeuronType
 from targon.epistula import verify_signature
@@ -75,6 +76,19 @@ class Miner(BaseNeuron):
         )
         r = await self.client.send(req, stream=True)
         return StreamingResponse(
+            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
+        )
+    
+    async def create_image_completion(self, request: Request):
+        bt.logging.info(
+            "\u2713",
+            f"Getting Image Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!",
+        )
+        req = self.client.build_request(
+            "POST", "/images/generations", content=await request.body()
+        )
+        r = await self.client.send(req)
+        return Response(
             r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
         )
 
@@ -191,6 +205,12 @@ class Miner(BaseNeuron):
         router.add_api_route(
             "/v1/completions",
             self.create_completion,
+            dependencies=[Depends(self.determine_epistula_version_and_verify)],
+            methods=["POST"],
+        )
+        router.add_api_route(
+            "/v1/images/generations",
+            self.create_image_completion,
             dependencies=[Depends(self.determine_epistula_version_and_verify)],
             methods=["POST"],
         )
