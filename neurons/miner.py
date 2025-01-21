@@ -61,7 +61,6 @@ class Miner(BaseNeuron):
         req = self.client.build_request(
             "POST", "/chat/completions", content=await request.body()
         )
-        self.client.timeout = httpx.Timeout(4.0)
         r = await self.client.send(req, stream=True)
         return StreamingResponse(
             r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
@@ -75,7 +74,6 @@ class Miner(BaseNeuron):
         req = self.client.build_request(
             "POST", "/completions", content=await request.body()
         )
-        self.client.timeout = httpx.Timeout(4.0)
         r = await self.client.send(req, stream=True)
         return StreamingResponse(
             r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
@@ -87,9 +85,8 @@ class Miner(BaseNeuron):
             f"Getting Image Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!",
         )
         req = self.client.build_request(
-            "POST", "/images/generations", content=await request.body()
+            "POST", "/images/generations", content=await request.body(), timeout=httpx.Timeout(300.0)
         )
-        self.client.timeout = httpx.Timeout(300.0)
         r = await self.client.send(req) 
         return Response(
             r.content, headers=r.headers
