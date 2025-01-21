@@ -61,6 +61,7 @@ class Miner(BaseNeuron):
         req = self.client.build_request(
             "POST", "/chat/completions", content=await request.body()
         )
+        self.client.timeout = httpx.Timeout(4.0)
         r = await self.client.send(req, stream=True)
         return StreamingResponse(
             r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
@@ -74,6 +75,7 @@ class Miner(BaseNeuron):
         req = self.client.build_request(
             "POST", "/completions", content=await request.body()
         )
+        self.client.timeout = httpx.Timeout(4.0)
         r = await self.client.send(req, stream=True)
         return StreamingResponse(
             r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
@@ -87,9 +89,10 @@ class Miner(BaseNeuron):
         req = self.client.build_request(
             "POST", "/images/generations", content=await request.body()
         )
-        r = await self.client.send(req)
+        self.client.timeout = httpx.Timeout(300.0)
+        r = await self.client.send(req) 
         return Response(
-            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
+            r.content, headers=r.headers
         )
 
     async def receive_models(self, request: Request):
