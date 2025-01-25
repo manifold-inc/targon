@@ -21,7 +21,7 @@ TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
-    gpu_memory_utilization=.9,
+    gpu_memory_utilization=0.9,
     tensor_parallel_size=TENSOR_PARALLEL,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
@@ -56,11 +56,18 @@ class RequestType(Enum):
     COMPLETION = "COMPLETION"
 
 
+class Usage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
 class VerificationRequest(BaseModel):
     request_type: str
     model: str = MODEL_NAME
     request_params: RequestParams
     output_sequence: List[OutputItem]
+    usage: Usage
 
 
 class RequestSamplingParams(BaseModel):
@@ -84,7 +91,11 @@ async def generate_question(req: GenerateRequest):
             if "chat" in ENDPOINTS:
                 output = (
                     MODEL_WRAPPER.chat(
-                        messages=req.messages, sampling_params=SamplingParams(**req.sampling_params.model_dump()), use_tqdm=False  # type: ignore
+                        messages=req.messages,
+                        sampling_params=SamplingParams(
+                            **req.sampling_params.model_dump()
+                        ),
+                        use_tqdm=False,  # type: ignore
                     )[0]
                     .outputs[0]
                     .text
@@ -237,7 +248,11 @@ def verify_logprobs(
                 and expected_logprob.rank > 10
             )
         ):
-            return False, f"Expected EOS/EOT token at index {idx}", "SKIPPED_EOS_EOT"
+            return (
+                False,
+                f"Expected EOS/EOT token at index {idx}",
+                "SKIPPED_EOS_EOT",
+            )
         if expected_logprob is None:
             continue
         rank = expected_logprob.rank
@@ -328,6 +343,39 @@ def verify_logprobs(
     return True, "", ""
 
 
+def verify_usage(
+    request: VerificationRequest, input_tokens: List[int]
+) -> Optional[Tuple[bool, str, str]]:
+    """Verify the usage information in the response."""
+    # Get actual token counts
+    actual_completion_tokens = len([item.token_id for item in request.output_sequence])
+    actual_total_tokens = len(input_tokens) + actual_completion_tokens
+
+    # Verify token counts
+    if request.usage.completion_tokens != actual_completion_tokens:
+        return (
+            False,
+            f"Reported completion tokens ({request.usage.completion_tokens}) does not match actual count ({actual_completion_tokens})",
+            "INVALID_COMPLETION_COUNT",
+        )
+
+    if request.usage.prompt_tokens != len(input_tokens):
+        return (
+            False,
+            f"Reported prompt tokens ({request.usage.prompt_tokens}) does not match actual count ({len(input_tokens)})",
+            "INVALID_PROMPT_COUNT",
+        )
+
+    if request.usage.total_tokens != actual_total_tokens:
+        return (
+            False,
+            f"Reported total tokens ({request.usage.total_tokens}) does not match actual count ({actual_total_tokens})",
+            "INVALID_TOTAL_COUNT",
+        )
+
+    return True, "", ""
+
+
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
@@ -377,6 +425,21 @@ async def verify(request: VerificationRequest) -> Dict:
             "verified": False,
             "error": None,
         }
+
+        # Verify usage information
+        res = verify_usage(request, input_tokens)
+        if res is None:
+            return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
+        result, message, cause = res
+        return_value.update(
+            {
+                "verified": result,
+                "cause": cause,
+                "error": message,
+            }
+        )
+        if not result:
+            return return_value
 
         # Logprob checks.
         res = verify_logprobs(request, str(input_text), input_tokens)
