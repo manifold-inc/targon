@@ -88,20 +88,24 @@ if __name__ == "__main__":
         {"role": "system", "content": "You are a helpful assistant."},
         {
             "role": "user",
-            "content": f"What is the deffinition of the x y problem ",
+            "content": "What is the definition of the x y problem ",
         },
     ]
     model = "NousResearch/Meta-Llama-3.1-8B-Instruct"
     MINER_UID = -1
     client = make_client(MINER_UID)
-    response = client.chat.completions.create(
+    res = client.chat.completions.create(
+        messages=messages,
         model=model,
         stream=True,
         logprobs=True,
-        max_tokens=100,
-        messages=messages,
+        max_tokens=200,
+        temperature=1.0,
+        top_p=0.9,
+        stop=[],
+        seed=42,
     )
-    for chunk in response:
+    for chunk in res:
         content = chunk.choices[0].delta.content
         if content:
             print(content, end="")

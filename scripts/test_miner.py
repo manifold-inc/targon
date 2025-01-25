@@ -48,7 +48,15 @@ def main():
             ),
         )
         res = miner.chat.completions.create(
-            messages=messages, model=model, stream=True, logprobs=True, max_tokens=200
+            messages=messages,
+            model=model,
+            stream=True,
+            logprobs=True,
+            max_tokens=200,
+            temperature=1.0,
+            top_p=0.9,
+            stop=[],
+            seed=42
         )
         tokens = []
         for chunk in res:

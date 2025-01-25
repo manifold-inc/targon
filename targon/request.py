@@ -20,8 +20,10 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
     # Generate a random seed for reproducibility in sampling and text generation
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
-    temperature = random.random()
+    temperature = random.uniform(0.0, 2.0)  # Range 0.0-2.0
+    top_p = random.uniform(0.0, 1.0)  # Range 0.0-1.0
     max_tokens = random.randint(512, 1920)
+    stop = []  # Default to empty list for stop sequences
 
     total_rows = len(dataset["train"])
     random_row_text = dataset["train"][random.randint(0, total_rows - 1)][
@@ -39,9 +41,11 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
                 json={
                     "messages": messages,
                     "sampling_params": {
-                        "temperature": 0.5,
+                        "temperature": temperature,
                         "seed": seed,
-                        "max_tokens": random.randint(16, 64),
+                        "max_tokens": max_tokens,
+                        "top_p": top_p,
+                        "stop": stop,
                     },
                 },
             )
@@ -63,6 +67,8 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
         "seed": seed,
         "max_tokens": max_tokens,
         "temperature": temperature,
+        "top_p": top_p,
+        "stop": stop,
         "model": model_name,
         "stream": True,
         "logprobs": True,

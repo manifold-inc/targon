@@ -38,11 +38,21 @@ if TOKENIZER.chat_template is not None:
 
 
 class RequestParams(BaseModel):
-    messages: Optional[List[Dict[str, str]]] = None
-    prompt: Optional[str] = None
-    temperature: float = 0.0
-    seed: int = 42
-    max_tokens: int
+    messages: Optional[List[Dict[str, str]]] = None  # Keep optional since it depends on endpoint
+    prompt: Optional[str] = None  # Keep optional since it depends on endpoint
+    temperature: float  # Required, range 0.0-2.0
+    top_p: float  # Required, range 0.0-1.0
+    max_tokens: int  # Required, must be 1+
+    stop: List[str]  # Required, can be empty list
+    seed: int  # Required
+    
+    # Optional parameters with their defaults
+    top_k: Optional[int] = 0  # Default 0, range 0+
+    frequency_penalty: Optional[float] = 0.0  # Default 0.0, range -2.0-2.0
+    presence_penalty: Optional[float] = 0.0  # Default 0.0, range -2.0-2.0
+    repetition_penalty: Optional[float] = 1.0  # Default 1.0, range 0.0-2.0
+    min_p: Optional[float] = 0.0  # Default 0.0, range 0.0-1.0
+    top_a: Optional[float] = 0.0  # Default 0.0, range 0.0-1.0
 
 
 class OutputItem(BaseModel):
