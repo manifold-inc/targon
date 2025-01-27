@@ -131,7 +131,7 @@ class Validator(BaseNeuron):
 
         ## DONE
         bt.logging.info(
-            "\N{grinning face with smiling eyes}", "Successfully Initialized!"
+            "\N{GRINNING FACE WITH SMILING EYES}", "Successfully Initialized!"
         )
 
     def heartbeat(self):
@@ -248,7 +248,9 @@ class Validator(BaseNeuron):
         # Only keep last 30 scores
         for uid in self.miner_tps:
             for model in self.miner_tps[uid]:
-                self.miner_tps[uid][model] = self.miner_tps[uid][model][-SLIDING_WINDOW:]
+                self.miner_tps[uid][model] = self.miner_tps[uid][model][
+                    -SLIDING_WINDOW:
+                ]
         self.lock_halt = False
 
     def log_on_block(self, block):
@@ -380,7 +382,12 @@ class Validator(BaseNeuron):
             )
             return uid, None
         verified = await check_tokens(
-            request, stat.tokens, uid, endpoint=endpoint, port=verification_port
+            request,
+            stat.tokens,
+            uid,
+            endpoint=endpoint,
+            port=verification_port,
+            usage=stat.usage,
         )
         if verified is None:
             return uid, None

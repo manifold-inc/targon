@@ -9,10 +9,11 @@ import openai
 import requests
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import create_header_hook
-from targon.types import Endpoints, InferenceStats
+from targon.types import Endpoints, InferenceStats, Usage
 from targon.utils import fail_with_none
 import random
 import bittensor as bt
+
 
 @fail_with_none("Error generating dataset")
 def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
@@ -83,6 +84,7 @@ async def handle_inference(
         total_time=0,
         tokens=[],
         verified=False,
+        usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0),
     )
     try:
         axon_info = metagraph.axons[uid]
@@ -109,6 +111,14 @@ async def handle_inference(
                 case Endpoints.CHAT:
                     chat = await miner.chat.completions.create(**request)
                     async for chunk in chat:
+                        # Check for usage in any chunk (will only be present in final chunk)
+                        if chunk.usage:
+                            stats.usage = Usage(
+                                prompt_tokens=chunk.usage.prompt_tokens,
+                                completion_tokens=chunk.usage.completion_tokens,
+                                total_tokens=chunk.usage.total_tokens,
+                            )
+
                         if chunk.choices[0].delta is None:
                             continue
                         if (
@@ -144,6 +154,16 @@ async def handle_inference(
                 case Endpoints.COMPLETION:
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
+                        # Check for usage in any chunk (will only be present in final chunk)
+                        if chunk.usage:
+                            stats.usage = Usage(
+                                prompt_tokens=chunk.usage.prompt_tokens,
+                                completion_tokens=chunk.usage.completion_tokens,
+                                total_tokens=chunk.usage.total_tokens,
+                            )
+
+                        if chunk.choices[0].text is None:
+                            continue
                         if (
                             chunk.choices[0].text == "" or chunk.choices[0].text is None
                         ) and len(stats.tokens) == 0:
@@ -223,6 +243,7 @@ async def check_tokens(
     uid,
     endpoint: Endpoints,
     port: int,
+    usage: Usage,
     url="http://localhost",
 ) -> Optional[Dict]:
     try:
@@ -234,6 +255,7 @@ async def check_tokens(
                 "request_type": endpoint.value,
                 "request_params": request,
                 "output_sequence": responses,
+                "usage": usage,
             },
         ).json()
         if result.get("verified") is None:

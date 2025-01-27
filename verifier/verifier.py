@@ -41,15 +41,15 @@ class RequestParams(BaseModel):
     # Optional parameters that depend on endpoint
     messages: Optional[List[Dict[str, str]]] = None
     prompt: Optional[str] = None
-    
+
     # Core parameters
     temperature: Optional[float] = 1.0  # Default 1.0, range 0.0-2.0
     top_p: Optional[float] = 1.0  # Default 1.0, range 0.0-1.0
     max_tokens: Optional[int] = None  # Optional, must be 1+
     stop: Optional[List[str]] = []  # Optional, defaults to empty list
     seed: Optional[int] = None  # Optional
-    
-    # Additional optional parameters 
+
+    # Additional optional parameters
     top_k: Optional[int] = 0  # Default 0, range 0+
     frequency_penalty: Optional[float] = 0.0  # Default 0.0, range -2.0-2.0
     presence_penalty: Optional[float] = 0.0  # Default 0.0, range -2.0-2.0
