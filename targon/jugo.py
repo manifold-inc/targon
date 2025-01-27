@@ -6,7 +6,7 @@ from nanoid import generate
 
 from targon.epistula import generate_header
 from targon.request import check_tokens
-from targon.types import Endpoints, InferenceStats, OrganicStats
+from targon.types import Endpoints, InferenceStats, OrganicStats, Usage
 import bittensor as bt
 
 JUGO_URL = "https://jugo.targon.com"
@@ -185,12 +185,25 @@ async def score_organics(last_bucket_id, ports, wallet):
                 port = ports.get(model, {}).get("port")
                 if not port:
                     continue
+
+                # Extract usage from the record
+                usage = None
+                if record.get("usage"):
+                    usage = Usage(
+                        prompt_tokens=record["usage"]["prompt_tokens"],
+                        completion_tokens=record["usage"]["completion_tokens"],
+                        total_tokens=record["usage"]["total_tokens"]
+                    )
+                else:
+                    continue
+
                 res = await check_tokens(
                     record["request"],
                     tokens,
                     record["uid"],
                     Endpoints(record["endpoint"]),
                     port,
+                    usage=usage
                 )
                 bt.logging.info(str(res))
                 if res is None:
@@ -232,6 +245,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                         coldkey=record.get("coldkey"),
                         endpoint=record.get("endpoint"),
                         total_tokens=record.get("response_tokens"),
+                        usage=usage
                     )
                 )
         bt.logging.info(f"{bucket_id}: {scores}")
