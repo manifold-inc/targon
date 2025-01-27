@@ -38,15 +38,18 @@ if TOKENIZER.chat_template is not None:
 
 
 class RequestParams(BaseModel):
-    messages: Optional[List[Dict[str, str]]] = None  # Keep optional since it depends on endpoint
-    prompt: Optional[str] = None  # Keep optional since it depends on endpoint
-    temperature: float  # Required, range 0.0-2.0
-    top_p: float  # Required, range 0.0-1.0
-    max_tokens: int  # Required, must be 1+
-    stop: List[str]  # Required, can be empty list
-    seed: int  # Required
+    # Optional parameters that depend on endpoint
+    messages: Optional[List[Dict[str, str]]] = None
+    prompt: Optional[str] = None
     
-    # Optional parameters with their defaults
+    # Core parameters
+    temperature: Optional[float] = 1.0  # Default 1.0, range 0.0-2.0
+    top_p: Optional[float] = 1.0  # Default 1.0, range 0.0-1.0
+    max_tokens: Optional[int] = None  # Optional, must be 1+
+    stop: Optional[List[str]] = []  # Optional, defaults to empty list
+    seed: Optional[int] = None  # Optional
+    
+    # Additional optional parameters 
     top_k: Optional[int] = 0  # Default 0, range 0+
     frequency_penalty: Optional[float] = 0.0  # Default 0.0, range -2.0-2.0
     presence_penalty: Optional[float] = 0.0  # Default 0.0, range -2.0-2.0
@@ -366,21 +369,21 @@ def verify_usage(
         return (
             False,
             f"Reported completion tokens ({request.usage.completion_tokens}) does not match actual count ({actual_completion_tokens})",
-            "INVALID_COMPLETION_COUNT",
+            "INCORRECT_USAGE_DATA",
         )
 
     if request.usage.prompt_tokens != len(input_tokens):
         return (
             False,
             f"Reported prompt tokens ({request.usage.prompt_tokens}) does not match actual count ({len(input_tokens)})",
-            "INVALID_PROMPT_COUNT",
+            "INCORRECT_USAGE_DATA",
         )
 
     if request.usage.total_tokens != actual_total_tokens:
         return (
             False,
             f"Reported total tokens ({request.usage.total_tokens}) does not match actual count ({actual_total_tokens})",
-            "INVALID_TOTAL_COUNT",
+            "INCORRECT_USAGE_DATA",
         )
 
     return True, "", ""
