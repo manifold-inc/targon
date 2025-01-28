@@ -94,18 +94,14 @@ if __name__ == "__main__":
     model = "NousResearch/Meta-Llama-3.1-8B-Instruct"
     MINER_UID = -1
     client = make_client(MINER_UID)
-    res = client.chat.completions.create(
-        messages=messages,
+    response = client.chat.completions.create(
         model=model,
         stream=True,
         logprobs=True,
-        max_tokens=200,
-        temperature=1.0,
-        top_p=0.9,
-        stop=[],
-        seed=42,
+        max_tokens=100,
+        messages=messages,
     )
-    for chunk in res:
+    for chunk in response:
         content = chunk.choices[0].delta.content
         if content:
             print(content, end="")
