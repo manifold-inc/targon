@@ -27,12 +27,6 @@ class Endpoints(Enum):
     COMPLETION = "COMPLETION"
 
 
-class Usage(BaseModel):
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-
-
 class InferenceStats(BaseModel):
     time_to_first_token: float
     time_for_all_tokens: float
@@ -42,7 +36,6 @@ class InferenceStats(BaseModel):
     verified: bool
     error: Optional[str] = None
     cause: Optional[str] = None
-    usage: Usage
 
 
 class OrganicStats(InferenceStats):
