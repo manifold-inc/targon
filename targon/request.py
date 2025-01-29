@@ -9,7 +9,7 @@ import openai
 import requests
 from targon.dataset import create_query_prompt, create_search_prompt
 from targon.epistula import create_header_hook
-from targon.types import Endpoints, InferenceStats, Usage
+from targon.types import Endpoints, InferenceStats
 from targon.utils import fail_with_none
 import random
 import bittensor as bt
@@ -84,7 +84,6 @@ async def handle_inference(
         total_time=0,
         tokens=[],
         verified=False,
-        usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0),
     )
     try:
         axon_info = metagraph.axons[uid]
@@ -111,92 +110,25 @@ async def handle_inference(
                 case Endpoints.CHAT:
                     chat = await miner.chat.completions.create(**request)
                     async for chunk in chat:
-                        # Check for usage in any chunk (will only be present in final chunk)
-                        if chunk.usage:
-                            stats.usage = Usage(
-                                prompt_tokens=chunk.usage.prompt_tokens,
-                                completion_tokens=chunk.usage.completion_tokens,
-                                total_tokens=chunk.usage.total_tokens,
-                            )
-
-                        if chunk.choices[0].delta is None:
-                            continue
-                        if (
-                            chunk.choices[0].delta.content == ""
-                            or chunk.choices[0].delta.content is None
-                        ) and len(stats.tokens) == 0:
-                            continue
+                        # Store raw chunk
+                        stats.tokens.append(chunk.model_dump())
+                            
+                        # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
-                        choice = chunk.choices[0]
-                        logprob = -100
-                        token_id = -1
-                        choiceprobs = choice.logprobs
-                        if choiceprobs is not None:
-                            if choiceprobs.content:
-                                logprob = choiceprobs.content[0].logprob
-                                token = choiceprobs.content[0].token
-                                if token is None:
-                                    continue
-                                if not token.startswith("token_id:"):
-                                    continue
-                                token_parts = token.split(":")
-                                if len(token_parts) > 1:
-                                    token_id = int(token_parts[1])
-                        stats.tokens.append(
-                            {
-                                "text": choice.delta.content or "",
-                                "token_id": token_id,
-                                "logprob": logprob,
-                            }
-                        )
                         token_times.append(time.time())
+
                 case Endpoints.COMPLETION:
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
-                        # Check for usage in any chunk (will only be present in final chunk)
-                        if chunk.usage:
-                            stats.usage = Usage(
-                                prompt_tokens=chunk.usage.prompt_tokens,
-                                completion_tokens=chunk.usage.completion_tokens,
-                                total_tokens=chunk.usage.total_tokens,
-                            )
-
-                        if chunk.choices[0].text is None:
-                            continue
-                        if (
-                            chunk.choices[0].text == "" or chunk.choices[0].text is None
-                        ) and len(stats.tokens) == 0:
-                            continue
+                        # Store raw chunk
+                        stats.tokens.append(chunk.model_dump())
+                            
+                        # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
-                        choice = chunk.choices[0]
-                        if choice.logprobs is None:
-                            continue
-                        token_id = -1
-                        logprob = -100
-                        if choice.logprobs.token_logprobs:
-                            logprob = choice.logprobs.token_logprobs[0]
-                        if (
-                            choice.logprobs.tokens is not None
-                            and len(choice.logprobs.tokens) > 0
-                        ):
-                            token = choice.logprobs.tokens[0]
-                            if token is None:
-                                continue
-                            if not token.startswith("token_id:"):
-                                continue
-                            token_parts = token.split(":")
-                            if len(token_parts) > 1:
-                                token_id = int(token_parts[1])
-                        stats.tokens.append(
-                            {
-                                "text": choice.text or "",
-                                "token_id": token_id,
-                                "logprob": logprob,
-                            }
-                        )
                         token_times.append(time.time())
+
         except openai.APIConnectionError as e:
             bt.logging.trace(f"Miner {uid} failed request: {e}")
             stats.error = str(e)
@@ -209,27 +141,24 @@ async def handle_inference(
         if start_token_time == 0:
             start_token_time = time.time()
         end_token_time = time.time()
-        time_to_first_token = start_token_time - start_send_message_time
-        time_for_all_tokens = end_token_time - start_token_time
-        if stats.error:
-            return uid, stats
-        stats.time_to_first_token = time_to_first_token
-        stats.time_for_all_tokens = time_for_all_tokens
+        
+        stats.time_to_first_token = start_token_time - start_send_message_time
+        stats.time_for_all_tokens = end_token_time - start_token_time
         stats.total_time = end_token_time - start_send_message_time
         stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
 
-        # Detect when response was fully generated, then streamed, which leads to
-        # poor user experience (slow time to N tokens vs total time).
-        token_count = len(stats.tokens)
-        if token_count > 60:
+        # Check for non-streaming behavior
+        if len(stats.tokens) > 60:
             time_to_5th_percent = (
-                token_times[math.ceil(token_count * 0.05)] - start_send_message_time
+                token_times[math.ceil(len(stats.tokens) * 0.05)] - start_send_message_time
             )
             if time_to_5th_percent / stats.total_time >= 0.85:
                 stats.verified = False
                 stats.error = "Likely non-streamed response"
                 stats.cause = "BAD_STREAM"
+
         return uid, stats
+
     except Exception as e:
         bt.logging.error(f"{uid}: Error in forward for: {e}")
         bt.logging.error(traceback.format_exc())
@@ -239,11 +168,10 @@ async def handle_inference(
 @fail_with_none("Failed to check tokens")
 async def check_tokens(
     request,
-    responses: List[Dict],
+    raw_chunks: List[Dict],
     uid,
     endpoint: Endpoints,
     port: int,
-    usage: Usage,
     url="http://localhost",
 ) -> Optional[Dict]:
     try:
@@ -254,8 +182,7 @@ async def check_tokens(
                 "model": request.get("model"),
                 "request_type": endpoint.value,
                 "request_params": request,
-                "output_sequence": responses,
-                "usage": usage,
+                "output_sequence": raw_chunks,
             },
         ).json()
         if result.get("verified") is None:

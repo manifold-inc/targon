@@ -79,8 +79,7 @@ class VerificationRequest(BaseModel):
     request_type: str
     model: str = MODEL_NAME
     request_params: RequestParams
-    output_sequence: List[OutputItem]
-    usage: Usage
+    raw_chunks: List[Dict]
 
 
 class RequestSamplingParams(BaseModel):
@@ -141,33 +140,36 @@ async def generate_question(req: GenerateRequest):
 
 
 def verify_logprobs_random(
-    request: VerificationRequest, input_text: str
-) -> Tuple[bool, str]:
+    temperature: float,
+    seed: int,
+    input_text: str,
+    output_sequence: List[OutputItem]
+) -> Optional[Tuple[bool, str]]:
     """
     Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
     """
-    indices = list(range(1, len(request.output_sequence) - 1))
+    indices = list(range(1, len(output_sequence) - 1))
     indices_to_check = list(
         sorted(
             [
                 0,  # always check first token
-                len(request.output_sequence) - 1,  # always check last token
+                len(output_sequence) - 1,  # always check last token
             ]
             + random.sample(indices, min(len(indices), 3))
         )
     )
 
     # Generate a single token at each index, comparing logprobs.
-    top_logprobs = int(request.request_params.temperature * 10) + 3
+    top_logprobs = int(temperature * 10) + 3
     sampling_params = SamplingParams(
-        temperature=request.request_params.temperature,
-        seed=request.request_params.seed,
+        temperature=temperature,
+        seed=seed,
         max_tokens=1,
         logprobs=top_logprobs,
     )
     for idx in indices_to_check:
         full_text = input_text + "".join(
-            [item.text for item in request.output_sequence[0:idx]]
+            [item.text for item in output_sequence[0:idx]]
         )
         output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[
             0
@@ -180,8 +182,8 @@ def verify_logprobs_random(
             continue
         for lp in output.logprobs:
             top_tokens += list(lp.keys())
-        if request.output_sequence[idx].token_id not in top_tokens:
-            message = f"Token output at index {idx} [{TOKENIZER.decode([request.output_sequence[idx].token_id])}] not found in top {top_logprobs} logprobs: {[TOKENIZER.decode([token]) for token in top_tokens]}"
+        if output_sequence[idx].token_id not in top_tokens:
+            message = f"Token output at index {idx} [{TOKENIZER.decode([output_sequence[idx].token_id])}] not found in top {top_logprobs} logprobs: {[TOKENIZER.decode([token]) for token in top_tokens]}"
             return False, message
     return (
         True,
@@ -190,7 +192,12 @@ def verify_logprobs_random(
 
 
 def verify_logprobs(
-    request: VerificationRequest, input_text: str, input_tokens: List[int]
+    temperature: float,
+    seed: int,
+    max_tokens: Optional[int],
+    input_text: str, 
+    input_tokens: List[int],
+    output_sequence: List[OutputItem]
 ) -> Optional[Tuple[bool, str, str]]:
     """
     Compare the produced logprob values against the ground truth, or at least
@@ -198,10 +205,10 @@ def verify_logprobs(
     """
 
     # Set up sampling parameters for the "fast" check, which just compares input logprobs against output logprobs.
-    top_logprobs = int(request.request_params.temperature * 10) + 6
+    top_logprobs = int(temperature * 10) + 6
     sampling_params = SamplingParams(
-        temperature=request.request_params.temperature,
-        seed=request.request_params.seed,
+        temperature=temperature,
+        seed=seed,
         max_tokens=1,
         logprobs=top_logprobs,
         prompt_logprobs=top_logprobs,
@@ -211,7 +218,7 @@ def verify_logprobs(
     output = None
     for _ in range(5):
         full_text = input_text + "".join(
-            [item.text for item in request.output_sequence]
+            [item.text for item in output_sequence]
         )
         output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
         if output.prompt_logprobs is not None:
@@ -224,16 +231,16 @@ def verify_logprobs(
     total_score = 0.0
     idxs = min(
         len(output.prompt_logprobs) - len(input_tokens) - 3,
-        len(request.output_sequence) - 1,
+        len(output_sequence) - 1,
     )
     perfect_tokens = 0
     eos_token_id = getattr(TOKENIZER, "eos_token_id", -1)
     eot_token_id = TOKENIZER.get_vocab().get("<|eot_id|>", -1)  # type: ignore
-    output_tokens = [item.token_id for item in request.output_sequence]
+    output_tokens = [item.token_id for item in output_sequence]
     really_low_prob = 0
     not_first = 0
     for idx in range(idxs):
-        item = request.output_sequence[idx]
+        item = output_sequence[idx]
         expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob is not None
         eos_logprob = expected_logprob.get(eos_token_id)
@@ -299,7 +306,7 @@ def verify_logprobs(
         # Logprobs rarely match well for high temps so we can use rank instead.
         if (
             rank == 1
-            and request.request_params.temperature >= 0.9
+            and temperature >= 0.9
             and produced_logprob != 0
         ):
             score = 1.0
@@ -318,7 +325,7 @@ def verify_logprobs(
     # Check if miner prematurely stopped generating, meaning the single output token generated
     # from the "throwaway" above was NOT an EOS/EOT token.
     if eos_token_id > 0 or eot_token_id > 0:
-        if len(output_tokens) < request.request_params.max_tokens:
+        if max_tokens and len(output_tokens) < max_tokens:
             last_token_probs = []
             if output:
                 last_token_probs = output.outputs[0]
@@ -343,7 +350,7 @@ def verify_logprobs(
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
     perfect_avg = round(perfect_tokens / idxs, 5)
     if passes and perfect_avg >= (
-        1 - min(request.request_params.temperature * 0.5, 0.6)
+        1 - min(temperature * 0.5, 0.6)
     ):
         return False, f"Overfitted response tokens. {perfect_avg}% perfect", "OVERFIT"
     if really_low_prob >= 5:
@@ -357,65 +364,167 @@ def verify_logprobs(
 
 
 def verify_usage(
-    request: VerificationRequest, input_tokens: List[int]
+    input_tokens_length: int,
+    usage: Usage,
+    output_sequence_length: int
 ) -> Optional[Tuple[bool, str, str]]:
     """Verify the usage information in the response."""
     # Get actual token counts
-    actual_completion_tokens = len([item.token_id for item in request.output_sequence])
-    actual_total_tokens = len(input_tokens) + actual_completion_tokens
+    actual_completion_tokens = output_sequence_length
+    actual_total_tokens = input_tokens_length + actual_completion_tokens
 
     # Verify token counts
-    if request.usage.completion_tokens != actual_completion_tokens:
+    if usage.completion_tokens != actual_completion_tokens:
         return (
             False,
-            f"Reported completion tokens ({request.usage.completion_tokens}) does not match actual count ({actual_completion_tokens})",
+            f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({actual_completion_tokens})",
             "INCORRECT_USAGE_DATA",
         )
 
-    if request.usage.prompt_tokens != len(input_tokens):
+    if usage.prompt_tokens != input_tokens_length:
         return (
             False,
-            f"Reported prompt tokens ({request.usage.prompt_tokens}) does not match actual count ({len(input_tokens)})",
+            f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens_length})",
             "INCORRECT_USAGE_DATA",
         )
 
-    if request.usage.total_tokens != actual_total_tokens:
+    if usage.total_tokens != actual_total_tokens:
         return (
             False,
-            f"Reported total tokens ({request.usage.total_tokens}) does not match actual count ({actual_total_tokens})",
+            f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})",
             "INCORRECT_USAGE_DATA",
         )
 
     return True, "", ""
 
 
+def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
+    """Parse a raw chunk into an OutputItem with token info"""
+    try:
+        choice = chunk.get('choices', [])[0]
+        
+        # Initialize defaults
+        token_id = -1
+        logprob = -100
+        
+        if request_type == "CHAT":
+            if choice.get('delta') is None:
+                return None
+                
+            # Check for empty content
+            content = choice.get('delta', {}).get('content')
+            if content == "" or content is None:
+                return None
+                
+            choiceprobs = choice.get('logprobs')
+            if choiceprobs is not None:
+                if choiceprobs.get('content'):
+                    logprob = choiceprobs['content'][0]['logprob']
+                    token = choiceprobs['content'][0]['token']
+                    if token is None:
+                        return None
+                    if not token.startswith("token_id:"):
+                        return None
+                    token_parts = token.split(":")
+                    if len(token_parts) > 1:
+                        token_id = int(token_parts[1])
+            
+            return OutputItem(
+                text=content or "",
+                token_id=token_id,
+                logprob=logprob
+            )
+                        
+        elif request_type == "COMPLETION":
+            text = choice.get('text')
+            if text is None:
+                return None
+                
+            # Check logprobs exist
+            if choice.get('logprobs') is None:
+                return None
+                
+            if choice['logprobs'].get('token_logprobs'):
+                logprob = choice['logprobs']['token_logprobs'][0]
+                
+            if (choice['logprobs'].get('tokens') is not None
+                and len(choice['logprobs']['tokens']) > 0):
+                token = choice['logprobs']['tokens'][0]
+                if token is None:
+                    return None
+                if not token.startswith("token_id:"):
+                    return None
+                token_parts = token.split(":")
+                if len(token_parts) > 1:
+                    token_id = int(token_parts[1])
+            
+            return OutputItem(
+                text=text or "",
+                token_id=token_id,
+                logprob=logprob
+            )
+        
+        return None
+        
+    except Exception as e:
+        print(f"Failed to parse chunk: {e}")
+        return None
+
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
+    
+    # Parse raw chunks into OutputItems
+    output_sequence = []
+    for chunk in request.raw_chunks:
+        if parsed := parse_chunk(chunk, request.request_type):
+            output_sequence.append(parsed)
 
-    # If the miner didn't return any outputs, fail.
-    if len(request.output_sequence) < 3:
+    # If we couldn't parse enough tokens, fail
+    if len(output_sequence) < 3:
         return {
             "verified": False,
             "error": "Output sequence too short!",
             "cause": "TOO_SHORT",
         }
+    
+    # Check max tokens
     if (
         request.request_params.max_tokens
-        and len(request.output_sequence) > request.request_params.max_tokens
+        and len(output_sequence) > request.request_params.max_tokens
     ):
         return {
             "verified": False,
-            "error": f"Too many tokens produced: {request.request_params.max_tokens} < {len(request.output_sequence)}",
+            "error": f"Too many tokens produced: {request.request_params.max_tokens} < {len(output_sequence)}",
             "cause": "TOO_LONG",
         }
+        
     if request.model != MODEL_NAME:
         return {
+            "verified": False,
             "error": f"Unable to verify model={request.model}, since we are using {MODEL_NAME}",
             "cause": "INTERNAL_ERROR",
         }
 
-    # Tokenize the input sequence.
+    final_chunk = request.raw_chunks[-1]
+    usage_data = final_chunk.get('usage')
+    if not usage_data:
+        return {
+            "verified": False,
+            "error": "No usage information in final chunk",
+            "cause": "NO_USAGE"
+        }
+    
+    try:
+        usage = Usage(**usage_data)
+    except Exception as e:
+        return {
+            "verified": False,
+            "error": f"Invalid usage data: {str(e)}",
+            "cause": "INVALID_USAGE"
+        }
+
+    # Tokenize the input sequence
     input_text = (
         request.request_params.prompt
         if request.request_type == RequestType.COMPLETION.value
@@ -429,7 +538,7 @@ async def verify(request: VerificationRequest) -> Dict:
     assert isinstance(input_text, str)
     if hasattr(TOKENIZER, "bos_token"):
         if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
-            input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
+            input_text = input_text[len(TOKENIZER.bos_token):]  # type: ignore
     input_tokens = TOKENIZER(input_text).input_ids
 
     # Verify!
@@ -440,53 +549,47 @@ async def verify(request: VerificationRequest) -> Dict:
         }
 
         # Verify usage information
-        res = verify_usage(request, input_tokens)
+        res = verify_usage(len(input_tokens), usage, len(output_sequence))
         if res is None:
             return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
         result, message, cause = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": cause,
-                "error": message,
-            }
-        )
+        return_value.update({
+            "verified": result,
+            "cause": cause,
+            "error": message,
+        })
         if not result:
             return return_value
 
-        # Logprob checks.
-        res = verify_logprobs(request, str(input_text), input_tokens)
+        # Logprob checks
+        res = verify_logprobs(request.request_params.temperature, request.request_params.seed, request.request_params.max_tokens, str(input_text), input_tokens, output_sequence)
         if res is None:
             return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
         result, message, cause = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": cause,
-                "error": message,
-            }
-        )
+        return_value.update({
+            "verified": result,
+            "cause": cause,
+            "error": message,
+        })
         if not result:
             return return_value
 
-        # Random logprob check.
+        # Random logprob check
         if request.request_params.temperature > 0.75:
             return {"verified": True}
 
-        res = verify_logprobs_random(request, str(input_text))
+        res = verify_logprobs_random(request.request_params.temperature, request.request_params.seed, str(input_text), output_sequence)
         if res is None:
             return {
                 "error": "Failed to check log probs",
                 "cause": "INTERNAL_ERROR",
             }
         result, message = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": "LOGPROB_RANDOM",
-                "error": message,
-            }
-        )
+        return_value.update({
+            "verified": result,
+            "cause": "LOGPROB_RANDOM",
+            "error": message,
+        })
         if not result:
             return return_value
 
