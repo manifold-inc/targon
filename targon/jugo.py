@@ -22,6 +22,7 @@ async def send_organics_to_jugo(
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
             async with session.post(
+                
                 f"{JUGO_URL}/organics/scores",
                 headers=headers,
                 json=body,
