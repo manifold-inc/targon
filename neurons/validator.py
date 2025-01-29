@@ -387,7 +387,6 @@ class Validator(BaseNeuron):
             uid,
             endpoint=endpoint,
             port=verification_port,
-            usage=stat.usage,
         )
         if verified is None:
             return uid, None
