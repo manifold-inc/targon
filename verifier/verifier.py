@@ -380,6 +380,9 @@ def verify_usage(
 
     # Verify token counts
     if usage.completion_tokens != actual_completion_tokens:
+        print(f"\nDEBUG Usage Verification Error (Completion Tokens):")
+        print(f"  Reported: completion={usage.completion_tokens}")
+        print(f"  Actual:   completion={actual_completion_tokens}")
         return (
             False,
             f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({actual_completion_tokens})",
@@ -387,6 +390,9 @@ def verify_usage(
         )
 
     if usage.prompt_tokens != input_tokens_length:
+        print(f"\nDEBUG Usage Verification Error (Prompt Tokens):")
+        print(f"  Reported: prompt={usage.prompt_tokens}")
+        print(f"  Actual:   prompt={input_tokens_length}")
         return (
             False,
             f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens_length})",
@@ -394,6 +400,9 @@ def verify_usage(
         )
 
     if usage.total_tokens != actual_total_tokens:
+        print(f"\nDEBUG Usage Verification Error (Total Tokens):")
+        print(f"  Reported: total={usage.total_tokens}")
+        print(f"  Actual:   total={actual_total_tokens}")
         return (
             False,
             f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})",
@@ -407,85 +416,113 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
     """Parse a raw chunk into an OutputItem with token info"""
     try:
         print(f"DEBUG: Parsing chunk: {chunk}")  # Debug the incoming chunk
+        
+        # Validate choices array
         choices = chunk.get('choices', [])
         if not choices:
-            print(f"DEBUG: No choices in chunk")  # Debug when choices is empty
+            print(f"DEBUG: No choices in chunk")
             return None
             
         choice = choices[0]
-        print(f"DEBUG: First choice: {choice}")  # Debug the first choice
+        print(f"DEBUG: Processing choice: {choice}")
         
         # Initialize defaults
         token_id = -1
         logprob = -100
         
         if request_type == "CHAT":
-            if choice.get('delta') is None:
-                print(f"DEBUG: No delta in choice for CHAT")  # Debug missing delta
+            # Validate delta exists
+            delta = choice.get('delta')
+            if delta is None:
+                print(f"DEBUG: No delta in choice for CHAT")
                 return None
                 
-            # Check for empty content
-            content = choice.get('delta', {}).get('content')
+            # Check for content
+            content = delta.get('content')
             if content == "" or content is None:
-                print(f"DEBUG: Empty or None content in delta")  # Debug empty content
+                print(f"DEBUG: Empty or None content in delta")
                 return None
                 
+            # Process logprobs
             choiceprobs = choice.get('logprobs')
-            print(f"DEBUG: CHAT choiceprobs: {choiceprobs}")  # Debug logprobs structure
-            if choiceprobs is not None:
-                if choiceprobs.get('content'):
-                    logprob = choiceprobs['content'][0]['logprob']
-                    token = choiceprobs['content'][0]['token']
-                    if token is None:
-                        return None
-                    if not token.startswith("token_id:"):
-                        return None
-                    token_parts = token.split(":")
-                    if len(token_parts) > 1:
-                        token_id = int(token_parts[1])
+            print(f"DEBUG: CHAT choiceprobs structure: {choiceprobs}")
+            
+            if choiceprobs is not None and choiceprobs.get('content'):
+                content_probs = choiceprobs['content'][0]
+                logprob = content_probs.get('logprob', -100)
+                token = content_probs.get('token')
+                
+                print(f"DEBUG: Processing token: {token}")
+                
+                if token is None:
+                    print(f"DEBUG: Token is None")
+                    return None
+                    
+                if not token.startswith("token_id:"):
+                    print(f"DEBUG: Token does not start with token_id:")
+                    return None
+                    
+                try:
+                    token_id = int(token.split(":")[1])
+                except (IndexError, ValueError) as e:
+                    print(f"DEBUG: Failed to parse token_id: {e}")
+                    return None
             
             return OutputItem(
-                text=content or "",
+                text=content,
                 token_id=token_id,
                 logprob=logprob
             )
-                        
+            
         elif request_type == "COMPLETION":
+            # Validate text exists
             text = choice.get('text')
             if text is None:
-                print(f"DEBUG: No text in choice for COMPLETION")  # Debug missing text
+                print(f"DEBUG: No text in choice for COMPLETION")
                 return None
                 
-            # Check logprobs exist
-            if choice.get('logprobs') is None:
-                print(f"DEBUG: No logprobs in choice for COMPLETION")  # Debug missing logprobs
+            # Process logprobs
+            logprobs = choice.get('logprobs')
+            if logprobs is None:
+                print(f"DEBUG: No logprobs in choice for COMPLETION")
                 return None
                 
-            if choice['logprobs'].get('token_logprobs'):
-                logprob = choice['logprobs']['token_logprobs'][0]
+            # Get token logprob
+            token_logprobs = logprobs.get('token_logprobs', [])
+            if token_logprobs:
+                logprob = token_logprobs[0]
+            
+            # Process token
+            tokens = logprobs.get('tokens', [])
+            if tokens:
+                token = tokens[0]
+                print(f"DEBUG: Processing token: {token}")
                 
-            if (choice['logprobs'].get('tokens') is not None
-                and len(choice['logprobs']['tokens']) > 0):
-                token = choice['logprobs']['tokens'][0]
                 if token is None:
+                    print(f"DEBUG: Token is None")
                     return None
+                    
                 if not token.startswith("token_id:"):
+                    print(f"DEBUG: Token does not start with token_id:")
                     return None
-                token_parts = token.split(":")
-                if len(token_parts) > 1:
-                    token_id = int(token_parts[1])
+                    
+                try:
+                    token_id = int(token.split(":")[1])
+                except (IndexError, ValueError) as e:
+                    print(f"DEBUG: Failed to parse token_id: {e}")
+                    return None
             
             return OutputItem(
-                text=text or "",
+                text=text,
                 token_id=token_id,
                 logprob=logprob
             )
-        
+            
         return None
         
     except Exception as e:
-        print(f"DEBUG: Exception in parse_chunk: {e}")  # Debug any exceptions
-        print(f"DEBUG: Chunk that caused exception: {chunk}")  # Debug the problematic chunk
+        print(f"DEBUG: Exception in parse_chunk: {e}")
+        print(f"DEBUG: Chunk that caused exception: {chunk}")
         return None
 
 @app.post("/verify")
