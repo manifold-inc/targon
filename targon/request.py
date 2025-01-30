@@ -65,6 +65,7 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
         "temperature": temperature,
         "model": model_name,
         "stream": True,
+        "stream_options": {"include_usage": True},
         "logprobs": True,
         **create_search_prompt(res, endpoint),
     }
