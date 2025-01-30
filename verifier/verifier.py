@@ -371,11 +371,12 @@ def verify_logprobs(
 def verify_usage(
     input_tokens_length: int,
     usage: Usage,
-    output_sequence_length: int
+    output_sequence_length: int,
+    saw_length_finish: bool
 ) -> Optional[Tuple[bool, str, str]]:
     """Verify the usage information in the response."""
-    # Get actual token counts - add 1 to account for final empty chunk
-    actual_completion_tokens = output_sequence_length + 1
+    # Only add 1 if we haven't already counted a length finish chunk
+    actual_completion_tokens = output_sequence_length + (0 if saw_length_finish else 1)
     actual_total_tokens = input_tokens_length + actual_completion_tokens
 
     # Verify token counts
@@ -512,11 +513,15 @@ async def verify(request: VerificationRequest) -> Dict:
     
     # Parse raw chunks into OutputItems
     output_sequence = []
+    saw_length_finish = False
     
     # Process all chunks
     for chunk in request.raw_chunks:
         if parsed := parse_chunk(chunk, request.request_type):
             output_sequence.append(parsed)
+            # Check if this was a length finish chunk
+            if chunk.get('choices', [{}])[0].get('finish_reason') == 'length':
+                saw_length_finish = True
 
     # If we couldn't parse enough tokens, fail
     if len(output_sequence) < 3:
@@ -587,7 +592,7 @@ async def verify(request: VerificationRequest) -> Dict:
         }
 
         # Verify usage information
-        res = verify_usage(len(input_tokens), usage, len(output_sequence))
+        res = verify_usage(len(input_tokens), usage, len(output_sequence), saw_length_finish)
         if res is None:
             return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
         result, message, cause = res
