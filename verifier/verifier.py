@@ -415,26 +415,11 @@ def verify_usage(
 def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
     """Parse a raw chunk into an OutputItem with token info"""
     try:
-        print(f"DEBUG: Parsing chunk: {chunk}")
-        
         choices = chunk.get('choices', [])
         if not choices:
-            # Special case: If this is a final chunk with finish_reason='length' in previous chunk
-            # and has no choices but has usage info, it's a valid end marker
-            if chunk.get('usage') and any(
-                prev_choice.get('finish_reason') == 'length' 
-                for prev_choice in chunk.get('previous_choices', [])
-            ):
-                return OutputItem(
-                    text="",
-                    token_id=-1,
-                    logprob=-100
-                )
-            print(f"DEBUG: No choices in chunk")
             return None
             
         choice = choices[0]
-        print(f"DEBUG: Processing choice: {choice}")
         
         # Initialize defaults
         token_id = -1
@@ -444,38 +429,29 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
             # Validate delta exists
             delta = choice.get('delta')
             if delta is None:
-                print(f"DEBUG: No delta in choice for CHAT")
                 return None
                 
             # Check for content
             content = delta.get('content')
             if content == "" or content is None:
-                print(f"DEBUG: Empty or None content in delta")
                 return None
                 
             # Process logprobs
             choiceprobs = choice.get('logprobs')
-            print(f"DEBUG: CHAT choiceprobs structure: {choiceprobs}")
-            
             if choiceprobs is not None and choiceprobs.get('content'):
                 content_probs = choiceprobs['content'][0]
                 logprob = content_probs.get('logprob', -100)
                 token = content_probs.get('token')
                 
-                print(f"DEBUG: Processing token: {token}")
-                
                 if token is None:
-                    print(f"DEBUG: Token is None")
                     return None
                     
                 if not token.startswith("token_id:"):
-                    print(f"DEBUG: Token does not start with token_id:")
                     return None
                     
                 try:
                     token_id = int(token.split(":")[1])
-                except (IndexError, ValueError) as e:
-                    print(f"DEBUG: Failed to parse token_id: {e}")
+                except (IndexError, ValueError):
                     return None
             
             return OutputItem(
@@ -488,13 +464,11 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
             # Validate text exists
             text = choice.get('text')
             if text is None:
-                print(f"DEBUG: No text in choice for COMPLETION")
                 return None
                 
             # Process logprobs
             logprobs = choice.get('logprobs')
             if logprobs is None:
-                print(f"DEBUG: No logprobs in choice for COMPLETION")
                 return None
                 
             # Get token logprob
@@ -506,20 +480,15 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
             tokens = logprobs.get('tokens', [])
             if tokens:
                 token = tokens[0]
-                print(f"DEBUG: Processing token: {token}")
-                
                 if token is None:
-                    print(f"DEBUG: Token is None")
                     return None
                     
                 if not token.startswith("token_id:"):
-                    print(f"DEBUG: Token does not start with token_id:")
                     return None
                     
                 try:
                     token_id = int(token.split(":")[1])
-                except (IndexError, ValueError) as e:
-                    print(f"DEBUG: Failed to parse token_id: {e}")
+                except (IndexError, ValueError):
                     return None
             
             return OutputItem(
@@ -530,9 +499,7 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
             
         return None
         
-    except Exception as e:
-        print(f"DEBUG: Exception in parse_chunk: {e}")
-        print(f"DEBUG: Chunk that caused exception: {chunk}")
+    except Exception:
         return None
 
 @app.post("/verify")
@@ -541,33 +508,29 @@ async def verify(request: VerificationRequest) -> Dict:
     
     # Parse raw chunks into OutputItems
     output_sequence = []
-    successful_parses = 0
     
-    # Check if the last chunk is a finish chunk (no choices but has usage)
-    final_chunk_is_finish = (
-        len(request.raw_chunks) > 0 
-        and not request.raw_chunks[-1].get('choices')
-        and request.raw_chunks[-1].get('usage')
-        and len(request.raw_chunks) > 1
-        and request.raw_chunks[-2].get('choices', [{}])[0].get('finish_reason') == 'length'
-    )
-    
-    # Process all chunks except possibly the last one
-    chunks_to_process = request.raw_chunks[:-1] if final_chunk_is_finish else request.raw_chunks
-    
-    for chunk in chunks_to_process:
+    # Process all chunks first
+    for chunk in request.raw_chunks:
         if parsed := parse_chunk(chunk, request.request_type):
             output_sequence.append(parsed)
-            successful_parses += 1
     
-    # If we had a final finish chunk, add one to our successful parse count
-    if final_chunk_is_finish:
-        successful_parses += 1
-    
-    print(f"\nDEBUG Token Count Summary:")
-    print(f"  Successfully parsed tokens: {successful_parses}")
-    print(f"  Final usage reports completion_tokens: {request.raw_chunks[-1].get('usage', {}).get('completion_tokens')}")
-    print(f"  Final chunk was finish chunk: {final_chunk_is_finish}")
+    # Check if the last chunk indicates completion
+    if (len(request.raw_chunks) > 1 and 
+        request.raw_chunks[-2].get('choices', [{}])[0].get('finish_reason') == 'length' and
+        not request.raw_chunks[-1].get('choices') and
+        request.raw_chunks[-1].get('usage')):
+        
+        # Compare the completion tokens in the second-to-last and last chunks
+        prev_completion_tokens = request.raw_chunks[-2].get('usage', {}).get('completion_tokens', 0)
+        final_completion_tokens = request.raw_chunks[-1].get('usage', {}).get('completion_tokens', 0)
+        
+        # Only add an empty token if the miner counted this as an additional token
+        if final_completion_tokens > prev_completion_tokens:
+            output_sequence.append(OutputItem(
+                text="",
+                token_id=-1,
+                logprob=-100
+            ))
 
     # If we couldn't parse enough tokens, fail
     if len(output_sequence) < 3:
