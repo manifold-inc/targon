@@ -531,9 +531,15 @@ async def verify(request: VerificationRequest) -> Dict:
     
     # Parse raw chunks into OutputItems
     output_sequence = []
+    successful_parses = 0
     for chunk in request.raw_chunks:
         if parsed := parse_chunk(chunk, request.request_type):
             output_sequence.append(parsed)
+            successful_parses += 1
+    
+    print(f"\nDEBUG Token Count Summary:")
+    print(f"  Successfully parsed tokens: {successful_parses}")
+    print(f"  Final usage reports completion_tokens: {request.raw_chunks[-1].get('usage', {}).get('completion_tokens')}")
 
     # If we couldn't parse enough tokens, fail
     if len(output_sequence) < 3:
