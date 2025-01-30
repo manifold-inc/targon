@@ -176,20 +176,29 @@ async def check_tokens(
     url="http://localhost",
 ) -> Optional[Dict]:
     try:
-        result = requests.post(
+        request_data = {
+            "model": request.get("model"),
+            "request_type": endpoint.value,
+            "request_params": request,
+            "raw_chunks": raw_chunks,
+        }
+        bt.logging.debug(f"Verification request data: {request_data}")
+        
+        response = requests.post(
             f"{url}:{port}/verify",
             headers={"Content-Type": "application/json"},
-            json={
-                "model": request.get("model"),
-                "request_type": endpoint.value,
-                "request_params": request,
-                "output_sequence": raw_chunks,
-            },
-        ).json()
+            json=request_data,
+        )
+        
+        if response.status_code != 200:
+            bt.logging.error(f"Verification failed with status {response.status_code}: {response.text}")
+            
+        result = response.json()
         if result.get("verified") is None:
             bt.logging.error(str(result))
             return None
         return result
     except Exception as e:
         bt.logging.error(f"{uid}: " + str(e))
+        bt.logging.error(traceback.format_exc())
         return None

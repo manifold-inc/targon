@@ -518,6 +518,7 @@ class Validator(BaseNeuron):
         """
         assert self.config.models
 
+        return ["NousResearch/Meta-Llama-3.1-8B-Instruct"]
         match self.config.models.mode:
             case "config":
                 models = get_models_from_config()
