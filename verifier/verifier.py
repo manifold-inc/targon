@@ -56,6 +56,11 @@ class RequestParams(BaseModel):
     repetition_penalty: Optional[float] = None  # Default None, range 0.0-2.0
     min_p: Optional[float] = None  # Default None, range 0.0-1.0
     top_a: Optional[float] = None  # Default None, range 0.0-1.0
+    
+    # Stream parameters
+    stream: Optional[bool] = None
+    stream_options: Optional[Dict] = None
+    logprobs: Optional[bool] = None
 
 
 class OutputItem(BaseModel):

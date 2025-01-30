@@ -182,12 +182,6 @@ async def check_tokens(
             "request_params": request,
             "raw_chunks": raw_chunks,
         }
-        bt.logging.debug(f"Verification request data: {request_data}")
-        
-        bt.logging.debug("Request data being sent:", request_data)  # Add this debug line
-        bt.logging.debug("Raw chunks type:", type(raw_chunks))      # Add this debug line
-        bt.logging.debug("First raw chunk:", raw_chunks[0] if raw_chunks else None)  # Add this debug line
-
         response = requests.post(
             f"{url}:{port}/verify",
             headers={"Content-Type": "application/json"},
