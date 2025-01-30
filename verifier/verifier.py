@@ -415,11 +415,21 @@ def verify_usage(
 def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
     """Parse a raw chunk into an OutputItem with token info"""
     try:
-        print(f"DEBUG: Parsing chunk: {chunk}")  # Debug the incoming chunk
+        print(f"DEBUG: Parsing chunk: {chunk}")
         
-        # Validate choices array
         choices = chunk.get('choices', [])
         if not choices:
+            # Special case: If this is a final chunk with finish_reason='length' in previous chunk
+            # and has no choices but has usage info, it's a valid end marker
+            if chunk.get('usage') and any(
+                prev_choice.get('finish_reason') == 'length' 
+                for prev_choice in chunk.get('previous_choices', [])
+            ):
+                return OutputItem(
+                    text="",
+                    token_id=-1,
+                    logprob=-100
+                )
             print(f"DEBUG: No choices in chunk")
             return None
             
@@ -532,14 +542,32 @@ async def verify(request: VerificationRequest) -> Dict:
     # Parse raw chunks into OutputItems
     output_sequence = []
     successful_parses = 0
-    for chunk in request.raw_chunks:
+    
+    # Check if the last chunk is a finish chunk (no choices but has usage)
+    final_chunk_is_finish = (
+        len(request.raw_chunks) > 0 
+        and not request.raw_chunks[-1].get('choices')
+        and request.raw_chunks[-1].get('usage')
+        and len(request.raw_chunks) > 1
+        and request.raw_chunks[-2].get('choices', [{}])[0].get('finish_reason') == 'length'
+    )
+    
+    # Process all chunks except possibly the last one
+    chunks_to_process = request.raw_chunks[:-1] if final_chunk_is_finish else request.raw_chunks
+    
+    for chunk in chunks_to_process:
         if parsed := parse_chunk(chunk, request.request_type):
             output_sequence.append(parsed)
             successful_parses += 1
     
+    # If we had a final finish chunk, add one to our successful parse count
+    if final_chunk_is_finish:
+        successful_parses += 1
+    
     print(f"\nDEBUG Token Count Summary:")
     print(f"  Successfully parsed tokens: {successful_parses}")
     print(f"  Final usage reports completion_tokens: {request.raw_chunks[-1].get('usage', {}).get('completion_tokens')}")
+    print(f"  Final chunk was finish chunk: {final_chunk_is_finish}")
 
     # If we couldn't parse enough tokens, fail
     if len(output_sequence) < 3:
