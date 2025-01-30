@@ -374,8 +374,8 @@ def verify_usage(
     output_sequence_length: int
 ) -> Optional[Tuple[bool, str, str]]:
     """Verify the usage information in the response."""
-    # Get actual token counts
-    actual_completion_tokens = output_sequence_length
+    # Get actual token counts - add 1 to account for final empty chunk
+    actual_completion_tokens = output_sequence_length + 1
     actual_total_tokens = input_tokens_length + actual_completion_tokens
 
     # Verify token counts
@@ -509,28 +509,10 @@ async def verify(request: VerificationRequest) -> Dict:
     # Parse raw chunks into OutputItems
     output_sequence = []
     
-    # Process all chunks first
+    # Process all chunks
     for chunk in request.raw_chunks:
         if parsed := parse_chunk(chunk, request.request_type):
             output_sequence.append(parsed)
-    
-    # Check if the last chunk indicates completion
-    if (len(request.raw_chunks) > 1 and 
-        request.raw_chunks[-2].get('choices', [{}])[0].get('finish_reason') == 'length' and
-        not request.raw_chunks[-1].get('choices') and
-        request.raw_chunks[-1].get('usage')):
-        
-        # Compare the completion tokens in the second-to-last and last chunks
-        prev_completion_tokens = request.raw_chunks[-2].get('usage', {}).get('completion_tokens', 0)
-        final_completion_tokens = request.raw_chunks[-1].get('usage', {}).get('completion_tokens', 0)
-        
-        # Only add an empty token if the miner counted this as an additional token
-        if final_completion_tokens > prev_completion_tokens:
-            output_sequence.append(OutputItem(
-                text="",
-                token_id=-1,
-                logprob=-100
-            ))
 
     # If we couldn't parse enough tokens, fail
     if len(output_sequence) < 3:
