@@ -417,10 +417,14 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
     try:
         choices = chunk.get('choices', [])
         if not choices:
+            if chunk.get('usage'):
+                print(f"\nDEBUG Skipping usage chunk: {chunk}")
             return None
             
         choice = choices[0]
-        
+        if choice.get('finish_reason') == 'length':
+            print(f"\nDEBUG Found length finish chunk: {chunk}")
+            
         # Initialize defaults
         token_id = -1
         logprob = -100
