@@ -473,8 +473,6 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
-
-    print("Request Data: ", request)
     
     # Parse raw chunks into OutputItems
     output_sequence = []
