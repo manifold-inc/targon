@@ -381,9 +381,6 @@ def verify_usage(
 
     # Verify token counts
     if usage.completion_tokens != actual_completion_tokens:
-        print(f"\nDEBUG Usage Verification Error (Completion Tokens):")
-        print(f"  Reported: completion={usage.completion_tokens}")
-        print(f"  Actual:   completion={actual_completion_tokens}")
         return (
             False,
             f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({actual_completion_tokens})",
@@ -391,9 +388,6 @@ def verify_usage(
         )
 
     if usage.prompt_tokens != input_tokens_length:
-        print(f"\nDEBUG Usage Verification Error (Prompt Tokens):")
-        print(f"  Reported: prompt={usage.prompt_tokens}")
-        print(f"  Actual:   prompt={input_tokens_length}")
         return (
             False,
             f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens_length})",
@@ -401,9 +395,6 @@ def verify_usage(
         )
 
     if usage.total_tokens != actual_total_tokens:
-        print(f"\nDEBUG Usage Verification Error (Total Tokens):")
-        print(f"  Reported: total={usage.total_tokens}")
-        print(f"  Actual:   total={actual_total_tokens}")
         return (
             False,
             f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})",
@@ -418,13 +409,9 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
     try:
         choices = chunk.get('choices', [])
         if not choices:
-            if chunk.get('usage'):
-                print(f"\nDEBUG Skipping usage chunk: {chunk}")
             return None
             
         choice = choices[0]
-        if choice.get('finish_reason') == 'length':
-            print(f"\nDEBUG Found length finish chunk: {chunk}")
             
         # Initialize defaults
         token_id = -1
