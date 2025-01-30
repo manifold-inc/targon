@@ -406,7 +406,14 @@ def verify_usage(
 def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
     """Parse a raw chunk into an OutputItem with token info"""
     try:
-        choice = chunk.get('choices', [])[0]
+        print(f"DEBUG: Parsing chunk: {chunk}")  # Debug the incoming chunk
+        choices = chunk.get('choices', [])
+        if not choices:
+            print(f"DEBUG: No choices in chunk")  # Debug when choices is empty
+            return None
+            
+        choice = choices[0]
+        print(f"DEBUG: First choice: {choice}")  # Debug the first choice
         
         # Initialize defaults
         token_id = -1
@@ -414,14 +421,17 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
         
         if request_type == "CHAT":
             if choice.get('delta') is None:
+                print(f"DEBUG: No delta in choice for CHAT")  # Debug missing delta
                 return None
                 
             # Check for empty content
             content = choice.get('delta', {}).get('content')
             if content == "" or content is None:
+                print(f"DEBUG: Empty or None content in delta")  # Debug empty content
                 return None
                 
             choiceprobs = choice.get('logprobs')
+            print(f"DEBUG: CHAT choiceprobs: {choiceprobs}")  # Debug logprobs structure
             if choiceprobs is not None:
                 if choiceprobs.get('content'):
                     logprob = choiceprobs['content'][0]['logprob']
@@ -443,10 +453,12 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
         elif request_type == "COMPLETION":
             text = choice.get('text')
             if text is None:
+                print(f"DEBUG: No text in choice for COMPLETION")  # Debug missing text
                 return None
                 
             # Check logprobs exist
             if choice.get('logprobs') is None:
+                print(f"DEBUG: No logprobs in choice for COMPLETION")  # Debug missing logprobs
                 return None
                 
             if choice['logprobs'].get('token_logprobs'):
@@ -472,7 +484,8 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
         return None
         
     except Exception as e:
-        print(f"Failed to parse chunk: {e}")
+        print(f"DEBUG: Exception in parse_chunk: {e}")  # Debug any exceptions
+        print(f"DEBUG: Chunk that caused exception: {chunk}")  # Debug the problematic chunk
         return None
 
 @app.post("/verify")
