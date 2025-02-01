@@ -6,11 +6,13 @@ from vllm import LLM
 from huggingface_hub import HfApi
 import importlib
 from diffusers import DiffusionPipeline
+from xgboost import XGBClassifier
 
 from image import generate_image_functions
 from llm import get_llm_functions
 
 # Load the model.
+XGB_MODEL_PATH = os.getenv("XGB_MODEL_PATH", 'xgb_model.json')
 MODEL_NAME = os.getenv("MODEL_NAME", None)
 if MODEL_NAME is None:
     exit()
@@ -37,7 +39,13 @@ match model.pipeline_tag:
         # diffuser = importlib.import_module(f"diffusers.{diffuser_class}")
         MODEL_WRAPPER = DiffusionPipeline.from_pretrained(MODEL_NAME)
         MODEL_WRAPPER.to("cuda")
-        verify = generate_image_functions(MODEL_WRAPPER, MODEL_NAME, ENDPOINTS)
+
+        # create xgb wrapper
+        xgb_model = XGBClassifier()
+        xgb_model.load_model(XGB_MODEL_PATH)
+        
+        verify = generate_image_functions(MODEL_WRAPPER, MODEL_NAME, ENDPOINTS, xgb_model)
+        
         router.add_api_route("/image/verify", verify, methods=["POST"])
     case "text-generation":
         TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
