@@ -16,7 +16,7 @@ import bittensor as bt
 
 
 @fail_with_none("Error generating dataset")
-def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
+def generate_request(dataset, model_name, endpoint: Endpoints, url: str,port: int):
     # Generate a random seed for reproducibility in sampling and text generation
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
@@ -34,7 +34,7 @@ def generate_request(dataset, model_name, endpoint: Endpoints, port: int):
     for _ in range(3):
         try:
             response = requests.post(
-                f"http://localhost:{port}/generate",
+                f"{url}:{port}/generate",
                 headers={"Content-Type": "application/json"},
                 json={
                     "messages": messages,
@@ -224,7 +224,7 @@ async def check_tokens(
     uid,
     endpoint: Endpoints,
     port: int,
-    url="http://localhost",
+    url,
 ) -> Optional[Dict]:
     try:
         result = requests.post(

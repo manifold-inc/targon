@@ -19,12 +19,13 @@
 
 from enum import Enum
 from pydantic import BaseModel
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Endpoints(Enum):
     CHAT = "CHAT"
     COMPLETION = "COMPLETION"
+
 
 class InferenceStats(BaseModel):
     time_to_first_token: float
@@ -35,6 +36,7 @@ class InferenceStats(BaseModel):
     verified: bool
     error: Optional[str] = None
     cause: Optional[str] = None
+
 
 class OrganicStats(InferenceStats):
     model: str
@@ -47,3 +49,17 @@ class OrganicStats(InferenceStats):
     endpoint: str
     total_tokens: int
 
+
+#
+# Config type
+#
+
+
+class VerificationPortsConfig(BaseModel):
+    port: int
+    url: str
+    endpoints: List[str]
+
+
+class Config(BaseModel):
+    verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None

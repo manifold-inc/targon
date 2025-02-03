@@ -207,7 +207,9 @@ class Validator(BaseNeuron):
         while not self.lock_waiting:
             sleep(1)
         self.models = self.get_models()
-        self.verification_ports = sync_output_checkers(self.client, self.models)
+        self.verification_ports = sync_output_checkers(
+            self.client, self.models, self.config_file
+        )
         self.lock_halt = False
 
     def score_organics_on_block(self, block):
@@ -248,7 +250,9 @@ class Validator(BaseNeuron):
         # Only keep last 30 scores
         for uid in self.miner_tps:
             for model in self.miner_tps[uid]:
-                self.miner_tps[uid][model] = self.miner_tps[uid][model][-SLIDING_WINDOW:]
+                self.miner_tps[uid][model] = self.miner_tps[uid][model][
+                    -SLIDING_WINDOW:
+                ]
         self.lock_halt = False
 
     def log_on_block(self, block):
@@ -278,7 +282,9 @@ class Validator(BaseNeuron):
 
         # Ensure everything is setup
         self.models = self.get_models()
-        self.verification_ports = sync_output_checkers(self.client, self.models)
+        self.verification_ports = sync_output_checkers(
+            self.client, self.models, self.config_file
+        )
         resync_hotkeys(self.metagraph, self.miner_tps)
         self.send_models_to_miners_on_interval(0)
 
@@ -371,16 +377,22 @@ class Validator(BaseNeuron):
         if stat.error or stat.cause:
             return uid, stat
         # We do this out of the handle_inference loop to not block other requests
-        verification_port = self.verification_ports.get(
-            request["model"], {"port": None}
-        ).get("port")
-        if verification_port is None:
+        verification_port = self.verification_ports.get(request["model"], {}).get(
+            "port"
+        )
+        verification_url = self.verification_ports.get(request["model"], {}).get("url")
+        if verification_port is None or verification_url is None:
             bt.logging.error(
                 "Send request to a miner without verification port for model"
             )
             return uid, None
         verified = await check_tokens(
-            request, stat.tokens, uid, endpoint=endpoint, port=verification_port
+            request,
+            stat.tokens,
+            uid,
+            endpoint=endpoint,
+            port=verification_port,
+            url=verification_url,
         )
         if verified is None:
             return uid, None
@@ -401,16 +413,23 @@ class Validator(BaseNeuron):
     ):
         assert self.config.database
 
-        verification_port: Optional[int] = self.verification_ports.get(
-            generator_model_name, {"port": None}
-        ).get("port")
-        if verification_port is None:
+        verification_port = self.verification_ports.get(generator_model_name, {}).get(
+            "port"
+        )
+        verification_url = self.verification_ports.get(generator_model_name, {}).get(
+            "url"
+        )
+        if verification_port is None or verification_url is None:
             bt.logging.error(
                 f"No generator / verifier found for {generator_model_name}"
             )
             return None
         request = generate_request(
-            self.dataset, generator_model_name, endpoint, verification_port
+            self.dataset,
+            generator_model_name,
+            endpoint,
+            verification_url,
+            verification_port,
         )
         if not request:
             bt.logging.info("No request was generated")
@@ -511,18 +530,20 @@ class Validator(BaseNeuron):
         - Minor valis follow along for consensus
         """
         assert self.config.models
-
+        models_from_config = []
+        if self.config_file and self.config_file.verification_ports:
+            models_from_config = list(self.config_file.verification_ports.keys())
         match self.config.models.mode:
             case "config":
                 models = get_models_from_config()
                 if not models:
                     raise Exception("No models")
-                return models
             case _:
                 models = get_models_from_endpoint(self.config.models.endpoint)
                 if not models:
                     raise Exception("No models")
-                return models
+
+        return list(set(models + models_from_config))
 
 
 if __name__ == "__main__":

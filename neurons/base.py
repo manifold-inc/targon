@@ -1,6 +1,6 @@
 import argparse
 from threading import Thread
-from typing import Callable, List
+from typing import Callable, List, Optional
 import bittensor as bt
 import copy
 
@@ -11,7 +11,7 @@ from targon import (
     add_validator_args,
     validate_config_and_neuron_path,
 )
-from targon.config import add_miner_args
+from targon.config import add_miner_args, load_config_file
 from enum import Enum
 import signal
 
@@ -19,6 +19,7 @@ from targon import (
     __spec_version__ as spec_version,
 )
 from targon.metagraph import run_block_callback_thread
+from targon.types import Config
 from targon.utils import ExitContext
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 
@@ -30,6 +31,7 @@ class NeuronType(Enum):
 
 class BaseNeuron:
     config: "bt.config"
+    config_file: Optional[Config] = None
     neuron_type: NeuronType
     exit_context = ExitContext()
     next_sync_block = None
@@ -63,6 +65,7 @@ class BaseNeuron:
             callback(block)
 
     def __init__(self, config=None):
+        self.config_file = load_config_file()
         # Add parser args
         bt.logging.info(f"Targon version {spec_version}")
         parser = argparse.ArgumentParser()
@@ -122,4 +125,6 @@ class BaseNeuron:
             type_registry=TYPE_REGISTRY,
         )
         self.block_callbacks.append(self.maybe_sync_metagraph)
-        self.substrate_thread = run_block_callback_thread(self.substrate, self.run_callbacks)
+        self.substrate_thread = run_block_callback_thread(
+            self.substrate, self.run_callbacks
+        )

@@ -17,11 +17,14 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import json
 import os
 import bittensor as bt
 
 import requests
 import dotenv
+
+from targon.types import Config
 
 
 def str2bool(v):
@@ -33,8 +36,19 @@ AUTO_UPDATE = not str2bool(os.getenv("NO_AUTO_UPDATE", "False"))
 IMAGE_TAG = os.getenv("IMAGE_TAG", "latest")
 HEARTBEAT = str2bool(os.getenv("HEARTBEAT", "False"))
 IS_TESTNET = str2bool(os.getenv("IS_TESTNET", "False"))
+CONFIG_FILE = os.getenv("CONFIG_FILE", "config.json")
 
 SLIDING_WINDOW = 30
+
+
+def load_config_file():
+    try:
+        with open(CONFIG_FILE, "r") as config:
+            full_conf = json.load(config)
+        return Config.model_validate(full_conf)
+
+    except Exception as e:
+        bt.logging.error(f"Failed opening config: {e}. Not setting any values")
 
 
 def validate_config_and_neuron_path(config):

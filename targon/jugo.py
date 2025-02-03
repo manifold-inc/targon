@@ -183,6 +183,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                     continue
 
                 port = ports.get(model, {}).get("port")
+                url = ports.get(model, {}).get("url")
                 if not port:
                     continue
                 res = await check_tokens(
@@ -191,6 +192,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                     record["uid"],
                     Endpoints(record["endpoint"]),
                     port,
+                    url=url,
                 )
                 bt.logging.info(str(res))
                 if res is None:

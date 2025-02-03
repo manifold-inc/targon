@@ -1,6 +1,6 @@
 from time import sleep
 import random
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import re
 import math
 import docker
@@ -13,13 +13,13 @@ from docker.types import DeviceRequest
 import requests
 
 from targon.config import IMAGE_TAG
-from targon.types import Endpoints
+from targon.types import Config, Endpoints
 
 
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     "[GPU_ID, free, total] in MB"
     bt.logging.info(f"Need: {required}, have: {gpus}")
-    
+
     # find unsused GPUS
     unused = [gpu for gpu in gpus if gpu[1] / gpu[2] > 0.9]
 
@@ -27,7 +27,7 @@ def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     for gpu in unused:
         if gpu[1] >= required * 1.2:
             return [gpu]
-    
+
     # if we need multiple gpu, only used unused
     total_free = 0
     next_gpus = []
@@ -99,10 +99,10 @@ def remove_containers(client):
         bt.logging.info(f"Removing {container.name}: {model}")
         container.remove(force=True)
 
-def sync_output_checkers(
-    client: docker.DockerClient, models: List[str]
-) -> Dict[str, Dict[str, Any]]:
 
+def sync_output_checkers(
+    client: docker.DockerClient, models: List[str], config: Optional[Config]
+) -> Dict[str, Dict[str, Any]]:
     # Get new image hash (if any)
     image_name = f"{MANIFOLD_VERIFIER}:{IMAGE_TAG}"
     try:
@@ -148,10 +148,8 @@ def sync_output_checkers(
         used_ports.append(min_port)
 
         # Init new container
-        bt.logging.info(
-            f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]}"
-        )
-        config: Dict[str, Any] = {
+        bt.logging.info(f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]}")
+        docker_config: Dict[str, Any] = {
             "image": image_name,
             "ports": {f"80/tcp": min_port},
             "environment": [
@@ -171,7 +169,7 @@ def sync_output_checkers(
                 )
             ],
         }
-        client.containers.run(**config)  # type: ignore
+        client.containers.run(**docker_config)  # type: ignore
         while True:
             ready = True
             std_model = re.sub(r"[\W_]", "-", model).lower()
@@ -188,7 +186,7 @@ def sync_output_checkers(
                     f"Failed starting container {std_model}: Removing from verifiers"
                 )
                 bt.logging.error("---- Verifier Logs ----")
-                bt.logging.error(container_logs)
+                bt.logging.error(str(container_logs))
                 bt.logging.error("-----------------------")
                 break
             if container.health != "healthy":
@@ -201,6 +199,7 @@ def sync_output_checkers(
                 ).json()
                 endpoints = [Endpoints(e.upper()) for e in endpoints]
                 verification_ports[model]["endpoints"] = endpoints
+                verification_ports[model]["url"] = "http://localhost"
                 break
             bt.logging.info("Checking again in 5 seconds")
             sleep(5)
@@ -210,4 +209,9 @@ def sync_output_checkers(
     if len(list(verification_ports.keys())) == 0:
         bt.logging.error("No verification ports")
         exit()
+
+    if config and config.verification_ports:
+        verification_ports = verification_ports | {
+            k: v.model_dump() for k, v in config.verification_ports.items()
+        }
     return verification_ports
