@@ -14,19 +14,36 @@ from targon.utils import fail_with_none
 import random
 import bittensor as bt
 
+def get_tool_parser_for_model(model_name: str) -> Optional[str]:
+    """Determine if a model supports tool calling and return its parser type.
+    Based on vLLM's supported models documentation."""
+    
+    model_lower = model_name.lower()
+    
+    # For combined models like "hermes-3-llama-3.1", prefer llama3_json parser
+    if "llama-3.1" in model_lower:
+        return "llama3_json"
+        
+    # Hermes models (hermes)
+    # All Nous Research Hermes-series models newer than Hermes 2 Pro
+    if any(name in model_lower for name in ["hermes-3", "hermes-2-pro"]):
+        return "hermes"
+        
+    return None
+
 
 @fail_with_none("Error generating dataset")
-def generate_request(dataset, model_name, endpoint: Endpoints, url: str,port: int):
+def generate_request(dataset,tool_dataset, model_name, endpoint: Endpoints, url: str,port: int):
     # Generate a random seed for reproducibility in sampling and text generation
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
     temperature = random.random()
     max_tokens = random.randint(512, 1920)
 
+    # Sample a random row from the prompt dataset
     total_rows = len(dataset["train"])
-    random_row_text = dataset["train"][random.randint(0, total_rows - 1)][
-        "conversations"
-    ][0]["value"]
+    random_row_text = dataset["train"][random.randint(0, total_rows - 1)]["conversations"][0]["value"]
+
     # Generate a query from the sampled text and perform text generation
     messages = create_query_prompt(random_row_text)
     res: Optional[str] = None
@@ -58,16 +75,41 @@ def generate_request(dataset, model_name, endpoint: Endpoints, url: str,port: in
         )
         return None
 
-    # Create sampling parameters using the generated seed and token limit
-    return {
+    # Create base request parameters
+    request_params = {
         "seed": seed,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "model": model_name,
         "stream": True,
+        "stream_options": {"include_usage": True},
         "logprobs": True,
         **create_search_prompt(res, endpoint),
     }
+
+    # Add tools with 25% chance if dataset exists
+    if (tool_dataset and 
+        len(tool_dataset["train"]) > 0 and 
+        random.random() < 0.25):  # 25% chance to include tools
+        
+        # Sample 2-5 random scenarios, each containing one or more related tools
+        num_tools = random.randint(2, 5)
+        dataset_length = len(tool_dataset["train"])
+        available_indices = list(range(dataset_length))
+        selected_indices = random.sample(available_indices, min(num_tools, dataset_length))
+        
+        # Collect all tools from selected rows
+        tools = []
+        for idx in selected_indices:
+            row = tool_dataset["train"][idx]
+            tools.extend(row["tools"])
+            
+        request_params.update({
+            "tools": tools,
+            "tool_choice": "auto"  # Always use auto mode
+        })
+
+    return request_params
 
 
 async def handle_inference(
@@ -110,97 +152,47 @@ async def handle_inference(
                 case Endpoints.CHAT:
                     chat = await miner.chat.completions.create(**request)
                     async for chunk in chat:
-                        if chunk.choices[0].delta is None:
-                            continue
-                        if (
-                            chunk.choices[0].delta.content == ""
-                            or chunk.choices[0].delta.content is None
-                        ) and len(stats.tokens) == 0:
-                            continue
+                        # Store raw chunk
+                        stats.tokens.append(chunk.model_dump())
+                            
+                        # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
-                        choice = chunk.choices[0]
-                        logprob = -100
-                        token_id = -1
-                        choiceprobs = choice.logprobs
-                        if choiceprobs is not None:
-                            if choiceprobs.content:
-                                logprob = choiceprobs.content[0].logprob
-                                token = choiceprobs.content[0].token
-                                if token is None:
-                                    continue
-                                if not token.startswith("token_id:"):
-                                    continue
-                                token_parts = token.split(":")
-                                if len(token_parts) > 1:
-                                    token_id = int(token_parts[1])
-                        stats.tokens.append(
-                            {
-                                "text": choice.delta.content or "",
-                                "token_id": token_id,
-                                "logprob": logprob,
-                            }
-                        )
                         token_times.append(time.time())
+
                 case Endpoints.COMPLETION:
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
-                        if (
-                            chunk.choices[0].text == "" or chunk.choices[0].text is None
-                        ) and len(stats.tokens) == 0:
-                            continue
+                        # Store raw chunk
+                        stats.tokens.append(chunk.model_dump())
+                            
+                        # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
-                        choice = chunk.choices[0]
-                        if choice.logprobs is None:
-                            continue
-                        token_id = -1
-                        logprob = -100
-                        if choice.logprobs.token_logprobs:
-                            logprob = choice.logprobs.token_logprobs[0]
-                        if (
-                            choice.logprobs.tokens is not None
-                            and len(choice.logprobs.tokens) > 0
-                        ):
-                            token = choice.logprobs.tokens[0]
-                            if token is None:
-                                continue
-                            if not token.startswith("token_id:"):
-                                continue
-                            token_parts = token.split(":")
-                            if len(token_parts) > 1:
-                                token_id = int(token_parts[1])
-                        stats.tokens.append(
-                            {
-                                "text": choice.text or "",
-                                "token_id": token_id,
-                                "logprob": logprob,
-                            }
-                        )
                         token_times.append(time.time())
+
         except openai.APIConnectionError as e:
             bt.logging.trace(f"Miner {uid} failed request: {e}")
             stats.error = str(e)
             stats.cause = "BAD_STREAM"
         except Exception as e:
-            bt.logging.trace(f"Unknown Error when sending to miner {uid}: {e}")
+            bt.logging.error(f"Unknown Error when sending to miner {uid}: {e}")
             stats.error = str(e)
             stats.cause = "BAD_STREAM"
+
+        if stats.error:
+            return uid, stats
 
         if start_token_time == 0:
             start_token_time = time.time()
         end_token_time = time.time()
-        time_to_first_token = start_token_time - start_send_message_time
-        time_for_all_tokens = end_token_time - start_token_time
-        if stats.error:
-            return uid, stats
-        stats.time_to_first_token = time_to_first_token
-        stats.time_for_all_tokens = time_for_all_tokens
+        
+        stats.time_to_first_token = start_token_time - start_send_message_time
+        stats.time_for_all_tokens = end_token_time - start_token_time
         stats.total_time = end_token_time - start_send_message_time
         stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
 
-        # Detect when response was fully generated, then streamed, which leads to
-        # poor user experience (slow time to N tokens vs total time).
+        # Check for non-streaming behavior
         token_count = len(stats.tokens)
         if token_count > 60:
             time_to_5th_percent = (
@@ -210,7 +202,9 @@ async def handle_inference(
                 stats.verified = False
                 stats.error = "Likely non-streamed response"
                 stats.cause = "BAD_STREAM"
+
         return uid, stats
+
     except Exception as e:
         bt.logging.error(f"{uid}: Error in forward for: {e}")
         bt.logging.error(traceback.format_exc())
@@ -220,27 +214,31 @@ async def handle_inference(
 @fail_with_none("Failed to check tokens")
 async def check_tokens(
     request,
-    responses: List[Dict],
+    raw_chunks: List[Dict],
     uid,
     endpoint: Endpoints,
     port: int,
     url,
 ) -> Optional[Dict]:
     try:
-        result = requests.post(
+        request_data = {
+            "model": request.get("model"),
+            "request_type": endpoint.value,
+            "request_params": request,
+            "raw_chunks": raw_chunks,
+        }
+        response = requests.post(
             f"{url}:{port}/verify",
             headers={"Content-Type": "application/json"},
-            json={
-                "model": request.get("model"),
-                "request_type": endpoint.value,
-                "request_params": request,
-                "output_sequence": responses,
-            },
-        ).json()
+            json=request_data,
+        )
+        
+        result = response.json()
         if result.get("verified") is None:
             bt.logging.error(str(result))
             return None
         return result
     except Exception as e:
         bt.logging.error(f"{uid}: " + str(e))
+        bt.logging.error(traceback.format_exc())
         return None

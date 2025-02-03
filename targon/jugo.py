@@ -22,6 +22,7 @@ async def send_organics_to_jugo(
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
             async with session.post(
+                
                 f"{JUGO_URL}/organics/scores",
                 headers=headers,
                 json=body,
@@ -186,6 +187,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                 url = ports.get(model, {}).get("url")
                 if not port:
                     continue
+
                 res = await check_tokens(
                     record["request"],
                     tokens,

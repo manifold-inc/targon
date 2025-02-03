@@ -19,7 +19,7 @@ from targon.config import (
     get_models_from_config,
     get_models_from_endpoint,
 )
-from targon.dataset import download_dataset
+from targon.dataset import download_dataset, download_tool_dataset
 from targon.docker import load_docker, sync_output_checkers
 from targon.epistula import generate_header
 from targon.jugo import score_organics, send_organics_to_jugo, send_stats_to_jugo
@@ -65,6 +65,7 @@ class Validator(BaseNeuron):
     heartbeat_thread: Thread
     step = 0
     dataset = None
+    tool_dataset = None
 
     def __init__(self, config=None, run_init=True):
         super().__init__(config)
@@ -98,9 +99,10 @@ class Validator(BaseNeuron):
             self.config.cache_file, self.subtensor.block, miners
         )
 
-        ## LOAD DATASET
-        bt.logging.info("⌛️", "Loading dataset")
+        ## LOAD DATASETS
+        bt.logging.info("⌛️", "Loading datasets")
         self.dataset = download_dataset()
+        self.tool_dataset = download_tool_dataset()
 
         ## CONNECT TO ORGANICS DB
         try:
@@ -131,7 +133,7 @@ class Validator(BaseNeuron):
 
         ## DONE
         bt.logging.info(
-            "\N{grinning face with smiling eyes}", "Successfully Initialized!"
+            "\N{GRINNING FACE WITH SMILING EYES}", "Successfully Initialized!"
         )
 
     def heartbeat(self):

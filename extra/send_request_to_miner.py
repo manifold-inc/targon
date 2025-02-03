@@ -88,7 +88,7 @@ if __name__ == "__main__":
         {"role": "system", "content": "You are a helpful assistant."},
         {
             "role": "user",
-            "content": f"What is the deffinition of the x y problem ",
+            "content": "What is the definition of the x y problem ",
         },
     ]
     model = "NousResearch/Meta-Llama-3.1-8B-Instruct"
