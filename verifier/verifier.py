@@ -603,7 +603,6 @@ async def verify(request: VerificationRequest) -> Dict:
             }
         )
         if not result:
-            print(json.dumps(request.raw_chunks))
             return return_value
 
         # Logprob checks
