@@ -24,6 +24,7 @@ MODEL_WRAPPER = LLM(
     enforce_eager=True,
     gpu_memory_utilization=0.9,
     tensor_parallel_size=TENSOR_PARALLEL,
+    trust_remote_code=True,
     pipeline_parallel_size=PIPELINE_PARALLEL,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
