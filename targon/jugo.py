@@ -22,7 +22,6 @@ async def send_organics_to_jugo(
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                
                 f"{JUGO_URL}/organics/scores",
                 headers=headers,
                 json=body,
@@ -136,50 +135,8 @@ async def score_organics(last_bucket_id, ports, wallet):
                 if not record["success"]:
                     scores[uid].append(-500)
                     continue
-                tokens = []
-                for token in record["response"]:
-                    choice = token.get("choices", [{}])[0]
-                    text = ""
-                    logprob = -100
-                    match record["endpoint"]:
-                        case "CHAT":
-                            text = choice.get("delta", {}).get("content")
-                            logprobs = choice.get("logprobs")
-                            if logprobs is None:
-                                continue
-                            logprob = logprobs.get("content", [{}])[0].get(
-                                "logprob", -100
-                            )
-                            token = logprobs.get("content", [{}])[0].get("token", None)
-                            if text is None or (text == "" and len(tokens) == 0):
-                                continue
-                        case "COMPLETION":
-                            text = choice.get("text")
-                            logprobs = choice.get("logprobs")
-                            if logprobs is None:
-                                continue
-                            logprob = logprobs.get("token_logprobs", [-100])[0]
-                            token = logprobs.get("tokens", [""])[0]
-                            if text is None or (text == "" and len(tokens) == 0):
-                                continue
-
-                    token_id = -1
-                    if not token.startswith("token_id:"):
-                        continue
-                    token_parts = token.split(":")
-                    if len(token_parts) > 1:
-                        token_id = int(token_parts[1])
-
-                    tokens.append(
-                        {
-                            "text": text,
-                            "logprob": logprob,
-                            "token_id": token_id,
-                        }
-                    )
-
                 # No response tokens
-                if len(tokens) == 0:
+                if len(record["response"]) < 2:
                     scores[uid].append(-100)
                     continue
 
@@ -190,7 +147,7 @@ async def score_organics(last_bucket_id, ports, wallet):
 
                 res = await check_tokens(
                     record["request"],
-                    tokens,
+                    record["response"],
                     record["uid"],
                     Endpoints(record["endpoint"]),
                     port,
