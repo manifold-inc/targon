@@ -406,7 +406,7 @@ def verify_usage(
 
     if (
         usage.completion_tokens != actual_completion_tokens
-        and usage.completion_tokens + 1 != actual_completion_tokens
+        and usage.completion_tokens != actual_completion_tokens + 1 
     ):
         error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({actual_completion_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
@@ -417,7 +417,7 @@ def verify_usage(
 
     if (
         usage.total_tokens != actual_total_tokens
-        and usage.total_tokens + 1 != actual_completion_tokens
+        and usage.total_tokens != actual_completion_tokens + 1 
     ):
         error_msg = f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
