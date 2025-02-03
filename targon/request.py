@@ -27,7 +27,8 @@ def get_tool_parser_for_model(model_name: str) -> Optional[str]:
 
     # Hermes models (hermes)
     # All Nous Research Hermes-series models newer than Hermes 2 Pro
-    if any(name in model_lower for name in ["hermes-3", "hermes-2-pro"]):
+    models = ["hermes-3", "hermes-2-pro"]
+    if model_lower in models:
         return "hermes"
 
     return None
@@ -93,8 +94,12 @@ def generate_request(
     }
 
     # Add tools with 25% chance if dataset exists
+    tool_parser = get_tool_parser_for_model(model_name)
     if (
-        tool_dataset and len(tool_dataset["train"]) > 0 and random.random() < 0.25
+        tool_dataset
+        and tool_parser
+        and len(tool_dataset["train"]) > 0
+        and random.random() < 0.25
     ):  # 25% chance to include tools
         # Sample 2-5 random scenarios, each containing one or more related tools
         num_tools = random.randint(2, 5)
