@@ -115,7 +115,7 @@ run, the higher your incentive.
 
 VLLM is the recommended engine, however it is not required. If you are using
 VLLM, make sure yo include the `--return-tokens-as-token-ids` flag, or else your
-responses will fail. You will also need to include `----enable-auto-tool-choice --tool-call-parser llama3_json`
+responses will fail. You will also need to include `--enable-auto-tool-choice --tool-call-parser llama3_json`
 and `--enable-auto-tool-choice --tool-call-parser hermes` for your Llama and Hermes vLLM
 instances to support tool calling.
 
