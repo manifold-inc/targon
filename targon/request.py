@@ -238,6 +238,9 @@ async def check_tokens(
             json=request_data,
         )
 
+        if response.status_code != 200:
+            bt.logging.error(f"Failed to check tokens {response.text}")
+            return None
         result = response.json()
         if result.get("verified") is None:
             bt.logging.error(str(result))
