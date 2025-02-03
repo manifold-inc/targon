@@ -2,9 +2,7 @@ import random
 import math
 import os
 import asyncio
-import traceback
 import json
-import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 from enum import Enum
@@ -14,6 +12,7 @@ from vllm import LLM, SamplingParams
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
 if MODEL_NAME is None:
+    print("No model name provided, exiting.")
     exit()
 # Constants.
 LOGPROB_LOG_THRESHOLD = 0.65
@@ -45,13 +44,13 @@ class RequestParams(BaseModel):
     # Optional parameters that depend on endpoint
     messages: Optional[List[Dict[str, str]]] = None
     prompt: Optional[str] = None
+    max_tokens: int
+    temperature: float
+    seed: int 
 
     # Core parameters
-    temperature: Optional[float] = None  # range 0.0-2.0
     top_p: Optional[float] = None  # Default None, range 0.0-1.0
-    max_tokens: Optional[int] = None  # Optional, must be 1+
     stop: Optional[List[str]] = None  # Optional, defaults to None
-    seed: Optional[int] = None  # Optional
 
     # Additional optional parameters
     top_k: Optional[int] = None  # Default None, range 0+
@@ -75,7 +74,6 @@ class OutputItem(BaseModel):
     text: str
     logprob: float
     token_id: int
-    is_tool_token: bool = False
 
 
 class RequestType(Enum):
@@ -216,7 +214,7 @@ def verify_logprobs_random(
 def verify_logprobs(
     temperature: float,
     seed: int,
-    max_tokens: Optional[int],
+    max_tokens: int,
     input_text: str, 
     input_tokens: List[int],
     output_sequence: List[OutputItem],
@@ -265,7 +263,6 @@ def verify_logprobs(
     output_tokens = [item.token_id for item in output_sequence]
     really_low_prob = 0
     not_first = 0
-    problematic_tokens = []
 
     for idx in range(idxs):
         item = output_sequence[idx]
@@ -307,12 +304,10 @@ def verify_logprobs(
 
         if rank >= 75:
             error_msg = f"Found extraordinarily improbable token '{token_text}' at index {idx}: {rank=}"
-            problematic_tokens.append((idx, error_msg))
             return False, error_msg, "UNLIKELY_TOKEN"
             
         elif rank >= 25:
             really_low_prob += 1
-            problematic_tokens.append((idx, f"High rank token: {rank}"))
             
         elif rank > top_logprobs:
             continue
@@ -390,7 +385,6 @@ def verify_usage(
     actual_total_tokens = input_tokens_length + actual_completion_tokens
 
     # Print token count differences for debugging
-    
     print(f"Token count differences:")
     print(f"  Completion: reported={usage.completion_tokens}, actual={actual_completion_tokens}")
     print(f"  Prompt: reported={usage.prompt_tokens}, actual={input_tokens_length}")
@@ -462,7 +456,6 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
                         text=json.dumps(tool_call),
                         token_id=token_id,
                         logprob=content_probs.get("logprob", -100),
-                        is_tool_token=True,
                     )
 
             # Handle regular chat content
@@ -481,7 +474,6 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
                 text=text,
                 token_id=token_id, 
                 logprob=content_probs.get("logprob", -100),
-                is_tool_token=False
             )
 
         elif request_type == "COMPLETION":
@@ -529,10 +521,6 @@ async def verify(request: VerificationRequest) -> Dict:
     
     # Check max tokens - allow for model-specific limits
     max_allowed = request.request_params.max_tokens
-    if "llama-3" in request.model.lower() or "claude" in request.model.lower():
-        max_allowed = max(max_allowed, 8192)  # Allow up to 8k tokens
-    elif "gpt-4" in request.model.lower():
-        max_allowed = max(max_allowed, 16384)  # Allow up to 16k tokens
     
     if len(output_sequence) > max_allowed:
         return {
@@ -543,7 +531,6 @@ async def verify(request: VerificationRequest) -> Dict:
     
     if request.model != MODEL_NAME:
         return {
-            "verified": False,
             "error": f"Unable to verify model={request.model}, since we are using {MODEL_NAME}",
             "cause": "INTERNAL_ERROR",
         }
