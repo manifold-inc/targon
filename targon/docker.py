@@ -17,7 +17,7 @@ from targon.types import Config, Endpoints
 from targon.utils import (
     fail_with_none,
 )
-
+from targon.request import get_tool_parser_for_model
 
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     "[GPU_ID, free, total] in MB"
@@ -151,15 +151,26 @@ def sync_output_checkers(
             min_port += 1
         used_ports.append(min_port)
 
+        env_vars = [
+            f"MODEL={model}",
+            f"TENSOR_PARALLEL={len(gpus)}",
+        ]
+
+        tool_call_parser = get_tool_parser_for_model(model)
+
+        if tool_call_parser:
+            bt.logging.info(f"Enabling tool calling for {model} with parser {tool_call_parser}")
+            env_vars.extend([
+                f"TOOL_CALL_PARSER={tool_call_parser}",
+                "ENABLE_AUTO_TOOL_CHOICE=true",
+            ])
+
         # Init new container
         bt.logging.info(f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]}")
         docker_config: Dict[str, Any] = {
             "image": image_name,
             "ports": {f"80/tcp": min_port},
-            "environment": [
-                f"MODEL={model}",
-                f"TENSOR_PARALLEL={len(gpus)}",
-            ],
+            "environment": env_vars,
             "volumes": ["/var/targon/huggingface/cache:/root/.cache/huggingface"],
             "runtime": "nvidia",
             "detach": True,

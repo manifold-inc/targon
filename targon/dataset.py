@@ -73,3 +73,315 @@ def download_dataset():
     logger.setLevel(logging.CRITICAL + 1)
     ds = load_dataset("manifoldlabs/Infinity-Instruct", "7M")
     return ds
+
+
+def remove_none_values(obj):
+    """Remove None values from nested dictionaries and lists"""
+    if isinstance(obj, dict):
+        return {k: remove_none_values(v) for k, v in obj.items() if v is not None}
+    elif isinstance(obj, list):
+        return [remove_none_values(item) for item in obj if item is not None]
+    else:
+        return obj
+
+def download_tool_dataset():
+    """Hardcoded OpenAI-compliant tools. Will migrate to a more flexible dataset in the future."""
+    logger = logging.getLogger("huggingface_hub.utils._http")
+    logger.setLevel(logging.CRITICAL + 1)
+    
+    # Return hardcoded OpenAI-compliant tools
+    return {
+        "train": [
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "get_weather",
+                            "description": "Get current weather information for a location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "location": {
+                                        "type": "string",
+                                        "description": "City and country e.g. Paris, France"
+                                    }
+                                },
+                                "required": ["location"]
+                            }
+                        }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "search_restaurants",
+                            "description": "Search for restaurants in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "location": {
+                                        "type": "string",
+                                        "description": "City or area to search in"
+                                    },
+                                    "cuisine": {
+                                        "type": "string",
+                                        "description": "Type of cuisine"
+                                    }
+                                },
+                                "required": ["location"]
+                            }
+                        }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "create_reminder",
+                            "description": "Create a reminder for a specific date and time",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "Title of the reminder"
+                                    },
+                                    "date": {
+                                        "type": "string",
+                                        "description": "Date for the reminder (YYYY-MM-DD)"
+                                    },
+                                    "time": {
+                                        "type": "string",
+                                        "description": "Time for the reminder (HH:MM)"
+                                    }
+                                },
+                                "required": ["title", "date"]
+                            }
+                        }
+                    }
+                ],
+                "question": "What's the weather like in Paris today?"
+            },
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "send_message",
+                            "description": "Send a message to a specified recipient",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "recipient": {
+                                        "type": "string",
+                                        "description": "Name or identifier of recipient"
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "description": "Content of the message"
+                                    }
+                                },
+                                "required": ["recipient", "message"]
+                            }
+                        }
+                    }
+                ],
+                "question": "Send a message to John saying I'll be late"
+            },
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "schedule_meeting",
+                            "description": "Schedule a meeting in the calendar",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "Title of the meeting"
+                                    },
+                                    "date": {
+                                        "type": "string",
+                                        "description": "Date of the meeting (YYYY-MM-DD)"
+                                    },
+                                    "start_time": {
+                                        "type": "string",
+                                        "description": "Start time (HH:MM)"
+                                    },
+                                    "duration": {
+                                        "type": "integer",
+                                        "description": "Duration in minutes"
+                                    },
+                                    "attendees": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of attendee email addresses"
+                                    }
+                                },
+                                "required": ["title", "date", "start_time"]
+                            }
+                        }
+                    }
+                ],
+                "question": "Schedule a team meeting for tomorrow at 2pm"
+            },
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "translate_text",
+                            "description": "Translate text between languages",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string",
+                                        "description": "Text to translate"
+                                    },
+                                    "source_language": {
+                                        "type": "string",
+                                        "description": "Source language code (e.g., 'en', 'es', 'fr')"
+                                    },
+                                    "target_language": {
+                                        "type": "string",
+                                        "description": "Target language code (e.g., 'en', 'es', 'fr')"
+                                    }
+                                },
+                                "required": ["text", "target_language"]
+                            }
+                        }
+                    }
+                ],
+                "question": "Translate 'Hello, how are you?' to Spanish"
+            },
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "calculate",
+                            "description": "Perform mathematical calculations",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "expression": {
+                                        "type": "string",
+                                        "description": "Mathematical expression to evaluate"
+                                    },
+                                    "precision": {
+                                        "type": "integer",
+                                        "description": "Number of decimal places for the result"
+                                    }
+                                },
+                                "required": ["expression"]
+                            }
+                        }
+                    }
+                ],
+                "question": "Calculate 15% of 85.50"
+            },
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "manage_file",
+                            "description": "Perform file operations like create, read, write, or delete",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "operation": {
+                                        "type": "string",
+                                        "enum": ["create", "read", "write", "delete"],
+                                        "description": "Type of file operation"
+                                    },
+                                    "file_path": {
+                                        "type": "string",
+                                        "description": "Path to the file"
+                                    },
+                                    "content": {
+                                        "type": "string",
+                                        "description": "Content to write (for create/write operations)"
+                                    }
+                                },
+                                "required": ["operation", "file_path"]
+                            }
+                        }
+                    }
+                ],
+                "question": "Create a new file called notes.txt"
+            },
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "send_email",
+                            "description": "Send an email to specified recipients",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "to": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of recipient email addresses"
+                                    },
+                                    "subject": {
+                                        "type": "string",
+                                        "description": "Email subject"
+                                    },
+                                    "body": {
+                                        "type": "string",
+                                        "description": "Email body content"
+                                    },
+                                    "cc": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of CC recipient email addresses"
+                                    },
+                                    "attachments": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of file paths to attach"
+                                    }
+                                },
+                                "required": ["to", "subject", "body"]
+                            }
+                        }
+                    }
+                ],
+                "question": "Send an email to team@company.com about the project update"
+            },
+            {
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "convert_units",
+                            "description": "Convert between different units of measurement",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "number",
+                                        "description": "Value to convert"
+                                    },
+                                    "from_unit": {
+                                        "type": "string",
+                                        "description": "Source unit (e.g., 'km', 'mi', 'kg', 'lb')"
+                                    },
+                                    "to_unit": {
+                                        "type": "string",
+                                        "description": "Target unit (e.g., 'km', 'mi', 'kg', 'lb')"
+                                    }
+                                },
+                                "required": ["value", "from_unit", "to_unit"]
+                            }
+                        }
+                    }
+                ],
+                "question": "Convert 5 kilometers to miles"
+            }
+        ]
+    }

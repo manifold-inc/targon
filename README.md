@@ -115,7 +115,9 @@ run, the higher your incentive.
 
 VLLM is the recommended engine, however it is not required. If you are using
 VLLM, make sure yo include the `--return-tokens-as-token-ids` flag, or else your
-responses will fail.
+responses will fail. You will also need to include `----enable-auto-tool-choice --tool-call-parser llama3_json`
+and `--enable-auto-tool-choice --tool-call-parser hermes` for your Llama and Hermes vLLM
+instances to support tool calling.
 
 Once you have one (or multiple) models running, modify the default miner code to
 proxy to the proper VLLM instance on each request. Verifiers will include the
@@ -274,6 +276,11 @@ AUTO_UPDATE=False # Turn off autoupdate. Overrides cli flag.
 IMAGE_TAG=latest # Verifier image tag. Useful for testing new updates.
 HEARTBEAT=False # Enable heartbeat. Requires pm2. Set to True to enable heartbeat monitoring.
 IS_TESTNET=False # If validator should run in testnet.
+```
+
+You must also include to enable auto tool calling for your verifier vLLM instances that support it. 
+```
+ENABLE_AUTO_TOOL_CHOICE="true"
 ```
 
 ## Autoupdate

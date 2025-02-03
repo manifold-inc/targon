@@ -1,10 +1,15 @@
 services:
   miner-vllm:
-    image: manifoldlabs/vllm-openai:latest
+    image: vllm/vllm-openai:latest
     runtime: nvidia
-    command: --model NousResearch/Meta-Llama-3.1-8B-Instruct
+    command: >
+      --model NousResearch/Hermes-3-Llama-3.1-8B
+      --return-tokens-as-token-ids 
+      --served-model-name NousResearch/Hermes-3-Llama-3.1-8B
+      --enable-auto-tool-choice
+      --tool-call-parser llama3_json
     ports:
-      - 9000:8000
+      - 8000:8000
     ipc: host
     volumes:
       - hf_cache:/root/.cache/huggingface
