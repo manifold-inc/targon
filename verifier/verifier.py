@@ -404,10 +404,7 @@ def verify_usage(
     print(f"  Prompt: reported={usage.prompt_tokens}, actual={input_tokens_length}")
     print(f"  Total: reported={usage.total_tokens}, actual={actual_total_tokens}")
 
-    if (
-        usage.completion_tokens != actual_completion_tokens
-        and usage.completion_tokens != actual_completion_tokens + 1
-    ):
+    if usage.completion_tokens != actual_completion_tokens:
         error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({actual_completion_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
@@ -415,10 +412,7 @@ def verify_usage(
         error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens_length})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    if (
-        usage.total_tokens != actual_total_tokens
-        and usage.total_tokens != actual_completion_tokens + 1
-    ):
+    if usage.total_tokens != actual_total_tokens:
         error_msg = f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
@@ -503,7 +497,7 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
             text = choice.get("text")
             logprobs = choice.get("logprobs")
 
-            if not text or not logprobs:
+            if text == None or logprobs == None:
                 return None
 
             token = logprobs.get("tokens", [""])[0]
