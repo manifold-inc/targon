@@ -76,9 +76,6 @@ def download_dataset():
 
 def download_tool_dataset():
     """Hardcoded OpenAI-compliant tools. Will migrate to a more flexible dataset in the future."""
-    logger = logging.getLogger("huggingface_hub.utils._http")
-    logger.setLevel(logging.CRITICAL + 1)
-    
     # Return hardcoded OpenAI-compliant tools
     return {
         "train": [
