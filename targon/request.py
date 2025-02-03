@@ -180,6 +180,9 @@ async def handle_inference(
             stats.error = str(e)
             stats.cause = "BAD_STREAM"
 
+        if stats.error:
+            return uid, stats
+
         if start_token_time == 0:
             start_token_time = time.time()
         end_token_time = time.time()
@@ -190,9 +193,10 @@ async def handle_inference(
         stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
 
         # Check for non-streaming behavior
-        if len(stats.tokens) > 60:
+        token_count = len(stats.tokens)
+        if token_count > 60:
             time_to_5th_percent = (
-                token_times[math.ceil(len(stats.tokens) * 0.05)] - start_send_message_time
+                token_times[math.ceil(token_count * 0.05)] - start_send_message_time
             )
             if time_to_5th_percent / stats.total_time >= 0.85:
                 stats.verified = False
@@ -229,9 +233,6 @@ async def check_tokens(
             json=request_data,
         )
         
-        if response.status_code != 200:
-            bt.logging.error(f"Verification failed with status {response.status_code}: {response.text}")
-            
         result = response.json()
         if result.get("verified") is None:
             bt.logging.error(str(result))
