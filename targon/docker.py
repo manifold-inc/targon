@@ -208,12 +208,6 @@ def sync_output_checkers(
             bt.logging.info("Checking again in 5 seconds")
             sleep(5)
 
-    bt.logging.info("Successfully started verifiers")
-    bt.logging.info(str(verification_ports))
-    if len(list(verification_ports.keys())) == 0:
-        bt.logging.error("No verification ports")
-        exit()
-
     if config and config.verification_ports:
         extra_ports = {}
         for k, v in config.verification_ports.items():
@@ -223,4 +217,10 @@ def sync_output_checkers(
                 "endpoints": [Endpoints(e.upper()) for e in v.endpoints],
             }
         verification_ports = verification_ports | extra_ports
+
+    bt.logging.info("Successfully started verifiers")
+    bt.logging.info(str(verification_ports))
+    if len(list(verification_ports.keys())) == 0:
+        bt.logging.error("No verification ports")
+        exit()
     return verification_ports
