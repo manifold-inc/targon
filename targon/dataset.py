@@ -74,16 +74,6 @@ def download_dataset():
     ds = load_dataset("manifoldlabs/Infinity-Instruct", "7M")
     return ds
 
-
-def remove_none_values(obj):
-    """Remove None values from nested dictionaries and lists"""
-    if isinstance(obj, dict):
-        return {k: remove_none_values(v) for k, v in obj.items() if v is not None}
-    elif isinstance(obj, list):
-        return [remove_none_values(item) for item in obj if item is not None]
-    else:
-        return obj
-
 def download_tool_dataset():
     """Hardcoded OpenAI-compliant tools. Will migrate to a more flexible dataset in the future."""
     logger = logging.getLogger("huggingface_hub.utils._http")
