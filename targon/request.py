@@ -14,26 +14,29 @@ from targon.utils import fail_with_none
 import random
 import bittensor as bt
 
+
 def get_tool_parser_for_model(model_name: str) -> Optional[str]:
     """Determine if a model supports tool calling and return its parser type.
     Based on vLLM's supported models documentation."""
-    
+
     model_lower = model_name.lower()
-    
+
     # For combined models like "hermes-3-llama-3.1", prefer llama3_json parser
     if "llama-3.1" in model_lower:
         return "llama3_json"
-        
+
     # Hermes models (hermes)
     # All Nous Research Hermes-series models newer than Hermes 2 Pro
     if any(name in model_lower for name in ["hermes-3", "hermes-2-pro"]):
         return "hermes"
-        
+
     return None
 
 
 @fail_with_none("Error generating dataset")
-def generate_request(dataset,tool_dataset, model_name, endpoint: Endpoints, url: str,port: int):
+def generate_request(
+    dataset, tool_dataset, model_name, endpoint: Endpoints, url: str, port: int
+):
     # Generate a random seed for reproducibility in sampling and text generation
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
@@ -42,7 +45,9 @@ def generate_request(dataset,tool_dataset, model_name, endpoint: Endpoints, url:
 
     # Sample a random row from the prompt dataset
     total_rows = len(dataset["train"])
-    random_row_text = dataset["train"][random.randint(0, total_rows - 1)]["conversations"][0]["value"]
+    random_row_text = dataset["train"][random.randint(0, total_rows - 1)][
+        "conversations"
+    ][0]["value"]
 
     # Generate a query from the sampled text and perform text generation
     messages = create_query_prompt(random_row_text)
@@ -88,26 +93,26 @@ def generate_request(dataset,tool_dataset, model_name, endpoint: Endpoints, url:
     }
 
     # Add tools with 25% chance if dataset exists
-    if (tool_dataset and 
-        len(tool_dataset["train"]) > 0 and 
-        random.random() < 0.25):  # 25% chance to include tools
-        
+    if (
+        tool_dataset and len(tool_dataset["train"]) > 0 and random.random() < 0.25
+    ):  # 25% chance to include tools
         # Sample 2-5 random scenarios, each containing one or more related tools
         num_tools = random.randint(2, 5)
         dataset_length = len(tool_dataset["train"])
         available_indices = list(range(dataset_length))
-        selected_indices = random.sample(available_indices, min(num_tools, dataset_length))
-        
+        selected_indices = random.sample(
+            available_indices, min(num_tools, dataset_length)
+        )
+
         # Collect all tools from selected rows
         tools = []
         for idx in selected_indices:
             row = tool_dataset["train"][idx]
             tools.extend(row["tools"])
-            
-        request_params.update({
-            "tools": tools,
-            "tool_choice": "auto"  # Always use auto mode
-        })
+
+        request_params.update(
+            {"tools": tools, "tool_choice": "auto"}  # Always use auto mode
+        )
 
     return request_params
 
@@ -154,7 +159,7 @@ async def handle_inference(
                     async for chunk in chat:
                         # Store raw chunk
                         stats.tokens.append(chunk.model_dump())
-                            
+
                         # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
@@ -165,7 +170,7 @@ async def handle_inference(
                     async for chunk in comp:
                         # Store raw chunk
                         stats.tokens.append(chunk.model_dump())
-                            
+
                         # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
@@ -186,7 +191,7 @@ async def handle_inference(
         if start_token_time == 0:
             start_token_time = time.time()
         end_token_time = time.time()
-        
+
         stats.time_to_first_token = start_token_time - start_send_message_time
         stats.time_for_all_tokens = end_token_time - start_token_time
         stats.total_time = end_token_time - start_send_message_time
@@ -232,7 +237,7 @@ async def check_tokens(
             headers={"Content-Type": "application/json"},
             json=request_data,
         )
-        
+
         result = response.json()
         if result.get("verified") is None:
             bt.logging.error(str(result))

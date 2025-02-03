@@ -428,6 +428,7 @@ class Validator(BaseNeuron):
             return None
         request = generate_request(
             self.dataset,
+            self.tool_dataset,
             generator_model_name,
             endpoint,
             verification_url,
