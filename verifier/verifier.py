@@ -18,11 +18,13 @@ if MODEL_NAME is None:
 LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.75
 TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
+PIPELINE_PARALLEL = int(os.getenv("PIPELINE_PARALLEL", 1))
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
-    gpu_memory_utilization=.9,
+    gpu_memory_utilization=0.9,
     tensor_parallel_size=TENSOR_PARALLEL,
+    pipeline_parallel_size=PIPELINE_PARALLEL,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
 MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
