@@ -211,7 +211,12 @@ def sync_output_checkers(
         exit()
 
     if config and config.verification_ports:
-        verification_ports = verification_ports | {
-            k: v.model_dump() for k, v in config.verification_ports.items()
-        }
+        extra_ports = {}
+        for k, v in config.verification_ports.items():
+            extra_ports[k] = {
+                "url": v.url,
+                "port": v.port,
+                "endpoints": [Endpoints(e.upper()) for e in v.endpoints],
+            }
+        verification_ports = verification_ports | extra_ports
     return verification_ports
