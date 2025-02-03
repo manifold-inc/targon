@@ -278,11 +278,6 @@ HEARTBEAT=False # Enable heartbeat. Requires pm2. Set to True to enable heartbea
 IS_TESTNET=False # If validator should run in testnet.
 ```
 
-You must also include to enable auto tool calling for your verifier vLLM instances that support it. 
-```
-ENABLE_AUTO_TOOL_CHOICE="true"
-```
-
 ## Autoupdate
 
 Autoupdate is implemented in targon/utils.py. This is to ensure that your
