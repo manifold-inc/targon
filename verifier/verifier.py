@@ -292,7 +292,7 @@ def verify_logprobs(
                 eos_logprob.rank is not None
                 and expected_logprob.rank is not None
                 and eos_logprob.rank < expected_logprob.rank
-                and expected_logprob.rank > 10
+                and expected_logprob.rank > 15
             )
         ):
             error_msg = f"Expected EOS/EOT token at index {idx}"
