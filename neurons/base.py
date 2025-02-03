@@ -66,6 +66,7 @@ class BaseNeuron:
 
     def __init__(self, config=None):
         self.config_file = load_config_file()
+        print(self.config_file)
         # Add parser args
         bt.logging.info(f"Targon version {spec_version}")
         parser = argparse.ArgumentParser()
