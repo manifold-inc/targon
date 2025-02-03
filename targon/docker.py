@@ -14,6 +14,9 @@ import requests
 
 from targon.config import IMAGE_TAG
 from targon.types import Config, Endpoints
+from targon.utils import (
+    fail_with_none,
+)
 
 
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
@@ -44,6 +47,7 @@ def bytes_to_mib(bytes_value):
     return math.ceil(mib_value)
 
 
+@fail_with_none("Failed estimating max size")
 def estimate_max_size(model_name):
     "Returns size in MiB, what nvidia smi prints"
     try:
@@ -135,7 +139,7 @@ def sync_output_checkers(
         free_gpus = get_free_gpus()
         required_vram = estimate_max_size(model)
         if required_vram is None:
-            bt.logging.error(f"Failed to find model {model}")
+            bt.logging.error(f"Failed to find or load model {model}")
             continue
         gpus = get_gpu_with_space(free_gpus, required_vram)
         if gpus is None:
