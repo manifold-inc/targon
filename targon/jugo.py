@@ -193,6 +193,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                         coldkey=record.get("coldkey"),
                         endpoint=record.get("endpoint"),
                         total_tokens=record.get("response_tokens"),
+                        pub_id=record.get("pub_id", ""),
                     )
                 )
         bt.logging.info(f"{bucket_id}: {scores}")
