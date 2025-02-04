@@ -3,6 +3,7 @@ from os import urandom
 import time
 import traceback
 from typing import Dict, List, Optional, Tuple
+import json
 
 from httpx import Timeout
 import openai
@@ -129,6 +130,51 @@ def generate_request(
     return request_params
 
 
+def parse_raw_chunks_to_simple(chunks):
+    """Parse raw chunks into a simple format with just text, logprob, and token_id."""
+    simple_tokens = []
+    for chunk in chunks:
+        choices = chunk.get('choices', [])
+        if not choices:
+            continue
+        
+        choice = choices[0]
+        if 'delta' in choice:  # Chat completion format
+            delta = choice.get('delta', {})
+            logprobs = choice.get('logprobs', {})
+            
+            # Skip role-only messages
+            if delta.get('role') and not delta.get('content'):
+                continue
+                
+            if logprobs:
+                content = logprobs.get('content', [])
+                for token_info in content:
+                    if not token_info:
+                        continue
+                    simple_tokens.append({
+                        'text': token_info.get('token', ''),
+                        'token_id': token_info.get('tokens', [None])[0],  # Get first token ID
+                        'logprob': token_info.get('logprob', -100)
+                    })
+            
+        else:  # Completion format
+            logprobs = choice.get('logprobs', {})
+            if logprobs:
+                tokens = logprobs.get('tokens', [])
+                token_logprobs = logprobs.get('token_logprobs', [])
+                token_ids = logprobs.get('token_ids', [])
+                
+                for i in range(len(tokens)):
+                    simple_tokens.append({
+                        'text': tokens[i],
+                        'token_id': token_ids[i] if i < len(token_ids) else -1,
+                        'logprob': token_logprobs[i] if i < len(token_logprobs) else -100
+                    })
+    
+    return simple_tokens
+
+
 async def handle_inference(
     metagraph: "bt.metagraph",
     wallet: "bt.wallet",
@@ -164,14 +210,14 @@ async def handle_inference(
         start_token_time = 0
         start_send_message_time = time.time()
         token_times = []
+        raw_chunks = []
         try:
             match endpoint:
                 case Endpoints.CHAT:
                     chat = await miner.chat.completions.create(**request)
                     async for chunk in chat:
                         # Store raw chunk
-                        stats.tokens.append(chunk.model_dump())
-
+                        raw_chunks.append(chunk.model_dump())
                         # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
@@ -181,8 +227,7 @@ async def handle_inference(
                     comp = await miner.completions.create(**request)
                     async for chunk in comp:
                         # Store raw chunk
-                        stats.tokens.append(chunk.model_dump())
-
+                        raw_chunks.append(chunk.model_dump())
                         # Track timing
                         if start_token_time == 0:
                             start_token_time = time.time()
@@ -199,6 +244,9 @@ async def handle_inference(
 
         if stats.error:
             return uid, stats
+                        
+        # Parse raw chunks into simple format
+        stats.tokens = parse_raw_chunks_to_simple(raw_chunks)
 
         if start_token_time == 0:
             start_token_time = time.time()
