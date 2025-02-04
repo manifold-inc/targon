@@ -107,6 +107,7 @@ def generate_request(
         and tool_parser
         and len(tool_dataset["train"]) > 0
         and random.random() < 0.25
+        and endpoint == Endpoints.CHAT
     ):  # 25% chance to include tools
         # Sample 2-5 random scenarios, each containing one or more related tools
         num_tools = random.randint(2, 5)
