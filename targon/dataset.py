@@ -54,7 +54,7 @@ def create_query_prompt(query: str) -> Iterable[ChatCompletionMessageParam]:
 ### Current Date: {date}
 ### Instruction:
 You are to take the query information that is passed from you and create a search query for the query data. 
-Do not answer the information, just create a search query. The search query should be detailed, and longer than a paragraph.
+Do not answer the information, just create a search query. The search query should be short and no and longer than a sentence.
 Assistant should always start the response with "Search query: "
 """
 
