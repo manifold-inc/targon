@@ -215,7 +215,7 @@ def sync_output_checkers(
             if ready:
                 verification_ports[model] = {"port": min_port}
                 metadata = requests.get(f"http://localhost:{min_port}/metadata").json()
-                endpoints = [Endpoints(e.upper()) for e in metadata["max_model_len"]]
+                endpoints = [Endpoints(e.upper()) for e in metadata["endpoints"]]
                 verification_ports[model]["endpoints"] = endpoints
                 verification_ports[model]["url"] = "http://localhost"
                 verification_ports[model]["max_model_len"] = metadata.get(
