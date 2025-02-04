@@ -137,7 +137,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                     continue
                 # No response tokens
                 if len(record["response"]) < 2:
-                    scores[uid].append(-100)
+                    scores[uid].append(-300)
                     continue
 
                 port = ports.get(model, {}).get("port")
@@ -169,7 +169,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                         tps = min(
                             response_tokens_count, record["request"]["max_tokens"]
                         ) / (int(record.get("total_time")) / 1000)
-                        scores[uid].append(tps)
+                        scores[uid].append((tps * 100) + 500)
                     except Exception as e:
                         bt.logging.error("Error scoring record: " + str(e))
                         continue
