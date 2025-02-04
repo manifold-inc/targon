@@ -59,7 +59,7 @@ class VerificationPortsConfig(BaseModel):
     port: int
     url: str
     endpoints: List[str]
-    max_model_len: int = 2048
+    max_model_len: Optional[int] = 2048
 
 
 class Config(BaseModel):
