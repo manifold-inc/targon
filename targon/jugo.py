@@ -133,10 +133,14 @@ async def score_organics(last_bucket_id, ports, wallet):
                 if scores.get(uid) is None:
                     scores[uid] = []
                 if not record["success"]:
+                    bt.logging.info(f"UID {uid}: Marking failed request")
                     scores[uid].append(-500)
                     continue
                 # No response tokens
                 if len(record["response"]) < 2:
+                    bt.logging.info(
+                        f"UID {uid}: Marking failed request for missing tokens"
+                    )
                     scores[uid].append(-300)
                     continue
 
@@ -153,7 +157,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                     port,
                     url=url,
                 )
-                bt.logging.info(str(res))
+                bt.logging.info(f"UID {uid}: Verified organic: {res} model {model} at {url}:{port}")
                 if res is None:
                     continue
                 verified = res.get("verified", False)
