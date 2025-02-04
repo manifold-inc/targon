@@ -412,15 +412,15 @@ def verify_usage(
     print(f"  Prompt: reported={usage.prompt_tokens}, actual={input_tokens_length}")
     print(f"  Total: reported={usage.total_tokens}, actual={actual_total_tokens}")
 
-    if usage.completion_tokens != actual_completion_tokens:
+    if abs(usage.completion_tokens - actual_completion_tokens) < 3:
         error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({actual_completion_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    if usage.prompt_tokens != input_tokens_length:
+    if abs(usage.prompt_tokens - input_tokens_length) < 3:
         error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens_length})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    if usage.total_tokens != actual_total_tokens:
+    if abs(usage.total_tokens - actual_total_tokens) < 6:
         error_msg = f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
