@@ -219,6 +219,7 @@ class Validator(BaseNeuron):
             return
         if block % 5:
             return
+        bt.logging.info(str(self.verification_ports))
         res = asyncio.run(
             score_organics(self.last_bucket_id, self.verification_ports, self.wallet)
         )

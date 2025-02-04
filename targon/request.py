@@ -259,6 +259,6 @@ async def check_tokens(
             return None
         return result
     except Exception as e:
-        bt.logging.error(f"{uid}: " + str(e))
+        bt.logging.error(f"{uid} with {request.get('model')}: " + str(e))
         bt.logging.error(traceback.format_exc())
         return None
