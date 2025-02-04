@@ -208,9 +208,10 @@ class Validator(BaseNeuron):
         self.lock_halt = True
         while not self.lock_waiting:
             sleep(1)
-        self.models = self.get_models()
+        models, extra = self.get_models()
+        self.models = list(set([m["model"] for m in models] + extra))
         self.verification_ports = sync_output_checkers(
-            self.client, self.models, self.config_file
+            self.client, models, self.config_file, extra
         )
         self.lock_halt = False
 
@@ -284,9 +285,10 @@ class Validator(BaseNeuron):
         miner_subset = 36
 
         # Ensure everything is setup
-        self.models = self.get_models()
+        models, extra = self.get_models()
+        self.models = list(set([m["model"] for m in models] + extra))
         self.verification_ports = sync_output_checkers(
-            self.client, self.models, self.config_file
+            self.client, models, self.config_file, extra
         )
         resync_hotkeys(self.metagraph, self.miner_tps)
         self.send_models_to_miners_on_interval(0)
@@ -507,7 +509,7 @@ class Validator(BaseNeuron):
             bt.logging.info("Closing organics db connection")
             self.loop.run_until_complete(self.db.close())
 
-    def get_models(self) -> List[str]:
+    def get_models(self) -> Tuple[List[Dict[str, Any]], List[str]]:
         """
         List of models and sizes of models
         Miners are scored based
@@ -535,7 +537,7 @@ class Validator(BaseNeuron):
                 if not models:
                     raise Exception("No models")
 
-        return list(set(models + models_from_config))
+        return models, models_from_config
 
 
 if __name__ == "__main__":

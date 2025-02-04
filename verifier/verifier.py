@@ -19,6 +19,9 @@ LOGPROB_LOG_THRESHOLD = 0.65
 LOGPROB_FAILURE_THRESHOLD = 0.75
 TENSOR_PARALLEL = int(os.getenv("TENSOR_PARALLEL", 1))
 PIPELINE_PARALLEL = int(os.getenv("PIPELINE_PARALLEL", 1))
+CONTEXT_LENGTH = os.getenv("CONTEXT_LENGTH", None)
+if CONTEXT_LENGTH != None:
+    CONTEXT_LENGTH = int(CONTEXT_LENGTH)
 MODEL_WRAPPER = LLM(
     model=MODEL_NAME,
     enforce_eager=True,
@@ -26,6 +29,7 @@ MODEL_WRAPPER = LLM(
     tensor_parallel_size=TENSOR_PARALLEL,
     trust_remote_code=True,
     pipeline_parallel_size=PIPELINE_PARALLEL,
+    max_model_len=CONTEXT_LENGTH,
 )
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
 MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore

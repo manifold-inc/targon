@@ -210,7 +210,7 @@ def get_models_from_config():
                 bt.logging.error("No models in models file")
             else:
                 bt.logging.info(f"Found models {str(models)}")
-            return models
+            return [{"model": m} for m in models]
     except IOError:
         bt.logging.info("No model file found")
     except EOFError:

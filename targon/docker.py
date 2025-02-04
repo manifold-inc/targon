@@ -106,7 +106,10 @@ def remove_containers(client):
 
 
 def sync_output_checkers(
-    client: docker.DockerClient, models: List[str], config: Optional[Config]
+    client: docker.DockerClient,
+    models: List[Dict[str, Any]],
+    config: Optional[Config],
+    extra: List[str],
 ) -> Dict[str, Dict[str, Any]]:
     # Get new image hash (if any)
     image_name = f"{MANIFOLD_VERIFIER}:{IMAGE_TAG}"
@@ -129,7 +132,9 @@ def sync_output_checkers(
     # Load all models
     bt.logging.info(f"Starting subset of {list(models)}")
     for model in models:
-        container_name = re.sub(r"[\W_]", "-", model).lower()
+        if model in extra:
+            continue
+        container_name = re.sub(r"[\W_]", "-", model['model']).lower()
 
         # Delete if existing and out of date
         existing_containers: List[Container] = client.containers.list(filters={"name": container_name})  # type: ignore
@@ -138,7 +143,7 @@ def sync_output_checkers(
 
         # Determine GPU free
         free_gpus = get_free_gpus()
-        required_vram = estimate_max_size(model)
+        required_vram = estimate_max_size(model['model'])
         if required_vram is None:
             bt.logging.error(f"Failed to find or load model {model}")
             continue
@@ -153,11 +158,14 @@ def sync_output_checkers(
         used_ports.append(min_port)
 
         env_vars = [
-            f"MODEL={model}",
+            f"MODEL={model['model']}",
             f"TENSOR_PARALLEL={len(gpus)}",
         ]
 
-        tool_call_parser = get_tool_parser_for_model(model)
+        if model.get('context_length'):
+            env_vars.append(f"CONTEXT_LENGTH={model['context_length']}")
+
+        tool_call_parser = get_tool_parser_for_model(model['model'])
 
         if tool_call_parser:
             bt.logging.info(
@@ -182,7 +190,7 @@ def sync_output_checkers(
             "ipc_mode": "host",
             "name": container_name,
             "extra_hosts": {"host.docker.internal": "host-gateway"},
-            "labels": {"model": str(model), "port": str(min_port)},
+            "labels": {"model": str(model['model']), "port": str(min_port)},
             "device_requests": [
                 DeviceRequest(
                     device_ids=[str(gpu[0]) for gpu in gpus], capabilities=[["gpu"]]
@@ -192,7 +200,7 @@ def sync_output_checkers(
         client.containers.run(**docker_config)  # type: ignore
         while True:
             ready = True
-            std_model = re.sub(r"[\W_]", "-", model).lower()
+            std_model = re.sub(r"[\W_]", "-", model['model']).lower()
             containers: List[Container] = client.containers.list(filters={"name": std_model}, all=True)  # type: ignore
             if not len(containers):
                 bt.logging.info(
@@ -213,12 +221,12 @@ def sync_output_checkers(
                 bt.logging.info(f"{container.name}: {container.health}")
                 ready = False
             if ready:
-                verification_ports[model] = {"port": min_port}
+                verification_ports[model['model']] = {"port": min_port}
                 metadata = requests.get(f"http://localhost:{min_port}/metadata").json()
                 endpoints = [Endpoints(e.upper()) for e in metadata["endpoints"]]
-                verification_ports[model]["endpoints"] = endpoints
-                verification_ports[model]["url"] = "http://localhost"
-                verification_ports[model]["max_model_len"] = metadata.get(
+                verification_ports[model['model']]["endpoints"] = endpoints
+                verification_ports[model['model']]["url"] = "http://localhost"
+                verification_ports[model['model']]["max_model_len"] = metadata.get(
                     "max_model_len", 2048
                 )
                 break
