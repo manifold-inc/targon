@@ -43,10 +43,13 @@ def generate_request(
     metadata,
 ):
     # Generate a random seed for reproducibility in sampling and text generation
+    if metadata is None:
+        bt.logging.error(f"No generator / verifier found for {model_name}")
+        return None
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
     temperature = random.random()
-    max_tokens = random.randint(512, metadata["max_model_len"])
+    max_tokens = random.randint(512, int(metadata["max_model_len"] * 0.75))
 
     # Sample a random row from the prompt dataset
     total_rows = len(dataset["train"])

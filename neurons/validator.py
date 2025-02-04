@@ -415,24 +415,12 @@ class Validator(BaseNeuron):
     ):
         assert self.config.database
 
-        verification_port = self.verification_ports.get(generator_model_name, {}).get(
-            "port"
-        )
-        verification_url = self.verification_ports.get(generator_model_name, {}).get(
-            "url"
-        )
-        if verification_port is None or verification_url is None:
-            bt.logging.error(
-                f"No generator / verifier found for {generator_model_name}"
-            )
-            return None
         request = generate_request(
             self.dataset,
             self.tool_dataset,
             generator_model_name,
             endpoint,
-            verification_url,
-            verification_port,
+            self.verification_ports.get(generator_model_name),
         )
         if not request:
             bt.logging.info("No request was generated")
