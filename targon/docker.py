@@ -132,7 +132,7 @@ def sync_output_checkers(
     # Load all models
     bt.logging.info(f"Starting subset of {list(models)}")
     for model in models:
-        if model in extra:
+        if model['model'] in extra:
             continue
         container_name = re.sub(r"[\W_]", "-", model["model"]).lower()
 
