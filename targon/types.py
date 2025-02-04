@@ -48,12 +48,7 @@ class OrganicStats(InferenceStats):
     coldkey: str
     endpoint: str
     total_tokens: int
-
-
-#
-# Config type
-#
-
+    pub_id: str
 
 class VerificationPortsConfig(BaseModel):
     port: int
