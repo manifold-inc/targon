@@ -217,7 +217,7 @@ class Validator(BaseNeuron):
     def score_organics_on_block(self, block):
         if not self.is_runing:
             return
-        if block % 20:
+        if block % 5:
             return
         res = asyncio.run(
             score_organics(self.last_bucket_id, self.verification_ports, self.wallet)
