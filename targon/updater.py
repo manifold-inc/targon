@@ -44,7 +44,7 @@ def autoupdate(branch: str = "main", force=False):
     bt.logging.info("Checking for updates...")
     try:
         response = requests.get(
-            f"https://raw.githubusercontent.com/manifold-inc/targon/{branch}/VERSION?token={time.time()}",
+            f"https://raw.githubusercontent.com/manifold-inc/targon/{branch}/VERSION?ts={time.time()}",
             headers={"Cache-Control": "no-cache"},
         )
         response.raise_for_status()
