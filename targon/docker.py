@@ -19,6 +19,7 @@ from targon.utils import (
 )
 from targon.request import get_tool_parser_for_model
 
+
 def get_gpu_with_space(gpus: List[Tuple[int, int, int]], required: int):
     "[GPU_ID, free, total] in MB"
     bt.logging.info(f"Need: {required}, have: {gpus}")
@@ -159,11 +160,15 @@ def sync_output_checkers(
         tool_call_parser = get_tool_parser_for_model(model)
 
         if tool_call_parser:
-            bt.logging.info(f"Enabling tool calling for {model} with parser {tool_call_parser}")
-            env_vars.extend([
-                f"TOOL_CALL_PARSER={tool_call_parser}",
-                "ENABLE_AUTO_TOOL_CHOICE=true",
-            ])
+            bt.logging.info(
+                f"Enabling tool calling for {model} with parser {tool_call_parser}"
+            )
+            env_vars.extend(
+                [
+                    f"TOOL_CALL_PARSER={tool_call_parser}",
+                    "ENABLE_AUTO_TOOL_CHOICE=true",
+                ]
+            )
 
         # Init new container
         bt.logging.info(f"Loading {model} on gpu(s) {[gpu[0] for gpu in gpus]}")
@@ -209,12 +214,13 @@ def sync_output_checkers(
                 ready = False
             if ready:
                 verification_ports[model] = {"port": min_port}
-                endpoints = requests.get(
-                    f"http://localhost:{min_port}/endpoints"
-                ).json()
-                endpoints = [Endpoints(e.upper()) for e in endpoints]
+                metadata = requests.get(f"http://localhost:{min_port}/metadata").json()
+                endpoints = [Endpoints(e.upper()) for e in metadata["max_model_len"]]
                 verification_ports[model]["endpoints"] = endpoints
                 verification_ports[model]["url"] = "http://localhost"
+                verification_ports[model]["max_model_len"] = metadata.get(
+                    "max_model_len", 2048
+                )
                 break
             bt.logging.info("Checking again in 5 seconds")
             sleep(5)

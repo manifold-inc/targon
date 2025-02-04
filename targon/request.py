@@ -36,13 +36,17 @@ def get_tool_parser_for_model(model_name: str) -> Optional[str]:
 
 @fail_with_none("Error generating dataset")
 def generate_request(
-    dataset, tool_dataset, model_name, endpoint: Endpoints, url: str, port: int
+    dataset,
+    tool_dataset,
+    model_name,
+    endpoint: Endpoints,
+    metadata,
 ):
     # Generate a random seed for reproducibility in sampling and text generation
     random.seed(urandom(100))
     seed = random.randint(10000, 10000000)
     temperature = random.random()
-    max_tokens = random.randint(512, 1920)
+    max_tokens = random.randint(512, metadata["max_model_len"])
 
     # Sample a random row from the prompt dataset
     total_rows = len(dataset["train"])
@@ -57,7 +61,7 @@ def generate_request(
     for _ in range(3):
         try:
             response = requests.post(
-                f"{url}:{port}/generate",
+                f"{metadata['url']}:{metadata['port']}/generate",
                 headers={"Content-Type": "application/json"},
                 json={
                     "messages": messages,

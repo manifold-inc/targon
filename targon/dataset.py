@@ -54,7 +54,7 @@ def create_query_prompt(query: str) -> Iterable[ChatCompletionMessageParam]:
 ### Current Date: {date}
 ### Instruction:
 You are to take the query information that is passed from you and create a search query for the query data. 
-Do not answer the information, just create a search query. The search query should not be longer than a sentence.
+Do not answer the information, just create a search query. The search query should be detailed, and longer than a paragraph.
 Assistant should always start the response with "Search query: "
 """
 
@@ -74,6 +74,7 @@ def download_dataset():
     ds = load_dataset("manifoldlabs/Infinity-Instruct", "7M")
     return ds
 
+
 def download_tool_dataset():
     """Hardcoded OpenAI-compliant tools. Will migrate to a more flexible dataset in the future."""
     # Return hardcoded OpenAI-compliant tools
@@ -91,12 +92,12 @@ def download_tool_dataset():
                                 "properties": {
                                     "location": {
                                         "type": "string",
-                                        "description": "City and country e.g. Paris, France"
+                                        "description": "City and country e.g. Paris, France",
                                     }
                                 },
-                                "required": ["location"]
-                            }
-                        }
+                                "required": ["location"],
+                            },
+                        },
                     },
                     {
                         "type": "function",
@@ -108,16 +109,16 @@ def download_tool_dataset():
                                 "properties": {
                                     "location": {
                                         "type": "string",
-                                        "description": "City or area to search in"
+                                        "description": "City or area to search in",
                                     },
                                     "cuisine": {
                                         "type": "string",
-                                        "description": "Type of cuisine"
-                                    }
+                                        "description": "Type of cuisine",
+                                    },
                                 },
-                                "required": ["location"]
-                            }
-                        }
+                                "required": ["location"],
+                            },
+                        },
                     },
                     {
                         "type": "function",
@@ -129,23 +130,23 @@ def download_tool_dataset():
                                 "properties": {
                                     "title": {
                                         "type": "string",
-                                        "description": "Title of the reminder"
+                                        "description": "Title of the reminder",
                                     },
                                     "date": {
                                         "type": "string",
-                                        "description": "Date for the reminder (YYYY-MM-DD)"
+                                        "description": "Date for the reminder (YYYY-MM-DD)",
                                     },
                                     "time": {
                                         "type": "string",
-                                        "description": "Time for the reminder (HH:MM)"
-                                    }
+                                        "description": "Time for the reminder (HH:MM)",
+                                    },
                                 },
-                                "required": ["title", "date"]
-                            }
-                        }
-                    }
+                                "required": ["title", "date"],
+                            },
+                        },
+                    },
                 ],
-                "question": "What's the weather like in Paris today?"
+                "question": "What's the weather like in Paris today?",
             },
             {
                 "tools": [
@@ -159,19 +160,19 @@ def download_tool_dataset():
                                 "properties": {
                                     "recipient": {
                                         "type": "string",
-                                        "description": "Name or identifier of recipient"
+                                        "description": "Name or identifier of recipient",
                                     },
                                     "message": {
                                         "type": "string",
-                                        "description": "Content of the message"
-                                    }
+                                        "description": "Content of the message",
+                                    },
                                 },
-                                "required": ["recipient", "message"]
-                            }
-                        }
+                                "required": ["recipient", "message"],
+                            },
+                        },
                     }
                 ],
-                "question": "Send a message to John saying I'll be late"
+                "question": "Send a message to John saying I'll be late",
             },
             {
                 "tools": [
@@ -185,32 +186,32 @@ def download_tool_dataset():
                                 "properties": {
                                     "title": {
                                         "type": "string",
-                                        "description": "Title of the meeting"
+                                        "description": "Title of the meeting",
                                     },
                                     "date": {
                                         "type": "string",
-                                        "description": "Date of the meeting (YYYY-MM-DD)"
+                                        "description": "Date of the meeting (YYYY-MM-DD)",
                                     },
                                     "start_time": {
                                         "type": "string",
-                                        "description": "Start time (HH:MM)"
+                                        "description": "Start time (HH:MM)",
                                     },
                                     "duration": {
                                         "type": "integer",
-                                        "description": "Duration in minutes"
+                                        "description": "Duration in minutes",
                                     },
                                     "attendees": {
                                         "type": "array",
                                         "items": {"type": "string"},
-                                        "description": "List of attendee email addresses"
-                                    }
+                                        "description": "List of attendee email addresses",
+                                    },
                                 },
-                                "required": ["title", "date", "start_time"]
-                            }
-                        }
+                                "required": ["title", "date", "start_time"],
+                            },
+                        },
                     }
                 ],
-                "question": "Schedule a team meeting for tomorrow at 2pm"
+                "question": "Schedule a team meeting for tomorrow at 2pm",
             },
             {
                 "tools": [
@@ -224,23 +225,23 @@ def download_tool_dataset():
                                 "properties": {
                                     "text": {
                                         "type": "string",
-                                        "description": "Text to translate"
+                                        "description": "Text to translate",
                                     },
                                     "source_language": {
                                         "type": "string",
-                                        "description": "Source language code (e.g., 'en', 'es', 'fr')"
+                                        "description": "Source language code (e.g., 'en', 'es', 'fr')",
                                     },
                                     "target_language": {
                                         "type": "string",
-                                        "description": "Target language code (e.g., 'en', 'es', 'fr')"
-                                    }
+                                        "description": "Target language code (e.g., 'en', 'es', 'fr')",
+                                    },
                                 },
-                                "required": ["text", "target_language"]
-                            }
-                        }
+                                "required": ["text", "target_language"],
+                            },
+                        },
                     }
                 ],
-                "question": "Translate 'Hello, how are you?' to Spanish"
+                "question": "Translate 'Hello, how are you?' to Spanish",
             },
             {
                 "tools": [
@@ -254,19 +255,19 @@ def download_tool_dataset():
                                 "properties": {
                                     "expression": {
                                         "type": "string",
-                                        "description": "Mathematical expression to evaluate"
+                                        "description": "Mathematical expression to evaluate",
                                     },
                                     "precision": {
                                         "type": "integer",
-                                        "description": "Number of decimal places for the result"
-                                    }
+                                        "description": "Number of decimal places for the result",
+                                    },
                                 },
-                                "required": ["expression"]
-                            }
-                        }
+                                "required": ["expression"],
+                            },
+                        },
                     }
                 ],
-                "question": "Calculate 15% of 85.50"
+                "question": "Calculate 15% of 85.50",
             },
             {
                 "tools": [
@@ -281,23 +282,23 @@ def download_tool_dataset():
                                     "operation": {
                                         "type": "string",
                                         "enum": ["create", "read", "write", "delete"],
-                                        "description": "Type of file operation"
+                                        "description": "Type of file operation",
                                     },
                                     "file_path": {
                                         "type": "string",
-                                        "description": "Path to the file"
+                                        "description": "Path to the file",
                                     },
                                     "content": {
                                         "type": "string",
-                                        "description": "Content to write (for create/write operations)"
-                                    }
+                                        "description": "Content to write (for create/write operations)",
+                                    },
                                 },
-                                "required": ["operation", "file_path"]
-                            }
-                        }
+                                "required": ["operation", "file_path"],
+                            },
+                        },
                     }
                 ],
-                "question": "Create a new file called notes.txt"
+                "question": "Create a new file called notes.txt",
             },
             {
                 "tools": [
@@ -312,33 +313,33 @@ def download_tool_dataset():
                                     "to": {
                                         "type": "array",
                                         "items": {"type": "string"},
-                                        "description": "List of recipient email addresses"
+                                        "description": "List of recipient email addresses",
                                     },
                                     "subject": {
                                         "type": "string",
-                                        "description": "Email subject"
+                                        "description": "Email subject",
                                     },
                                     "body": {
                                         "type": "string",
-                                        "description": "Email body content"
+                                        "description": "Email body content",
                                     },
                                     "cc": {
                                         "type": "array",
                                         "items": {"type": "string"},
-                                        "description": "List of CC recipient email addresses"
+                                        "description": "List of CC recipient email addresses",
                                     },
                                     "attachments": {
                                         "type": "array",
                                         "items": {"type": "string"},
-                                        "description": "List of file paths to attach"
-                                    }
+                                        "description": "List of file paths to attach",
+                                    },
                                 },
-                                "required": ["to", "subject", "body"]
-                            }
-                        }
+                                "required": ["to", "subject", "body"],
+                            },
+                        },
                     }
                 ],
-                "question": "Send an email to team@company.com about the project update"
+                "question": "Send an email to team@company.com about the project update",
             },
             {
                 "tools": [
@@ -352,23 +353,23 @@ def download_tool_dataset():
                                 "properties": {
                                     "value": {
                                         "type": "number",
-                                        "description": "Value to convert"
+                                        "description": "Value to convert",
                                     },
                                     "from_unit": {
                                         "type": "string",
-                                        "description": "Source unit (e.g., 'km', 'mi', 'kg', 'lb')"
+                                        "description": "Source unit (e.g., 'km', 'mi', 'kg', 'lb')",
                                     },
                                     "to_unit": {
                                         "type": "string",
-                                        "description": "Target unit (e.g., 'km', 'mi', 'kg', 'lb')"
-                                    }
+                                        "description": "Target unit (e.g., 'km', 'mi', 'kg', 'lb')",
+                                    },
                                 },
-                                "required": ["value", "from_unit", "to_unit"]
-                            }
-                        }
+                                "required": ["value", "from_unit", "to_unit"],
+                            },
+                        },
                     }
                 ],
-                "question": "Convert 5 kilometers to miles"
-            }
+                "question": "Convert 5 kilometers to miles",
+            },
         ]
     }

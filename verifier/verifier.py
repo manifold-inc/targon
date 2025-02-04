@@ -30,6 +30,10 @@ MODEL_WRAPPER = LLM(
 TOKENIZER = MODEL_WRAPPER.get_tokenizer()
 MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
 MODEL_NUM_PARAMS = sum(1 for _ in MODEL.parameters())
+cache_config = MODEL_WRAPPER.llm_engine.cache_config
+model_config = MODEL_WRAPPER.llm_engine.model_config
+config = MODEL_WRAPPER.llm_engine.scheduler_config
+
 
 # Lock to ensure atomicity.
 LOCK = asyncio.Lock()
@@ -660,9 +664,9 @@ async def verify(request: VerificationRequest) -> Dict:
         return {"verified": True}
 
 
-@app.get("/endpoints")
+@app.get("/metadata")
 def endpoints():
-    return ENDPOINTS
+    return {"endpoints": ENDPOINTS, "max_model_len": model_config.max_model_len}
 
 
 @app.get("/")
