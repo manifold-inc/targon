@@ -104,7 +104,7 @@ async def send_stats_to_jugo(
         bt.logging.error(traceback.format_exc())
 
 
-async def score_organics(last_bucket_id, ports, wallet):
+async def score_organics(last_bucket_id, ports, wallet, existing_scores):
     try:
         async with aiohttp.ClientSession() as session:
             body = list(ports.keys())
@@ -117,14 +117,14 @@ async def score_organics(last_bucket_id, ports, wallet):
             ) as res:
                 if res.status != 200:
                     bt.logging.info(f"Error pinging jugo {res.text}")
-                    return last_bucket_id, None, None
+                    return last_bucket_id, None
                 res_body = await res.json()
         bucket_id = res_body.get("bucket_id")
         organics = res_body.get("organics")
         if last_bucket_id == bucket_id:
             bt.logging.info(f"Already seen this bucket id")
-            return last_bucket_id, None, None
-        scores = {}
+            return last_bucket_id, None
+        scores = existing_scores
         organic_stats = []
         bt.logging.info(f"Found {len(organics)} organics")
         for model, records in organics.items():
@@ -199,7 +199,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                     )
                 )
         bt.logging.info(f"{bucket_id}: {scores}")
-        return bucket_id, scores, organic_stats
+        return bucket_id, organic_stats
     except Exception as e:
         bt.logging.error(str(e))
-        return None
+        return None, None

@@ -221,16 +221,16 @@ class Validator(BaseNeuron):
         if block % 5:
             return
         bt.logging.info(str(self.verification_ports))
-        res = asyncio.run(
-            score_organics(self.last_bucket_id, self.verification_ports, self.wallet)
+        bucket_id, organic_stats = asyncio.run(
+            score_organics(
+                self.last_bucket_id, self.verification_ports, self.wallet, self.organics
+            )
         )
-        if res == None:
+        if bucket_id == None:
             return
-        bucket_id, organics, organic_stats = res
         self.last_bucket_id = bucket_id
-        if organics == None or organic_stats == None:
+        if organic_stats == None:
             return
-        self.organics = organics
         asyncio.run(send_organics_to_jugo(self.wallet, organic_stats))
 
     def set_weights_on_interval(self, block):
@@ -258,6 +258,7 @@ class Validator(BaseNeuron):
                     -SLIDING_WINDOW:
                 ]
         self.lock_halt = False
+        self.organics = {}
 
     def log_on_block(self, block):
         blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
