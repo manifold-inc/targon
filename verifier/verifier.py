@@ -236,7 +236,7 @@ def verify_logprobs(
     the ground truth according to this particular GPU/software pairing.
     """
     # Set up sampling parameters
-    top_logprobs = int(temperature * 10) + 6
+    top_logprobs = min(int(temperature * 10) + 6, 15)
     sampling_params_dict = {
         "temperature": temperature,
         "seed": seed,
