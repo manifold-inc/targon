@@ -150,7 +150,7 @@ async def handle_inference(
             base_url=f"http://{axon_info.ip}:{axon_info.port}/v1",
             api_key="sn4",
             max_retries=0,
-            timeout=Timeout(12, connect=5, read=5),
+            timeout=Timeout(60, connect=5, read=5),
             http_client=openai.DefaultAsyncHttpxClient(
                 event_hooks={
                     "request": [
