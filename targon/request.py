@@ -233,11 +233,10 @@ async def handle_inference(
 async def check_tokens(
     request,
     raw_chunks: List[Dict],
-    uid,
     endpoint: Endpoints,
     port: int,
     url,
-) -> Optional[Dict]:
+) -> Tuple[Optional[Dict], Optional[str]]:
     try:
         request_data = {
             "model": request.get("model"),
@@ -252,14 +251,10 @@ async def check_tokens(
         )
 
         if response.status_code != 200:
-            bt.logging.error(f"Failed to check tokens {response.text}")
-            return None
+            return None, response.text
         result = response.json()
         if result.get("verified") is None:
-            bt.logging.error(str(result))
-            return None
-        return result
+            return None, str(result)
+        return result, None
     except Exception as e:
-        bt.logging.error(f"{uid} with {request.get('model')}: " + str(e))
-        bt.logging.error(traceback.format_exc())
-        return None
+        return None, str(e)

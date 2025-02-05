@@ -391,15 +391,17 @@ class Validator(BaseNeuron):
                 "Send request to a miner without verification port for model"
             )
             return uid, None
-        verified = await check_tokens(
+        verified, err = await check_tokens(
             request,
             stat.tokens,
-            uid,
             endpoint=endpoint,
             port=verification_port,
             url=verification_url,
         )
-        if verified is None:
+        if err is not None or verified is None:
+            bt.logging.error(
+                f"Failed checking tokens for {uid} on model {request['model']}: {err}"
+            )
             return uid, None
         stat.verified = (
             verified.get("verified", False) if verified is not None else False

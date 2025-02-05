@@ -149,17 +149,21 @@ async def score_organics(last_bucket_id, ports, wallet):
                 if not port:
                     continue
 
-                res = await check_tokens(
+                res, err = await check_tokens(
                     record["request"],
                     record["response"],
-                    record["uid"],
                     Endpoints(record["endpoint"]),
                     port,
                     url=url,
                 )
-                bt.logging.info(f"UID {uid}: Verified organic: {res} model {model} at {url}:{port}")
-                if res is None:
+                if err is not None or res is None:
+                    bt.logging.info(
+                        f"UID {uid}: Error validating organic on model {model}: {err}"
+                    )
                     continue
+                bt.logging.info(
+                    f"UID {uid}: Verified organic: ({res}) model ({model}) at ({url}:{port})"
+                )
                 verified = res.get("verified", False)
                 tps = 0
                 if verified:
