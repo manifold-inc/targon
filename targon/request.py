@@ -1,4 +1,3 @@
-import math
 from os import urandom
 import time
 import traceback
@@ -209,17 +208,6 @@ async def handle_inference(
         stats.time_for_all_tokens = end_token_time - start_token_time
         stats.total_time = end_token_time - start_send_message_time
         stats.tps = min(len(stats.tokens), request["max_tokens"]) / stats.total_time
-
-        # Check for non-streaming behavior
-        token_count = len(stats.tokens)
-        if token_count > 60:
-            time_to_5th_percent = (
-                token_times[math.ceil(token_count * 0.05)] - start_send_message_time
-            )
-            if time_to_5th_percent / stats.total_time >= 0.85:
-                stats.verified = False
-                stats.error = "Likely non-streamed response"
-                stats.cause = "BAD_STREAM"
 
         return uid, stats
 
