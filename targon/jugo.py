@@ -129,19 +129,13 @@ async def score_organics(last_bucket_id, ports, wallet):
         bt.logging.info(f"Found {len(organics)} organics")
         for model, records in organics.items():
             for record in records:
+                pub_id = record.get("pub_id", "")
                 uid = record["uid"]
                 if scores.get(uid) is None:
                     scores[uid] = []
-                if not record["success"]:
-                    bt.logging.info(f"UID {uid}: Marking failed request")
-                    scores[uid].append(-500)
-                    continue
-                # No response tokens
-                if len(record["response"]) < 2:
-                    bt.logging.info(
-                        f"UID {uid}: Marking failed request for missing tokens"
-                    )
-                    scores[uid].append(-300)
+                if not record["success"] or len(record["response"] < 2):
+                    bt.logging.info(f"UID {uid} {pub_id}: Marking failed request")
+                    scores[uid].append(0)
                     continue
 
                 port = ports.get(model, {}).get("port")
@@ -158,11 +152,11 @@ async def score_organics(last_bucket_id, ports, wallet):
                 )
                 if err is not None or res is None:
                     bt.logging.info(
-                        f"UID {uid}: Error validating organic on model {model}: {err}"
+                        f"UID {uid} {pub_id}: Error validating organic on model {model}: {err} "
                     )
                     continue
                 bt.logging.info(
-                    f"UID {uid}: Verified organic: ({res}) model ({model}) at ({url}:{port})"
+                    f"UID {uid} {pub_id}: Verified organic: ({res}) model ({model}) at ({url}:{port})"
                 )
                 verified = res.get("verified", False)
                 tps = 0
@@ -177,9 +171,9 @@ async def score_organics(last_bucket_id, ports, wallet):
                         tps = min(
                             response_tokens_count, record["request"]["max_tokens"]
                         ) / (int(record.get("total_time")) / 1000)
-                        scores[uid].append((tps * 100) + 500)
+                        scores[uid].append(min(tps * 10, 500))
                     except Exception as e:
-                        bt.logging.error("Error scoring record: " + str(e))
+                        bt.logging.error(f"Error scoring record {pub_id}: {e}")
                         continue
                 organic_stats.append(
                     OrganicStats(
