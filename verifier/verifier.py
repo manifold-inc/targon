@@ -383,7 +383,7 @@ def verify_logprobs(
         return False, error_msg, "LOW_SCORE"
 
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
-    if passes and perfect_avg >= (1 - min(temperature * 0.5, 0.6)):
+    if passes and perfect_avg >= (1 - min(temperature * 0.25, 0.6)):
         error_msg = f"Overfitted response tokens. {perfect_avg}% perfect"
         return False, error_msg, "OVERFIT"
 
