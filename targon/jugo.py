@@ -133,7 +133,7 @@ async def score_organics(last_bucket_id, ports, wallet):
                 uid = record["uid"]
                 if scores.get(uid) is None:
                     scores[uid] = []
-                if not record["success"] or len(record["response"] < 2):
+                if not record["success"] or len(record["response"]) < 2:
                     bt.logging.info(f"UID {uid} {pub_id}: Marking failed request")
                     scores[uid].append(0)
                     continue
