@@ -55,11 +55,6 @@ def get_weights(
 
             tps[uid] += safe_mean_score(miner_tps[uid][model][-SLIDING_WINDOW:])
 
-        # Make sure miners are running all models
-        model_diff = len(set(models) - set(miner_models.get(uid, [])))
-        if model_diff:
-            tps[uid] = 0
-
     tps_list = list(tps.values())
     if len(tps_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
