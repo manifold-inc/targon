@@ -334,7 +334,9 @@ class Validator(BaseNeuron):
 
             models, _ = self.get_models()
             models = list(set([m["model"] for m in models] + extra))
-            generator_model_name = random.choice(models)
+            generator_model_name = random.choice(
+                list(set(models) - set(list(self.verification_ports.keys())))
+            )
             if self.verification_ports.get(model_name) != None:
                 endpoint = random.choice(
                     self.verification_ports[model_name]["endpoints"]
