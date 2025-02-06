@@ -152,7 +152,6 @@ class Validator(BaseNeuron):
                 )
                 autoupdate(force=True)
                 sys.exit(0)
-            self.heartbeat_thread.interrupt_main()
             last_step = self.step
             bt.logging.info("Heartbeat")
 
@@ -229,12 +228,15 @@ class Validator(BaseNeuron):
                 self.last_bucket_id, self.verification_ports, self.wallet, self.organics
             )
         )
+        bt.logging.info("Scored Organics")
         if bucket_id == None:
             return
         self.last_bucket_id = bucket_id
         if organic_stats == None:
             return
+        bt.logging.info("Sending organics to jugo")
         asyncio.run(send_organics_to_jugo(self.wallet, organic_stats))
+        bt.logging.info("Sent organics to jugp")
 
     def set_weights_on_interval(self, block):
         if block % self.config.epoch_length:
@@ -332,9 +334,13 @@ class Validator(BaseNeuron):
             if self.step % 3 == 0:
                 model_name = random.choice(list(self.verification_ports.keys()))
 
-            _, models = self.get_models()
+            models, extra_models = self.get_models()
+            models = [m["model"] for m in models]
             generator_model_name = random.choice(
-                list(set(models) - set(list(self.verification_ports.keys())))
+                list(
+                    (set(models) - set(extra_models))
+                    & set(list(self.verification_ports.keys()))
+                )
             )
             if self.verification_ports.get(model_name) != None:
                 endpoint = random.choice(
@@ -368,7 +374,9 @@ class Validator(BaseNeuron):
                 bt.logging.info("No miners for this model")
                 continue
 
-            bt.logging.info(f"Querying Miners for model {model_name}")
+            bt.logging.info(
+                f"Querying Miners for model {model_name} using {generator_model_name}"
+            )
             res = self.loop.run_until_complete(
                 self.query_miners(
                     miner_uids, model_name, endpoint, generator_model_name

@@ -61,11 +61,12 @@ def generate_request(
     res: Optional[str] = None
     response = None
     bt.logging.info("Starting synthetic generation")
-    for _ in range(3):
+    for _ in range(2):
         try:
             response = requests.post(
                 f"{metadata['url']}:{metadata['port']}/generate",
                 headers={"Content-Type": "application/json"},
+                timeout=30,
                 json={
                     "messages": messages,
                     "sampling_params": {
@@ -79,9 +80,9 @@ def generate_request(
                 bt.logging.error(f"Failed to generate request for {model_name}")
                 return None
             res = response.json().get("text")
+            break
         except Exception:
             bt.logging.error(f"Failed to generate request for {model_name}")
-        break
     if res is None:
         bt.logging.error(
             f"Failed to generate prompt for {model_name}: {endpoint}: {response}"
