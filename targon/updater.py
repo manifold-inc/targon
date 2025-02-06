@@ -16,9 +16,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import signal
 import time
 import os
-import sys
 import requests
 import bittensor as bt
 import targon
@@ -70,7 +70,7 @@ def autoupdate(branch: str = "main", force=False):
 
                 if new_version == latest_version:
                     bt.logging.info("Targon updated successfully. Restarting...")
-                    sys.exit(0)
+                    os.kill(os.getpid(), signal.SIGINT)
                 else:
                     bt.logging.error("Update failed. Manual update required.")
     except Exception as e:

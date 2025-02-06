@@ -152,6 +152,7 @@ class Validator(BaseNeuron):
                 )
                 autoupdate(force=True)
                 sys.exit(0)
+            self.heartbeat_thread.interrupt_main()
             last_step = self.step
             bt.logging.info("Heartbeat")
 
@@ -208,12 +209,14 @@ class Validator(BaseNeuron):
         self.lock_halt = True
         while not self.lock_waiting:
             sleep(1)
-        models, extra = self.get_models()
-        self.models = list(set([m["model"] for m in models] + extra))
-        self.verification_ports = sync_output_checkers(
-            self.client, models, self.config_file, extra
-        )
-        self.lock_halt = False
+        try:
+            models, extra = self.get_models()
+            self.models = list(set([m["model"] for m in models] + extra))
+            self.verification_ports = sync_output_checkers(
+                self.client, models, self.config_file, extra
+            )
+        finally:
+            self.lock_halt = False
 
     def score_organics_on_block(self, block):
         if not self.is_runing:
@@ -301,6 +304,7 @@ class Validator(BaseNeuron):
                 autoupdate(branch="main")
             # Make sure our substrate thread is alive
             if not self.substrate_thread.is_alive():
+                bt.logging.info("Restarting substrate interface due to killed node")
                 self.substrate = SubstrateInterface(
                     ss58_format=SS58_FORMAT,
                     use_remote_preset=True,
@@ -313,8 +317,10 @@ class Validator(BaseNeuron):
 
             # Mutex for setting weights
             if self.lock_halt:
+                bt.logging.info("Halting for organics")
                 self.lock_waiting = True
                 while self.lock_halt:
+                    bt.logging.info("Waiting for lock to release")
                     sleep(1)
                 self.lock_waiting = False
 
