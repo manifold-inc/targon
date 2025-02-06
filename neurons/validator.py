@@ -384,9 +384,14 @@ class Validator(BaseNeuron):
             bt.logging.info(
                 f"Querying Miners for model {model_name} using {generator_model_name}"
             )
+
             res = self.loop.run_until_complete(
                 self.query_miners(
-                    miner_uids, model_name, endpoint, generator_model_name
+                    miner_uids,
+                    model_name,
+                    endpoint,
+                    generator_model_name,
+                    model_name in list(self.verification_ports.keys()),
                 )
             )
             self.save_scores()
@@ -446,6 +451,7 @@ class Validator(BaseNeuron):
         model_name: str,
         endpoint: Endpoints,
         generator_model_name: str,
+        should_score: bool,
     ):
         assert self.config.database
 
@@ -477,7 +483,7 @@ class Validator(BaseNeuron):
             responses: List[Tuple[int, InferenceStats]] = await asyncio.gather(*tasks)
 
             # Skip scoring if we arent running that model
-            if generator_model_name != model_name:
+            if not should_score:
                 return None
 
             tasks = []
