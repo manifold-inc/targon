@@ -332,8 +332,7 @@ class Validator(BaseNeuron):
             if self.step % 3 == 0:
                 model_name = random.choice(list(self.verification_ports.keys()))
 
-            models, _ = self.get_models()
-            models = list(set([m["model"] for m in models] + extra))
+            _, models = self.get_models()
             generator_model_name = random.choice(
                 list(set(models) - set(list(self.verification_ports.keys())))
             )
