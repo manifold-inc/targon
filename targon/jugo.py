@@ -81,6 +81,7 @@ async def send_stats_to_jugo(
             "scores": miner_tps,
         }
         headers = generate_header(wallet.hotkey, body)
+        bt.logging.info("Sending to Jugo...")
         # Send request to the FastAPI server
         async with aiohttp.ClientSession() as session:
             async with session.post(

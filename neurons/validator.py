@@ -299,8 +299,10 @@ class Validator(BaseNeuron):
 
         self.is_runing = True
         while not self.exit_context.isExiting:
+            bt.logging.info("Running next synthetic iteration")
             self.step += 1
             if self.config.autoupdate and not AUTO_UPDATE:
+                bt.logging.info("Checking autoupdate")
                 autoupdate(branch="main")
             # Make sure our substrate thread is alive
             if not self.substrate_thread.is_alive():
@@ -324,6 +326,7 @@ class Validator(BaseNeuron):
                     sleep(1)
                 self.lock_waiting = False
 
+            bt.logging.info("Chosing model")
             # Random model, but every three is a model we are verifying for sure
             model_name = random.choice(self.models)
             if self.step % 3 == 0:
@@ -370,6 +373,7 @@ class Validator(BaseNeuron):
             )
             self.save_scores()
             if res is not None:
+                bt.logging.info("About to end stats to jugo")
                 self.loop.run_until_complete(
                     send_stats_to_jugo(
                         self.metagraph,
