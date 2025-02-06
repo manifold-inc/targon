@@ -49,8 +49,8 @@ def autoupdate(branch: str = "main", force=False):
         )
         response.raise_for_status()
         repo_version = response.content.decode()
-        latest_version = [int(v) for v in repo_version.split(".")]
-        local_version = [int(v) for v in targon.__version__.split(".")]
+        latest_version = int("".join(repo_version.split(".")))
+        local_version = int("".join(targon.__version__.split(".")))
 
         bt.logging.info(f"Local version: {targon.__version__}")
         bt.logging.info(f"Latest version: {repo_version}")
@@ -66,7 +66,7 @@ def autoupdate(branch: str = "main", force=False):
 
             with open(os.path.join(base_path, "VERSION")) as f:
                 new_version = f.read().strip()
-                new_version = [int(v) for v in new_version.split(".")]
+                new_version = int("".join(new_version.split(".")))
 
                 if new_version == latest_version:
                     bt.logging.info("Targon updated successfully. Restarting...")
