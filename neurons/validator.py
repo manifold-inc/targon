@@ -40,7 +40,7 @@ from targon.types import Endpoints, InferenceStats
 import traceback
 import bittensor as bt
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, final
 from targon import (
     __version__,
     __spec_version__ as spec_version,
@@ -65,6 +65,7 @@ class Validator(BaseNeuron):
     heartbeat_thread: Thread
     step = 0
     dataset = None
+    starting_docker = True
     tool_dataset = None
 
     def __init__(self, config=None, run_init=True):
@@ -141,6 +142,8 @@ class Validator(BaseNeuron):
         last_step = self.step
         stuck_count = 0
         while True:
+            while self.lock_halt:
+                sleep(5)
             sleep(60)
             if last_step == self.step:
                 stuck_count += 1
@@ -293,9 +296,13 @@ class Validator(BaseNeuron):
         # Ensure everything is setup
         models, extra = self.get_models()
         self.models = list(set([m["model"] for m in models] + extra))
-        self.verification_ports = sync_output_checkers(
-            self.client, models, self.config_file, extra
-        )
+        try:
+            self.lock_halt = True
+            self.verification_ports = sync_output_checkers(
+                self.client, models, self.config_file, extra
+            )
+        finally:
+            self.lock_halt = False
         resync_hotkeys(self.metagraph, self.miner_tps)
         self.send_models_to_miners_on_interval(0)
 
