@@ -60,6 +60,7 @@ def generate_request(
     messages = create_query_prompt(random_row_text)
     res: Optional[str] = None
     response = None
+    bt.logging.info("Starting synthetic generation")
     for _ in range(3):
         try:
             response = requests.post(

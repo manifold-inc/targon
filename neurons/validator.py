@@ -326,7 +326,7 @@ class Validator(BaseNeuron):
                     sleep(1)
                 self.lock_waiting = False
 
-            bt.logging.info("Chosing model")
+            bt.logging.info("Selecting model")
             # Random model, but every three is a model we are verifying for sure
             model_name = random.choice(self.models)
             if self.step % 3 == 0:
@@ -366,6 +366,7 @@ class Validator(BaseNeuron):
                 bt.logging.info("No miners for this model")
                 continue
 
+            bt.logging.info(f"Querying Miners for model {model_name}")
             res = self.loop.run_until_complete(
                 self.query_miners(
                     miner_uids, model_name, endpoint, generator_model_name
@@ -431,6 +432,7 @@ class Validator(BaseNeuron):
     ):
         assert self.config.database
 
+
         request = generate_request(
             self.dataset,
             self.tool_dataset,
@@ -438,6 +440,7 @@ class Validator(BaseNeuron):
             endpoint,
             self.verification_ports.get(generator_model_name),
         )
+        bt.logging.info("Generated Request")
         if not request:
             bt.logging.info("No request was generated")
             return None
