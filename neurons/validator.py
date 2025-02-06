@@ -332,17 +332,18 @@ class Validator(BaseNeuron):
             if self.step % 3 == 0:
                 model_name = random.choice(list(self.verification_ports.keys()))
 
-            endpoint_model = list(self.verification_ports.keys())[0]
+            models, _ = self.get_models()
+            models = list(set([m["model"] for m in models] + extra))
+            generator_model_name = random.choice(models)
             if self.verification_ports.get(model_name) != None:
                 endpoint = random.choice(
                     self.verification_ports[model_name]["endpoints"]
                 )
-                generator_model_name = model_name
             else:
                 endpoint = random.choice(
-                    self.verification_ports[endpoint_model]["endpoints"]
+                    self.verification_ports[generator_model_name]["endpoints"]
                 )
-                generator_model_name = endpoint_model
+
             uids = get_miner_uids(
                 self.metagraph, self.uid, self.config.vpermit_tao_limit
             )
@@ -431,7 +432,6 @@ class Validator(BaseNeuron):
         generator_model_name: str,
     ):
         assert self.config.database
-
 
         request = generate_request(
             self.dataset,
