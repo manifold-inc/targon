@@ -40,7 +40,7 @@ from targon.types import Endpoints, InferenceStats
 import traceback
 import bittensor as bt
 
-from typing import Any, Dict, List, Optional, Tuple, final
+from typing import Any, Dict, List, Optional, Tuple
 from targon import (
     __version__,
     __spec_version__ as spec_version,
@@ -223,7 +223,8 @@ class Validator(BaseNeuron):
     def score_organics_on_block(self, block):
         if not self.is_runing:
             return
-        if block % 5:
+        blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
+        if block % 5 or blocks_till < 35:
             return
         bt.logging.info(str(self.verification_ports))
         bucket_id, organic_stats = asyncio.run(
