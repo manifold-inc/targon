@@ -237,6 +237,7 @@ async def check_tokens(
         response = requests.post(
             f"{url}:{port}/verify",
             headers={"Content-Type": "application/json"},
+            timeout=30,
             json=request_data,
         )
 

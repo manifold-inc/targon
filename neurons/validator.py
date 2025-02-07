@@ -228,7 +228,10 @@ class Validator(BaseNeuron):
         bt.logging.info(str(self.verification_ports))
         bucket_id, organic_stats = asyncio.run(
             score_organics(
-                self.last_bucket_id, self.verification_ports, self.wallet, self.organics
+                self.last_bucket_id,
+                self.verification_ports,
+                self.wallet,
+                self.organics,
             )
         )
         bt.logging.info("Scored Organics")

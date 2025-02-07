@@ -62,7 +62,12 @@ class BaseNeuron:
 
     def run_callbacks(self, block):
         for callback in self.block_callbacks:
-            callback(block)
+            try:
+                callback(block)
+            except Exception as e:
+                bt.logging.error(
+                    f"Failed running callback {callback.__name__}: {str(e)}"
+                )
 
     def __init__(self, config=None):
         self.config_file = load_config_file()
