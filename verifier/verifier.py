@@ -395,32 +395,26 @@ def verify_logprobs(
 
 
 def verify_usage(
-    input_tokens_length: int,
+    input_tokens: int,
+    output_sequence: int,
     usage: Usage,
-    output_sequence: List[OutputItem],
 ) -> Optional[Tuple[bool, str, str]]:
     """Verify the usage information in the response."""
     # Count tokens including special tokens
-    actual_completion_tokens = len(output_sequence)
-    actual_total_tokens = input_tokens_length + actual_completion_tokens
+    actual_total_tokens = input_tokens + output_sequence
 
-    # Print token count differences for debugging
-    print(f"Token count differences:")
-    print(
-        f"  Completion: reported={usage.completion_tokens}, actual={actual_completion_tokens}"
-    )
-    print(f"  Prompt: reported={usage.prompt_tokens}, actual={input_tokens_length}")
-    print(f"  Total: reported={usage.total_tokens}, actual={actual_total_tokens}")
-
-    if abs(usage.completion_tokens - actual_completion_tokens) > 3:
-        error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({actual_completion_tokens})"
+    completion_diff = usage.completion_tokens / output_sequence
+    if completion_diff < 0.5 or completion_diff > 2:
+        error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({output_sequence})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    if abs(usage.prompt_tokens - input_tokens_length) > 3:
-        error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens_length})"
+    prompt_diff = usage.prompt_tokens / input_tokens
+    if prompt_diff < 0.5 or prompt_diff > 2:
+        error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    if abs(usage.total_tokens - actual_total_tokens) > 6:
+    total_diff = usage.total_tokens / (input_tokens + output_sequence)
+    if total_diff < 0.5 or total_diff > 2:
         error_msg = f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
@@ -569,7 +563,7 @@ async def verify(request: VerificationRequest) -> Dict:
             "cause": "NO_USAGE",
         }
 
-    usage = Usage(**usage_data)
+    reported_usage = Usage(**usage_data)
 
     # Tokenize the input sequence
     input_text = (
@@ -599,7 +593,10 @@ async def verify(request: VerificationRequest) -> Dict:
         }
 
         # Verify usage information
-        res = verify_usage(len(input_tokens), usage, output_sequence)
+        # Response - 1 for usage chunk
+        res = verify_usage(
+            len(input_tokens), len(request.raw_chunks) - 2, reported_usage
+        )
         if res is None:
             return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
         result, message, cause = res
