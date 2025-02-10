@@ -174,7 +174,7 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                             response_tokens_count, record["request"]["max_tokens"]
                         ) / (int(record.get("total_time")) / 1000)
                         context_modifier = 1 + min(
-                            ((total_input_tokens**0.61) / 1000), 1
+                            (((total_input_tokens / 2400) ** 2) / 1000), 1
                         )
                         scores[uid].append(min(tps * 10, 500) * context_modifier)
                     except Exception as e:
