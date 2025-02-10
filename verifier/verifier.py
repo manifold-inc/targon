@@ -662,7 +662,7 @@ async def verify(request: VerificationRequest) -> Dict:
         if not result:
             return return_value
 
-        return {"verified": True}
+        return {"verified": True, "input_tokens": len(input_tokens)}
 
 
 @app.get("/metadata")

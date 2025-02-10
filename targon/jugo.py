@@ -160,6 +160,7 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                     f"UID {uid} {pub_id}: Verified organic: ({res}) model ({model}) at ({url}:{port})"
                 )
                 verified = res.get("verified", False)
+                total_input_tokens = res.get("input_tokens", 0)
                 tps = 0
                 if verified:
                     try:
@@ -172,7 +173,10 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                         tps = min(
                             response_tokens_count, record["request"]["max_tokens"]
                         ) / (int(record.get("total_time")) / 1000)
-                        scores[uid].append(min(tps * 10, 500))
+                        context_modifier = 1 + min(
+                            ((total_input_tokens**0.61) / 1000), 1
+                        )
+                        scores[uid].append(min(tps * 10, 500) * context_modifier)
                     except Exception as e:
                         bt.logging.error(f"Error scoring record {pub_id}: {e}")
                         continue
