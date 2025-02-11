@@ -41,10 +41,19 @@ def get_weights(
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
     tps = {}
+    total_synthetics = 0
+    for uid in miner_tps:
+        if (organic := organics.get(uid)) is not None:
+            total_synthetics += len([o for o in organic if o != 0])
+
     for uid in miner_tps:
         tps[uid] = 0
         if (organic := organics.get(uid)) is not None:
-            tps[uid] = safe_mean_score(organic)
+            # Boost miners for doing more organics
+            successfull_organics = len([o for o in organic if o != 0])
+            tps[uid] = safe_mean_score(organic) * (
+                (successfull_organics / total_synthetics) + 1
+            )
         for model in miner_models.get(uid, []):
             if model not in models:
                 continue

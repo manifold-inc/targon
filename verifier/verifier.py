@@ -383,7 +383,7 @@ def verify_logprobs(
         return False, error_msg, "LOW_SCORE"
 
     passes = average_score >= LOGPROB_FAILURE_THRESHOLD
-    if passes and perfect_avg >= (1 - min(temperature * 0.25, 0.6)):
+    if passes and perfect_avg >= 1:
         error_msg = f"Overfitted response tokens. {perfect_avg}% perfect"
         return False, error_msg, "OVERFIT"
 
@@ -662,7 +662,7 @@ async def verify(request: VerificationRequest) -> Dict:
         if not result:
             return return_value
 
-        return {"verified": True}
+        return {"verified": True, "input_tokens": len(input_tokens)}
 
 
 @app.get("/metadata")
