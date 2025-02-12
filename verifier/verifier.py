@@ -244,8 +244,9 @@ async def verify_logprobs(
 
     # Generate output for a single token
     output = None
+    full_text = input_text + "".join([item.text for item in output_sequence])
+    print(full_text)
     for _ in range(5):
-        full_text = input_text + "".join([item.text for item in output_sequence])
         output = MODEL_WRAPPER.generate(
             prompt=full_text, sampling_params=sampling_params, request_id=random_uuid()
         )
