@@ -463,7 +463,7 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
                 return None
 
             choiceprobs = choice.get("logprobs")
-            if not choiceprobs:
+            if choiceprobs is None:
                 return None
 
             # Handle tool calls
@@ -501,9 +501,11 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
 
         elif request_type == "COMPLETION":
             text = choice.get("text")
-            logprobs = choice.get("logprobs")
+            if text is None:
+                return None
 
-            if text == None or logprobs == None:
+            logprobs = choice.get("logprobs")
+            if logprobs is None:
                 return None
 
             token = logprobs.get("tokens", [""])[0]
@@ -530,13 +532,9 @@ async def verify(request: VerificationRequest) -> Dict:
     input_text = None
 
     # Parse raw chunks into OutputItems
-    i = 0
     for chunk in request.raw_chunks:
         if parsed := parse_chunk(chunk, request.request_type):
             output_sequence.append(parsed)
-        else:
-            print(f"Skipped chunk {i}")
-        i += 1
 
     # If we couldn't parse enough tokens, fail
     if len(output_sequence) < 3:
