@@ -616,10 +616,10 @@ async def verify(request: VerificationRequest) -> Dict:
             return return_value
 
         # Pops think character for r1
-        if input_text.endswith(output_sequence[1].text):
+        if input_text.strip().endswith(output_sequence[1].text):
             print(f"Popping token {output_sequence[1].text}")
             output_sequence.pop(1)
-        if input_text.endswith(output_sequence[0].text):
+        if input_text.strip().endswith(output_sequence[0].text):
             print(f"Popping token {output_sequence[0].text}")
             output_sequence.pop(0)
         print(output_sequence[:5])
