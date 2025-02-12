@@ -619,6 +619,9 @@ async def verify(request: VerificationRequest) -> Dict:
         if input_text.endswith(output_sequence[0].text):
             print(f"Popping token {output_sequence[0].text}")
             output_sequence.pop(0)
+        if input_text.endswith(output_sequence[1].text):
+            print(f"Popping token {output_sequence[1].text}")
+            output_sequence.pop(1)
         # Logprob checks
         res = await verify_logprobs(
             request.request_params.temperature,
