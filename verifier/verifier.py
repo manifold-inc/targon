@@ -247,7 +247,7 @@ async def verify_logprobs(
     for _ in range(5):
         full_text = input_text + "".join([item.text for item in output_sequence])
         output = MODEL_WRAPPER.generate(
-            full_text, sampling_params, request_id=random_uuid()
+            prompt=full_text, sampling_params=sampling_params, request_id=random_uuid()
         )
         final_output = None
         try:
