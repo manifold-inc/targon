@@ -34,6 +34,7 @@ MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
     )
 )
 model_config = MODEL_WRAPPER.engine.model_config
+MODEL_WRAPPER.engine.scheduler_config.chunked_prefill_enabled = False
 
 # Lock to ensure atomicity.
 LOCK = asyncio.Lock()
@@ -245,7 +246,6 @@ async def verify_logprobs(
     # Generate output for a single token
     output = None
     full_text = input_text + "".join([item.text for item in output_sequence])
-    print(full_text)
     for _ in range(5):
         output = MODEL_WRAPPER.generate(
             prompt=full_text, sampling_params=sampling_params, request_id=random_uuid()
@@ -533,13 +533,9 @@ async def verify(request: VerificationRequest) -> Dict:
     input_text = None
 
     # Parse raw chunks into OutputItems
-    i = 0
     for chunk in request.raw_chunks:
         if parsed := parse_chunk(chunk, request.request_type):
             output_sequence.append(parsed)
-        else:
-            print(f"skipped at {i}")
-        i = i + 1
 
     # If we couldn't parse enough tokens, fail
     if len(output_sequence) < 3:
