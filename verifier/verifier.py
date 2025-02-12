@@ -7,9 +7,9 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any, Union
-from vllm.vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.vllm.utils import random_uuid
-from vllm.vllm import AsyncLLMEngine, SamplingParams
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.utils import random_uuid
+from vllm import AsyncLLMEngine, SamplingParams
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
