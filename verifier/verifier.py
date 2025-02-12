@@ -282,11 +282,11 @@ async def verify_logprobs(
     for idx in range(idxs):
         item = output_sequence[idx]
 
-        expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
-        assert expected_logprob is not None
+        expected_logprob_set = output.prompt_logprobs[idx + len(input_tokens) - 1]
+        assert expected_logprob_set is not None
 
-        eos_logprob = expected_logprob.get(eos_token_id)
-        eot_logprob = expected_logprob.get(eot_token_id)
+        eos_logprob = expected_logprob_set.get(eos_token_id)
+        eot_logprob = expected_logprob_set.get(eot_token_id)
 
         if (not eos_logprob and eot_logprob) or (
             eos_logprob
@@ -297,7 +297,7 @@ async def verify_logprobs(
         ):
             eos_logprob = eot_logprob
 
-        expected_logprob = expected_logprob.get(item.token_id)
+        expected_logprob = expected_logprob_set.get(item.token_id)
 
         token_text = TOKENIZER.decode([item.token_id])
 
@@ -310,7 +310,7 @@ async def verify_logprobs(
                 and expected_logprob.rank > 15
             )
         ):
-            error_msg = f"Expected EOS/EOT token at index {idx}, {token_text=}, {expected_logprob=}, {eos_logprob=}"
+            error_msg = f"Expected EOS/EOT token at index {idx}, {token_text=}, {expected_logprob_set=}, {eos_logprob=}"
             return False, error_msg, "SKIPPED_EOS_EOT"
 
         if expected_logprob is None:
