@@ -15,4 +15,5 @@ packages
 *.json
 *.npy
 models.txt
+vllm
 config.json
