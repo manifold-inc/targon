@@ -298,6 +298,8 @@ async def verify_logprobs(
 
         expected_logprob = expected_logprob.get(item.token_id)
 
+        token_text = TOKENIZER.decode([item.token_id])
+
         if eos_logprob and (
             not expected_logprob
             or (
@@ -307,7 +309,7 @@ async def verify_logprobs(
                 and expected_logprob.rank > 15
             )
         ):
-            error_msg = f"Expected EOS/EOT token at index {idx}"
+            error_msg = f"Expected EOS/EOT token at index {idx}, {token_text=}, {expected_logprob=}, {eos_logprob=}"
             return False, error_msg, "SKIPPED_EOS_EOT"
 
         if expected_logprob is None:
@@ -316,7 +318,6 @@ async def verify_logprobs(
         rank = expected_logprob.rank
         assert rank is not None
 
-        token_text = TOKENIZER.decode([item.token_id])
 
         if rank >= 75:
             error_msg = f"Found extraordinarily improbable token '{token_text}' at index {idx}: {rank=}"
@@ -622,8 +623,6 @@ async def verify(request: VerificationRequest) -> Dict:
         if input_text.strip().endswith(output_sequence[0].text):
             print(f"Popping token {output_sequence[0].text}")
             output_sequence.pop(0)
-        print(output_sequence[:5])
-        print(input_text)
         # Logprob checks
         res = await verify_logprobs(
             request.request_params.temperature,
