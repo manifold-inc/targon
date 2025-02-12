@@ -526,7 +526,7 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
-    output_sequence = []
+    output_sequence: List[OutputItem] = []
     input_text = None
 
     # Parse raw chunks into OutputItems
@@ -585,8 +585,6 @@ async def verify(request: VerificationRequest) -> Dict:
     )
 
     assert isinstance(input_text, str)
-    if input_text.endswith("<think>"):
-        input_text=input_text[:-len("<think>")]
     if hasattr(TOKENIZER, "bos_token"):
         if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
             input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
@@ -617,6 +615,10 @@ async def verify(request: VerificationRequest) -> Dict:
         if not result:
             return return_value
 
+        # Pops think character for r1
+        if input_text.endswith(output_sequence[0].text):
+            print(f"Popping token {output_sequence[0].text}")
+            output_sequence.pop(0)
         # Logprob checks
         res = await verify_logprobs(
             request.request_params.temperature,
