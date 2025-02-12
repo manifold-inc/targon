@@ -3,11 +3,14 @@ import math
 import os
 import asyncio
 import json
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any, Union
-from vllm import LLM, SamplingParams
+
+# TODO
+from verifier.vllm.vllm.utils import random_uuid
+from vllm.vllm import AsyncLLMEngine, SamplingParams
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -22,7 +25,7 @@ PIPELINE_PARALLEL = int(os.getenv("PIPELINE_PARALLEL", 1))
 CONTEXT_LENGTH = os.getenv("CONTEXT_LENGTH", None)
 if CONTEXT_LENGTH != None:
     CONTEXT_LENGTH = int(CONTEXT_LENGTH)
-MODEL_WRAPPER = LLM(
+MODEL_WRAPPER = AsyncLLMEngine(
     model=MODEL_NAME,
     enforce_eager=True,
     gpu_memory_utilization=0.9,
@@ -31,21 +34,10 @@ MODEL_WRAPPER = LLM(
     pipeline_parallel_size=PIPELINE_PARALLEL,
     max_model_len=CONTEXT_LENGTH,
 )
-TOKENIZER = MODEL_WRAPPER.get_tokenizer()
-MODEL = MODEL_WRAPPER.llm_engine.model_executor.driver_worker.model_runner.model  # type: ignore
-MODEL_NUM_PARAMS = sum(1 for _ in MODEL.parameters())
-cache_config = MODEL_WRAPPER.llm_engine.cache_config
-model_config = MODEL_WRAPPER.llm_engine.model_config
-config = MODEL_WRAPPER.llm_engine.scheduler_config
-
+model_config = MODEL_WRAPPER.engine.model_config
 
 # Lock to ensure atomicity.
 LOCK = asyncio.Lock()
-LOCK_GENERATE = asyncio.Lock()
-
-ENDPOINTS = ["completion"]
-if TOKENIZER.chat_template is not None:
-    ENDPOINTS.append("chat")
 
 
 class RequestParams(BaseModel):
@@ -120,47 +112,36 @@ app = FastAPI()
 
 @app.post("/generate")
 async def generate_question(req: GenerateRequest):
-    async with LOCK_GENERATE:
+    async with LOCK:
         try:
-            if "chat" in ENDPOINTS:
-                output = (
-                    MODEL_WRAPPER.chat(
-                        messages=req.messages,
-                        sampling_params=SamplingParams(
-                            **req.sampling_params.model_dump()
-                        ),
-                        use_tqdm=False,  # type: ignore
-                    )[0]
-                    .outputs[0]
-                    .text
+            prompt = ""
+            for message in req.messages:
+                prompt += (
+                    message.get("role", "") + ": " + message.get("content", "") + "\n"
                 )
-            else:
-                prompt = ""
-                for message in req.messages:
-                    prompt += (
-                        message.get("role", "")
-                        + ": "
-                        + message.get("content", "")
-                        + "\n"
-                    )
-                prompt += "\nResponse: "
-                output = (
-                    MODEL_WRAPPER.generate(
-                        prompts=prompt,
-                        sampling_params=SamplingParams(
-                            **req.sampling_params.model_dump()
-                        ),
-                        use_tqdm=False,
-                    )[0]
-                    .outputs[0]
-                    .text
-                )
-            return {"text": output}
+            prompt += "\nResponse: "
+            output = MODEL_WRAPPER.generate(
+                request_id="",
+                prompt=prompt,
+                sampling_params=SamplingParams(**req.sampling_params.model_dump()),
+            )
+            final_output = None
+            try:
+                async for request_output in output:
+                    final_output = request_output
+            except asyncio.CancelledError:
+                return Response(status_code=499)
+
+            assert final_output is not None
+            prompt = final_output.prompt
+            assert prompt is not None
+            text_outputs = [prompt + output.text for output in final_output.outputs]
+            return {"text": text_outputs}
         except Exception:
             return {"text": None}
 
 
-def verify_logprobs_random(
+async def verify_logprobs_random(
     temperature: float,
     seed: int,
     input_text: str,
@@ -171,6 +152,7 @@ def verify_logprobs_random(
     """
     Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
     """
+    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
     if len(output_sequence) < 4:
         return True, "Skipped random verification due to insufficient tokens"
 
@@ -202,15 +184,25 @@ def verify_logprobs_random(
     for idx in indices_to_check:
         full_text = input_text + "".join([item.text for item in output_sequence[0:idx]])
 
-        output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[
-            0
-        ].outputs[0]
+        output = MODEL_WRAPPER.generate(
+            full_text, sampling_params, request_id=random_uuid()
+        )
+        final_output = None
+        try:
+            async for request_output in output:
+                final_output = request_output
+        except asyncio.CancelledError:
+            return False, "Request Canceled"
+        assert final_output is not None
+        outputs = final_output.outputs[0]
 
         top_tokens = []
-        if output.logprobs is None:
+        if outputs.logprobs is None:
             continue
 
-        for lp in output.logprobs:
+        for lp in outputs.logprobs:
+            if lp is None:
+                continue
             top_tokens += list(lp.keys())
 
         if output_sequence[idx].token_id not in top_tokens:
@@ -221,7 +213,7 @@ def verify_logprobs_random(
     return True, success_msg
 
 
-def verify_logprobs(
+async def verify_logprobs(
     temperature: float,
     seed: int,
     max_tokens: int,
@@ -235,6 +227,7 @@ def verify_logprobs(
     Compare the produced logprob values against the ground truth, or at least
     the ground truth according to this particular GPU/software pairing.
     """
+    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
     # Set up sampling parameters
     top_logprobs = min(int(temperature * 10) + 6, 15)
     sampling_params_dict = {
@@ -254,7 +247,17 @@ def verify_logprobs(
     output = None
     for _ in range(5):
         full_text = input_text + "".join([item.text for item in output_sequence])
-        output = MODEL_WRAPPER.generate([full_text], sampling_params, use_tqdm=False)[0]
+        output = MODEL_WRAPPER.generate(
+            full_text, sampling_params, request_id=random_uuid()
+        )
+        final_output = None
+        try:
+            async for request_output in output:
+                final_output = request_output
+        except asyncio.CancelledError:
+            return None
+        assert final_output is not None
+        output = final_output
         if output.prompt_logprobs is not None:
             break
 
@@ -566,6 +569,7 @@ async def verify(request: VerificationRequest) -> Dict:
     reported_usage = Usage(**usage_data)
 
     # Tokenize the input sequence
+    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
     input_text = (
         request.request_params.prompt
         if request.request_type == RequestType.COMPLETION.value
@@ -611,7 +615,7 @@ async def verify(request: VerificationRequest) -> Dict:
             return return_value
 
         # Logprob checks
-        res = verify_logprobs(
+        res = await verify_logprobs(
             request.request_params.temperature,
             request.request_params.seed,
             request.request_params.max_tokens,
@@ -638,7 +642,7 @@ async def verify(request: VerificationRequest) -> Dict:
         if request.request_params.temperature > 0.75:
             return {"verified": True}
 
-        res = verify_logprobs_random(
+        res = await verify_logprobs_random(
             request.request_params.temperature,
             request.request_params.seed,
             str(input_text),
@@ -666,7 +670,12 @@ async def verify(request: VerificationRequest) -> Dict:
 
 
 @app.get("/metadata")
-def endpoints():
+async def endpoints():
+    ENDPOINTS = ["completion"]
+    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
+    if TOKENIZER.chat_template is not None:
+        ENDPOINTS.append("chat")
+
     return {"endpoints": ENDPOINTS, "max_model_len": model_config.max_model_len}
 
 
