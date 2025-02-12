@@ -281,7 +281,7 @@ async def verify_logprobs(
     for idx in range(idxs):
         item = output_sequence[idx]
 
-        expected_logprob = output.prompt_logprobs[idx + len(input_tokens) - 1]
+        expected_logprob = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob is not None
 
         eos_logprob = expected_logprob.get(eos_token_id)
@@ -296,9 +296,8 @@ async def verify_logprobs(
         ):
             eos_logprob = eot_logprob
 
-        if expected_logprob.get(item.token_id) is None:
-            print(f"{item=}, {expected_logprob}, {idx=}")
         expected_logprob = expected_logprob.get(item.token_id)
+        print(f"{item=}, {expected_logprob=}")
 
         token_text = TOKENIZER.decode([item.token_id])
 
