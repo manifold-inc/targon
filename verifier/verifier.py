@@ -296,6 +296,7 @@ async def verify_logprobs(
         ):
             eos_logprob = eot_logprob
 
+        print(f"{expected_logprob=}")
         expected_logprob = expected_logprob.get(item.token_id)
 
         token_text = TOKENIZER.decode([item.token_id])
@@ -618,10 +619,8 @@ async def verify(request: VerificationRequest) -> Dict:
 
         # Pops think character for r1
         if input_text.strip().endswith(output_sequence[1].text):
-            print(f"Popping token {output_sequence[1].text}")
             output_sequence.pop(1)
         if input_text.strip().endswith(output_sequence[0].text):
-            print(f"Popping token {output_sequence[0].text}")
             output_sequence.pop(0)
         # Logprob checks
         res = await verify_logprobs(
