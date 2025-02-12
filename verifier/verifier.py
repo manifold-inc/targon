@@ -649,6 +649,7 @@ async def verify(request: VerificationRequest) -> Dict:
 
         # Random logprob check
         if request.request_params.temperature > 0.75:
+            print("Verified Response")
             return {"verified": True}
 
         res = await verify_logprobs_random(
@@ -675,6 +676,7 @@ async def verify(request: VerificationRequest) -> Dict:
         if not result:
             return return_value
 
+        print("Verified Response")
         return {"verified": True, "input_tokens": len(input_tokens)}
 
 
