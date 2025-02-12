@@ -7,9 +7,9 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any, Union
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.utils import random_uuid
-from vllm import AsyncLLMEngine, SamplingParams
+from vllm.vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.vllm.utils import random_uuid
+from vllm.vllm import AsyncLLMEngine, SamplingParams
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -297,6 +297,7 @@ async def verify_logprobs(
             eos_logprob = eot_logprob
 
         expected_logprob = expected_logprob.get(item.token_id)
+        print(expected_logprob)
 
         token_text = TOKENIZER.decode([item.token_id])
 
@@ -425,9 +426,9 @@ def verify_usage(
     return True, "", ""
 
 
-def parse_token_id(token: str) -> Optional[int]:
+def parse_token_id(token: Optional[str]) -> Optional[int]:
     """Parse token string into token ID."""
-    if not token:
+    if token is None:
         return -1
 
     if token.startswith("token_id:"):
