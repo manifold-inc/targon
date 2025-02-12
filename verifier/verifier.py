@@ -282,7 +282,7 @@ async def verify_logprobs(
     for idx in range(idxs):
         item = output_sequence[idx]
 
-        expected_logprob_set = output.prompt_logprobs[idx + len(input_tokens) - 1]
+        expected_logprob_set = output.prompt_logprobs[idx + len(input_tokens)]
         assert expected_logprob_set is not None
 
         eos_logprob = expected_logprob_set.get(eos_token_id)
