@@ -296,7 +296,6 @@ async def verify_logprobs(
         ):
             eos_logprob = eot_logprob
 
-        print(f"{expected_logprob=}, {item=}")
         expected_logprob = expected_logprob.get(item.token_id)
 
         token_text = TOKENIZER.decode([item.token_id])
