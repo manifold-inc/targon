@@ -7,9 +7,9 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any, Union
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.utils import random_uuid
-from vllm import AsyncLLMEngine, SamplingParams
+from vllm.vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.vllm.utils import random_uuid
+from vllm.vllm import AsyncLLMEngine, SamplingParams
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -256,6 +256,7 @@ async def verify_logprobs(
             async for request_output in output:
                 final_output = request_output
         except asyncio.CancelledError:
+            print("Asyncio Canceled")
             return None
         assert final_output is not None
         output = final_output
@@ -263,6 +264,7 @@ async def verify_logprobs(
             break
 
     if not output or output.prompt_logprobs is None:
+        print("Output or prompt logprobs is None")
         return None
 
     # The actual logprobs should be very close but not 100% due to GPU/driver differences
