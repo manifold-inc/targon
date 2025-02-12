@@ -228,7 +228,7 @@ async def verify_logprobs(
     """
     TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
     # Set up sampling parameters
-    top_logprobs = min(int(temperature * 10) + 6, 15)
+    top_logprobs = 15
     sampling_params_dict = {
         "temperature": temperature,
         "seed": seed,
@@ -296,8 +296,9 @@ async def verify_logprobs(
         ):
             eos_logprob = eot_logprob
 
+        if expected_logprob.get(item.token_id) is None:
+            print(f"{item=}, {expected_logprob}, {idx=}")
         expected_logprob = expected_logprob.get(item.token_id)
-        print(expected_logprob)
 
         token_text = TOKENIZER.decode([item.token_id])
 
