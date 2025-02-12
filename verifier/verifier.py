@@ -7,10 +7,9 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any, Union
-
-# TODO
-from verifier.vllm.vllm.utils import random_uuid
-from vllm.vllm import AsyncLLMEngine, SamplingParams
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.utils import random_uuid
+from vllm import AsyncLLMEngine, SamplingParams
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -25,14 +24,16 @@ PIPELINE_PARALLEL = int(os.getenv("PIPELINE_PARALLEL", 1))
 CONTEXT_LENGTH = os.getenv("CONTEXT_LENGTH", None)
 if CONTEXT_LENGTH != None:
     CONTEXT_LENGTH = int(CONTEXT_LENGTH)
-MODEL_WRAPPER = AsyncLLMEngine(
-    model=MODEL_NAME,
-    enforce_eager=True,
-    gpu_memory_utilization=0.9,
-    tensor_parallel_size=TENSOR_PARALLEL,
-    trust_remote_code=True,
-    pipeline_parallel_size=PIPELINE_PARALLEL,
-    max_model_len=CONTEXT_LENGTH,
+MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
+    AsyncEngineArgs(
+        model=MODEL_NAME,
+        enforce_eager=True,
+        gpu_memory_utilization=0.9,
+        tensor_parallel_size=TENSOR_PARALLEL,
+        trust_remote_code=True,
+        pipeline_parallel_size=PIPELINE_PARALLEL,
+        max_model_len=CONTEXT_LENGTH,
+    )
 )
 model_config = MODEL_WRAPPER.engine.model_config
 
