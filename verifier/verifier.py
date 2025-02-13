@@ -626,6 +626,7 @@ async def verify(request: VerificationRequest) -> Dict:
         # Random logprob check
         if request.request_params.temperature > 0.75:
             print("Verified Response")
+            MODEL_WRAPPER.engine.reset_prefix_cache()
             return {
                 "verified": True,
                 "response_tokens": len([o for o in output_sequence if o.text != ""]),
@@ -657,6 +658,7 @@ async def verify(request: VerificationRequest) -> Dict:
             return return_value
 
         print("Verified Response")
+        MODEL_WRAPPER.engine.reset_prefix_cache()
         return {
             "verified": True,
             "input_tokens": len(input_tokens),
