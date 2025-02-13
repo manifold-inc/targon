@@ -2,11 +2,13 @@ import random
 import os
 import asyncio
 import json
+import sys
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any, Union
 from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.engine.async_llm_engine import AsyncEngineDeadError
 from vllm.utils import random_uuid
 from vllm import AsyncLLMEngine, SamplingParams
 import gc
@@ -32,7 +34,7 @@ MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
         tensor_parallel_size=TENSOR_PARALLEL,
         trust_remote_code=True,
         enable_chunked_prefill=False,
-        enforce_eager=True
+        enforce_eager=True,
     )
 )
 model_config = MODEL_WRAPPER.engine.model_config
@@ -506,6 +508,15 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
 
 
 @app.post("/verify")
+async def verify_wrapper(request: VerificationRequest) -> Dict:
+    res = {}
+    try:
+        res = await verify(request)
+    except AsyncEngineDeadError:
+        sys.exit()
+    return res
+
+
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
     output_sequence: List[OutputItem] = []
