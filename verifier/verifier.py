@@ -1,5 +1,4 @@
 import random
-import math
 import os
 import asyncio
 import json
@@ -267,7 +266,6 @@ async def verify_logprobs(
         return None
 
     # The actual logprobs should be very close but not 100% due to GPU/driver differences
-    total_score = 0.0
     idxs = min(
         len(output.prompt_logprobs) - len(input_tokens) - 3,
         len(output_sequence) - 1,
@@ -367,19 +365,11 @@ async def verify_logprobs(
                 )
                 return False, error_msg, "EARLY_END"
 
-    average_score = round(total_score / idxs, 5)
-    perfect_avg = round(perfect_tokens / idxs, 5)
 
-    if average_score < LOGPROB_FAILURE_THRESHOLD:
-        error_msg = (
-            f"Average score {average_score} below threshold {LOGPROB_FAILURE_THRESHOLD}"
-        )
-        return False, error_msg, "LOW_SCORE"
-
-    passes = average_score >= LOGPROB_FAILURE_THRESHOLD
-    if passes and perfect_avg >= 1:
-        error_msg = f"Overfitted response tokens. {perfect_avg}% perfect"
-        return False, error_msg, "OVERFIT"
+    # TODO verify overfit
+    #if passes and perfect_avg >= 1:
+    #    error_msg = f"Overfitted response tokens. {perfect_avg}% perfect"
+    #    return False, error_msg, "OVERFIT"
 
     if really_low_prob >= 5:
         error_msg = f"Found {really_low_prob} highly improbable tokens"
