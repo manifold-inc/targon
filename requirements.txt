@@ -1,4 +1,4 @@
-bittensor==8.5.1
+bittensor==9.0.0
 pandas==2.2.2
 datasets==3.2.0
 huggingface_hub==0.27.0
