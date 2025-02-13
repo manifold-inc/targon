@@ -9,6 +9,8 @@ from typing import Dict, List, Optional, Tuple, Any, Union
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.utils import random_uuid
 from vllm import AsyncLLMEngine, SamplingParams
+import gc
+import torch
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -26,7 +28,7 @@ if CONTEXT_LENGTH != None:
 MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
     AsyncEngineArgs(
         model=MODEL_NAME,
-        gpu_memory_utilization=0.9,
+        gpu_memory_utilization=0.8,
         tensor_parallel_size=TENSOR_PARALLEL,
         trust_remote_code=True,
         enable_chunked_prefill=False,
@@ -627,6 +629,9 @@ async def verify(request: VerificationRequest) -> Dict:
         if request.request_params.temperature > 0.75:
             print("Verified Response")
             MODEL_WRAPPER.engine.reset_prefix_cache()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            gc.collect()
             return {
                 "verified": True,
                 "response_tokens": len([o for o in output_sequence if o.text != ""]),
@@ -659,6 +664,9 @@ async def verify(request: VerificationRequest) -> Dict:
 
         print("Verified Response")
         MODEL_WRAPPER.engine.reset_prefix_cache()
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        gc.collect()
         return {
             "verified": True,
             "input_tokens": len(input_tokens),
