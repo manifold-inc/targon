@@ -35,8 +35,8 @@ MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
         trust_remote_code=True,
         enable_chunked_prefill=False,
         max_model_len=CONTEXT_LENGTH,
-        max_num_batched_tokens=CONTEXT_LENGTH
-        #max_num_seqs=
+        max_num_batched_tokens=CONTEXT_LENGTH,
+        max_num_seqs=32
     )
 )
 model_config = MODEL_WRAPPER.engine.model_config
