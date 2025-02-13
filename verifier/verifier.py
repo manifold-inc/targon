@@ -33,7 +33,7 @@ MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
         gpu_memory_utilization=0.95,
         tensor_parallel_size=TENSOR_PARALLEL,
         trust_remote_code=True,
-        max_num_batched_tokens=16000,
+        max_num_batched_tokens=2048,
         max_num_seqs=32
     )
 )
