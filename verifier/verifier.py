@@ -278,11 +278,11 @@ async def verify_logprobs(
     output_tokens = [item.token_id for item in output_sequence]
     really_low_prob = 0
     not_first = 0
-
+    assert output.prompt_token_ids
     for idx in range(idxs):
-        item = output_sequence[idx]
 
         expected_logprob_set = output.prompt_logprobs[idx + len(input_tokens)]
+        token_id = output.prompt_token_ids[idx + len(input_tokens)]
         assert expected_logprob_set is not None
 
         eos_logprob = expected_logprob_set.get(eos_token_id)
@@ -297,9 +297,9 @@ async def verify_logprobs(
         ):
             eos_logprob = eot_logprob
 
-        expected_logprob = expected_logprob_set.get(item.token_id)
+        expected_logprob = expected_logprob_set.get(token_id)
 
-        token_text = TOKENIZER.decode([item.token_id])
+        token_text = TOKENIZER.decode([token_id])
 
         if eos_logprob and (
             not expected_logprob
@@ -333,21 +333,10 @@ async def verify_logprobs(
             not_first += 1
 
         expected_logprob = expected_logprob.logprob
-        produced_logprob = item.logprob
-        score = 1.0 - min(
-            1.0, abs(math.exp(expected_logprob) - math.exp(produced_logprob))
-        )
 
-        if produced_logprob == 0:
+        if expected_logprob == 0:
             perfect_tokens += 1
 
-        if score >= 0.9:
-            score = 1.0
-
-        if rank == 1 and temperature >= 0.9 and produced_logprob != 0:
-            score = 1.0
-
-        total_score += score
 
     # Check if miner produced non-top ranking tokens more than top-ranking tokens
     ratio = not_first / len(output_tokens)
