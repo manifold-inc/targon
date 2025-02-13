@@ -31,7 +31,8 @@ MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
         gpu_memory_utilization=0.9,
         tensor_parallel_size=TENSOR_PARALLEL,
         trust_remote_code=True,
-        enable_chunked_prefill=True,
+        enable_chunked_prefill=False,
+        enforce_eager=True
     )
 )
 model_config = MODEL_WRAPPER.engine.model_config
