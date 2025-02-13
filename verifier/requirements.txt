@@ -3,3 +3,6 @@ fastapi==0.115.0
 numpy
 openai==1.52.0
 uvicorn==0.30.6
+sgl-kernel==0.0.1
+#TODO
+sglang==
