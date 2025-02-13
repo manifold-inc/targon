@@ -366,10 +366,10 @@ async def verify_logprobs(
                 return False, error_msg, "EARLY_END"
 
 
-    # TODO verify overfit
-    #if passes and perfect_avg >= 1:
-    #    error_msg = f"Overfitted response tokens. {perfect_avg}% perfect"
-    #    return False, error_msg, "OVERFIT"
+    perfect_avg = round(perfect_tokens / idxs, 5)
+    if perfect_avg >= 1:
+        error_msg = f"Overfitted response tokens. {perfect_avg}% perfect"
+        return False, error_msg, "OVERFIT"
 
     if really_low_prob >= 5:
         error_msg = f"Found {really_low_prob} highly improbable tokens"
