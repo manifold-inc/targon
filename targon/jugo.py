@@ -164,7 +164,7 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                 tps = 0
                 if verified:
                     try:
-                        response_tokens_count = int(record.get("response_tokens", 0))
+                        response_tokens_count = int(res.get("response_tokens", 0))
 
                         # This shouldnt happen
                         if response_tokens_count == 0:

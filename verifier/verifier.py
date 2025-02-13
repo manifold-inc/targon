@@ -26,10 +26,10 @@ if CONTEXT_LENGTH != None:
 MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
     AsyncEngineArgs(
         model=MODEL_NAME,
-        enforce_eager=True,
         gpu_memory_utilization=0.9,
         tensor_parallel_size=TENSOR_PARALLEL,
         trust_remote_code=True,
+        enable_chunked_prefill=False,
     )
 )
 model_config = MODEL_WRAPPER.engine.model_config
@@ -278,7 +278,6 @@ async def verify_logprobs(
     not_first = 0
     assert output.prompt_token_ids
     for idx in range(idxs):
-
         expected_logprob_set = output.prompt_logprobs[idx + len(input_tokens)]
         token_id = output.prompt_token_ids[idx + len(input_tokens)]
         assert expected_logprob_set is not None
@@ -335,7 +334,6 @@ async def verify_logprobs(
         if expected_logprob == 0:
             perfect_tokens += 1
 
-
     # Check if miner produced non-top ranking tokens more than top-ranking tokens
     ratio = not_first / len(output_tokens)
     if ratio >= 0.5:
@@ -364,7 +362,6 @@ async def verify_logprobs(
                     "Premature end of generation, EOS/EOT unlikely after last token"
                 )
                 return False, error_msg, "EARLY_END"
-
 
     perfect_avg = round(perfect_tokens / idxs, 5)
     if perfect_avg >= 1:
@@ -629,7 +626,11 @@ async def verify(request: VerificationRequest) -> Dict:
         # Random logprob check
         if request.request_params.temperature > 0.75:
             print("Verified Response")
-            return {"verified": True}
+            return {
+                "verified": True,
+                "response_tokens": len([o for o in output_sequence if o.text != ""]),
+                "input_tokens": len(input_tokens),
+            }
 
         res = await verify_logprobs_random(
             request.request_params.temperature,
@@ -656,7 +657,11 @@ async def verify(request: VerificationRequest) -> Dict:
             return return_value
 
         print("Verified Response")
-        return {"verified": True, "input_tokens": len(input_tokens)}
+        return {
+            "verified": True,
+            "input_tokens": len(input_tokens),
+            "response_tokens": len([o for o in output_sequence if o.text != ""]),
+        }
 
 
 @app.get("/metadata")
