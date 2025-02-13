@@ -30,15 +30,16 @@ if CONTEXT_LENGTH != None:
 MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
     AsyncEngineArgs(
         model=MODEL_NAME,
-        gpu_memory_utilization=0.9,
+        gpu_memory_utilization=0.95,
         tensor_parallel_size=TENSOR_PARALLEL,
         trust_remote_code=True,
         enable_chunked_prefill=False,
-        enforce_eager=True,
+        max_model_len=CONTEXT_LENGTH,
+        max_num_batched_tokens=CONTEXT_LENGTH
+        #max_num_seqs=
     )
 )
 model_config = MODEL_WRAPPER.engine.model_config
-MODEL_WRAPPER.engine.scheduler_config.chunked_prefill_enabled = False
 
 # Lock to ensure atomicity.
 LOCK = asyncio.Lock()
