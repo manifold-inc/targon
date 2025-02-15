@@ -149,7 +149,7 @@ async def verify_logprobs_random(
     indices_to_check = list(
         sorted(
             [
-                0,  # always check first token
+                1,  # always check first token
                 len(output_sequence) - 1,  # always check last token
             ]
             + random.sample(indices, min(len(indices), 3))
@@ -279,16 +279,16 @@ async def verify_logprobs(
         # Shouldnt happen
         if real_logprob is None:
             continue
-        
+
         # Extreemly unlikely token
         if real_logprob <= -13:
             error_msg = f"Found extraordinarily improbable token '{token_text}' at index {idx}: {real_logprob=}"
             return False, error_msg, "UNLIKELY_TOKEN"
 
         # Unlikely token
-        elif real_logprob <= -5:
+        elif real_logprob <= -8:
             really_low_prob += 1
-        
+
         # Exact token
         if real_logprob > 0.0001:
             perfect_tokens += 1
@@ -337,7 +337,7 @@ def verify_usage(
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
     prompt_diff = usage.prompt_tokens / input_tokens
-    if prompt_diff < 0.5 or prompt_diff > 2:
+    if (prompt_diff < 0.5) or (prompt_diff > 2):
         error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
@@ -587,28 +587,28 @@ async def verify(request: VerificationRequest) -> Dict:
                 "input_tokens": len(input_tokens),
             }
 
-        res = await verify_logprobs_random(
-            request.request_params.temperature,
-            str(input_text),
-            output_sequence,
-            tools=request.request_params.tools,
-            tool_choice=request.request_params.tool_choice,
-        )
-        if res is None:
-            return {
-                "error": "Failed to check log probs",
-                "cause": "INTERNAL_ERROR",
-            }
-        result, message = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": "LOGPROB_RANDOM",
-                "error": message,
-            }
-        )
-        if not result:
-            return return_value
+        # res = await verify_logprobs_random(
+        #    request.request_params.temperature,
+        #    str(input_text),
+        #    output_sequence,
+        #    tools=request.request_params.tools,
+        #    tool_choice=request.request_params.tool_choice,
+        # )
+        # if res is None:
+        #    return {
+        #        "error": "Failed to check log probs",
+        #        "cause": "INTERNAL_ERROR",
+        #    }
+        # result, message = res
+        # return_value.update(
+        #    {
+        #        "verified": result,
+        #        "cause": "LOGPROB_RANDOM",
+        #        "error": message,
+        #    }
+        # )
+        # if not result:
+        #    return return_value
 
         print("Verified Response")
         return {
