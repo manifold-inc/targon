@@ -448,7 +448,7 @@ class Validator(BaseNeuron):
             stat.tps = (
                 min(
                     len(stat.tokens),
-                    request["response_tokens"],
+                    request["max_tokens"],
                     int(verified.get("response_tokens", 0)),
                 )
                 / stat.total_time
