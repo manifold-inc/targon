@@ -257,8 +257,6 @@ async def verify_logprobs(
         return None
     assert final_output is not None
     output = final_output
-    if output.prompt_logprobs is not None:
-        return None
 
     if not output or output.prompt_logprobs is None:
         print("Output or prompt logprobs is None")
@@ -298,7 +296,7 @@ async def verify_logprobs(
         token_text = TOKENIZER.decode([token_id])
 
         if eos_logprob is not None and (
-            expected_logprob is None 
+            expected_logprob is None
             or (
                 eos_logprob.rank is not None
                 and expected_logprob.rank is not None
@@ -641,7 +639,7 @@ async def verify(request: VerificationRequest) -> Dict:
         )
         if res is None:
             return {
-                "error": "Failed to check log probs",
+                "error": "Failed to check random log probs",
                 "cause": "INTERNAL_ERROR",
             }
         result, message = res
