@@ -1,4 +1,5 @@
 import os
+import json
 from datasets import load_dataset
 import logging
 import random
@@ -34,13 +35,13 @@ then provide the response to the query. You should always respond in English.
     match endpoint:
         case Endpoints.CHAT:
             messages: Iterable[ChatCompletionMessageParam] = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": query},
+                {"role": "system", "content": json.dumps(system_message)},
+                {"role": "user", "content": json.dumps(query)},
             ]
             return {"messages": messages}
         case Endpoints.COMPLETION:
-            prompt: str = f"""{system_message}\n\n{query}"""
-            return {"prompt": prompt}
+            prompt: str = f"{system_message}\n\n{query}"
+            return {"prompt": json.dumps(prompt)}
         case _:
             raise Exception("Unknown Endpoint")
 
