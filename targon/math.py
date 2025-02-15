@@ -17,6 +17,11 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
     return norm_arr
 
 
+def normalize_to_sum(arr, t=1.0):
+    total = sum(arr)
+    return [(i * t) / total for i in arr]
+
+
 def sigmoid(num):
     return 1 / (1 + exp(-((num - 0.5) / 0.1)))
 
@@ -47,6 +52,9 @@ def get_weights(
             total_synthetics += len([o for o in organic if o != 0])
 
     for uid in miner_tps:
+        # Burn key
+        if uid == 216:
+            continue
         tps[uid] = 0
         if (organic := organics.get(uid)) is not None:
             # Boost miners for doing more organics
@@ -75,6 +83,9 @@ def get_weights(
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
         return [], []
-    raw_weights = normalize(rewards)
+    raw_weights = normalize_to_sum(rewards, 0.1)
+    raw_weights.append(.9)
+    uids.append(216)
     bt.logging.info(f"Raw Weights: {raw_weights}")
+
     return uids, raw_weights
