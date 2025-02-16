@@ -445,14 +445,11 @@ class Validator(BaseNeuron):
             verified.get("verified", False) if verified is not None else False
         )
         if stat.verified:
-            stat.tps = (
-                min(
-                    len(stat.tokens),
-                    request["max_tokens"],
-                    int(verified.get("response_tokens", 0)),
-                )
-                / stat.total_time
-            )
+            tokencount = min(len(stat.tokens), request["max_tokens"])
+            response_tokens = int(verified.get("response_tokens", 0))
+            if response_tokens:
+                tokencount = min(tokencount, response_tokens)
+            stat.tps = tokencount / stat.total_time
         if stat.error is None and not stat.verified:
             stat.error = verified.get("error")
             stat.cause = verified.get("cause")

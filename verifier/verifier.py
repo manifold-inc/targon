@@ -656,8 +656,8 @@ async def verify(request: VerificationRequest) -> Dict:
         print("Verified Response")
         return {
             "verified": True,
-            "input_tokens": len(input_tokens),
             "response_tokens": len([o for o in output_sequence if o.text != ""]),
+            "input_tokens": len(input_tokens),
         }
 
 
