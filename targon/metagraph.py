@@ -40,7 +40,7 @@ def resync_hotkeys(metagraph: "bt.metagraph", miner_tps: Dict):
             miner_tps[uid] = {}
 
 
-def create_set_weights(version: int, netuid):
+def create_set_weights(version: int, netuid: int):
     @fail_with_none("Failed setting weights")
     def set_weights(
         wallet: "bt.wallet",

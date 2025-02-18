@@ -71,7 +71,7 @@ class Validator(BaseNeuron):
     def __init__(self, config=None, run_init=True):
         super().__init__(config)
         ## Typesafety
-        self.set_weights = create_set_weights(spec_version, self.config.netuid)
+        self.set_weights = create_set_weights(spec_version, 4)
 
         ## CHECK IF REGG'D
         if not self.metagraph.validator_permit[self.uid] and not IS_TESTNET:
