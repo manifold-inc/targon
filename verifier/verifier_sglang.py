@@ -583,6 +583,7 @@ async def verify(request: VerificationRequest) -> Dict:
             print("Verified Response")
             return {
                 "verified": True,
+                "gpus": TENSOR_PARALLEL,
                 "response_tokens": len([o for o in output_sequence if o.text != ""]),
                 "input_tokens": len(input_tokens),
             }
@@ -615,6 +616,7 @@ async def verify(request: VerificationRequest) -> Dict:
             "verified": True,
             "input_tokens": len(input_tokens),
             "response_tokens": len([o for o in output_sequence if o.text != ""]),
+            "gpus": TENSOR_PARALLEL,
         }
 
 

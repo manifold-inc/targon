@@ -178,7 +178,12 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                         context_modifier = 1 + min(
                             (((total_input_tokens / 2400) ** 2) / 1000), 1
                         )
-                        scores[uid][model].append(min(tps * 10, 500) * context_modifier)
+                        score = min(tps * 10, 500) * context_modifier
+                        gpu_required = res.get("gpus", 1)
+                        if gpu_required > 8:
+                            # Large models get more weight, a lot more.
+                            score = score * 10
+                        scores[uid][model].append(score)
                     except Exception as e:
                         bt.logging.error(f"Error scoring record {pub_id}: {e}")
                         continue
