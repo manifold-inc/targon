@@ -54,7 +54,7 @@ def get_weights(
             for orgs in organic.values():
                 self_total += len(orgs)
                 tps[uid] += safe_mean_score(orgs)
-            tps[uid] = tps[uid] * ((self_total / total_synthetics) + 1)
+            tps[uid] = (tps[uid] * ((self_total / total_synthetics) + 1)) * 3
         for model in miner_models.get(uid, []):
             if model not in models:
                 continue
