@@ -180,7 +180,7 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                         )
                         score = min(tps * 10, 500) * context_modifier
                         gpu_required = res.get("gpus", 1)
-                        if gpu_required > 8:
+                        if gpu_required >= 8:
                             # Large models get more weight, a lot more.
                             score = score * 10
                         scores[uid][model].append(score)
