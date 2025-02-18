@@ -35,7 +35,7 @@ def safe_mean_score(data):
 def get_weights(
     miner_models: Dict[int, List[str]],
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]],
-    organics: Dict[int, list[int]],
+    organics: Dict[int, Dict[str, list[int]]],
     models: List[str],  # Validator Models
 ) -> Tuple[List[int], List[float]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
@@ -44,16 +44,17 @@ def get_weights(
     total_synthetics = 0
     for uid in miner_tps:
         if (organic := organics.get(uid)) is not None:
-            total_synthetics += len([o for o in organic if o != 0])
+            total_synthetics += sum([len(o) for o in organic.values()])
 
     for uid in miner_tps:
         tps[uid] = 0
         if (organic := organics.get(uid)) is not None:
             # Boost miners for doing more organics
-            successfull_organics = len([o for o in organic if o != 0])
-            tps[uid] = safe_mean_score(organic) * (
-                (successfull_organics / total_synthetics) + 1
-            )
+            self_total = 0
+            for orgs in organic.values():
+                self_total += len(orgs)
+                tps[uid] += safe_mean_score(orgs)
+            tps[uid] = tps[uid] * ((self_total / total_synthetics) + 1)
         for model in miner_models.get(uid, []):
             if model not in models:
                 continue

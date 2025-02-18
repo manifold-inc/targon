@@ -133,10 +133,10 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                 pub_id = record.get("pub_id", "")
                 uid = record["uid"]
                 if scores.get(uid) is None:
-                    scores[uid] = []
+                    scores[uid] = {}
+                if scores[uid].get(model) is None:
+                    scores[uid][model] = []
                 if not record["success"] or len(record["response"]) < 2:
-                    bt.logging.info(f"UID {uid} {pub_id}: Marking failed request")
-                    scores[uid].append(0)
                     continue
 
                 port = ports.get(model, {}).get("port")
@@ -176,7 +176,7 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                         context_modifier = 1 + min(
                             (((total_input_tokens / 2400) ** 2) / 1000), 1
                         )
-                        scores[uid].append(min(tps * 10, 500) * context_modifier)
+                        scores[uid][model].append(min(tps * 10, 500) * context_modifier)
                     except Exception as e:
                         bt.logging.error(f"Error scoring record {pub_id}: {e}")
                         continue
