@@ -136,7 +136,9 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                     scores[uid] = {}
                 if scores[uid].get(model) is None:
                     scores[uid][model] = []
-                if not record["success"] or len(record["response"]) < 2:
+                if record.get("response") is None:
+                    continue
+                if not record.get("success") or len(record.get("response", [])) < 2:
                     continue
 
                 port = ports.get(model, {}).get("port")
