@@ -674,3 +674,4 @@ async def endpoints():
 @app.get("/")
 def ping():
     return "", 200
+

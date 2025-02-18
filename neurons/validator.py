@@ -5,7 +5,6 @@ import sys
 from threading import Thread
 from time import sleep
 
-from asyncpg.connection import asyncpg
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 import httpx
 from substrateinterface import SubstrateInterface
@@ -54,7 +53,6 @@ class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
     miner_models: Dict[int, List[str]]
-    db: Optional[asyncpg.Connection]
     verification_ports: Dict[str, Dict[str, Any]]
     models: List[str]
     lock_waiting = False
@@ -104,16 +102,6 @@ class Validator(BaseNeuron):
         bt.logging.info("⌛️", "Loading datasets")
         self.dataset = download_dataset()
         self.tool_dataset = download_tool_dataset()
-
-        ## CONNECT TO ORGANICS DB
-        try:
-            self.db = None
-            if self.config.database.url:
-                self.db = self.loop.run_until_complete(
-                    asyncpg.connect(self.config.database.url)
-                )
-        except Exception as e:
-            bt.logging.error(f"Failed to initialize organics database: {e}")
 
         ## REGISTER BLOCK CALLBACKS
         self.block_callbacks.extend(
@@ -553,9 +541,7 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Failed writing to cache file: {e}")
 
     def shutdown(self):
-        if self.db:
-            bt.logging.info("Closing organics db connection")
-            self.loop.run_until_complete(self.db.close())
+        pass
 
     def get_models(self) -> Tuple[List[Dict[str, Any]], List[str]]:
         """
