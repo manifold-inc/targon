@@ -59,4 +59,4 @@ class VerificationPortsConfig(BaseModel):
 
 class Config(BaseModel):
     verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None
-    set_weights_on_start: Optional[bool]
+    set_weights_on_start: Optional[bool] = False
