@@ -252,7 +252,7 @@ def load_existing_images(
     client: docker.DockerClient,
     config: Optional[Config],
 ):
-    containers: List[Container] = client.containers.list(filters={"label": "model"}, all=True)  # type: ignore
+    containers: List[Container] = client.containers.list(filters={"label": "model"})  # type: ignore
     verification_ports = {}
     for c in containers:
         verification_ports[c.labels["model"]] = {
@@ -270,4 +270,4 @@ def load_existing_images(
                 "endpoints": [Endpoints(e.upper()) for e in v.endpoints],
             }
         verification_ports = verification_ports | extra_ports
-    return verification_ports
+    return len(containers) != 0, verification_ports

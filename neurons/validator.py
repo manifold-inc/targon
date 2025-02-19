@@ -290,10 +290,10 @@ class Validator(BaseNeuron):
         self.models = list(set([m["model"] for m in models] + extra))
         try:
             self.lock_halt = True
-            self.verification_ports = load_existing_images(
+            existing, self.verification_ports = load_existing_images(
                 self.client, self.config_file
             )
-            if len(self.verification_ports.keys()) == 0:
+            if not existing:
                 self.verification_ports = sync_output_checkers(
                     self.client, models, self.config_file, extra
                 )
