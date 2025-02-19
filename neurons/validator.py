@@ -231,7 +231,7 @@ class Validator(BaseNeuron):
             return
         bt.logging.info("Sending organics to jugo")
         asyncio.run(send_organics_to_jugo(self.wallet, organic_stats))
-        bt.logging.info("Sent organics to jugp")
+        bt.logging.info("Sent organics to jugo")
 
     def set_weights_on_interval(self, block):
         if block % self.config.epoch_length:
@@ -239,6 +239,7 @@ class Validator(BaseNeuron):
         self.lock_halt = True
         while not self.lock_waiting:
             sleep(1)
+        self.subtensor.substrate = self.substrate  # type: ignore
         self.set_weights(
             self.wallet,
             self.metagraph,
