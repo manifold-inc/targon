@@ -301,6 +301,7 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Failed starting up output checkers: {e}")
         finally:
             self.lock_halt = False
+        bt.logging.info(str(self.verification_ports))
         resync_hotkeys(self.metagraph, self.miner_tps)
         self.send_models_to_miners_on_interval(0)
 
