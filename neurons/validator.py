@@ -19,7 +19,7 @@ from targon.config import (
     get_models_from_endpoint,
 )
 from targon.dataset import download_dataset, download_tool_dataset
-from targon.docker import load_docker, sync_output_checkers
+from targon.docker import load_docker, load_existing_images, sync_output_checkers
 from targon.epistula import generate_header
 from targon.jugo import score_organics, send_organics_to_jugo, send_stats_to_jugo
 from targon.math import get_weights
@@ -290,9 +290,15 @@ class Validator(BaseNeuron):
         self.models = list(set([m["model"] for m in models] + extra))
         try:
             self.lock_halt = True
-            self.verification_ports = sync_output_checkers(
-                self.client, models, self.config_file, extra
+            self.verification_ports = load_existing_images(
+                self.client, self.config_file
             )
+            if len(self.verification_ports.keys()) == 0:
+                self.verification_ports = sync_output_checkers(
+                    self.client, models, self.config_file, extra
+                )
+        except Exception as e:
+            bt.logging.error(f"Failed starting up output checkers: {e}")
         finally:
             self.lock_halt = False
         resync_hotkeys(self.metagraph, self.miner_tps)

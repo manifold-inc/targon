@@ -50,12 +50,13 @@ class OrganicStats(InferenceStats):
     total_tokens: int
     pub_id: str
 
+
 class VerificationPortsConfig(BaseModel):
     port: int
     url: str
     endpoints: List[str]
-    max_model_len: Optional[int] = 2048
 
 
 class Config(BaseModel):
     verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None
+    set_weights_on_start: Optional[bool]

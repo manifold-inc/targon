@@ -109,7 +109,7 @@ def sync_output_checkers(
     client: docker.DockerClient,
     models: List[Dict[str, Any]],
     config: Optional[Config],
-    extra: List[str],
+    skiped_models: List[str],
 ) -> Dict[str, Dict[str, Any]]:
     # Get new image hash (if any)
     image_name = f"{MANIFOLD_VERIFIER}:{IMAGE_TAG}"
@@ -132,7 +132,7 @@ def sync_output_checkers(
     # Load all models
     bt.logging.info(f"Starting subset of {list(models)}")
     for model in models:
-        if model["model"] in extra:
+        if model["model"] in skiped_models:
             continue
         container_name = re.sub(r"[\W_]", "-", model["model"]).lower()
 
@@ -226,9 +226,6 @@ def sync_output_checkers(
                 endpoints = [Endpoints(e.upper()) for e in metadata["endpoints"]]
                 verification_ports[model["model"]]["endpoints"] = endpoints
                 verification_ports[model["model"]]["url"] = "http://localhost"
-                verification_ports[model["model"]]["max_model_len"] = metadata.get(
-                    "max_model_len", 2048
-                )
                 break
             bt.logging.info("Checking again in 5 seconds")
             sleep(5)
@@ -240,7 +237,6 @@ def sync_output_checkers(
                 "url": v.url,
                 "port": v.port,
                 "endpoints": [Endpoints(e.upper()) for e in v.endpoints],
-                "max_model_len": v.max_model_len,
             }
         verification_ports = verification_ports | extra_ports
 
@@ -249,4 +245,29 @@ def sync_output_checkers(
     if len(list(verification_ports.keys())) == 0:
         bt.logging.error("No verification ports")
         exit()
+    return verification_ports
+
+
+def load_existing_images(
+    client: docker.DockerClient,
+    config: Optional[Config],
+):
+    containers: List[Container] = client.containers.list(filters={"label": "model"}, all=True)  # type: ignore
+    verification_ports = {}
+    for c in containers:
+        verification_ports[c.labels["model"]] = {
+            "port": int(c.labels["port"]),
+            "endpoints": [Endpoints.COMPLETION], # just for startup
+            "url": "http://localhost",
+        }
+
+    if config and config.verification_ports:
+        extra_ports = {}
+        for k, v in config.verification_ports.items():
+            extra_ports[k] = {
+                "url": v.url,
+                "port": v.port,
+                "endpoints": [Endpoints(e.upper()) for e in v.endpoints],
+            }
+        verification_ports = verification_ports | extra_ports
     return verification_ports

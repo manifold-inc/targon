@@ -670,7 +670,7 @@ async def endpoints():
     if TOKENIZER.chat_template is not None:
         ENDPOINTS.append("chat")
 
-    return {"endpoints": ENDPOINTS, "max_model_len": model_config.max_model_len}
+    return {"endpoints": ENDPOINTS}
 
 
 @app.get("/")
