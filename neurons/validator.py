@@ -309,15 +309,16 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Failed starting up output checkers: {e}")
         finally:
             self.lock_halt = False
+        bt.logging.info(str(self.verification_ports))
+        resync_hotkeys(self.metagraph, self.miner_tps)
+        self.send_models_to_miners_on_interval(0)
+
         if self.config_file and self.config_file.set_weights_on_start:
             try:
                 self.set_weights_on_interval(0)
                 self.skip_next_weightset = True
             except Exception as e:
                 bt.logging.error(f"Failed setting weights on startup: {str(e)}")
-        bt.logging.info(str(self.verification_ports))
-        resync_hotkeys(self.metagraph, self.miner_tps)
-        self.send_models_to_miners_on_interval(0)
 
         self.is_runing = True
         while not self.exit_context.isExiting:
