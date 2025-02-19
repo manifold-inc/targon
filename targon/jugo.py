@@ -131,7 +131,7 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
         for model, records in organics.items():
             for record in records:
                 pub_id = record.get("pub_id", "")
-                uid = record["uid"]
+                uid = str(record["uid"])
                 if scores.get(uid) is None:
                     scores[uid] = {}
                 if scores[uid].get(model) is None:
@@ -202,7 +202,7 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                         max_tokens=record.get("request").get("max_tokens"),
                         seed=record.get("request").get("seed"),
                         temperature=record.get("request").get("temperature"),
-                        uid=uid,
+                        uid=int(uid),
                         hotkey=record.get("hotkey"),
                         coldkey=record.get("coldkey"),
                         endpoint=record.get("endpoint"),

@@ -9,7 +9,7 @@ from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
-from targon.cache import load_cache
+from targon.cache import load_cache, load_organics, save_organics
 from targon.config import (
     AUTO_UPDATE,
     HEARTBEAT,
@@ -65,6 +65,7 @@ class Validator(BaseNeuron):
     dataset = None
     starting_docker = True
     tool_dataset = None
+    skip_next_weightset = False
 
     def __init__(self, config=None, run_init=True):
         super().__init__(config)
@@ -97,6 +98,7 @@ class Validator(BaseNeuron):
         self.miner_tps = load_cache(
             self.config.cache_file, self.subtensor.block, miners
         )
+        self.organics = load_organics()
 
         ## LOAD DATASETS
         bt.logging.info("⌛️", "Loading datasets")
@@ -223,6 +225,8 @@ class Validator(BaseNeuron):
                 self.organics,
             )
         )
+        save_organics(self.organics)
+
         bt.logging.info("Scored Organics")
         if bucket_id == None:
             return
@@ -235,6 +239,10 @@ class Validator(BaseNeuron):
 
     def set_weights_on_interval(self, block):
         if block % self.config.epoch_length:
+            return
+        if self.skip_next_weightset == True:
+            self.skip_next_weightset = False
+            bt.logging.info("Skipping weightset due to startup config")
             return
         self.lock_halt = True
         while not self.lock_waiting:
@@ -302,6 +310,12 @@ class Validator(BaseNeuron):
             bt.logging.error(f"Failed starting up output checkers: {e}")
         finally:
             self.lock_halt = False
+        if self.config_file and self.config_file.set_weights_on_start:
+            try:
+                self.set_weights_on_interval(0)
+                self.skip_next_weightset = True
+            except Exception as e:
+                bt.logging.error(f"Failed setting weights on startup: {str(e)}")
         bt.logging.info(str(self.verification_ports))
         resync_hotkeys(self.metagraph, self.miner_tps)
         self.send_models_to_miners_on_interval(0)
