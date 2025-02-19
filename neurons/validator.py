@@ -247,6 +247,8 @@ class Validator(BaseNeuron):
         self.lock_halt = True
         while not self.lock_waiting and block != 0:
             sleep(1)
+
+        self.subtensor = bt.subtensor(config=self.config)
         self.set_weights(
             self.wallet,
             self.metagraph,
