@@ -23,7 +23,10 @@ CONTEXT_LENGTH = os.getenv("CONTEXT_LENGTH", None)
 if CONTEXT_LENGTH != None:
     CONTEXT_LENGTH = int(CONTEXT_LENGTH)
 MODEL_WRAPPER = sglang.Engine(
-    model_path=MODEL_NAME, tp_size=TENSOR_PARALLEL, trust_remote_code=True
+    model_path=MODEL_NAME,
+    tp_size=TENSOR_PARALLEL,
+    trust_remote_code=True,
+    context_length=CONTEXT_LENGTH,
 )
 # MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
 #    AsyncEngineArgs(
