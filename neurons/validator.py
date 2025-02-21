@@ -480,7 +480,7 @@ class Validator(BaseNeuron):
         request = generate_request(
             self.dataset,
             self.tool_dataset,
-            generator_model_name,
+            model_name,
             endpoint,
             self.verification_ports.get(generator_model_name),
         )
