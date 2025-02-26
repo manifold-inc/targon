@@ -234,7 +234,6 @@ async def verify_logprobs(
     perfect_tokens = 0
     eos_token_id = getattr(TOKENIZER, "eos_token_id", -1)
     eot_token_id = TOKENIZER.get_vocab().get("<|eot_id|>", -1)  # type: ignore
-    output_tokens = [item.token_id for item in output_sequence]
     really_low_prob = 0
     meta = output["meta_info"]
     for idx in range(idxs):
@@ -298,7 +297,7 @@ async def verify_logprobs(
 
     # Check if miner prematurely stopped generating
     if eos_token_id > 0 or eot_token_id > 0:
-        if len(output_tokens) < max_tokens:
+        if len(output_sequence) < max_tokens:
             expected_logprob_list = meta["output_top_logprobs"][0]
             last_token_probs = [token for _, token, _ in expected_logprob_list]
             if (
@@ -580,39 +579,6 @@ async def verify(request: VerificationRequest) -> Dict:
         )
         if not result:
             return return_value
-
-        # Random logprob check
-        if request.request_params.temperature > 0.75:
-            print("Verified Response")
-            return {
-                "verified": True,
-                "gpus": TENSOR_PARALLEL,
-                "response_tokens": len([o for o in output_sequence if o.text != ""]),
-                "input_tokens": len(input_tokens),
-            }
-
-        # res = await verify_logprobs_random(
-        #    request.request_params.temperature,
-        #    str(input_text),
-        #    output_sequence,
-        #    tools=request.request_params.tools,
-        #    tool_choice=request.request_params.tool_choice,
-        # )
-        # if res is None:
-        #    return {
-        #        "error": "Failed to check log probs",
-        #        "cause": "INTERNAL_ERROR",
-        #    }
-        # result, message = res
-        # return_value.update(
-        #    {
-        #        "verified": result,
-        #        "cause": "LOGPROB_RANDOM",
-        #        "error": message,
-        #    }
-        # )
-        # if not result:
-        #    return return_value
 
         print("Verified Response")
         return {

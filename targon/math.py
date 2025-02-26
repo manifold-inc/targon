@@ -34,38 +34,46 @@ def safe_mean_score(data):
 @fail_with_none("Failed getting Weights")
 def get_weights(
     miner_models: Dict[int, List[str]],
-    miner_tps: Dict[int, Dict[str, List[Optional[float]]]],
+    miner_scores: Dict[int, Dict[str, List[Optional[float]]]],
     organics: Dict[str, Dict[str, list[int]]],
     models: List[str],  # Validator Models
 ) -> Tuple[List[int], List[float]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
     tps = {}
-    total_synthetics = 0
-    for uid in miner_tps:
+    total_organics = 0
+    for uid in miner_scores:
         if (organic := organics.get(str(uid))) is not None:
-            total_synthetics += sum([len(o) for o in organic.values()])
+            total_organics += sum([len(o) for o in organic.values()])
 
-    for uid in miner_tps:
+    for uid in miner_scores:
+        synth_scores = 0
+        for model in miner_models.get(uid, []):
+            if model not in models:
+                continue
+            if miner_scores.get(uid) is None:
+                continue
+            if miner_scores[uid].get(model) is None:
+                continue
+
+            synth_scores += safe_mean_score(miner_scores[uid][model][-SLIDING_WINDOW:])
+
         tps[uid] = 0
+        if synth_scores == 0:
+            # passed some syntehtics
+            tps[uid] = -1
+            continue
+
         if (organic := organics.get(str(uid))) is not None:
             # Boost miners for doing more organics
             self_total = 0
             for orgs in organic.values():
                 self_total += len(orgs)
                 tps[uid] += safe_mean_score(orgs)
-            tps[uid] = (tps[uid] * ((self_total / total_synthetics) + 1)) * 2
-        for model in miner_models.get(uid, []):
-            if model not in models:
-                continue
-            if miner_tps.get(uid) is None:
-                continue
-            if miner_tps[uid].get(model) is None:
-                continue
-
-            tps[uid] += safe_mean_score(miner_tps[uid][model][-SLIDING_WINDOW:])
+            tps[uid] = (tps[uid] * ((self_total / total_organics) + 1)) * 2
 
     tps_list = list(tps.values())
+    tps_list = (np.e ** (np.log(max(tps_list)) / max(tps_list))) ** tps_list
     if len(tps_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
         return [], []

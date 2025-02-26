@@ -139,6 +139,7 @@ async def handle_inference(
     endpoint: Endpoints,
 ) -> Tuple[int, InferenceStats]:
     stats = InferenceStats(
+        gpus=1,
         time_to_first_token=0,
         time_for_all_tokens=0,
         tps=0,

@@ -33,12 +33,14 @@ class InferenceStats(BaseModel):
     total_time: float
     tps: float
     tokens: List[Any]
+    gpus: int
     verified: bool
     error: Optional[str] = None
     cause: Optional[str] = None
 
 
 class OrganicStats(InferenceStats):
+    gpus: int
     model: str
     max_tokens: int
     seed: int

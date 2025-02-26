@@ -233,6 +233,16 @@ class Validator(BaseNeuron):
         self.last_bucket_id = bucket_id
         if organic_stats == None:
             return
+        bt.logging.info(
+            json.dumps(
+                get_weights(
+                    self.miner_models,
+                    self.miner_tps,
+                    self.organics,
+                    self.models,
+                )
+            ),
+        )
         bt.logging.info("Sending organics to jugo")
         asyncio.run(send_organics_to_jugo(self.wallet, organic_stats))
         bt.logging.info("Sent organics to jugo")
@@ -462,6 +472,7 @@ class Validator(BaseNeuron):
             if response_tokens:
                 tokencount = min(tokencount, response_tokens)
             stat.tps = tokencount / stat.total_time
+            stat.gpus = verified.get("gpus", 1)
         if stat.error is None and not stat.verified:
             stat.error = verified.get("error")
             stat.cause = verified.get("cause")
@@ -538,7 +549,7 @@ class Validator(BaseNeuron):
                 self.miner_tps[uid][request["model"]] = []
 
             if stat.verified and stat.total_time != 0:
-                self.miner_tps[uid][request["model"]].append(stat.tps)
+                self.miner_tps[uid][request["model"]].append(stat.gpus)
                 continue
             self.miner_tps[uid][request["model"]].append(None)
         return (processed_stats, request, endpoint)

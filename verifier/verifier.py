@@ -71,12 +71,6 @@ class RequestParams(BaseModel):
     ] = None  # Optional tool choice specification
 
 
-class OutputItem(BaseModel):
-    text: str
-    logprob: float
-    token_id: int
-
-
 class RequestType(Enum):
     CHAT = "CHAT"
     COMPLETION = "COMPLETION"
@@ -140,85 +134,13 @@ async def generate_question(req: GenerateRequest):
             return {"text": None}
 
 
-async def verify_logprobs_random(
-    temperature: float,
-    seed: int,
-    input_text: str,
-    output_sequence: List[OutputItem],
-    tools: Optional[List[Dict]] = None,
-    tool_choice: Optional[Union[str, Dict[str, Any]]] = None,
-) -> Optional[Tuple[bool, str]]:
-    """
-    Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
-    """
-    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
-    if len(output_sequence) < 4:
-        return True, "Skipped random verification due to insufficient tokens"
-
-    indices = list(range(1, len(output_sequence) - 1))
-    indices_to_check = list(
-        sorted(
-            [
-                0,  # always check first token
-                len(output_sequence) - 1,  # always check last token
-            ]
-            + random.sample(indices, min(len(indices), 3))
-        )
-    )
-
-    # Generate a single token at each index, comparing logprobs
-    top_logprobs = int(temperature * 10) + 3
-    sampling_params_dict = {
-        "temperature": temperature,
-        "seed": seed,
-        "max_tokens": 1,
-        "logprobs": top_logprobs,
-    }
-    if tools:
-        sampling_params_dict["tools"] = tools
-        sampling_params_dict["tool_choice"] = tool_choice
-
-    sampling_params = SamplingParams(**sampling_params_dict)
-
-    for idx in indices_to_check:
-        full_text = input_text + "".join([item.text for item in output_sequence[0:idx]])
-
-        output = MODEL_WRAPPER.generate(
-            full_text, sampling_params, request_id=random_uuid()
-        )
-        final_output = None
-        try:
-            async for request_output in output:
-                final_output = request_output
-        except asyncio.CancelledError:
-            return False, "Request Canceled"
-        assert final_output is not None
-        outputs = final_output.outputs[0]
-
-        top_tokens = []
-        if outputs.logprobs is None:
-            continue
-
-        for lp in outputs.logprobs:
-            if lp is None:
-                continue
-            top_tokens += list(lp.keys())
-
-        if output_sequence[idx].token_id not in top_tokens:
-            message = f"Token output at index {idx} [{TOKENIZER.decode([output_sequence[idx].token_id])}] not found in top {top_logprobs} logprobs: {[TOKENIZER.decode([token]) for token in top_tokens]}"
-            return False, message
-
-    success_msg = f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}"
-    return True, success_msg
-
-
 async def verify_logprobs(
     temperature: float,
     seed: int,
     max_tokens: int,
     input_text: str,
-    input_tokens: List[int],
-    output_sequence: List[OutputItem],
+    num_input_tokens: int,
+    output_sequence: List[str],
     tools: Optional[List[Dict]] = None,
     tool_choice: Optional[Union[str, Dict[str, Any]]] = None,
 ) -> Optional[Tuple[bool, str, str]]:
@@ -244,7 +166,7 @@ async def verify_logprobs(
 
     # Generate output for a single token
     output = None
-    full_text = input_text + "".join([item.text for item in output_sequence])
+    full_text = input_text + "".join([token for token in output_sequence])
     output = MODEL_WRAPPER.generate(
         prompt=full_text, sampling_params=sampling_params, request_id=random_uuid()
     )
@@ -264,19 +186,18 @@ async def verify_logprobs(
 
     # The actual logprobs should be very close but not 100% due to GPU/driver differences
     idxs = min(
-        len(output.prompt_logprobs) - len(input_tokens) - 3,
+        len(output.prompt_logprobs) - num_input_tokens - 3,
         len(output_sequence) - 1,
     )
     perfect_tokens = 0
     eos_token_id = getattr(TOKENIZER, "eos_token_id", -1)
     eot_token_id = TOKENIZER.get_vocab().get("<|eot_id|>", -1)  # type: ignore
-    output_tokens = [item.token_id for item in output_sequence]
     really_low_prob = 0
     not_first = 0
     assert output.prompt_token_ids
     for idx in range(idxs):
-        expected_logprob_set = output.prompt_logprobs[idx + len(input_tokens)]
-        token_id = output.prompt_token_ids[idx + len(input_tokens)]
+        expected_logprob_set = output.prompt_logprobs[idx + num_input_tokens]
+        token_id = output.prompt_token_ids[idx + num_input_tokens]
         assert expected_logprob_set is not None
 
         eos_logprob = expected_logprob_set.get(eos_token_id)
@@ -332,16 +253,16 @@ async def verify_logprobs(
             perfect_tokens += 1
 
     # Check if miner produced non-top ranking tokens more than top-ranking tokens
-    ratio = not_first / len(output_tokens)
+    ratio = not_first / len(output_sequence)
     if ratio >= 0.5:
         error_msg = (
-            f"{not_first} of {len(output_tokens)} [{ratio=}] tokens were not rank 1"
+            f"{not_first} of {len(output_sequence)} [{ratio=}] tokens were not rank 1"
         )
         return False, error_msg, "UNLIKELY_TOKENS"
 
     # Check if miner prematurely stopped generating
     if eos_token_id > 0 or eot_token_id > 0:
-        if len(output_tokens) < max_tokens:
+        if len(output_sequence) < max_tokens:
             last_token_probs = []
             if output:
                 last_token_probs = output.outputs[0]
@@ -399,24 +320,7 @@ def verify_usage(
     return True, "", ""
 
 
-def parse_token_id(token: Optional[str]) -> Optional[int]:
-    """Parse token string into token ID."""
-    if token is None:
-        return -1
-
-    if token.startswith("token_id:"):
-        try:
-            return int(token.split(":")[1])
-        except (IndexError, ValueError):
-            return None
-
-    try:
-        return int(token)
-    except (ValueError, TypeError):
-        return None
-
-
-def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
+def parse_chunk(chunk: Dict, request_type: str) -> Optional[str]:
     """Parse a raw chunk into an OutputItem with token info."""
     try:
         choices = chunk.get("choices", [])
@@ -436,64 +340,19 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
             ):
                 return None
 
-            choiceprobs = choice.get("logprobs")
-            if choiceprobs is None:
-                return None
-
             # Handle tool calls
             if delta.get("tool_calls"):
                 tool_call = delta["tool_calls"][0]
                 if tool_call.get("function"):
-                    content_probs = choiceprobs.get("content", [{}])[0]
-                    token = content_probs.get("token", "")
-                    token_id = parse_token_id(token)
-                    if token_id is None:
-                        return None
-                    return OutputItem(
-                        text=json.dumps(tool_call),
-                        token_id=token_id,
-                        logprob=content_probs.get("logprob", -100),
-                    )
+                    return json.dumps(tool_call)
 
             # Handle regular chat content
-            content_probs = choiceprobs.get("content", [{}])[0]
-            token = content_probs.get("token", "")
-            token_id = parse_token_id(token)
-            if token_id is None:
-                return None
             text = delta.get("content", "")
-
-            # Allow empty text if we have a valid token_id (for EOS tokens)
-            if token_id == -1:
-                return None
-
-            return OutputItem(
-                text=text,
-                token_id=token_id,
-                logprob=content_probs.get("logprob", -100),
-            )
+            return text
 
         elif request_type == "COMPLETION":
             text = choice.get("text")
-            if text is None:
-                return None
-
-            logprobs = choice.get("logprobs")
-            if logprobs is None:
-                return None
-
-            token = logprobs.get("tokens", [""])[0]
-            token_id = parse_token_id(token)
-            if token_id is None:
-                return None
-
-            if token_id == -1:
-                return None
-
-            token_logprobs = logprobs.get("token_logprobs", [])
-            logprob = token_logprobs[0] if token_logprobs else -100
-
-            return OutputItem(text=text, token_id=token_id, logprob=logprob)
+            return text
 
     except Exception:
         return None
@@ -502,7 +361,7 @@ def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
 @app.post("/verify")
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
-    output_sequence: List[OutputItem] = []
+    output_sequence: List[str] = []
     input_text = None
 
     # Parse raw chunks into OutputItems
@@ -567,100 +426,64 @@ async def verify(request: VerificationRequest) -> Dict:
     input_tokens = TOKENIZER(input_text).input_ids
 
     # Verify!
-    async with LOCK:
-        return_value = {
-            "verified": False,
-            "error": None,
+    return_value = {
+        "verified": False,
+        "error": None,
+    }
+
+    # Verify usage information
+    # Response - 1 for usage chunk
+    res = verify_usage(len(input_tokens), len(request.raw_chunks) - 2, reported_usage)
+    if res is None:
+        return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
+    result, message, cause = res
+    return_value.update(
+        {
+            "verified": result,
+            "cause": cause,
+            "error": message,
         }
+    )
+    if not result:
+        return return_value
 
-        # Verify usage information
-        # Response - 1 for usage chunk
-        res = verify_usage(
-            len(input_tokens), len(request.raw_chunks) - 2, reported_usage
-        )
-        if res is None:
-            return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
-        result, message, cause = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": cause,
-                "error": message,
-            }
-        )
-        if not result:
-            return return_value
-
-        # Pops think character for r1
-        if input_text.strip().endswith(output_sequence[1].text):
-            output_sequence.pop(1)
-        if input_text.strip().endswith(output_sequence[0].text):
-            output_sequence.pop(0)
-        # Logprob checks
-        res = await verify_logprobs(
-            request.request_params.temperature,
-            request.request_params.seed,
-            request.request_params.max_tokens,
-            str(input_text),
-            input_tokens,
-            output_sequence,
-            tools=request.request_params.tools,
-            tool_choice=request.request_params.tool_choice,
-        )
-        if res is None:
-            return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
-        result, message, cause = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": cause,
-                "error": message,
-            }
-        )
-        if not result:
-            return return_value
-
-        # Random logprob check
-        if request.request_params.temperature > 0.75:
-            print("Verified Response")
-            return {
-                "verified": True,
-                "gpus": TENSOR_PARALLEL,
-                "response_tokens": len([o for o in output_sequence if o.text != ""]),
-                "input_tokens": len(input_tokens),
-            }
-
-        res = await verify_logprobs_random(
-            request.request_params.temperature,
-            request.request_params.seed,
-            str(input_text),
-            output_sequence,
-            tools=request.request_params.tools,
-            tool_choice=request.request_params.tool_choice,
-        )
-        if res is None:
-            return {
-                "error": "Failed to check random log probs",
-                "cause": "INTERNAL_ERROR",
-            }
-        result, message = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": "LOGPROB_RANDOM",
-                "error": message,
-            }
-        )
-        if not result:
-            return return_value
-
-        print("Verified Response")
-        return {
-            "verified": True,
-            "gpus": TENSOR_PARALLEL,
-            "response_tokens": len([o for o in output_sequence if o.text != ""]),
-            "input_tokens": len(input_tokens),
+    # Pops think character for r1
+    if input_text.strip().endswith(output_sequence[1]):
+        output_sequence.pop(1)
+    if input_text.strip().endswith(output_sequence[0]):
+        output_sequence.pop(0)
+    # Logprob checks
+    res = await verify_logprobs(
+        request.request_params.temperature,
+        request.request_params.seed,
+        request.request_params.max_tokens,
+        str(input_text),
+        len(input_tokens),
+        output_sequence,
+        tools=request.request_params.tools,
+        tool_choice=request.request_params.tool_choice,
+    )
+    if res is None:
+        return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
+    result, message, cause = res
+    return_value.update(
+        {
+            "verified": result,
+            "cause": cause,
+            "error": message,
         }
+    )
+    if not result:
+        return return_value
+
+    # Random logprob check
+    print("Verified Response")
+    return {
+        "verified": True,
+        "gpus": TENSOR_PARALLEL,
+        "response_tokens": len([token for token in output_sequence if token != ""]),
+        "input_tokens": len(input_tokens),
+    }
 
 
 @app.get("/metadata")
@@ -676,4 +499,3 @@ async def endpoints():
 @app.get("/")
 def ping():
     return "", 200
-
