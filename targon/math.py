@@ -17,6 +17,22 @@ def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
     return norm_arr
 
 
+def normalize_ignore_sub_zero(arr: List[float], t_min=0, t_max=1) -> List[float]:
+    norm_arr = []
+    diff = t_max - t_min
+    min_non_zero = min([a for a in arr if a > 0]) * 0.9
+    diff_arr = max(arr) - min_non_zero
+    for i in arr:
+        if i == 0:
+            i = min_non_zero * 1.05
+        if i == -1:
+            norm_arr.append(0)
+            continue
+        temp = (((i - min_non_zero) * diff) / diff_arr) + t_min
+        norm_arr.append(temp)
+    return norm_arr
+
+
 def sigmoid(num):
     return 1 / (1 + exp(-((num - 0.5) / 0.1)))
 
@@ -73,7 +89,6 @@ def get_weights(
             tps[uid] = (tps[uid] * ((self_total / total_organics) + 1)) * 2
 
     tps_list = list(tps.values())
-    tps_list = (np.e ** (np.log(max(tps_list)) / max(tps_list))) ** tps_list
     if len(tps_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
         return [], []
@@ -84,6 +99,7 @@ def get_weights(
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
         return [], []
-    raw_weights = normalize(rewards)
+    raw_weights = normalize_ignore_sub_zero(rewards)
+    raw_weights = (np.e ** (np.log(max(raw_weights)) / max(raw_weights))) ** raw_weights
     bt.logging.info(f"Raw Weights: {raw_weights}")
     return uids, raw_weights
