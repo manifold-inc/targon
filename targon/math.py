@@ -1,10 +1,32 @@
 from math import exp
+import base64
 import bittensor as bt
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 
 from targon.config import SLIDING_WINDOW
 from targon.utils import fail_with_none
+import json
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+
+def verify_signature(msg: dict, signature: str, public_key):
+    try:
+        msg_bytes = json.dumps(msg, separators=(",", ":")).encode("utf-8")
+
+        signature_bytes = base64.b64decode(signature)
+
+        public_key.verify(
+            signature_bytes,
+            msg_bytes,
+            padding.PKCS1v15(),
+            hashes.SHA256(),
+        )
+
+        return True
+    except Exception:
+        return False
 
 
 def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:

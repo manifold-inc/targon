@@ -89,13 +89,12 @@ class Miner(BaseNeuron):
         # Add extra logic here for how your miner should handle the model list.
         #
 
-        return ""
+        # Return list of models your running here
+        return []
 
-    async def list_models(self):
-        #
-        # Return models the miner is running
-        #
-
+    async def list_nodes(self, request: Request):
+        # TODO
+        # ping each node 
         return []
 
     async def determine_epistula_version_and_verify(self, request: Request):
@@ -201,8 +200,8 @@ class Miner(BaseNeuron):
             methods=["POST"],
         )
         router.add_api_route(
-            "/models",
-            self.list_models,
+            "/nodes",
+            self.list_nodes,
             dependencies=[Depends(self.determine_epistula_version_and_verify)],
             methods=["GET"],
         )

@@ -20,6 +20,8 @@
 import json
 import os
 import bittensor as bt
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
 import requests
 import dotenv
@@ -218,3 +220,13 @@ def get_models_from_config():
     except Exception as e:
         bt.logging.error(f"Failed reading model file: {e}")
     return None
+
+
+def load_public_key():
+    try:
+        with open("../public_key.pem", "rb") as key_file:
+            public_key = serialization.load_pem_public_key(key_file.read())
+            print(public_key)
+        return public_key
+    except Exception as e:
+        raise Exception(f"Error loading public key: {e}")

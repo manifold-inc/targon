@@ -167,21 +167,22 @@ class Validator(BaseNeuron):
             headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
             headers["Content-Type"] = "application/json"
             try:
-                httpx.post(
+                res = httpx.post(
                     f"http://{axon_info.ip}:{axon_info.port}/models",
                     headers=headers,
                     json=body,
                     timeout=3,
                 )
-                headers = generate_header(self.wallet.hotkey, b"", axon_info.hotkey)
-                res = httpx.get(
-                    f"http://{axon_info.ip}:{axon_info.port}/models",
-                    headers=headers,
-                    timeout=3,
-                )
                 if res.status_code != 200 or not isinstance(models := res.json(), list):
                     models = []
                 self.miner_models[uid] = list(set(models))
+
+                headers = generate_header(self.wallet.hotkey, b"", axon_info.hotkey)
+                res = httpx.get(
+                    f"http://{axon_info.ip}:{axon_info.port}/nodes",
+                    headers=headers,
+                    timeout=3,
+                )
             except Exception:
                 self.miner_models[uid] = []
         bt.logging.info("Miner models: " + str(self.miner_models))
