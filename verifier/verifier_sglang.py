@@ -25,6 +25,7 @@ if CONTEXT_LENGTH != None:
 MODEL_WRAPPER = sglang.Engine(
     model_path=MODEL_NAME,
     tp_size=TENSOR_PARALLEL,
+    chunked_prefill_size=2048,
     trust_remote_code=True,
     context_length=CONTEXT_LENGTH,
 )
