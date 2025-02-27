@@ -133,70 +133,6 @@ async def generate_question(req: GenerateRequest):
             return {"text": None}
 
 
-async def verify_logprobs_random(
-    temperature: float,
-    input_text: str,
-    output_sequence: List[OutputItem],
-    tools: Optional[List[Dict]] = None,
-    tool_choice: Optional[Union[str, Dict[str, Any]]] = None,
-) -> Optional[Tuple[bool, str]]:
-    """
-    Generate a handful of random outputs to ensure the logprobs weren't generated after the fact.
-    """
-    TOKENIZER = MODEL_WRAPPER.tokenizer_manager.tokenizer
-    assert TOKENIZER is not None
-    if len(output_sequence) < 4:
-        return True, "Skipped random verification due to insufficient tokens"
-
-    indices = list(range(1, len(output_sequence) - 1))
-    indices_to_check = list(
-        sorted(
-            [
-                1,  # always check first token
-                len(output_sequence) - 1,  # always check last token
-            ]
-            + random.sample(indices, min(len(indices), 3))
-        )
-    )
-
-    # Generate a single token at each index, comparing logprobs
-    top_logprobs = int(temperature * 10) + 3
-    sampling_params_dict = {
-        "temperature": temperature,
-        "max_new_tokens": 1,
-    }
-    if tools:
-        sampling_params_dict["tools"] = tools
-        sampling_params_dict["tool_choice"] = tool_choice
-
-    for idx in indices_to_check:
-        full_text = input_text + "".join([item.text for item in output_sequence[0:idx]])
-
-        output = await MODEL_WRAPPER.async_generate(
-            full_text,
-            sampling_params_dict,
-            logprob_start_len=0,
-            top_logprobs_num=15,
-            return_logprob=True,
-            stream=False,
-        )
-        assert isinstance(output, dict)
-
-        top_tokens = []
-        if output["meta_info"]["output_top_logprobs"] is None:
-            continue
-
-        for lp in output["meta_info"]["output_top_logprobs"][0]:
-            top_tokens.append(lp[1])
-
-        if output_sequence[idx].token_id not in top_tokens:
-            message = f"Token output at index {idx} [{TOKENIZER.decode([output_sequence[idx].token_id])}] not found in top {top_logprobs} logprobs: {[TOKENIZER.decode([token]) for token in top_tokens]}"
-            return False, message
-
-    success_msg = f"Successfully verified {len(indices_to_check)} random logprobs: {indices_to_check}"
-    return True, success_msg
-
-
 async def verify_logprobs(
     temperature: float,
     max_tokens: int,
@@ -528,65 +464,64 @@ async def verify(request: VerificationRequest) -> Dict:
         if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
             input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
     input_tokens = TOKENIZER(input_text).input_ids
+    if len(input_tokens) + len(output_sequence) > 64000:
+        return {"error": "Context Too Large"}
 
     # Verify!
-    async with LOCK:
-        return_value = {
-            "verified": False,
-            "error": None,
+    return_value = {
+        "verified": False,
+        "error": None,
+    }
+
+    # Verify usage information
+    # Response - 1 for usage chunk
+    res = verify_usage(len(input_tokens), len(request.raw_chunks) - 2, reported_usage)
+    if res is None:
+        return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
+    result, message, cause = res
+    return_value.update(
+        {
+            "verified": result,
+            "cause": cause,
+            "error": message,
         }
+    )
+    if not result:
+        return return_value
 
-        # Verify usage information
-        # Response - 1 for usage chunk
-        res = verify_usage(
-            len(input_tokens), len(request.raw_chunks) - 2, reported_usage
-        )
-        if res is None:
-            return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
-        result, message, cause = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": cause,
-                "error": message,
-            }
-        )
-        if not result:
-            return return_value
-
-        # Pops think character for r1
-        if input_text.strip().endswith(output_sequence[1].text):
-            output_sequence.pop(1)
-        if input_text.strip().endswith(output_sequence[0].text):
-            output_sequence.pop(0)
-        # Logprob checks
-        res = await verify_logprobs(
-            request.request_params.temperature,
-            request.request_params.max_tokens,
-            str(input_text),
-            input_tokens,
-            output_sequence,
-        )
-        if res is None:
-            return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
-        result, message, cause = res
-        return_value.update(
-            {
-                "verified": result,
-                "cause": cause,
-                "error": message,
-            }
-        )
-        if not result:
-            return return_value
-
-        print("Verified Response")
-        return {
-            "verified": True,
-            "input_tokens": len(input_tokens),
-            "response_tokens": len([o for o in output_sequence if o.text != ""]),
-            "gpus": TENSOR_PARALLEL,
+    # Pops think character for r1
+    if input_text.strip().endswith(output_sequence[1].text):
+        output_sequence.pop(1)
+    if input_text.strip().endswith(output_sequence[0].text):
+        output_sequence.pop(0)
+    # Logprob checks
+    res = await verify_logprobs(
+        request.request_params.temperature,
+        request.request_params.max_tokens,
+        str(input_text),
+        input_tokens,
+        output_sequence,
+    )
+    if res is None:
+        return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
+    result, message, cause = res
+    return_value.update(
+        {
+            "verified": result,
+            "cause": cause,
+            "error": message,
         }
+    )
+    if not result:
+        return return_value
+
+    print("Verified Response")
+    return {
+        "verified": True,
+        "input_tokens": len(input_tokens),
+        "response_tokens": len([o for o in output_sequence if o.text != ""]),
+        "gpus": TENSOR_PARALLEL,
+    }
 
 
 @app.get("/metadata")
