@@ -468,60 +468,61 @@ async def verify(request: VerificationRequest) -> Dict:
         return {"error": "Context Too Large"}
 
     # Verify!
-    return_value = {
-        "verified": False,
-        "error": None,
-    }
-
-    # Verify usage information
-    # Response - 1 for usage chunk
-    res = verify_usage(len(input_tokens), len(request.raw_chunks) - 2, reported_usage)
-    if res is None:
-        return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
-    result, message, cause = res
-    return_value.update(
-        {
-            "verified": result,
-            "cause": cause,
-            "error": message,
+    async with LOCK:
+        return_value = {
+            "verified": False,
+            "error": None,
         }
-    )
-    if not result:
-        return return_value
 
-    # Pops think character for r1
-    if input_text.strip().endswith(output_sequence[1].text):
-        output_sequence.pop(1)
-    if input_text.strip().endswith(output_sequence[0].text):
-        output_sequence.pop(0)
-    # Logprob checks
-    res = await verify_logprobs(
-        request.request_params.temperature,
-        request.request_params.max_tokens,
-        str(input_text),
-        input_tokens,
-        output_sequence,
-    )
-    if res is None:
-        return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
-    result, message, cause = res
-    return_value.update(
-        {
-            "verified": result,
-            "cause": cause,
-            "error": message,
+        # Verify usage information
+        # Response - 1 for usage chunk
+        res = verify_usage(len(input_tokens), len(request.raw_chunks) - 2, reported_usage)
+        if res is None:
+            return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
+        result, message, cause = res
+        return_value.update(
+            {
+                "verified": result,
+                "cause": cause,
+                "error": message,
+            }
+        )
+        if not result:
+            return return_value
+
+        # Pops think character for r1
+        if input_text.strip().endswith(output_sequence[1].text):
+            output_sequence.pop(1)
+        if input_text.strip().endswith(output_sequence[0].text):
+            output_sequence.pop(0)
+        # Logprob checks
+        res = await verify_logprobs(
+            request.request_params.temperature,
+            request.request_params.max_tokens,
+            str(input_text),
+            input_tokens,
+            output_sequence,
+        )
+        if res is None:
+            return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
+        result, message, cause = res
+        return_value.update(
+            {
+                "verified": result,
+                "cause": cause,
+                "error": message,
+            }
+        )
+        if not result:
+            return return_value
+
+        print("Verified Response")
+        return {
+            "verified": True,
+            "input_tokens": len(input_tokens),
+            "response_tokens": len([o for o in output_sequence if o.text != ""]),
+            "gpus": TENSOR_PARALLEL,
         }
-    )
-    if not result:
-        return return_value
-
-    print("Verified Response")
-    return {
-        "verified": True,
-        "input_tokens": len(input_tokens),
-        "response_tokens": len([o for o in output_sequence if o.text != ""]),
-        "gpus": TENSOR_PARALLEL,
-    }
 
 
 @app.get("/metadata")
