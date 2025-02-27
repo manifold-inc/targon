@@ -17,12 +17,13 @@ from targon.config import (
     SLIDING_WINDOW,
     get_models_from_config,
     get_models_from_endpoint,
+    load_public_key,
 )
 from targon.dataset import download_dataset, download_tool_dataset
 from targon.docker import load_docker, load_existing_images, sync_output_checkers
 from targon.epistula import generate_header
 from targon.jugo import score_organics, send_organics_to_jugo, send_stats_to_jugo
-from targon.math import get_weights
+from targon.math import get_weights, verify_signature
 from targon.metagraph import (
     create_set_weights,
     get_miner_uids,
@@ -53,6 +54,7 @@ class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
     miner_models: Dict[int, List[str]]
+    miner_nodes: Dict[int, bool]
     verification_ports: Dict[str, Dict[str, Any]]
     models: List[str]
     lock_waiting = False
@@ -71,6 +73,7 @@ class Validator(BaseNeuron):
         super().__init__(config)
         ## Typesafety
         self.set_weights = create_set_weights(spec_version, 4)
+        self.public_key = load_public_key()
 
         ## CHECK IF REGG'D
         if not self.metagraph.validator_permit[self.uid] and not IS_TESTNET:
@@ -183,7 +186,29 @@ class Validator(BaseNeuron):
                     headers=headers,
                     timeout=3,
                 )
+                if res.status_code != 200 or not isinstance(nodes := res.json(), list):
+                    self.miner_nodes[uid] = False
+                    continue
+
+                for node in nodes:
+                    if not isinstance(node, dict):
+                        self.miner_nodes[uid] = False
+                        break
+                    msg = node.get("msg")
+                    signature = node.get("signature")
+                    if not isinstance(msg, dict):
+                        self.miner_nodes[uid] = False
+                        break
+                    if not isinstance(signature, str):
+                        self.miner_nodes[uid] = False
+                        break
+                    if not verify_signature(msg, signature, self.public_key):
+                        self.miner_nodes[uid] = False
+                        break
+                    self.miner_nodes[uid] = True
+
             except Exception:
+                self.miner_nodes[uid] = False
                 self.miner_models[uid] = []
         bt.logging.info("Miner models: " + str(self.miner_models))
 
