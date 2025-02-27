@@ -75,6 +75,7 @@ def get_weights(
     miner_scores: Dict[int, Dict[str, List[Optional[float]]]],
     organics: Dict[str, Dict[str, list[int]]],
     models: List[str],  # Validator Models
+    miner_nodes: Dict[int, bool],
 ) -> Tuple[List[int], List[float]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
@@ -85,6 +86,10 @@ def get_weights(
             total_organics += sum([len(o) for o in organic.values()])
 
     for uid in miner_scores:
+        if not miner_nodes[uid]:
+            tps[uid] = 0
+            continue
+
         synth_scores = 0
         for model in miner_models.get(uid, []):
             if model not in models:

@@ -266,6 +266,7 @@ class Validator(BaseNeuron):
                     self.miner_tps,
                     self.organics,
                     self.models,
+                    self.miner_nodes
                 )
             ),
         )
@@ -294,6 +295,7 @@ class Validator(BaseNeuron):
                 self.miner_tps,
                 self.organics,
                 self.models,
+                self.miner_nodes
             ),
         )
 
