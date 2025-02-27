@@ -476,7 +476,9 @@ async def verify(request: VerificationRequest) -> Dict:
 
         # Verify usage information
         # Response - 1 for usage chunk
-        res = verify_usage(len(input_tokens), len(request.raw_chunks) - 2, reported_usage)
+        res = verify_usage(
+            len(input_tokens), len(request.raw_chunks) - 2, reported_usage
+        )
         if res is None:
             return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
         result, message, cause = res
