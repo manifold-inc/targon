@@ -99,7 +99,7 @@ def get_weights(
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
         return [], []
+    raw_weights = (np.e ** (np.log(max(rewards)) / max(rewards))) ** rewards
     raw_weights = normalize_ignore_sub_zero(rewards)
-    raw_weights = (np.e ** (np.log(max(raw_weights)) / max(raw_weights))) ** raw_weights
     bt.logging.info(f"Raw Weights: {raw_weights}")
     return uids, raw_weights
