@@ -184,7 +184,7 @@ class Validator(BaseNeuron):
                 res = httpx.get(
                     f"http://{axon_info.ip}:{axon_info.port}/nodes",
                     headers=headers,
-                    timeout=3,
+                    timeout=10,
                 )
                 if res.status_code != 200 or not isinstance(nodes := res.json(), list):
                     self.miner_nodes[uid] = False
