@@ -107,11 +107,8 @@ class Miner(BaseNeuron):
         for node in nodes:
             try:
                 async with httpx.AsyncClient() as client:
-                    url = f"https://{node}/"
-                    req_body = {
-                        "nonce": str(uuid.uuid4())
-                    }
-                    response = await client.post(url, json=req_body)
+                    url = node
+                    response = await client.post(url, json=request.text)
                     responseJson = await response.json()
                     msgArr.append(responseJson)
             except Exception as e:
