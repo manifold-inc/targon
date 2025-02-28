@@ -14,6 +14,7 @@ from targon.epistula import verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
+import uuid
 
 
 class Miner(BaseNeuron):
@@ -89,13 +90,34 @@ class Miner(BaseNeuron):
         # Add extra logic here for how your miner should handle the model list.
         #
 
-        # Return list of models your running here
+        # Return list of models your running here, make sure to have the same list between here and list_models
+        return []
+
+    async def list_models(self, request: Request):
+        # Return same list as receive models returns
         return []
 
     async def list_nodes(self, request: Request):
         # TODO
-        # ping each node 
-        return []
+        # ping each node
+        # add ip:port to nodes list
+        # Return msgArr
+        msgArr = []
+        nodes = []
+        for node in nodes:
+            try:
+                async with httpx.AsyncClient() as client:
+                    url = f"https://{node}/"
+                    req_body = {
+                        "nonce": str(uuid.uuid4())
+                    }
+                    response = await client.post(url, json=req_body)
+                    responseJson = await response.json()
+                    msgArr.append(responseJson)
+            except Exception as e:
+                bt.logging.error(f"Error pinging node {node}: {str(e)}")
+
+        return msgArr
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
@@ -200,10 +222,16 @@ class Miner(BaseNeuron):
             methods=["POST"],
         )
         router.add_api_route(
+            "/models",
+            self.list_models,
+            dependencies=[Depends(self.determine_epistula_version_and_verify)],
+            methods=["GET"],
+        )
+        router.add_api_route(
             "/nodes",
             self.list_nodes,
             dependencies=[Depends(self.determine_epistula_version_and_verify)],
-            methods=["GET"],
+            methods=["POST"],
         )
         app.include_router(router)
         fast_config = uvicorn.Config(
