@@ -164,6 +164,7 @@ class Validator(BaseNeuron):
         self.miner_models = {}
         bt.logging.info("Broadcasting models to all miners")
         body = self.models
+        gpu_ids = set()
         for uid in miner_uids:
             bt.logging.info(f"Broadcasting models {uid}")
             axon_info = self.metagraph.axons[uid]
@@ -191,19 +192,34 @@ class Validator(BaseNeuron):
                     continue
 
                 for node in nodes:
+                    self.miner_nodes[uid] = False
                     if not isinstance(node, dict):
-                        self.miner_nodes[uid] = False
                         break
                     msg = node.get("msg")
                     signature = node.get("signature")
                     if not isinstance(msg, dict):
-                        self.miner_nodes[uid] = False
                         break
                     if not isinstance(signature, str):
-                        self.miner_nodes[uid] = False
                         break
                     if not verify_signature(msg, signature, self.public_key):
-                        self.miner_nodes[uid] = False
+                        break
+
+                    # Make sure gpus are unique
+                    gpu_info = msg.get("gpu_info", [])
+                    parsed_gpus = False
+                    for gpu in gpu_info:
+                        parsed_gpus = False
+                        if not isinstance(gpu, dict):
+                            break
+                        gpu_id = gpu.get("id", None)
+                        if gpu_id is None:
+                            break
+                        if gpu_id in gpu_ids:
+                            break
+                        gpu_ids.add(gpu_id)
+                        parsed_gpus = True
+
+                    if not parsed_gpus:
                         break
                     self.miner_nodes[uid] = True
 
@@ -266,7 +282,7 @@ class Validator(BaseNeuron):
                     self.miner_tps,
                     self.organics,
                     self.models,
-                    self.miner_nodes
+                    self.miner_nodes,
                 )
             ),
         )
@@ -295,7 +311,7 @@ class Validator(BaseNeuron):
                 self.miner_tps,
                 self.organics,
                 self.models,
-                self.miner_nodes
+                self.miner_nodes,
             ),
         )
 
