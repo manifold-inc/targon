@@ -1,4 +1,5 @@
 import time
+import asyncio
 from typing import Callable, Dict, List, Tuple
 import numpy as np
 import bittensor as bt
@@ -91,11 +92,11 @@ def create_set_weights(version: int, netuid: int):
 
 
 def create_subscription_handler(substrate, callback: Callable):
-    async def inner(obj, update_nr, _):
+    def inner(obj, update_nr, _):
         substrate.get_block(block_number=obj["header"]["number"])
 
         if update_nr >= 1:
-            return await callback(obj["header"]["number"])  # type: int
+            return asyncio.run(callback(obj["header"]["number"]))  # type: int
 
     return inner
 
