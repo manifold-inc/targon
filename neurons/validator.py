@@ -313,18 +313,16 @@ class Validator(BaseNeuron):
             sleep(1)
 
         self.subtensor = bt.subtensor(config=self.config)
-        self.set_weights(
-            self.wallet,
-            self.metagraph,
-            self.subtensor,
-            get_weights(
-                self.miner_models,
-                self.miner_tps,
-                self.organics,
-                self.models,
-                self.miner_nodes,
-            ),
+        weights = get_weights(
+            self.miner_models,
+            self.miner_tps,
+            self.organics,
+            self.models,
+            self.miner_nodes,
         )
+
+        if not self.config_file.skip_weight_set:
+            self.set_weights(self.wallet, self.metagraph, self.subtensor, weights)
 
         # Only keep last 30 scores
         for uid in self.miner_tps:
@@ -345,6 +343,17 @@ class Validator(BaseNeuron):
         bt.logging.info(
             f"Forward Block: {self.subtensor.block} | Blocks till Set Weights: {blocks_till}"
         )
+        if block % 10 != 0:
+            return
+        weights = get_weights(
+            self.miner_models,
+            self.miner_tps,
+            self.organics,
+            self.models,
+            self.miner_nodes,
+        )
+        weight_json = json.dumps(weights)
+        bt.logging.info(weight_json)
 
     def run(self):
         assert self.config.subtensor

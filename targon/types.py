@@ -65,6 +65,7 @@ class MinerEndpoint(BaseModel):
 
 
 class Config(BaseModel):
+    skip_weight_set: Optional[bool] = False
     verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None
     set_weights_on_start: Optional[bool] = False
     miner_endpoints: Optional[Dict[str, MinerEndpoint]] = None

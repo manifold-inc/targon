@@ -31,7 +31,7 @@ class NeuronType(Enum):
 
 class BaseNeuron:
     config: "bt.config"
-    config_file: Optional[Config] = None
+    config_file: Config
     neuron_type: NeuronType
     exit_context = ExitContext()
     next_sync_block = None
