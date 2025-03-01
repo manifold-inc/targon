@@ -119,15 +119,65 @@ responses will fail. You will also need to include `--enable-auto-tool-choice --
 and `--enable-auto-tool-choice --tool-call-parser hermes` for your Llama and Hermes vLLM
 instances to support tool calling.
 
+Miners must also pull a custom binary from Docker Hub to run on *EACH* GPU Node. To pull it:
+
+```bash
+docker pull manifoldlabs/targon-goggles
+```
+
+After pulling a Docker image, you can run it using the `docker run` command:
+
+```bash
+docker run manifoldlabs/targon-goggles
+```
+
+Below are some helpful commands for managing your docker containers. 
+
+```bash
+# List all running containers
+docker ps
+
+# List all containers (including stopped ones)
+docker ps -a
+```
+
+### Stopping and Removing Containers
+
+```bash
+# Stop a running container
+docker stop container_name_or_id
+
+# Remove a container
+docker rm container_name_or_id
+```
+
 Once you have one (or multiple) models running, modify the default miner code to
 proxy to the proper VLLM instance on each request. Verifiers will include the
 `X-Targon-Model` header so that the miner node does not need to parse the actual
 body.
 
-In the `miner.py` script you will find a function called `list_models`. To serve
+In the `miner.py` script you will find two functions called `list_models` and `list_nodes`. To serve
 multiple models you must:
 
-1. Fill this out to respond to validators with any model you currently have
+1. Fill out the `ip:port` to the nodes list that correspond to your GPUS. Below is an example. 
+
+```
+    async def list_nodes(self, request: Request):
+        msgArr = []
+        nodes = [example1, example2]
+        for node in nodes:
+            try:
+                async with httpx.AsyncClient() as client:
+                    url = node
+                    response = await client.post(url, json=request.text)
+                    responseJson = await response.json()
+                    msgArr.append(responseJson)
+            except Exception as e:
+                bt.logging.error(f"Error pinging node {node}: {str(e)}")
+
+        return msgArr
+        ```
+2. Fill this out to respond to validators with any model you currently have
    available (below is an example):
 
 ```
@@ -142,7 +192,7 @@ multiple models you must:
         ]
 ```
 
-2. Update the `create_chat_completion` and `create_completion` methods in
+3. Update the `create_chat_completion` and `create_completion` methods in
    neurons/miner.py to route to the appropriate vllm upstream server based on
    the model (which is either in the headers or from the request payload's model
    param)
