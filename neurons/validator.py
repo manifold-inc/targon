@@ -184,7 +184,7 @@ class Validator(BaseNeuron):
                         self.wallet.hotkey,
                     )
                 )
-        all_gpus = await asyncio.gather(*post_tasks)
+            all_gpus = await asyncio.gather(*post_tasks)
         bt.logging.info(str(all_gpus))
 
         bt.logging.info("Miner models: " + str(self.miner_models))
