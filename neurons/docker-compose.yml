@@ -1,10 +1,15 @@
 # Docker compose for miners to run goggles on each gpu cluster
-
 services:
   goggles:
     image: manifoldlabs/targon-goggles:v1
     ports:
       - 8844:8000
-    gpus: all
     runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
