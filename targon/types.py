@@ -59,6 +59,14 @@ class VerificationPortsConfig(BaseModel):
     endpoints: List[str]
 
 
+class MinerEndpoint(BaseModel):
+    port: int
+    url: str
+
+
 class Config(BaseModel):
     verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None
     set_weights_on_start: Optional[bool] = False
+    miner_endpoints: Optional[Dict[str, MinerEndpoint]] = None
+    miner_api_key: Optional[str] = "1234"
+    miner_nodes: Optional[List[str]] = None

@@ -48,20 +48,32 @@ class Miner(BaseNeuron):
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
         bt.logging.info(self.config.model_endpoint)
-        self.client = httpx.AsyncClient(
-            base_url=self.config.model_endpoint,
-            headers={"Authorization": f"Bearer {self.config.api_key}"},
-        )
+
+        assert self.config_file
+        assert self.config_file.miner_api_key
+        assert self.config_file.miner_endpoints
+
+        self.clients = {
+            model: httpx.AsyncClient(
+                base_url=f"{endpoint.url}:{endpoint.port}/v1",
+                headers={"Authorization": f"Bearer {self.config_file.miner_api_key}"},
+            )
+            for model, endpoint in self.config_file.miner_endpoints.items()
+        }
 
     async def create_chat_completion(self, request: Request):
         bt.logging.info(
             "\u2713",
             f"Getting Chat Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!",
         )
-        req = self.client.build_request(
+        model = request.headers.get("X-Targon-Model")
+        assert model
+        client = self.clients[model]
+        assert client
+        req = client.build_request(
             "POST", "/chat/completions", content=await request.body()
         )
-        r = await self.client.send(req, stream=True)
+        r = await client.send(req, stream=True)
         return StreamingResponse(
             r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
         )
@@ -71,10 +83,12 @@ class Miner(BaseNeuron):
             "\u2713",
             f"Getting Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!",
         )
-        req = self.client.build_request(
-            "POST", "/completions", content=await request.body()
-        )
-        r = await self.client.send(req, stream=True)
+        model = request.headers.get("X-Targon-Model")
+        assert model
+        client = self.clients[model]
+        assert client
+        req = client.build_request("POST", "/completions", content=await request.body())
+        r = await client.send(req, stream=True)
         return StreamingResponse(
             r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
         )
@@ -86,29 +100,26 @@ class Miner(BaseNeuron):
             f"Received model list from {request.headers.get('Epistula-Signed-By', '')[:8]}: {models}",
         )
 
-        #
-        # Add extra logic here for how your miner should handle the model list.
-        #
+        # This should return the exact same thing as `list_models`
+        assert self.config_file
+        assert self.config_file.miner_endpoints
+        return [m for m, v in self.config_file.miner_endpoints.items() if v.port]
 
-        # Return list of models your running here, make sure to have the same list between here and list_models
-        return []
-
-    async def list_models(self, request: Request):
-        # Return same list as receive models returns
-        return []
+    async def list_models(self, _: Request):
+        assert self.config_file
+        assert self.config_file.miner_endpoints
+        return [m for m, v in self.config_file.miner_endpoints.items() if v.port]
 
     async def list_nodes(self, request: Request):
-        # TODO
-        # ping each node
-        # add ip:port to nodes list
-        # Return msgArr
         msgArr = []
-        nodes = []
-        for node in nodes:
+        assert self.config_file
+        assert self.config_file.miner_nodes
+        reqJson = request.json()
+        for node in self.config_file.miner_nodes:
             try:
                 async with httpx.AsyncClient() as client:
                     url = node
-                    response = await client.post(url, json=request.text)
+                    response = await client.post(url, json=reqJson)
                     responseJson = await response.json()
                     msgArr.append(responseJson)
             except Exception as e:
