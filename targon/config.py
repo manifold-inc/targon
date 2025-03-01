@@ -20,8 +20,7 @@
 import json
 import os
 import bittensor as bt
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
 
 import requests
 import dotenv
@@ -51,6 +50,7 @@ def load_config_file():
 
     except Exception as e:
         bt.logging.error(f"Failed opening config: {e}. Not setting any values")
+        return Config()
 
 
 def validate_config_and_neuron_path(config):

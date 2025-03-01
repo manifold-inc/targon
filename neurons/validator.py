@@ -6,10 +6,12 @@ import sys
 from threading import Thread
 from time import sleep
 
+import aiohttp
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
+from targon.broadcast import broadcast
 from targon.cache import load_cache, load_organics, save_organics
 from targon.config import (
     AUTO_UPDATE,
@@ -22,9 +24,8 @@ from targon.config import (
 )
 from targon.dataset import download_dataset, download_tool_dataset
 from targon.docker import load_docker, load_existing_images, sync_output_checkers
-from targon.epistula import generate_header
 from targon.jugo import score_organics, send_organics_to_jugo, send_stats_to_jugo
-from targon.math import get_weights, verify_signature
+from targon.math import get_weights
 from targon.metagraph import (
     create_set_weights,
     get_miner_uids,
@@ -152,7 +153,7 @@ class Validator(BaseNeuron):
             last_step = self.step
             bt.logging.info("Heartbeat")
 
-    def send_models_to_miners_on_interval(self, block):
+    async def send_models_to_miners_on_interval(self, block):
         assert self.config.vpermit_tao_limit
         if block % self.config.epoch_length:
             return
@@ -166,77 +167,26 @@ class Validator(BaseNeuron):
         bt.logging.info("Broadcasting models to all miners")
         body = self.models
         gpu_ids = set()
-        for uid in miner_uids:
-            bt.logging.info(f"Broadcasting models {uid}")
-            axon_info = self.metagraph.axons[uid]
-            headers = generate_header(self.wallet.hotkey, body, axon_info.hotkey)
-            headers["Content-Type"] = "application/json"
-            try:
-                res = httpx.post(
-                    f"http://{axon_info.ip}:{axon_info.port}/models",
-                    headers=headers,
-                    json=body,
-                    timeout=3,
+        post_tasks = []
+        async with aiohttp.ClientSession() as session:
+            for uid in miner_uids:
+                bt.logging.info(f"Broadcasting models {uid}")
+                axon_info = self.metagraph.axons[uid]
+                post_tasks.append(
+                    broadcast(
+                        self.miner_nodes,
+                        self.miner_models,
+                        uid,
+                        body,
+                        axon_info,
+                        self.public_key,
+                        self.wallet.hotkey,
+                        session,
+                    )
                 )
-                if res.status_code != 200 or not isinstance(models := res.json(), list):
-                    models = []
-                self.miner_models[uid] = list(set(models))
-                nonce = str(uuid.uuid4())
-                req_body = {"nonce": nonce}
-                req_bytes = json.dumps(
-                    req_body, ensure_ascii=False, separators=(",", ":"), allow_nan=False
-                ).encode("utf-8")
-                headers = generate_header(
-                    self.wallet.hotkey, req_bytes, axon_info.hotkey
-                )
-                res = httpx.post(
-                    f"http://{axon_info.ip}:{axon_info.port}/nodes",
-                    headers=headers,
-                    timeout=30,
-                    json=req_body,
-                )
-                if res.status_code != 200 or not isinstance(nodes := res.json(), list):
-                    self.miner_nodes[uid] = False
-                    continue
+        all_gpus = await asyncio.gather(*post_tasks)
+        bt.logging.info(str(all_gpus))
 
-                for node in nodes:
-                    self.miner_nodes[uid] = False
-                    if not isinstance(node, dict):
-                        break
-                    msg = node.get("msg")
-                    signature = node.get("signature")
-                    if not isinstance(msg, dict):
-                        break
-                    if not isinstance(signature, str):
-                        break
-                    miner_nonce = msg.get("nonce")
-                    if miner_nonce != nonce:
-                        break
-                    if not verify_signature(msg, signature, self.public_key):
-                        break
-
-                    # Make sure gpus are unique
-                    gpu_info = msg.get("gpu_info", [])
-                    parsed_gpus = False
-                    for gpu in gpu_info:
-                        parsed_gpus = False
-                        if not isinstance(gpu, dict):
-                            break
-                        gpu_id = gpu.get("id", None)
-                        if gpu_id is None:
-                            break
-                        if gpu_id in gpu_ids:
-                            break
-                        gpu_ids.add(gpu_id)
-                        parsed_gpus = True
-
-                    if not parsed_gpus:
-                        break
-                    self.miner_nodes[uid] = True
-
-            except Exception:
-                self.miner_nodes[uid] = False
-                self.miner_models[uid] = []
         bt.logging.info("Miner models: " + str(self.miner_models))
 
     def resync_hotkeys_on_interval(self, block):
@@ -355,7 +305,7 @@ class Validator(BaseNeuron):
         weight_json = json.dumps(weights)
         bt.logging.info(weight_json)
 
-    def run(self):
+    async def run(self):
         assert self.config.subtensor
         assert self.config.neuron
         assert self.config.database
@@ -387,7 +337,7 @@ class Validator(BaseNeuron):
             self.lock_halt = False
         bt.logging.info(str(self.verification_ports))
         resync_hotkeys(self.metagraph, self.miner_tps)
-        self.send_models_to_miners_on_interval(0)
+        await self.send_models_to_miners_on_interval(0)
 
         if self.config_file and self.config_file.set_weights_on_start:
             try:
@@ -475,28 +425,24 @@ class Validator(BaseNeuron):
                 f"Querying Miners for model {model_name} using {generator_model_name}"
             )
 
-            res = self.loop.run_until_complete(
-                self.query_miners(
-                    miner_uids,
-                    model_name,
-                    endpoint,
-                    generator_model_name,
-                    model_name in list(self.verification_ports.keys()),
-                )
+            res = await self.query_miners(
+                miner_uids,
+                model_name,
+                endpoint,
+                generator_model_name,
+                model_name in list(self.verification_ports.keys()),
             )
             self.save_scores()
             if res is not None:
                 bt.logging.info("About to end stats to jugo")
-                self.loop.run_until_complete(
-                    send_stats_to_jugo(
-                        self.metagraph,
-                        self.subtensor,
-                        self.wallet,
-                        *res,
-                        spec_version,
-                        self.models,
-                        self.miner_tps,
-                    )
+                await send_stats_to_jugo(
+                    self.metagraph,
+                    self.subtensor,
+                    self.wallet,
+                    *res,
+                    spec_version,
+                    self.models,
+                    self.miner_tps,
                 )
 
         # Exiting
@@ -676,7 +622,7 @@ class Validator(BaseNeuron):
 if __name__ == "__main__":
     try:
         validator = Validator()
-        validator.run()
+        asyncio.run(validator.run())
     except Exception as e:
         bt.logging.error(str(e))
         bt.logging.error(traceback.format_exc())

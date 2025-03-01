@@ -22,6 +22,7 @@ from targon.metagraph import run_block_callback_thread
 from targon.types import Config
 from targon.utils import ExitContext
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
+import inspect
 
 
 class NeuronType(Enum):
@@ -60,10 +61,12 @@ class BaseNeuron:
         self.metagraph.sync(subtensor=self.subtensor)
         return True
 
-    def run_callbacks(self, block):
+    async def run_callbacks(self, block):
         for callback in self.block_callbacks:
             try:
-                callback(block)
+                res = callback(block)
+                if inspect.isawaitable(res):
+                    await res
             except Exception as e:
                 bt.logging.error(
                     f"Failed running callback {callback.__name__}: {str(e)}"
