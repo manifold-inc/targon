@@ -91,11 +91,11 @@ def create_set_weights(version: int, netuid: int):
 
 
 def create_subscription_handler(substrate, callback: Callable):
-    def inner(obj, update_nr, _):
+    async def inner(obj, update_nr, _):
         substrate.get_block(block_number=obj["header"]["number"])
 
         if update_nr >= 1:
-            return callback(obj["header"]["number"])  # type: int
+            return await callback(obj["header"]["number"])  # type: int
 
     return inner
 
