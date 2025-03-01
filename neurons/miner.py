@@ -114,7 +114,7 @@ class Miner(BaseNeuron):
         msgArr = []
         assert self.config_file
         assert self.config_file.miner_nodes
-        reqJson = request.json()
+        reqJson = await request.json()
         for node in self.config_file.miner_nodes:
             try:
                 async with httpx.AsyncClient() as client:
