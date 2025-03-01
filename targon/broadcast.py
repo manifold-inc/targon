@@ -1,3 +1,4 @@
+import traceback
 from typing import List
 import json
 import aiohttp
@@ -16,7 +17,7 @@ async def broadcast(
     public_key,
     session: aiohttp.ClientSession,
     hotkey,
-) -> tuple[int, List[str] ]:
+) -> tuple[int, List[str]]:
     try:
         req_bytes = json.dumps(
             models, ensure_ascii=False, separators=(",", ":"), allow_nan=False
@@ -94,7 +95,9 @@ async def broadcast(
                 miner_nodes[uid] = True
             return uid, list(gpu_ids)
 
-    except Exception:
+    except Exception as e:
+        print(traceback.format_exc())
+        print(e)
         miner_nodes[uid] = False
         miner_models[uid] = []
         return uid, []
