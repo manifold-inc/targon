@@ -98,8 +98,7 @@ async def broadcast(
             return uid, list(gpu_ids)
 
     except Exception as e:
-        print(traceback.format_exc())
-        print(e)
+        print(f"{uid} error broadcasting {e}")
         miner_nodes[uid] = False
         miner_models[uid] = []
         return uid, []
