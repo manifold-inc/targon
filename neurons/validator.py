@@ -1,4 +1,5 @@
 import json
+import uuid
 import random
 import asyncio
 import sys
@@ -181,15 +182,15 @@ class Validator(BaseNeuron):
                     models = []
                 self.miner_models[uid] = list(set(models))
                 nonce = str(uuid.uuid4())
-                req_body = {
-                        "nonce": nonce
-                }
-                headers = generate_header(self.wallet.hotkey, req_body, axon_info.hotkey)
+                req_body = {"nonce": nonce}
+                headers = generate_header(
+                    self.wallet.hotkey, req_body, axon_info.hotkey
+                )
                 res = httpx.post(
                     f"http://{axon_info.ip}:{axon_info.port}/nodes",
                     headers=headers,
                     timeout=10,
-                    json=req_body
+                    json=req_body,
                 )
                 if res.status_code != 200 or not isinstance(nodes := res.json(), list):
                     self.miner_nodes[uid] = False
@@ -205,9 +206,9 @@ class Validator(BaseNeuron):
                         break
                     if not isinstance(signature, str):
                         break
-                        miner_nonce = msg.get("nonce")
-                        if miner_nonce != nonce:
-                            break
+                    miner_nonce = msg.get("nonce")
+                    if miner_nonce != nonce:
+                        break
                     if not verify_signature(msg, signature, self.public_key):
                         break
 
