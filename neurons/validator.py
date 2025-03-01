@@ -189,7 +189,7 @@ class Validator(BaseNeuron):
                 res = httpx.post(
                     f"http://{axon_info.ip}:{axon_info.port}/nodes",
                     headers=headers,
-                    timeout=10,
+                    timeout=30,
                     json=req_body,
                 )
                 if res.status_code != 200 or not isinstance(nodes := res.json(), list):
