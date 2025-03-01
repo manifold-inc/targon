@@ -113,13 +113,13 @@ VLLM serving different images validators are requesting. You can find a list at
 https://stats.sybil.com/stats/validator under the live tab. The more models you
 run, the higher your incentive.
 
-VLLM is the recommended engine, however it is not required. If you are using
-VLLM, make sure yo include the `--return-tokens-as-token-ids` flag, or else your
-responses will fail. You will also need to include `--enable-auto-tool-choice --tool-call-parser llama3_json`
-and `--enable-auto-tool-choice --tool-call-parser hermes` for your Llama and Hermes vLLM
-instances to support tool calling.
+You will also need to include
+`--enable-auto-tool-choice --tool-call-parser llama3_json` and
+`--enable-auto-tool-choice --tool-call-parser hermes` for your Llama and Hermes
+vLLM instances to support tool calling.
 
-Miners must also pull a custom binary from Docker Hub to run on *EACH* GPU Node. To pull it:
+Miners must also pull a custom binary from Docker Hub to run on *EACH* GPU
+Cluster. To pull it:
 
 ```bash
 docker pull manifoldlabs/targon-goggles
@@ -128,10 +128,10 @@ docker pull manifoldlabs/targon-goggles
 After pulling a Docker image, you can run it using the `docker run` command:
 
 ```bash
-docker run manifoldlabs/targon-goggles
+docker run -d -p 8844:8000 manifoldlabs/targon-goggles:v1
 ```
 
-Below are some helpful commands for managing your docker containers. 
+Below are some helpful commands for managing your docker containers.
 
 ```bash
 # List all running containers
@@ -156,15 +156,16 @@ proxy to the proper VLLM instance on each request. Verifiers will include the
 `X-Targon-Model` header so that the miner node does not need to parse the actual
 body.
 
-In the `miner.py` script you will find two functions called `list_models` and `list_nodes`. To serve
-multiple models you must:
+In the `miner.py` script you will find two functions called `list_models` and
+`list_nodes`. To serve multiple models you must:
 
-1. Fill out the `ip:port` to the nodes list that correspond to your GPUS. Below is an example. 
+1. Fill out the `ip:port` to the nodes list that correspond to your GPUS. Below
+   is an example.
 
-```
+```py
     async def list_nodes(self, request: Request):
         msgArr = []
-        nodes = [example1, example2]
+        nodes = ["http://node1:8844", "http://node2:8844"]
         for node in nodes:
             try:
                 async with httpx.AsyncClient() as client:
@@ -176,39 +177,27 @@ multiple models you must:
                 bt.logging.error(f"Error pinging node {node}: {str(e)}")
 
         return msgArr
-        ```
+```
+
 2. Fill this out to respond to validators with any model you currently have
    available (below is an example):
 
-```
-    async def list_models(self):
-        return [
-            "ExampleName/Meta-Llama-3.1-8B-Instruct",
-            "ExampleName/mythomax-l2-13b",
-            "ExampleName/Hermes-3-Llama-3.1-8B",
-            "ExampleName/Nxcode-CQ-7B-orpo",
-            "ExampleName/deepseek-coder-33b-instruct",
-            "ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF",
-        ]
+```py
+async def list_models(self):
+    return [
+        "ExampleName/Meta-Llama-3.1-8B-Instruct",
+        "ExampleName/mythomax-l2-13b",
+        "ExampleName/Hermes-3-Llama-3.1-8B",
+        "ExampleName/Nxcode-CQ-7B-orpo",
+        "ExampleName/deepseek-coder-33b-instruct",
+        "ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF",
+    ]
 ```
 
 3. Update the `create_chat_completion` and `create_completion` methods in
    neurons/miner.py to route to the appropriate vllm upstream server based on
    the model (which is either in the headers or from the request payload's model
    param)
-
-Here is a hint / incomplete code snippet to get you started:
-
-```
-model_port_map = {
-    'ExampleName/mythomax-l2-13b': 1001,
-    'ExampleName/Hermes-3-Llama-3.1-8B': 1002,
-    'ExampleName/Nxcode-CQ-7B-orpo': 1003,
-    'ExampleName/deepseek-coder-33b-instruct': 1004,
-    'ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF': 1005
-}
-full_url = f"http://127.0.0.1:{model_port_map.get(body.get('model'), 1000)}{path}"
-```
 
 Once this is complete, you are ready to continue starting your miner node.
 
