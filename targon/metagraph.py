@@ -96,7 +96,8 @@ def create_subscription_handler(substrate, callback: Callable):
         substrate.get_block(block_number=obj["header"]["number"])
 
         if update_nr >= 1:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             return loop.run_until_complete(callback(obj["header"]["number"]))
 
     return inner
