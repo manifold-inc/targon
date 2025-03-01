@@ -128,7 +128,7 @@ docker pull manifoldlabs/targon-goggles:v1
 After pulling a Docker image, you can run it using the `docker run` command:
 
 ```bash
-docker run -d -p 8844:8000 manifoldlabs/targon-goggles:v1
+docker run --runtime nvidia --gpus all -d -p 8844:8000 manifoldlabs/targon-goggles:v1
 ```
 
 Below are some helpful commands for managing your docker containers.
