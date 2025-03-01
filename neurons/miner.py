@@ -98,17 +98,17 @@ class Miner(BaseNeuron):
         return []
 
     async def list_nodes(self, request: Request):
-        # TODO
         # ping each node
         # add ip:port to nodes list
         # Return msgArr
         msgArr = []
         nodes = []
+        req_json = await request.json()
         for node in nodes:
             try:
                 async with httpx.AsyncClient() as client:
                     url = node
-                    response = await client.post(url, json=request.text)
+                    response = await client.post(url, json=req_json)
                     responseJson = await response.json()
                     msgArr.append(responseJson)
             except Exception as e:
