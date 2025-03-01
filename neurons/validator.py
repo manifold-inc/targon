@@ -180,8 +180,8 @@ class Validator(BaseNeuron):
                         body,
                         axon_info,
                         self.public_key,
-                        self.wallet.hotkey,
                         session,
+                        self.wallet.hotkey,
                     )
                 )
         all_gpus = await asyncio.gather(*post_tasks)
