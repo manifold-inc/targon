@@ -86,7 +86,7 @@ def get_weights(
             total_organics += sum([len(o) for o in organic.values()])
 
     for uid in miner_scores:
-        if not miner_nodes[uid]:
+        if not miner_nodes.get(uid):
             tps[uid] = 0
             continue
 
