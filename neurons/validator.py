@@ -55,7 +55,7 @@ class Validator(BaseNeuron):
     neuron_type = NeuronType.Validator
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
     miner_models: Dict[int, List[str]]
-    miner_nodes: Dict[int, bool]
+    miner_nodes: Dict[int, bool] = {}
     verification_ports: Dict[str, Dict[str, Any]]
     models: List[str]
     lock_waiting = False
