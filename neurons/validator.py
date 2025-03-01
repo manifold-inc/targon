@@ -183,8 +183,11 @@ class Validator(BaseNeuron):
                 self.miner_models[uid] = list(set(models))
                 nonce = str(uuid.uuid4())
                 req_body = {"nonce": nonce}
+                req_bytes = json.dumps(
+                    req_body, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+                ).encode("utf-8")
                 headers = generate_header(
-                    self.wallet.hotkey, req_body, axon_info.hotkey
+                    self.wallet.hotkey, req_bytes, axon_info.hotkey
                 )
                 res = httpx.post(
                     f"http://{axon_info.ip}:{axon_info.port}/nodes",
