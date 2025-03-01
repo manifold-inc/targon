@@ -122,7 +122,7 @@ Miners must also pull a custom binary from Docker Hub to run on *EACH* GPU
 Cluster. To pull it:
 
 ```bash
-docker pull manifoldlabs/targon-goggles
+docker pull manifoldlabs/targon-goggles:v1
 ```
 
 After pulling a Docker image, you can run it using the `docker run` command:
