@@ -32,11 +32,13 @@ async def broadcast(
             timeout=aiohttp.ClientTimeout(total=3),
         ) as res:
             if res.status != 200:
+                print(f"{uid} failed models request: {res.status}")
                 miner_models[uid] = []
                 return uid, []
             data = await res.json()
             if not isinstance(data, list):
                 miner_models[uid] = []
+                print(f"{uid} Data not list: {data}")
                 return uid, []
             miner_models[uid] = list(set(data))
         nonce = str(uuid.uuid4())
