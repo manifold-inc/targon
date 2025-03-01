@@ -213,20 +213,18 @@ class Validator(BaseNeuron):
         finally:
             self.lock_halt = False
 
-    def score_organics_on_block(self, block):
+    async def score_organics_on_block(self, block):
         if not self.is_runing:
             return
         blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
         if block % 5 or blocks_till < 35:
             return
         bt.logging.info(str(self.verification_ports))
-        bucket_id, organic_stats = asyncio.run(
-            score_organics(
-                self.last_bucket_id,
-                self.verification_ports,
-                self.wallet,
-                self.organics,
-            )
+        bucket_id, organic_stats = await score_organics(
+            self.last_bucket_id,
+            self.verification_ports,
+            self.wallet,
+            self.organics,
         )
         save_organics(self.organics)
 
@@ -248,7 +246,7 @@ class Validator(BaseNeuron):
             ),
         )
         bt.logging.info("Sending organics to jugo")
-        asyncio.run(send_organics_to_jugo(self.wallet, organic_stats))
+        await send_organics_to_jugo(self.wallet, organic_stats)
         bt.logging.info("Sent organics to jugo")
 
     def set_weights_on_interval(self, block):
