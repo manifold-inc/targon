@@ -22,7 +22,7 @@ async def broadcast(
         req_bytes = json.dumps(
             models, ensure_ascii=False, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
-        headers = generate_header(hotkey, models, axon_info.hotkey)
+        headers = generate_header(hotkey, req_bytes, axon_info.hotkey)
         headers["Content-Type"] = "application/json"
         gpu_ids = set()
         async with session.post(
