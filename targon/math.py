@@ -103,7 +103,7 @@ def get_weights(
 
         tps[uid] = 0
         if synth_scores == 0:
-            tps[uid] = -1
+            tps[uid] = 0.0001
             continue
 
         if (organic := organics.get(str(uid))) is not None:
@@ -126,6 +126,5 @@ def get_weights(
         bt.logging.warning("No one gave responses worth scoring")
         return [], []
     raw_weights = (np.e ** (np.log(max(rewards)) / max(rewards))) ** rewards
-    raw_weights = normalize_ignore_sub_zero(rewards)
     bt.logging.info(f"Raw Weights: {raw_weights}")
     return uids, raw_weights
