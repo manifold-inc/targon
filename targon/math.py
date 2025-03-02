@@ -103,7 +103,6 @@ def get_weights(
 
         tps[uid] = 0
         if synth_scores == 0:
-            # passed some syntehtics
             tps[uid] = -1
             continue
 
@@ -122,7 +121,7 @@ def get_weights(
     uids: List[int] = sorted(tps.keys())
     rewards = [tps[uid] for uid in uids]
 
-    bt.logging.info(f"All wps: {tps}")
+    bt.logging.info(f"All scores: {json.dumps(tps)}")
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
         return [], []
