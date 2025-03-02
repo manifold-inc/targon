@@ -120,7 +120,7 @@ class Miner(BaseNeuron):
                 async with httpx.AsyncClient() as client:
                     url = node
                     response = await client.post(url, json=reqJson)
-                    responseJson = await response.json()
+                    responseJson = response.json()
                     msgArr.append(responseJson)
             except Exception as e:
                 bt.logging.error(f"Error pinging node {node}: {str(e)}")
