@@ -185,6 +185,15 @@ class Validator(BaseNeuron):
                     )
                 )
             all_gpus = await asyncio.gather(*post_tasks)
+
+        for uid, miner_gpu_ids in all_gpus:
+            for gpu_id in miner_gpu_ids:
+                if gpu_id in gpu_ids:
+                    self.miner_nodes[uid] = False
+                    self.miner_models[uid] = []
+                    continue
+                gpu_ids.add(gpu_id)
+
         bt.logging.info(str(all_gpus))
 
         bt.logging.info("Miner models: " + str(self.miner_models))
