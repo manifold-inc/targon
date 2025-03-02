@@ -126,5 +126,6 @@ def get_weights(
         bt.logging.warning("No one gave responses worth scoring")
         return [], []
     raw_weights = (np.e ** (np.log(max(rewards)) / max(rewards))) ** rewards
+    raw_weights = [float(x) for x in raw_weights]
     bt.logging.info(f"Raw Weights: {raw_weights}")
     return uids, raw_weights
