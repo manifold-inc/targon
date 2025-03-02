@@ -103,7 +103,7 @@ def get_weights(
 
         tps[uid] = 0
         if synth_scores == 0:
-            tps[uid] = 0.0001
+            tps[uid] = 0
             continue
 
         if (organic := organics.get(str(uid))) is not None:
