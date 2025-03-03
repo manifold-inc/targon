@@ -132,5 +132,5 @@ def get_weights(
             final_weights.append(0)
             continue
         final_weights.append(float(x))
-    bt.logging.info(f"Raw Weights: {raw_weights}")
-    return uids, raw_weights
+    bt.logging.info(f"Raw Weights: {final_weights}")
+    return uids, final_weights
