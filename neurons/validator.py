@@ -180,7 +180,7 @@ class Validator(BaseNeuron):
         
         for uid in inactive_uids:
             bt.logging.info(f"Resetting inactive miner {uid} - no response for {epoch_length} blocks")
-            self.miner_nodes[uid] = False
+            self.miner_nodes[uid] = []
             self.miner_models[uid] = []
 
 
@@ -221,12 +221,12 @@ class Validator(BaseNeuron):
             if not miner_gpu_ids:
                 continue
             if len(set(miner_gpu_ids)) < len(miner_gpu_ids):
-                self.miner_nodes[uid] = False
+                self.miner_nodes[uid] = []
                 self.miner_models[uid] = []
                 continue
             duplicate_found = any(gpu_id in gpu_ids for gpu_id in miner_gpu_ids)
             if duplicate_found:
-                self.miner_nodes[uid] = False
+                self.miner_nodes[uid] = []
                 self.miner_models[uid] = []
             else:
                 self.last_miner_response[uid] = self.subtensor.block
