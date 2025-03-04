@@ -124,7 +124,7 @@ class Validator(BaseNeuron):
                 self.resync_hotkeys_on_interval,
                 self.send_models_to_miners_on_interval,
                 self.score_organics_on_block,
-                self.reset_inactive_miners
+                self.reset_inactive_miners,
             ]
         )
 
@@ -165,11 +165,13 @@ class Validator(BaseNeuron):
         current_block = block
         epoch_length = self.config.epoch_length
 
-        if not hasattr(self, 'startup_block'):
+        if not hasattr(self, "startup_block"):
             self.startup_block = block
 
         if block - self.startup_block < self.config.epoch_length:
-            bt.logging.info("Skipping inactive miner check during first epoch after restart")
+            bt.logging.info(
+                "Skipping inactive miner check during first epoch after restart"
+            )
             return
 
         inactive_uids = []
@@ -177,12 +179,13 @@ class Validator(BaseNeuron):
             last_block = self.last_miner_response.get(uid, 0)
             if current_block - last_block > epoch_length:
                 inactive_uids.append(uid)
-        
-        for uid in inactive_uids:
-            bt.logging.info(f"Resetting inactive miner {uid} - no response for {epoch_length} blocks")
-            self.miner_nodes[uid] = []
-            self.miner_models[uid] = []
 
+        for uid in inactive_uids:
+            bt.logging.info(
+                f"Resetting inactive miner {uid} - no response for {epoch_length} blocks"
+            )
+            self.miner_nodes[uid] = False
+            self.miner_models[uid] = []
 
     async def send_models_to_miners_on_interval(self, block):
         assert self.config.vpermit_tao_limit
@@ -221,12 +224,12 @@ class Validator(BaseNeuron):
             if not miner_gpu_ids:
                 continue
             if len(set(miner_gpu_ids)) < len(miner_gpu_ids):
-                self.miner_nodes[uid] = []
+                self.miner_nodes[uid] = False
                 self.miner_models[uid] = []
                 continue
             duplicate_found = any(gpu_id in gpu_ids for gpu_id in miner_gpu_ids)
             if duplicate_found:
-                self.miner_nodes[uid] = []
+                self.miner_nodes[uid] = False
                 self.miner_models[uid] = []
             else:
                 self.last_miner_response[uid] = self.subtensor.block

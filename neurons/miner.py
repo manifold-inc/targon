@@ -55,6 +55,7 @@ class Miner(BaseNeuron):
 
         self.clients = {
             model: httpx.AsyncClient(
+                timeout=httpx.Timeout(60 * 3),
                 base_url=f"{endpoint.url}:{endpoint.port}/v1",
                 headers={"Authorization": f"Bearer {self.config_file.miner_api_key}"},
             )

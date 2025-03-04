@@ -64,7 +64,7 @@ async def broadcast(
             for node in data:
                 miner_nodes[uid] = False
                 if not isinstance(node, dict):
-                    break
+                    continue
                 msg = node.get("msg")
                 signature = node.get("signature")
                 if not isinstance(msg, dict):
