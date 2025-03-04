@@ -1,4 +1,3 @@
-import traceback
 from typing import List
 import json
 import aiohttp
@@ -9,15 +8,13 @@ from targon.math import verify_signature
 
 
 async def broadcast(
-    miner_nodes,
-    miner_models,
     uid,
     models,
     axon_info,
     public_key,
     session: aiohttp.ClientSession,
     hotkey,
-) -> tuple[int, List[str]]:
+) -> tuple[int, List[str], List[str], int, str]:
     try:
         req_bytes = json.dumps(
             models, ensure_ascii=False, separators=(",", ":"), allow_nan=False
@@ -32,15 +29,11 @@ async def broadcast(
             timeout=aiohttp.ClientTimeout(total=3),
         ) as res:
             if res.status != 200:
-                print(f"{uid} failed models request: {res.status}")
-                miner_models[uid] = []
-                return uid, []
+                return uid, [], [], False, f"Models response not 200: {res.status}"
             data = await res.json()
             if not isinstance(data, list):
-                miner_models[uid] = []
-                print(f"{uid} Data not list: {data}")
-                return uid, []
-            miner_models[uid] = list(set(data))
+                return uid, [], [], False, "Model Data not list"
+            miner_models = list(set(data))
         nonce = str(uuid.uuid4())
         req_body = {"nonce": nonce}
         req_bytes = json.dumps(
@@ -55,50 +48,39 @@ async def broadcast(
             data=req_bytes,
         ) as res:
             if res.status != 200:
-                miner_nodes[uid] = False
-                return uid, []
+                return uid, [], [], False, f"Response not 200: {res.status}"
             data = await res.json()
             if not isinstance(data, list):
-                miner_nodes[uid] = False
-                return uid, []
+                return uid, [], [], False, "Gpu data not list"
+            parsed_any_gpus = False
             for node in data:
-                miner_nodes[uid] = False
                 if not isinstance(node, dict):
                     continue
                 msg = node.get("msg")
                 signature = node.get("signature")
                 if not isinstance(msg, dict):
-                    break
+                    continue
                 if not isinstance(signature, str):
-                    break
+                    continue
                 miner_nonce = msg.get("nonce")
                 if miner_nonce != nonce:
-                    break
+                    continue
                 if not verify_signature(msg, signature, public_key):
-                    break
+                    continue
 
                 # Make sure gpus are unique
                 gpu_info = msg.get("gpu_info", [])
-                parsed_gpus = False
                 for gpu in gpu_info:
-                    parsed_gpus = False
                     if not isinstance(gpu, dict):
-                        break
+                        continue
                     gpu_id = gpu.get("id", None)
                     if gpu_id is None:
-                        break
+                        continue
                     if gpu_id in gpu_ids:
-                        break
+                        continue
                     gpu_ids.add(gpu_id)
-                    parsed_gpus = True
-
-                if not parsed_gpus:
-                    break
-                miner_nodes[uid] = True
-            return uid, list(gpu_ids)
+                    parsed_any_gpus = True
+            return uid, miner_models, list(gpu_ids), parsed_any_gpus, ""
 
     except Exception as e:
-        print(f"{uid} error broadcasting {e}")
-        miner_nodes[uid] = False
-        miner_models[uid] = []
-        return uid, []
+        return uid, [], [], False, f"Unknown error: {e}"

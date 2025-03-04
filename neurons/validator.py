@@ -208,8 +208,6 @@ class Validator(BaseNeuron):
                 axon_info = self.metagraph.axons[uid]
                 post_tasks.append(
                     broadcast(
-                        self.miner_nodes,
-                        self.miner_models,
                         uid,
                         body,
                         axon_info,
@@ -218,26 +216,26 @@ class Validator(BaseNeuron):
                         self.wallet.hotkey,
                     )
                 )
-            all_gpus = await asyncio.gather(*post_tasks)
+            broadcast_responses = await asyncio.gather(*post_tasks)
 
-        for uid, miner_gpu_ids in all_gpus:
-            if not miner_gpu_ids:
-                continue
-            if len(set(miner_gpu_ids)) < len(miner_gpu_ids):
-                self.miner_nodes[uid] = False
+        for uid, miner_models, miner_gpu_ids, passed, err in broadcast_responses:
+            if err != "":
+                bt.logging.info(f"broadcast {uid}: {err}")
+            if not passed:
                 self.miner_models[uid] = []
+                self.miner_nodes[uid] = False
                 continue
             duplicate_found = any(gpu_id in gpu_ids for gpu_id in miner_gpu_ids)
             if duplicate_found:
+                bt.logging.info(f"broadcast {uid}: Duplicate GPUs")
                 self.miner_nodes[uid] = False
                 self.miner_models[uid] = []
-            else:
-                self.last_miner_response[uid] = self.subtensor.block
-                gpu_ids.update(miner_gpu_ids)
-
-        bt.logging.info(str(all_gpus))
-
-        bt.logging.info("Miner models: " + str(self.miner_models))
+                continue
+            self.last_miner_response[uid] = self.subtensor.block
+            gpu_ids.update(miner_gpu_ids)
+            self.miner_nodes[uid] = True
+            self.miner_models[uid] = miner_models
+            bt.logging.info(f"broadcast {uid}: {len(miner_gpu_ids)} gpus, verified")
 
     def resync_hotkeys_on_interval(self, block):
         if not self.is_runing:
