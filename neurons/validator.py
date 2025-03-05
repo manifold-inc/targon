@@ -1,5 +1,4 @@
 import json
-import uuid
 import random
 import asyncio
 import sys
@@ -8,7 +7,6 @@ from time import sleep
 
 import aiohttp
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
-import httpx
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
 from targon.broadcast import broadcast
@@ -57,7 +55,6 @@ class Validator(BaseNeuron):
     miner_tps: Dict[int, Dict[str, List[Optional[float]]]]
     miner_models: Dict[int, List[str]]
     miner_nodes: Dict[int, bool] = {}
-    last_miner_response: Dict[int, int] = {}
     verification_ports: Dict[str, Dict[str, Any]]
     models: List[str]
     lock_waiting = False
@@ -105,10 +102,6 @@ class Validator(BaseNeuron):
             self.config.cache_file, self.subtensor.block, miners
         )
         self.organics = load_organics()
-        self.last_miner_response = {}
-        current_block = self.subtensor.block
-        for uid in self.miner_tps.keys():
-            self.last_miner_response[uid] = current_block
 
         ## LOAD DATASETS
         bt.logging.info("⌛️", "Loading datasets")
@@ -124,7 +117,6 @@ class Validator(BaseNeuron):
                 self.resync_hotkeys_on_interval,
                 self.send_models_to_miners_on_interval,
                 self.score_organics_on_block,
-                self.reset_inactive_miners,
             ]
         )
 
@@ -158,34 +150,6 @@ class Validator(BaseNeuron):
                 sys.exit(0)
             last_step = self.step
             bt.logging.info("Heartbeat")
-
-    async def reset_inactive_miners(self, block):
-        if not self.is_runing:
-            return
-        current_block = block
-        epoch_length = self.config.epoch_length
-
-        if not hasattr(self, "startup_block"):
-            self.startup_block = block
-
-        if block - self.startup_block < self.config.epoch_length:
-            bt.logging.info(
-                "Skipping inactive miner check during first epoch after restart"
-            )
-            return
-
-        inactive_uids = []
-        for uid in self.miner_nodes.keys():
-            last_block = self.last_miner_response.get(uid, 0)
-            if current_block - last_block > epoch_length:
-                inactive_uids.append(uid)
-
-        for uid in inactive_uids:
-            bt.logging.info(
-                f"Resetting inactive miner {uid} - no response for {epoch_length} blocks"
-            )
-            self.miner_nodes[uid] = False
-            self.miner_models[uid] = []
 
     async def send_models_to_miners_on_interval(self, block):
         assert self.config.vpermit_tao_limit
@@ -231,7 +195,6 @@ class Validator(BaseNeuron):
                 self.miner_nodes[uid] = False
                 self.miner_models[uid] = []
                 continue
-            self.last_miner_response[uid] = self.subtensor.block
             gpu_ids.update(miner_gpu_ids)
             self.miner_nodes[uid] = True
             self.miner_models[uid] = miner_models
