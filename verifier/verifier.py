@@ -130,7 +130,8 @@ async def generate_question(req: GenerateRequest):
             assert prompt is not None
             text_outputs = [prompt + output.text for output in final_output.outputs]
             return {"text": text_outputs}
-        except Exception:
+        except Exception as e:
+            print(e)
             return {"text": None}
 
 
