@@ -19,12 +19,13 @@ async def broadcast(
         req_bytes = json.dumps(
             models, ensure_ascii=False, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
-        headers = generate_header(hotkey, req_bytes, axon_info.hotkey)
-        headers["Content-Type"] = "application/json"
         gpu_ids = set()
         async with session.post(
             f"http://{axon_info.ip}:{axon_info.port}/models",
-            headers=headers,
+            headers={
+                "Content-Type": "application/json",
+                **generate_header(hotkey, req_bytes, axon_info.hotkey),
+            },
             data=req_bytes,
             timeout=aiohttp.ClientTimeout(total=3),
         ) as res:
@@ -39,12 +40,13 @@ async def broadcast(
         req_bytes = json.dumps(
             req_body, ensure_ascii=False, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
-        headers = generate_header(hotkey, req_bytes, axon_info.hotkey)
-        headers["Content-Type"] = "application/json"
         async with session.post(
             f"http://{axon_info.ip}:{axon_info.port}/nodes",
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=20),
+            headers={
+                "Content-Type": "application/json",
+                **generate_header(hotkey, req_bytes, axon_info.hotkey),
+            },
+            timeout=aiohttp.ClientTimeout(total=30),
             data=req_bytes,
         ) as res:
             if res.status != 200:

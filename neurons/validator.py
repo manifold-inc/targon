@@ -181,10 +181,14 @@ class Validator(BaseNeuron):
                         self.wallet.hotkey,
                     )
                 )
-                if idx % 32 == 0:
+                if idx % 100 == 0:
                     broadcast_responses = await asyncio.gather(*post_tasks)
                     post_results.extend(broadcast_responses)
                     post_tasks = []
+            if len(post_tasks) != 0:
+                responses = await asyncio.gather(*post_tasks)
+                post_results.extend(responses)
+                post_tasks = []
 
         for uid, miner_models, miner_gpu_ids, passed, err in post_results:
             if err != "":
