@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 import time
 from bittensor.core.axon import FastAPIThreadedServer
@@ -112,20 +113,33 @@ class Miner(BaseNeuron):
         return [m for m, v in self.config_file.miner_endpoints.items() if v.port]
 
     async def list_nodes(self, request: Request):
-        msgArr = []
-        assert self.config_file
-        assert self.config_file.miner_nodes
         reqJson = await request.json()
-        for node in self.config_file.miner_nodes:
+
+        async def query_node(url):
             try:
                 async with httpx.AsyncClient() as client:
-                    url = node
                     response = await client.post(url, json=reqJson)
                     responseJson = response.json()
-                    msgArr.append(responseJson)
+                    if (
+                        "msg" in responseJson
+                        and int(responseJson["msg"].get("no_of_gpus", 0)) > 0
+                    ):
+                        return responseJson
+                    else:
+                        bt.logging.error(
+                            f"Received bad response node {url}: {responseJson}"
+                        )
+                        return None
             except Exception as e:
-                bt.logging.error(f"Error pinging node {node}: {str(e)}")
+                bt.logging.error(f"Error pinging node {url}: {str(e)}")
+                return None
 
+        assert self.config_file
+        assert self.config_file.miner_nodes
+        results = await asyncio.gather(
+            *[query_node(node) for node in self.config_file.miner_nodes]
+        )
+        msgArr = [result for result in results if result is not None]
         return msgArr
 
     async def determine_epistula_version_and_verify(self, request: Request):

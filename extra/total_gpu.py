@@ -68,6 +68,7 @@ async def get_gpus(session, hotkey, axon, uid) -> Tuple[int, int, int, str]:
             if res.status != 200:
                 return uid, 0, 0, f"Bad status code: {res.status}"
             nodes = await res.json()
+            print(nodes)
             if not isinstance(nodes, list):
                 return uid, 0, 0, f"response not list"
             h100s = 0
