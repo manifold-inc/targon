@@ -86,9 +86,9 @@ def get_weights(
             total_organics += sum([len(o) for o in organic.values()])
 
     for uid in miner_scores:
-        if not miner_nodes.get(uid):
-            tps[uid] = 0
-            continue
+        # if not miner_nodes.get(uid):
+        #    tps[uid] = 0
+        #    continue
 
         synth_scores = 0
         for model in miner_models.get(uid, []):
@@ -102,8 +102,6 @@ def get_weights(
             synth_scores += safe_mean_score(miner_scores[uid][model][-SLIDING_WINDOW:])
 
         tps[uid] = 0
-        if synth_scores == 0:
-            continue
 
         if (organic := organics.get(str(uid))) is not None:
             # Boost miners for doing more organics
