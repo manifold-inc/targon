@@ -166,8 +166,9 @@ class Validator(BaseNeuron):
         body = self.models
         gpu_ids = set()
         post_tasks = []
+        post_results = []
         async with aiohttp.ClientSession() as session:
-            for uid in miner_uids:
+            for idx, uid in enumerate(miner_uids):
                 bt.logging.info(f"Broadcasting models {uid}")
                 axon_info = self.metagraph.axons[uid]
                 post_tasks.append(
@@ -180,9 +181,12 @@ class Validator(BaseNeuron):
                         self.wallet.hotkey,
                     )
                 )
-            broadcast_responses = await asyncio.gather(*post_tasks)
+                if idx % 32 == 0:
+                    broadcast_responses = await asyncio.gather(*post_tasks)
+                    post_results.extend(broadcast_responses)
+                    post_tasks = []
 
-        for uid, miner_models, miner_gpu_ids, passed, err in broadcast_responses:
+        for uid, miner_models, miner_gpu_ids, passed, err in post_results:
             if err != "":
                 bt.logging.info(f"broadcast {uid}: {err}")
             if not passed:
