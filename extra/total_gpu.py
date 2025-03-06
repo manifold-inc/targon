@@ -58,6 +58,7 @@ async def get_gpus(session, hotkey, axon, uid) -> Tuple[int, int, int, str]:
         req_body, ensure_ascii=False, separators=(",", ":"), allow_nan=False
     ).encode("utf-8")
     headers = generate_header(hotkey, req_bytes, axon.hotkey)
+    print(str(req_bytes))
     try:
         async with session.post(
             f"http://{axon.ip}:{axon.port}/nodes",
@@ -66,6 +67,7 @@ async def get_gpus(session, hotkey, axon, uid) -> Tuple[int, int, int, str]:
             timeout=aiohttp.ClientTimeout(total=20),
         ) as res:
             if res.status != 200:
+                print(res.status)
                 return uid, 0, 0, f"Bad status code: {res.status}"
             nodes = await res.json()
             print(nodes)
