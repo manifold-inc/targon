@@ -175,8 +175,10 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                         tps = min(
                             response_tokens_count, record["request"]["max_tokens"]
                         ) / (int(record.get("total_time")) / 1000)
-                        context_modifier = 1 + min(
-                            (((total_input_tokens / 2400) ** 2) / 1000), 1
+                        context_modifier = (
+                            1
+                            + 0.5 * (total_input_tokens / 32000)
+                            + 0.25 * (total_input_tokens / 64000) ** 2
                         )
                         gpu_required = res.get("gpus", 1)
                         if gpu_required >= 8:
