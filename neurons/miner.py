@@ -15,7 +15,6 @@ from targon.epistula import verify_signature
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
-import uuid
 
 
 class Miner(BaseNeuron):
@@ -73,7 +72,10 @@ class Miner(BaseNeuron):
         client = self.clients[model]
         assert client
         req = client.build_request(
-            "POST", "/chat/completions", content=await request.body()
+            "POST",
+            "/chat/completions",
+            content=await request.body(),
+            headers=request.headers.items(),
         )
         r = await client.send(req, stream=True)
         return StreamingResponse(
@@ -226,6 +228,7 @@ class Miner(BaseNeuron):
         # change the config in the axon
         app = FastAPI()
         router = APIRouter()
+        router.add_api_route("/", ping, methods=["GET"])
         router.add_api_route(
             "/v1/chat/completions",
             self.create_chat_completion,
@@ -277,6 +280,10 @@ class Miner(BaseNeuron):
             bt.logging.error(str(e))
             bt.logging.error(traceback.format_exc())
         self.shutdown()
+
+
+def ping():
+    return 200
 
 
 if __name__ == "__main__":

@@ -54,9 +54,7 @@ def verify_signature(msg: dict, signature: str, public_key):
 async def get_gpus(session, hotkey, axon, uid) -> Tuple[int, int, int, str]:
     nonce = str(uuid.uuid4())
     req_body = {"nonce": nonce}
-    req_bytes = json.dumps(
-        req_body, ensure_ascii=False, separators=(",", ":"), allow_nan=False
-    ).encode("utf-8")
+    req_bytes = json.dumps(req_body).encode("utf-8")
     headers = generate_header(hotkey, req_bytes, axon.hotkey)
     print(str(req_bytes))
     try:
