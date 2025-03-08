@@ -1,4 +1,5 @@
 import json
+import numpy as np
 import asyncio
 import sys
 from threading import Thread
@@ -6,6 +7,7 @@ from time import sleep
 
 import aiohttp
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
+from bittensor.utils.weight_utils import process_weights_for_netuid
 from substrateinterface import SubstrateInterface
 from neurons.base import BaseNeuron, NeuronType
 from targon.broadcast import broadcast
@@ -260,8 +262,20 @@ class Validator(BaseNeuron):
             bt.logging.error("Cannot get weights, failed getting metadata from jugo")
             return
         weights = get_weights(self.miner_models, self.organics, organic_metadata)
-        weight_json = json.dumps(weights)
-        bt.logging.info(weight_json)
+        uids, raw_weights = weights
+        (
+            processed_weight_uids,
+            processed_weights,
+        ) = process_weights_for_netuid(
+            uids=np.asarray(uids),
+            weights=np.asarray(raw_weights),
+            netuid=4,
+            subtensor=self.subtensor,
+            metagraph=self.metagraph,
+        )
+
+        bt.logging.info("Final Weights: " + json.dumps(processed_weights))
+        bt.logging.info("Weight Uids: " + json.dumps(processed_weight_uids))
 
     async def run(self):
         assert self.config.subtensor
