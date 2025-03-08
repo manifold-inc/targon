@@ -1,6 +1,6 @@
 import argparse
 from threading import Thread
-from typing import Callable, List, Optional
+from typing import Callable, List
 import bittensor as bt
 import copy
 
