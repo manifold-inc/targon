@@ -78,9 +78,6 @@ def get_weights(
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
 
-    # TODO
-    #  overall (jugo success rate * validated percent * overall volume percent)
-
     scores = {}
     total_organics = metadata["total_attempted"]
     if total_organics == 0:

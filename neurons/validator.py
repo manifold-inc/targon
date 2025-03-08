@@ -273,9 +273,12 @@ class Validator(BaseNeuron):
             subtensor=self.subtensor,
             metagraph=self.metagraph,
         )
-
-        bt.logging.info("Final Weights: " + str(processed_weights))
-        bt.logging.info("Weight Uids: " + str(processed_weight_uids))
+        processed_weights = [float(x) for x in processed_weights]
+        processed_weight_uids = [int(x) for x in processed_weight_uids]
+        final = {}
+        for uid, w in zip(processed_weight_uids, processed_weights):
+            final[uid] = w
+        bt.logging.info("Final Weights: " + json.dumps(final, indent=2))
 
     async def run(self):
         assert self.config.subtensor
