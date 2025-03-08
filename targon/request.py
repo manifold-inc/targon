@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 
 import requests
+from targon.types import Endpoints
 from targon.utils import fail_with_none
 
 
