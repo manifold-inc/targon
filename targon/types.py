@@ -61,6 +61,7 @@ class VerificationPortsConfig(BaseModel):
 class MinerEndpoint(BaseModel):
     port: int
     url: str
+    qps: int
 
 
 class Config(BaseModel):

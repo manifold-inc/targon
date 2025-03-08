@@ -114,7 +114,7 @@ class Miner(BaseNeuron):
         # It is up to the miner to determine their qps
         assert self.config_file
         assert self.config_file.miner_endpoints
-        return {m: 4 for m, v in self.config_file.miner_endpoints.items() if v.port}
+        return {m: v.qps for m, v in self.config_file.miner_endpoints.items() if v.port}
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
