@@ -168,6 +168,7 @@ class Validator(BaseNeuron):
             if err != "":
                 bt.logging.info(f"broadcast {uid}: {err}")
             self.miner_models[uid] = miner_models
+        bt.logging.info(json.dumps(self.miner_models, indent=2))
 
     def resync_hotkeys_on_interval(self, block):
         # TODO
@@ -234,9 +235,7 @@ class Validator(BaseNeuron):
         if organic_metadata is None:
             bt.logging.error("Cannot set weights, failed getting metadata from jugo")
             return
-        weights = get_weights(
-            self.miner_models, self.organics, organic_metadata
-        )
+        weights = get_weights(self.miner_models, self.organics, organic_metadata)
 
         if not self.config_file.skip_weight_set:
             self.set_weights(self.wallet, self.metagraph, self.subtensor, weights)
@@ -260,11 +259,7 @@ class Validator(BaseNeuron):
         if organic_metadata is None:
             bt.logging.error("Cannot get weights, failed getting metadata from jugo")
             return
-        weights = get_weights(
-            self.miner_models,
-            self.organics,
-            organic_metadata
-        )
+        weights = get_weights(self.miner_models, self.organics, organic_metadata)
         weight_json = json.dumps(weights)
         bt.logging.info(weight_json)
 
@@ -306,7 +301,6 @@ class Validator(BaseNeuron):
 
         self.is_runing = True
         while not self.exit_context.isExiting:
-            bt.logging.info("Running next synthetic iteration")
             self.step += 1
             if self.config.autoupdate and not AUTO_UPDATE:
                 bt.logging.info("Checking autoupdate")
