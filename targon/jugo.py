@@ -1,19 +1,20 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List
 
 import aiohttp
 import traceback
-from nanoid import generate
 
 from targon.epistula import generate_header
 from targon.request import check_tokens
-from targon.types import Endpoints, InferenceStats, OrganicStats
+from targon.types import Endpoints, OrganicStats
 import bittensor as bt
+
+from targon.utils import fail_with_none
 
 JUGO_URL = "https://jugo.targon.com"
 
 
 async def send_organics_to_jugo(
-    wallet: "bt.wallet",
+    wallet,
     organics: List[OrganicStats],
 ):
     try:
@@ -42,67 +43,21 @@ async def send_organics_to_jugo(
         bt.logging.error(traceback.format_exc())
 
 
-async def send_stats_to_jugo(
-    metagraph: "bt.metagraph",
-    subtensor: "bt.subtensor",
-    wallet: "bt.wallet",
-    stats: List[Tuple[int, Optional[InferenceStats]]],
-    req: Dict[str, Any],
-    endpoint: Endpoints,
-    version: int,
-    models: List[str],
-    miner_tps: Dict[int, Dict[str, List[Optional[float]]]],
-):
-    try:
-        r_nanoid = generate(size=48)
-        responses = [
-            {
-                "r_nanoid": r_nanoid,
-                "hotkey": metagraph.axons[uid].hotkey,
-                "coldkey": metagraph.axons[uid].coldkey,
-                "uid": int(uid),
-                "stats": stat and stat.model_dump(),
-            }
-            for uid, stat in stats
-        ]
-        request = {
-            "r_nanoid": r_nanoid,
-            "block": subtensor.block,
-            "request": req,
-            "request_endpoint": str(endpoint),
-            "version": version,
-            "hotkey": wallet.hotkey.ss58_address,
-        }
-        # Prepare the data
-        body = {
-            "request": request,
-            "responses": responses,
-            "models": models,
-            "scores": miner_tps,
-        }
-        headers = generate_header(wallet.hotkey, body)
-        bt.logging.info("Sending to Jugo...")
-        # Send request to the FastAPI server
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{JUGO_URL}/",
-                headers=headers,
-                json=body,
-                timeout=aiohttp.ClientTimeout(60),
-            ) as response:
-                if response.status == 200:
-                    bt.logging.info("Records sent successfully.")
-                else:
-                    error_detail = await response.text()
-                    bt.logging.error(
-                        f"Error sending records: {response.status} - {error_detail}"
-                    )
-
-    except aiohttp.ClientConnectionError:
-        bt.logging.error("Error conecting to jugo, offline.")
-    except Exception as e:
-        bt.logging.error(f"Error in send_stats_to_jugo: {e}")
-        bt.logging.error(traceback.format_exc())
+@fail_with_none("Failed getting global stats")
+async def get_global_stats(wallet):
+    async with aiohttp.ClientSession() as session:
+        headers = generate_header(wallet.hotkey, b"")
+        async with session.get(
+            JUGO_URL + "/organics/metadata",
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(60),
+        ) as res:
+            if res.status != 200:
+                bt.logging.info(f"Error pinging jugo {res.text}")
+                return None
+            res_body = await res.json()
+    assert isinstance(res_body, dict)
+    return res_body
 
 
 async def score_organics(last_bucket_id, ports, wallet, existing_scores):
@@ -164,6 +119,8 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
                 verified = res.get("verified", False)
                 total_input_tokens = res.get("input_tokens", 0)
                 tps = 0
+                if not verified:
+                    scores[uid][model].append(None)
                 if verified:
                     try:
                         response_tokens_count = int(res.get("response_tokens", 0))

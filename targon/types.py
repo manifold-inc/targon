@@ -40,7 +40,6 @@ class InferenceStats(BaseModel):
 
 
 class OrganicStats(InferenceStats):
-    gpus: int
     model: str
     max_tokens: int
     seed: int

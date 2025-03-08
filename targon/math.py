@@ -2,7 +2,7 @@ from math import exp
 import base64
 import bittensor as bt
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from targon.config import SLIDING_WINDOW
 from targon.utils import fail_with_none
@@ -71,54 +71,80 @@ def safe_mean_score(data):
 
 @fail_with_none("Failed getting Weights")
 def get_weights(
-    miner_models: Dict[int, List[str]],
-    miner_scores: Dict[int, Dict[str, List[Optional[float]]]],
+    miner_models: Dict[int, Dict[str, int]],
     organics: Dict[str, Dict[str, list[int]]],
-    models: List[str],  # Validator Models
-    miner_nodes: Dict[int, bool],
+    metadata: Dict,
 ) -> Tuple[List[int], List[float]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
-    tps = {}
-    total_organics = 0
-    for uid in miner_scores:
-        if (organic := organics.get(str(uid))) is not None:
-            total_organics += sum([len(o) for o in organic.values()])
 
-    for uid in miner_scores:
-        # if not miner_nodes.get(uid):
-        #    tps[uid] = 0
-        #    continue
+    # TODO
+    #  overall (jugo success rate * validated percent * overall volume percent)
 
-        synth_scores = 0
-        for model in miner_models.get(uid, []):
-            if model not in models:
-                continue
-            if miner_scores.get(uid) is None:
-                continue
-            if miner_scores[uid].get(model) is None:
-                continue
+    scores = {}
+    total_organics = metadata["total_attempted"]
+    if total_organics == 0:
+        raise Exception("No organics to score")
 
-            synth_scores += safe_mean_score(miner_scores[uid][model][-SLIDING_WINDOW:])
+    for uid in miner_models.keys():
+        exploited = False
+        scores[uid] = 0
+        if (organic := organics.get(str(uid))) is None:
+            continue
 
-        tps[uid] = 0
+        for orgs in organic.values():
+            score = safe_mean_score(orgs)
 
-        if (organic := organics.get(str(uid))) is not None:
-            # Boost miners for doing more organics
-            self_total = 0
-            for orgs in organic.values():
-                self_total += len(orgs)
-                tps[uid] += safe_mean_score(orgs)
-            tps[uid] = (tps[uid] * ((self_total / total_organics) + 1)) * 2
+            # Exploiting a model; zerod
+            if len(orgs) > 5 and score == 0:
+                scores[uid] = 0
+                exploited = True
+                break
 
-    tps_list = list(tps.values())
+            # More models you do, more sum you get.
+            # Baseline is avg of context your serving * gpu count of that model
+            scores[uid] += safe_mean_score(orgs)
+
+            # Maybe we change the above to just a check for pass verification rate?
+            # tbd.
+
+        if exploited or not scores[uid]:
+            continue
+
+        miner_success_rate = (
+            metadata.get("miners", {}).get(str(uid), {}).get("success_rate", 0)
+        )
+        miner_completed = (
+            metadata.get("miners", {}).get(str(uid), {}).get("completed", 0)
+        )
+
+        if miner_success_rate < 0.5:
+            scores[uid] = 0
+            continue
+        if miner_completed < 25:
+            scores[uid] = 0
+            continue
+
+        # Boost for high success rates
+        if miner_success_rate > 0.95:
+            miner_success_rate = 1.3
+        elif miner_success_rate > 0.85:
+            miner_success_rate = 1.15
+
+        # Shift values so we have more room to play with success rate calc and completed calc
+        scores[uid] = scores[uid] * 100
+        scores[uid] = (
+            scores[uid] * (miner_completed / total_organics) * miner_success_rate
+        )
+
+    tps_list = list(scores.values())
     if len(tps_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
         return [], []
-    uids: List[int] = sorted(tps.keys())
-    rewards = [tps[uid] for uid in uids]
+    uids: List[int] = sorted(scores.keys())
+    rewards = [scores[uid] for uid in uids]
 
-    bt.logging.info(f"All scores: {json.dumps(tps)}")
+    bt.logging.info(f"All scores: {json.dumps(scores)}")
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
         return [], []
