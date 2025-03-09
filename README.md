@@ -118,39 +118,6 @@ You will also need to include
 `--enable-auto-tool-choice --tool-call-parser hermes` for your Llama and Hermes
 vLLM instances to support tool calling.
 
-Miners must also pull a custom binary from Docker Hub to run on *EACH* GPU
-Cluster. To pull it:
-
-```bash
-docker pull manifoldlabs/targon-goggles:v1
-```
-
-After pulling a Docker image, you can run it using the `docker run` command:
-
-```bash
-docker run --runtime nvidia --gpus all -d -p 8844:8000 manifoldlabs/targon-goggles:v1
-```
-
-Below are some helpful commands for managing your docker containers.
-
-```bash
-# List all running containers
-docker ps
-
-# List all containers (including stopped ones)
-docker ps -a
-```
-
-### Stopping and Removing Containers
-
-```bash
-# Stop a running container
-docker stop container_name_or_id
-
-# Remove a container
-docker rm container_name_or_id
-```
-
 Once you have one (or multiple) models running, modify the default miner code to
 proxy to the proper VLLM instance on each request. Verifiers will include the
 `X-Targon-Model` header so that the miner node does not need to parse the actual
@@ -159,42 +126,23 @@ body.
 In the `miner.py` script you will find two functions called `list_models` and
 `list_nodes`. To serve multiple models you must:
 
-1. Fill out the `ip:port` to the nodes list that correspond to your GPUS. Below
-   is an example.
-
-```py
-    async def list_nodes(self, request: Request):
-        msgArr = []
-        nodes = ["http://node1:8844", "http://node2:8844"]
-        for node in nodes:
-            try:
-                async with httpx.AsyncClient() as client:
-                    url = node
-                    response = await client.post(url, json=request.text)
-                    responseJson = await response.json()
-                    msgArr.append(responseJson)
-            except Exception as e:
-                bt.logging.error(f"Error pinging node {node}: {str(e)}")
-
-        return msgArr
-```
-
-2. Fill this out to respond to validators with any model you currently have
-   available (below is an example):
+1. Fill this out to respond to validators with any model you currently have
+   available along with an estimate on how many queries per second you can
+   handle (below is an example):
 
 ```py
 async def list_models(self):
-    return [
-        "ExampleName/Meta-Llama-3.1-8B-Instruct",
-        "ExampleName/mythomax-l2-13b",
-        "ExampleName/Hermes-3-Llama-3.1-8B",
-        "ExampleName/Nxcode-CQ-7B-orpo",
-        "ExampleName/deepseek-coder-33b-instruct",
-        "ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF",
-    ]
+    return {
+        "ExampleName/Meta-Llama-3.1-8B-Instruct": 4,
+        "ExampleName/mythomax-l2-13b": 4,
+        "ExampleName/Hermes-3-Llama-3.1-8B": 4,
+        "ExampleName/Nxcode-CQ-7B-orpo": 4,
+        "ExampleName/deepseek-coder-33b-instruct": 4,
+        "ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF": 4,
+    }
 ```
 
-3. Update the `create_chat_completion` and `create_completion` methods in
+2. Update the `create_chat_completion` and `create_completion` methods in
    neurons/miner.py to route to the appropriate vllm upstream server based on
    the model (which is either in the headers or from the request payload's model
    param)
