@@ -123,9 +123,9 @@ def get_weights(
             continue
 
         # Boost for high success rates
-        if miner_success_rate > 0.95:
+        if miner_success_rate >= 0.95:
             miner_success_rate = 1.3
-        elif miner_success_rate > 0.85:
+        elif miner_success_rate >= 0.85:
             miner_success_rate = 1.15
 
         # Shift values so we have more room to play with success rate calc and completed calc

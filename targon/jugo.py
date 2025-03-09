@@ -82,7 +82,11 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores):
             return last_bucket_id, None
         scores = existing_scores
         organic_stats = []
-        bt.logging.info(f"Found {len(organics)} organics")
+        total_records = 0
+        for _, r in organics.items():
+            for _ in r:
+                total_records += 1
+        bt.logging.info(f"Found {total_records} organics")
         for model, records in organics.items():
             for record in records:
                 pub_id = record.get("pub_id", "")
