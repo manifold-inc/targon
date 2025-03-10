@@ -1,10 +1,11 @@
 import traceback
 import os
+import time
 import asyncio
 from fastapi import FastAPI
 from typing import Dict, List, Optional, Tuple
 import sglang
-from shared import GenerateRequest, RequestType, Usage, VerificationRequest, parse_chunk
+from shared import RequestType, Usage, VerificationRequest, parse_chunk
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -23,7 +24,9 @@ MODEL_WRAPPER = sglang.Engine(
     model_path=MODEL_NAME,
     tp_size=TENSOR_PARALLEL,
     chunked_prefill_size=2048,
+    mem_fraction_static=0.7,
     trust_remote_code=True,
+    enable_dp_attention=True,
     context_length=CONTEXT_LENGTH,
 )
 # MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
@@ -42,26 +45,6 @@ LOCK = asyncio.Lock()
 
 
 app = FastAPI()
-
-
-@app.post("/generate")
-async def generate_question(req: GenerateRequest):
-    async with LOCK:
-        try:
-            prompt = ""
-            for message in req.messages:
-                prompt += (
-                    message.get("role", "") + ": " + message.get("content", "") + "\n"
-                )
-            prompt += "\nResponse: "
-            output = await MODEL_WRAPPER.async_generate(
-                prompt=prompt,
-                sampling_params=req.sampling_params.model_dump(),
-            )
-            assert type(output) is Dict
-            return {"text": output["text"]}
-        except Exception:
-            return {"text": None}
 
 
 async def verify_logprobs(
@@ -224,11 +207,13 @@ def verify_usage(
 @app.post("/verify")
 async def verify_wrapper(request: VerificationRequest) -> Dict:
     res = {}
+    start = time.time()
     try:
         res = await verify(request)
     except Exception as e:
         print(traceback.format_exc())
         print(e)
+    print(f"total time: {time.time() - start}s")
     return res
 
 
@@ -249,6 +234,7 @@ async def verify(request: VerificationRequest) -> Dict:
             "error": f"Output sequence too short! Only parsed {len(output_sequence)} tokens",
             "cause": "TOO_SHORT",
         }
+    print(f"getting completion with {len(output_sequence)} response tokens")
 
     # Check max tokens - allow for model-specific limits
     max_allowed = request.request_params.max_tokens
@@ -298,8 +284,9 @@ async def verify(request: VerificationRequest) -> Dict:
         if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
             input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
     input_tokens = TOKENIZER(input_text).input_ids
-    if len(input_tokens) + len(output_sequence) > 64000:
+    if len(input_tokens) + len(output_sequence) > 128000:
         return {"error": "Context Too Large"}
+    print(f"getting completion with {len(input_tokens)} input tokens")
 
     # Verify!
     async with LOCK:
