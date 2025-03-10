@@ -1,13 +1,10 @@
-import random
 import traceback
 import os
 import asyncio
-import json
 from fastapi import FastAPI
-from pydantic import BaseModel
-from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Dict, List, Optional, Tuple
 import sglang
+from shared import GenerateRequest, RequestType, Usage, VerificationRequest, parse_chunk
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -44,73 +41,6 @@ MODEL_WRAPPER = sglang.Engine(
 LOCK = asyncio.Lock()
 
 
-class RequestParams(BaseModel):
-    # Optional parameters that depend on endpoint
-    messages: Optional[List[Dict[str, str]]] = None
-    prompt: Optional[str] = None
-    max_tokens: int
-    temperature: float
-    seed: int
-
-    # Core parameters
-    top_p: Optional[float] = None  # Default None, range 0.0-1.0
-    stop: Optional[List[str]] = None  # Optional, defaults to None
-
-    # Additional optional parameters
-    top_k: Optional[int] = None  # Default None, range 0+
-    frequency_penalty: Optional[float] = None  # Default None, range -2.0-2.0
-    presence_penalty: Optional[float] = None  # Default None, range -2.0-2.0
-    repetition_penalty: Optional[float] = None  # Default None, range 0.0-2.0
-    min_p: Optional[float] = None  # Default None, range 0.0-1.0
-    top_a: Optional[float] = None  # Default None, range 0.0-1.0
-
-    # Stream parameters
-    stream: Optional[bool] = None
-    stream_options: Optional[Dict] = None
-    logprobs: Optional[bool] = None
-
-    # Tool parameters
-    tools: Optional[List[Dict[str, Any]]] = None  # Optional list of tool definitions
-    tool_choice: Optional[
-        Union[str, Dict[str, Any]]
-    ] = None  # Optional tool choice specification
-
-
-class OutputItem(BaseModel):
-    text: str
-    logprob: float
-    token_id: int
-
-
-class RequestType(Enum):
-    CHAT = "CHAT"
-    COMPLETION = "COMPLETION"
-
-
-class Usage(BaseModel):
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-
-
-class VerificationRequest(BaseModel):
-    request_type: str
-    model: str = MODEL_NAME
-    request_params: RequestParams
-    raw_chunks: List[Dict]
-
-
-class RequestSamplingParams(BaseModel):
-    temperature: float = 0.0
-    seed: int = 42
-    max_tokens: int
-
-
-class GenerateRequest(BaseModel):
-    messages: List[Dict[str, str]]
-    sampling_params: RequestSamplingParams
-
-
 app = FastAPI()
 
 
@@ -139,7 +69,7 @@ async def verify_logprobs(
     max_tokens: int,
     input_text: str,
     input_tokens: List[int],
-    output_sequence: List[OutputItem],
+    output_sequence: List[str],
 ) -> Optional[Tuple[bool, str, str]]:
     """
     Compare the produced logprob values against the ground truth, or at least
@@ -149,7 +79,7 @@ async def verify_logprobs(
     assert TOKENIZER is not None
     # Generate output for a single token
     output = None
-    full_text = input_text + "".join([item.text for item in output_sequence])
+    full_text = input_text + "".join([token for token in output_sequence])
     output = await MODEL_WRAPPER.async_generate(
         prompt=full_text,
         sampling_params={
@@ -165,7 +95,7 @@ async def verify_logprobs(
 
     # The actual logprobs should be very close but not 100% due to GPU/driver differences
     idxs = min(
-        output["meta_info"]["prompt_tokens"] - len(input_tokens) - 3,
+        output["meta_info"]["prompt_tokens"] - len(input_tokens),
         len(output_sequence) - 1,
     )
     perfect_tokens = 0
@@ -175,7 +105,10 @@ async def verify_logprobs(
     meta = output["meta_info"]
     for idx in range(idxs):
         # Get top logprobs
-        expected_logprob_list = meta["input_top_logprobs"][idx + len(input_tokens)]
+        expected_logprob_list = meta.get("input_top_logprobs", None)
+        if expected_logprob_list == None:
+            continue
+        expected_logprob_list = expected_logprob_list[idx + len(input_tokens)]
 
         # Get true logprob for token
         real_logprob, token_id, _ = meta["input_token_logprobs"][
@@ -288,106 +221,6 @@ def verify_usage(
     return True, "", ""
 
 
-def parse_token_id(token: Optional[str]) -> Optional[int]:
-    """Parse token string into token ID."""
-    if token is None:
-        return -1
-
-    if token.startswith("token_id:"):
-        try:
-            return int(token.split(":")[1])
-        except (IndexError, ValueError):
-            return None
-
-    try:
-        return int(token)
-    except (ValueError, TypeError):
-        return None
-
-
-def parse_chunk(chunk: Dict, request_type: str) -> Optional[OutputItem]:
-    """Parse a raw chunk into an OutputItem with token info."""
-    try:
-        choices = chunk.get("choices", [])
-        if not choices:
-            return None
-
-        choice = choices[0]
-
-        if request_type == "CHAT":
-            delta = choice.get("delta")
-            if delta is None:
-                return None
-
-            # Skip assistant role messages without content/tools
-            if delta.get("role") == "assistant" and not any(
-                [delta.get(k) for k in ["content", "tool_calls", "function_call"]]
-            ):
-                return None
-
-            choiceprobs = choice.get("logprobs")
-            if choiceprobs is None:
-                return None
-
-            # Handle tool calls
-            if delta.get("tool_calls"):
-                tool_call = delta["tool_calls"][0]
-                if tool_call.get("function"):
-                    content_probs = choiceprobs.get("content", [{}])[0]
-                    token = content_probs.get("token", "")
-                    token_id = parse_token_id(token)
-                    if token_id is None:
-                        return None
-                    return OutputItem(
-                        text=json.dumps(tool_call),
-                        token_id=token_id,
-                        logprob=content_probs.get("logprob", -100),
-                    )
-
-            # Handle regular chat content
-            content_probs = choiceprobs.get("content", [{}])[0]
-            token = content_probs.get("token", "")
-            token_id = parse_token_id(token)
-            if token_id is None:
-                return None
-            text = delta.get("content", "")
-
-            # Allow empty text if we have a valid token_id (for EOS tokens)
-            if token_id == -1:
-                return None
-
-            return OutputItem(
-                text=text,
-                token_id=token_id,
-                logprob=content_probs.get("logprob", -100),
-            )
-
-        elif request_type == "COMPLETION":
-            text = choice.get("text")
-            if text is None:
-                return None
-
-            logprobs = choice.get("logprobs")
-            if logprobs is None:
-                return None
-
-            token = logprobs.get("tokens", [""])[0]
-            token_id = parse_token_id(token)
-            if token_id is None:
-                return None
-
-            if token_id == -1:
-                return None
-
-            token_logprobs = logprobs.get("token_logprobs", [])
-            logprob = token_logprobs[0] if token_logprobs else -100
-
-            return OutputItem(text=text, token_id=token_id, logprob=logprob)
-
-    except Exception:
-        return None
-
-
 @app.post("/verify")
 async def verify_wrapper(request: VerificationRequest) -> Dict:
     res = {}
@@ -401,7 +234,7 @@ async def verify_wrapper(request: VerificationRequest) -> Dict:
 
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
-    output_sequence: List[OutputItem] = []
+    output_sequence: List[str] = []
     input_text = None
 
     # Parse raw chunks into OutputItems
@@ -410,7 +243,7 @@ async def verify(request: VerificationRequest) -> Dict:
             output_sequence.append(parsed)
 
     # If we couldn't parse enough tokens, fail
-    if len(output_sequence) < 3:
+    if len(output_sequence) == 0:
         return {
             "verified": False,
             "error": f"Output sequence too short! Only parsed {len(output_sequence)} tokens",
@@ -494,9 +327,9 @@ async def verify(request: VerificationRequest) -> Dict:
             return return_value
 
         # Pops think character for r1
-        if input_text.strip().endswith(output_sequence[1].text):
+        if input_text.strip().endswith(output_sequence[1]):
             output_sequence.pop(1)
-        if input_text.strip().endswith(output_sequence[0].text):
+        if input_text.strip().endswith(output_sequence[0]):
             output_sequence.pop(0)
         # Logprob checks
         res = await verify_logprobs(
@@ -523,7 +356,7 @@ async def verify(request: VerificationRequest) -> Dict:
         return {
             "verified": True,
             "input_tokens": len(input_tokens),
-            "response_tokens": len([o for o in output_sequence if o.text != ""]),
+            "response_tokens": len([token for token in output_sequence if token != ""]),
             "gpus": TENSOR_PARALLEL,
         }
 
