@@ -98,7 +98,7 @@ def get_weights(
                 "miner_completed": miner_completed,
                 "overall_organics": total_organics,
                 "final_weight_before_expo": 0,
-                "final_weight_after_expo": 0,
+                "final_weight_after_expo_before_normal": 0,
             },
         }
         data = data_for_jugo[uid]
