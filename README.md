@@ -184,7 +184,7 @@ network.
 ### PM2
 
 Validators are simply run through pm2, enabling auto restarts and auto updates.
-A validator should be run on atleast an A100, but the larger the better, as
+A validator should be run on at least an A100, but the larger the better, as
 larger clusters can handle more models. The machine should have
 [nvidia-smi / cuda](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#ubuntu)
 installed along with [docker](https://docs.docker.com/engine/install/ubuntu/).
@@ -276,7 +276,7 @@ Validator Autoupdate is implemented and defaulted to run once weights have been
 set. To **disable**, please add the flag to your command line build:
 
 ```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME] --autoupdate-off
+pm2 start neurons/validator.py --name validator --interpreter python3 -- --wallet.name [WALLET_NAME] --autoupdate-off
 ```
 
 ### Miner Autoupdate
