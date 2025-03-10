@@ -1,4 +1,5 @@
-from typing import List
+from typing import Dict, List
+import json
 
 import aiohttp
 import traceback
@@ -58,6 +59,22 @@ async def get_global_stats(wallet):
             res_body = await res.json()
     assert isinstance(res_body, dict)
     return res_body
+
+
+async def send_uid_info_to_jugo(
+    hotkey, session: aiohttp.ClientSession, data: List[Dict]
+):
+    req_bytes = json.dumps(
+        data, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+    headers = generate_header(hotkey, req_bytes, "")
+    async with session.post(
+        url="https://jugo.targon.com/mongo", headers=headers, data=req_bytes
+    ) as res:
+        if res.status == 200:
+            return
+        text = await res.text()
+    bt.logging.error(f"Failed sending to jugo: {text}")
 
 
 async def score_organics(last_bucket_id, ports, wallet, existing_scores):

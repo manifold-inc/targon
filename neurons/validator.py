@@ -20,7 +20,12 @@ from targon.config import (
     get_models_from_endpoint,
 )
 from targon.docker import load_docker, load_existing_images, sync_output_checkers
-from targon.jugo import get_global_stats, score_organics, send_organics_to_jugo
+from targon.jugo import (
+    get_global_stats,
+    score_organics,
+    send_organics_to_jugo,
+    send_uid_info_to_jugo,
+)
 from targon.math import get_weights
 from targon.metagraph import (
     create_set_weights,
@@ -237,10 +242,15 @@ class Validator(BaseNeuron):
         if organic_metadata is None:
             bt.logging.error("Cannot set weights, failed getting metadata from jugo")
             return
-        weights = get_weights(self.miner_models, self.organics, organic_metadata)
-
+        uids, weights, jugo_data = get_weights(
+            self.miner_models, self.organics, organic_metadata
+        )
         if not self.config_file.skip_weight_set:
-            self.set_weights(self.wallet, self.metagraph, self.subtensor, weights)
+            async with aiohttp.ClientSession() as session:
+                await send_uid_info_to_jugo(self.wallet.hotkey, session, jugo_data)
+            self.set_weights(
+                self.wallet, self.metagraph, self.subtensor, (uids, weights)
+            )
 
         self.lock_halt = False
         self.organics = {}
@@ -261,8 +271,7 @@ class Validator(BaseNeuron):
         if organic_metadata is None:
             bt.logging.error("Cannot get weights, failed getting metadata from jugo")
             return
-        weights = get_weights(self.miner_models, self.organics, organic_metadata)
-        uids, raw_weights = weights
+        uids, raw_weights, _ = get_weights(self.miner_models, self.organics, organic_metadata)
         (
             processed_weight_uids,
             processed_weights,

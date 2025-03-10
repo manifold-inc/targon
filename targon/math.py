@@ -4,7 +4,6 @@ import bittensor as bt
 import numpy as np
 from typing import Dict, List, Tuple
 
-from targon.config import SLIDING_WINDOW
 from targon.utils import fail_with_none
 import json
 from cryptography.hazmat.primitives import hashes
@@ -74,7 +73,7 @@ def get_weights(
     miner_models: Dict[int, Dict[str, int]],
     organics: Dict[str, Dict[str, list[int]]],
     metadata: Dict,
-) -> Tuple[List[int], List[float]]:
+) -> Tuple[List[int], List[float], List[Dict]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
 
@@ -83,14 +82,34 @@ def get_weights(
     if total_organics == 0:
         raise Exception("No organics to score")
 
+    data_for_jugo = {}
     for uid in miner_models.keys():
-        exploited = False
+        miner_success_rate = (
+            metadata.get("miners", {}).get(str(uid), {}).get("success_rate", 0)
+        )
+        miner_completed = (
+            metadata.get("miners", {}).get(str(uid), {}).get("completed", 0)
+        )
+        data_for_jugo[uid] = {
+            "uid": uid,
+            "data": {
+                "tested_organics": organics.get(str(uid)),
+                "miner_success_rate": miner_success_rate,
+                "miner_completed": miner_completed,
+                "overall_organics": total_organics,
+                "final_weight_before_expo": 0,
+                "final_weight_after_expo": 0,
+            },
+        }
+        data = data_for_jugo[uid]
         scores[uid] = 0
         if (organic := organics.get(str(uid))) is None:
             continue
-
-        for orgs in organic.values():
+        safe_mean_scores = {}
+        exploited = False
+        for model, orgs in organic.items():
             score = safe_mean_score(orgs)
+            safe_mean_scores[model] = score
 
             # Exploiting a model; zerod
             if len(orgs) > 5 and score == 0:
@@ -104,16 +123,11 @@ def get_weights(
 
             # Maybe we change the above to just a check for pass verification rate?
             # tbd.
+        data["data"]["safe_mean_scores"] = safe_mean_scores
+        data["data"]["is_exploiting"] = exploited
 
         if exploited or not scores[uid]:
             continue
-
-        miner_success_rate = (
-            metadata.get("miners", {}).get(str(uid), {}).get("success_rate", 0)
-        )
-        miner_completed = (
-            metadata.get("miners", {}).get(str(uid), {}).get("completed", 0)
-        )
 
         if miner_success_rate < 0.5:
             scores[uid] = 0
@@ -130,27 +144,34 @@ def get_weights(
 
         # Shift values so we have more room to play with success rate calc and completed calc
         scores[uid] = scores[uid] * 100
+        pre_formula = scores[uid]
         scores[uid] = (
             scores[uid] * (miner_completed / total_organics) * miner_success_rate
         )
+        data["data"][
+            "formula"
+        ] = f"sum_safe_mean_score[uid]={pre_formula} * ({miner_completed=}/{total_organics=}) * {miner_success_rate=} = {scores[uid]}"
+        data["data"]["final_weight_before_expo"] = scores[uid]
 
     tps_list = list(scores.values())
     if len(tps_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
-        return [], []
+        return [], [], []
     uids: List[int] = sorted(scores.keys())
     rewards = [scores[uid] for uid in uids]
 
     bt.logging.info(f"All scores: {json.dumps(scores)}")
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
-        return [], []
+        return [], [], []
     raw_weights = (np.e ** (np.log(max(rewards)) / max(rewards))) ** rewards
     final_weights = []
-    for i, x in enumerate(raw_weights):
+    for i, (uid, w) in enumerate(zip(uids, raw_weights)):
+        data_for_jugo[uid]["data"]["final_weight_after_expo_before_normal"] = float(w)
         if rewards[i] == 0:
+            data_for_jugo[uid]["data"]["final_weight_after_expo_before_normal"] = 0
             final_weights.append(0)
             continue
-        final_weights.append(float(x))
+        final_weights.append(float(w))
     bt.logging.info(f"Raw Weights: {final_weights}")
-    return uids, final_weights
+    return uids, final_weights, list(data_for_jugo.values())
