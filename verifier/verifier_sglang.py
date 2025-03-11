@@ -213,7 +213,7 @@ async def verify_wrapper(request: VerificationRequest) -> Dict:
     except Exception as e:
         print(traceback.format_exc())
         print(e)
-    print(f"total time: {time.time() - start}s")
+    print(f"total time: {time.time() - start}s", flush=True)
     return res
 
 
@@ -234,7 +234,7 @@ async def verify(request: VerificationRequest) -> Dict:
             "error": f"Output sequence too short! Only parsed {len(output_sequence)} tokens",
             "cause": "TOO_SHORT",
         }
-    print(f"getting completion with {len(output_sequence)} response tokens")
+    print(f"getting completion with {len(output_sequence)} response tokens", flush=True)
 
     # Check max tokens - allow for model-specific limits
     max_allowed = request.request_params.max_tokens
@@ -286,7 +286,7 @@ async def verify(request: VerificationRequest) -> Dict:
     input_tokens = TOKENIZER(input_text).input_ids
     if len(input_tokens) + len(output_sequence) > 128000:
         return {"error": "Context Too Large"}
-    print(f"getting completion with {len(input_tokens)} input tokens")
+    print(f"getting completion with {len(input_tokens)} input tokens", flush=True)
 
     # Verify!
     async with LOCK:
