@@ -10,6 +10,9 @@ to seutp remote nodes, copy and install targon verifier on the server;
 feel free to do this in a venv, you may need to modify the run_verifier script
 to properly use the right venv
 
+1. download the huggingface model, example for deepseek r1:
+   `huggingface-cli download deepseek-ai/DeepSeek-R1 --max-workers 64`
+
 1. install pm2 see targon readme for instructions
 
 1. run the verifier script via pm2 with the model arg
