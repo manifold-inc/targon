@@ -40,9 +40,6 @@ MODEL_WRAPPER = sglang.Engine(
 #    )
 # )
 
-# Lock to ensure atomicity.
-LOCK = asyncio.Lock()
-
 
 app = FastAPI()
 
