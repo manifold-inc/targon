@@ -24,6 +24,7 @@ MODEL_WRAPPER = sglang.Engine(
     model_path=MODEL_NAME,
     tp_size=TENSOR_PARALLEL,
     chunked_prefill_size=2048,
+    max_running_requests=1,
     mem_fraction_static=0.7,
     trust_remote_code=True,
     enable_dp_attention=True,
