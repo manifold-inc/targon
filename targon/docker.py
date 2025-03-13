@@ -13,7 +13,7 @@ from docker.types import DeviceRequest
 import requests
 
 from targon.config import IMAGE_TAG
-from targon.types import Config, Endpoints
+from targon.types import ValidatorConfig, Endpoints
 from targon.utils import (
     fail_with_none,
 )
@@ -108,7 +108,7 @@ def remove_containers(client):
 def sync_output_checkers(
     client: docker.DockerClient,
     models: List[Dict[str, Any]],
-    config: Optional[Config],
+    config: Optional[ValidatorConfig],
     skiped_models: List[str],
 ) -> Dict[str, Dict[str, Any]]:
     # Get new image hash (if any)
@@ -250,7 +250,7 @@ def sync_output_checkers(
 
 def load_existing_images(
     client: docker.DockerClient,
-    config: Optional[Config],
+    config: Optional[ValidatorConfig],
 ):
     containers: List[Container] = client.containers.list(filters={"label": "model"})  # type: ignore
     verification_ports = {}
