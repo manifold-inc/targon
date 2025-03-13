@@ -24,7 +24,7 @@ import bittensor as bt
 import requests
 import dotenv
 
-from neurons.base import NeuronType
+from targon.types import NeuronType
 from targon.types import ValidatorConfig, MinerConfig
 
 
