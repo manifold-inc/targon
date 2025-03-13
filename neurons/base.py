@@ -19,14 +19,10 @@ from targon import (
     __spec_version__ as spec_version,
 )
 from targon.metagraph import run_block_callback_thread
+from targon.types import NeuronType
 from targon.utils import ExitContext
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 import inspect
-
-
-class NeuronType(Enum):
-    Validator = "VALIDATOR"
-    Miner = "MINER"
 
 
 class BaseNeuron:

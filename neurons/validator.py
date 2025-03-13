@@ -9,7 +9,8 @@ import aiohttp
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 from bittensor.utils.weight_utils import process_weights_for_netuid
 from substrateinterface import SubstrateInterface
-from neurons.base import BaseNeuron, NeuronType
+from targon.types import NeuronType
+from neurons.base import BaseNeuron
 from targon.broadcast import broadcast
 from targon.cache import load_organics, save_organics
 from targon.config import (

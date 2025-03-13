@@ -9,7 +9,8 @@ import requests
 from starlette.background import BackgroundTask
 from starlette.responses import StreamingResponse
 
-from neurons.base import BaseNeuron, NeuronType
+from targon.types import NeuronType
+from neurons.base import BaseNeuron
 from targon.epistula import verify_signature
 from targon.types import MinerConfig
 from targon.utils import print_info

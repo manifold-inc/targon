@@ -26,6 +26,10 @@ class Endpoints(Enum):
     CHAT = "CHAT"
     COMPLETION = "COMPLETION"
 
+class NeuronType(Enum):
+    Validator = "VALIDATOR"
+    Miner = "MINER"
+
 
 class InferenceStats(BaseModel):
     time_to_first_token: float
