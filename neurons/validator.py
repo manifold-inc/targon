@@ -205,6 +205,7 @@ class Validator(BaseNeuron):
             self.verification_ports,
             self.wallet,
             self.organics,
+            self.subtensor
         )
         save_organics(self.organics)
 
