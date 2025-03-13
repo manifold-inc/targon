@@ -205,7 +205,7 @@ class Validator(BaseNeuron):
         if not self.is_runing:
             return
         blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
-        if block % 5 or blocks_till < 35:
+        if block % 5 or blocks_till < 85:
             return
         bt.logging.info(str(self.verification_ports))
         bucket_id, organic_stats = await score_organics(
@@ -271,7 +271,9 @@ class Validator(BaseNeuron):
         if organic_metadata is None:
             bt.logging.error("Cannot get weights, failed getting metadata from jugo")
             return
-        uids, raw_weights, _ = get_weights(self.miner_models, self.organics, organic_metadata)
+        uids, raw_weights, _ = get_weights(
+            self.miner_models, self.organics, organic_metadata
+        )
         (
             processed_weight_uids,
             processed_weights,
