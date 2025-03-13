@@ -6,7 +6,7 @@ import copy
 
 from nest_asyncio import asyncio
 from substrateinterface import SubstrateInterface
-from targon import (
+from targon.config import (
     add_args,
     add_validator_args,
     validate_config_and_neuron_path,
