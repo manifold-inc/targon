@@ -1,6 +1,6 @@
 from .config import *
 
-__version__ = "5.1.4"
+__version__ = "5.1.5"
 
 version_split = __version__.split(".")
 __spec_version__ = (

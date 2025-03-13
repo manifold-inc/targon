@@ -108,7 +108,11 @@ def get_weights(
         safe_mean_scores = {}
         exploited = False
         for model, orgs in organic.items():
-            score = safe_mean_score(orgs)
+            # Only score when there are actually enough scored requests
+            if len(orgs) < 15:
+                continue
+
+            score = safe_mean_score(orgs) * (len([1 for x in orgs if x]) / len(orgs))
             safe_mean_scores[model] = score
 
             # Exploiting a model; zerod
@@ -116,13 +120,10 @@ def get_weights(
                 scores[uid] = 0
                 exploited = True
                 break
-
             # More models you do, more sum you get.
             # Baseline is avg of context your serving * gpu count of that model
-            scores[uid] += safe_mean_score(orgs)
+            scores[uid] += score
 
-            # Maybe we change the above to just a check for pass verification rate?
-            # tbd.
         data["data"]["safe_mean_scores"] = safe_mean_scores
         data["data"]["is_exploiting"] = exploited
 
