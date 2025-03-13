@@ -109,8 +109,6 @@ def get_weights(
         exploited = False
         for model, orgs in organic.items():
             # Only score when there are actually enough scored requests
-            if len(orgs) < 15:
-                continue
 
             score = safe_mean_score(orgs) * (len([1 for x in orgs if x]) / len(orgs))
             safe_mean_scores[model] = score
