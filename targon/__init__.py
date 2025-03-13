@@ -1,5 +1,3 @@
-from .config import *
-
 __version__ = "5.1.6"
 
 version_split = __version__.split(".")

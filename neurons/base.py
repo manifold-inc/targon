@@ -12,7 +12,6 @@ from targon import (
     validate_config_and_neuron_path,
 )
 from targon.config import add_miner_args, load_config_file
-from enum import Enum
 import signal
 
 from targon import (
