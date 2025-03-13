@@ -77,7 +77,9 @@ async def send_uid_info_to_jugo(
     bt.logging.error(f"Failed sending to jugo: {text}")
 
 
-async def score_organics(last_bucket_id, ports, wallet, existing_scores, subtensor):
+async def score_organics(
+    last_bucket_id, ports, wallet, existing_scores, subtensor, epoch_len
+):
     try:
         async with aiohttp.ClientSession() as session:
             body = list(ports.keys())
@@ -106,7 +108,9 @@ async def score_organics(last_bucket_id, ports, wallet, existing_scores, subtens
         bt.logging.info(f"Found {total_records} organics")
         for model, records in organics.items():
             for record in records:
-                bt.logging.info(subtensor.block)
+                blocks_till = epoch_len - (subtensor.block % epoch_len)
+                if blocks_till < 15:
+                    break
                 pub_id = record.get("pub_id", "")
                 uid = str(record["uid"])
                 if scores.get(uid) is None:
