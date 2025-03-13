@@ -32,6 +32,7 @@ from targon.metagraph import (
     get_miner_uids,
     run_block_callback_thread,
 )
+from targon.types import ValidatorConfig
 from targon.updater import autoupdate
 from targon.utils import (
     print_info,
@@ -50,6 +51,7 @@ load_dotenv()
 
 
 class Validator(BaseNeuron):
+    config_file: ValidatorConfig
     neuron_type = NeuronType.Validator
     miner_models: Dict[int, Dict[str, int]]
     verification_ports: Dict[str, Dict[str, Any]]
@@ -98,7 +100,6 @@ class Validator(BaseNeuron):
                 self.log_on_block,
                 self.set_weights_on_interval,
                 self.sync_output_checkers_on_interval,
-                self.resync_hotkeys_on_interval,
                 self.send_models_to_miners_on_interval,
                 self.score_organics_on_block,
             ]
@@ -151,7 +152,7 @@ class Validator(BaseNeuron):
         post_tasks = []
         post_results = []
         async with aiohttp.ClientSession() as session:
-            for idx, uid in enumerate(miner_uids):
+            for uid in miner_uids:
                 bt.logging.info(f"Broadcasting models {uid}")
                 axon_info = self.metagraph.axons[uid]
                 post_tasks.append(
@@ -163,10 +164,6 @@ class Validator(BaseNeuron):
                         self.wallet.hotkey,
                     )
                 )
-                if idx % 100 == 0:
-                    broadcast_responses = await asyncio.gather(*post_tasks)
-                    post_results.extend(broadcast_responses)
-                    post_tasks = []
             if len(post_tasks) != 0:
                 responses = await asyncio.gather(*post_tasks)
                 post_results.extend(responses)
@@ -177,13 +174,6 @@ class Validator(BaseNeuron):
                 bt.logging.info(f"broadcast {uid}: {err}")
             self.miner_models[uid] = miner_models
         bt.logging.info(json.dumps(self.miner_models, indent=2))
-
-    def resync_hotkeys_on_interval(self, block):
-        # TODO
-        if not self.is_runing:
-            return
-        if block % self.config.epoch_length:
-            return
 
     def sync_output_checkers_on_interval(self, block):
         if not self.is_runing:

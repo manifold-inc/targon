@@ -19,7 +19,6 @@ from targon import (
     __spec_version__ as spec_version,
 )
 from targon.metagraph import run_block_callback_thread
-from targon.types import Config
 from targon.utils import ExitContext
 from bittensor.core.settings import SS58_FORMAT, TYPE_REGISTRY
 import inspect
@@ -32,7 +31,6 @@ class NeuronType(Enum):
 
 class BaseNeuron:
     config: "bt.config"
-    config_file: Config
     neuron_type: NeuronType
     exit_context = ExitContext()
     next_sync_block = None
@@ -73,7 +71,7 @@ class BaseNeuron:
                 )
 
     def __init__(self, config=None):
-        self.config_file = load_config_file()
+        self.config_file = load_config_file(self.neuron_type)
         print(f"Bittensor Version: {bt.__version__}")
         print(self.config_file)
         # Add parser args

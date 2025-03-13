@@ -20,12 +20,12 @@
 import json
 import os
 import bittensor as bt
-from cryptography.hazmat.primitives import serialization
 
 import requests
 import dotenv
 
-from targon.types import Config
+from neurons.base import NeuronType
+from targon.types import ValidatorConfig, MinerConfig
 
 
 def str2bool(v):
@@ -42,15 +42,19 @@ CONFIG_FILE = os.getenv("CONFIG_FILE", "config.json")
 SLIDING_WINDOW = 30
 
 
-def load_config_file():
+def load_config_file(t: NeuronType):
     try:
         with open(CONFIG_FILE, "r") as config:
             full_conf = json.load(config)
-        return Config.model_validate(full_conf)
+        if t == NeuronType.Validator:
+            return ValidatorConfig.model_validate(full_conf)
+        return MinerConfig.model_validate(full_conf)
 
     except Exception as e:
         bt.logging.error(f"Failed opening config: {e}. Not setting any values")
-        return Config()
+        if t == NeuronType.Validator:
+            return ValidatorConfig()
+        return MinerConfig()
 
 
 def validate_config_and_neuron_path(config):
@@ -220,4 +224,3 @@ def get_models_from_config():
     except Exception as e:
         bt.logging.error(f"Failed reading model file: {e}")
     return None
-

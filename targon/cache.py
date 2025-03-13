@@ -1,12 +1,12 @@
 import json
 import traceback
-from typing import Any, Dict, List
+from typing import Any, Dict
 import bittensor as bt
 
 
-def save_organics(organics, filename="organics_cache.json"):
+def save_organics(organics):
     try:
-        with open(filename, "w") as f:
+        with open("organics_cache.json", "w") as f:
             json.dump(organics, f)
     except Exception as e:
         bt.logging.error(f"Failed writing cache file: {e}")

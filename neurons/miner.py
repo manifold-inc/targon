@@ -11,12 +11,14 @@ from starlette.responses import StreamingResponse
 
 from neurons.base import BaseNeuron, NeuronType
 from targon.epistula import verify_signature
+from targon.types import MinerConfig
 from targon.utils import print_info
 import uvicorn
 import bittensor as bt
 
 
 class Miner(BaseNeuron):
+    config_file: MinerConfig
     neuron_type = NeuronType.Miner
     fast_api: FastAPIThreadedServer
 

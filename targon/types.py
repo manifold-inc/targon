@@ -64,10 +64,13 @@ class MinerEndpoint(BaseModel):
     qps: int
 
 
-class Config(BaseModel):
+class ValidatorConfig(BaseModel):
     skip_weight_set: Optional[bool] = False
     verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None
     set_weights_on_start: Optional[bool] = False
+
+
+class MinerConfig(BaseModel):
     miner_endpoints: Optional[Dict[str, MinerEndpoint]] = None
     miner_api_key: Optional[str] = "1234"
     miner_nodes: Optional[List[str]] = None
