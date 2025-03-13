@@ -90,6 +90,7 @@ class Validator(BaseNeuron):
 
         ## LOAD MINER SCORES CACHE
         self.organics = load_organics()
+        bt.logging.info(json.dumps(self.organics, indent=2))
 
         ## REGISTER BLOCK CALLBACKS
         self.block_callbacks.extend(
