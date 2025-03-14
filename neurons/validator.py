@@ -206,7 +206,7 @@ class Validator(BaseNeuron):
             self.wallet,
             self.organics,
             self.subtensor,
-            self.config.epoch_length
+            self.config.epoch_length,
         )
         save_organics(self.organics)
 

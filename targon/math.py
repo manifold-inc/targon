@@ -166,7 +166,14 @@ def get_weights(
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
         return [], [], []
-    raw_weights = (np.e ** (np.log(max(rewards)) / max(rewards))) ** rewards
+
+    raw_weights_temp = [max(x - (max(rewards) / 2), 0) for x in rewards]
+    print("pre:", json.dumps(raw_weights_temp), flush=True)
+
+    raw_weights = ((r**4) for r in rewards)
+    raw_weights_temp = [max(x - (max(raw_weights) / 2), 0) for x in raw_weights]
+    print("post:", json.dumps(raw_weights_temp), flush=True)
+
     final_weights = []
     for i, (uid, w) in enumerate(zip(uids, raw_weights)):
         data_for_jugo[uid]["data"]["final_weight_after_expo_before_normal"] = float(w)
