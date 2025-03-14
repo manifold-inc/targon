@@ -9,7 +9,7 @@ from targon.math import get_weights
 
 
 async def main():
-    vali = Validator()
+    vali = Validator(standalone=True)
     organic_metadata = await get_global_stats(vali.wallet)
     if organic_metadata is None:
         print("Cannot get weights, failed getting metadata from jugo")

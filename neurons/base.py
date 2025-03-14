@@ -65,7 +65,7 @@ class BaseNeuron:
                     f"Failed running callback {callback.__name__}: {str(e)}"
                 )
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, standalone=False):
         self.config_file = load_config_file(self.neuron_type)
         print(f"Bittensor Version: {bt.__version__}")
         print(self.config_file)
@@ -127,7 +127,8 @@ class BaseNeuron:
             url=self.config.subtensor.chain_endpoint,
             type_registry=TYPE_REGISTRY,
         )
-        self.block_callbacks.append(self.maybe_sync_metagraph)
-        self.substrate_thread = run_block_callback_thread(
-            self.substrate, self.run_callbacks
-        )
+        if not standalone:
+            self.block_callbacks.append(self.maybe_sync_metagraph)
+            self.substrate_thread = run_block_callback_thread(
+                self.substrate, self.run_callbacks
+            )

@@ -68,8 +68,8 @@ class Validator(BaseNeuron):
     tool_dataset = None
     skip_next_weightset = False
 
-    def __init__(self, config=None, run_init=True):
-        super().__init__(config)
+    def __init__(self, config=None, run_init=True, standalone=False):
+        super().__init__(config=config, standalone=standalone)
         ## Typesafety
         self.set_weights = create_set_weights(spec_version, 4)
 
