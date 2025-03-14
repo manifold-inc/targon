@@ -170,7 +170,8 @@ def get_weights(
     raw_weights_temp = [max(x - (max(rewards) / 2), 0) for x in rewards]
     print("pre:", json.dumps(raw_weights_temp), flush=True)
 
-    raw_weights = ((r**4) for r in rewards)
+    raw_weights = [(r**4) for r in rewards]
+
     raw_weights_temp = [max(x - (max(raw_weights) / 2), 0) for x in raw_weights]
     print("post:", json.dumps(raw_weights_temp), flush=True)
 
