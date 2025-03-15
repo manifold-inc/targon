@@ -167,7 +167,10 @@ async def score_organics(
                         if gpu_required >= 8:
                             # Large models get more weight, a lot more.
                             gpu_required = gpu_required * 2
-                        scores[uid][model].append(gpu_required * context_modifier)
+                        # Bring back when we have more organics scored per interval
+                        # scores[uid][model].append(gpu_required * context_modifier)
+
+                        scores[uid][model].append(gpu_required)
                     except Exception as e:
                         bt.logging.error(f"Error scoring record {pub_id}: {e}")
                         continue
