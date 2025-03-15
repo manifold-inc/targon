@@ -113,14 +113,17 @@ def get_weights(
             if not len(orgs):
                 continue
 
-            score = safe_mean_score(orgs) * (len([1 for x in orgs if x]) / len(orgs))
+            # put back when throughput higher
+            # score = safe_mean_score(orgs) * (len([1 for x in orgs if x]) / len(orgs))
+            score = safe_mean_score(orgs)
             safe_mean_scores[model] = score
 
             # Exploiting a model; zerod
-            if len(orgs) > 5 and score == 0:
-                scores[uid] = 0
-                exploited = True
-                break
+            # Leaving commented untill score throughput is up. multi-uid fucks this
+            # if len(orgs) > 5 and score == 0:
+            #    scores[uid] = 0
+            #    exploited = True
+            #    break
             # More models you do, more sum you get.
             # Baseline is avg of context your serving * gpu count of that model
             scores[uid] += score

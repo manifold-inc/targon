@@ -197,7 +197,7 @@ class Validator(BaseNeuron):
         if not self.is_runing:
             return
         blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
-        if block % 5 or blocks_till < 15:
+        if blocks_till < 15:
             return
         bt.logging.info(str(self.verification_ports))
         bucket_id, organic_stats = await score_organics(
