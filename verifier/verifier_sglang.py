@@ -201,7 +201,10 @@ async def verify_wrapper(request: VerificationRequest) -> Dict:
     if request.request_id:
         cached_req = cache.get(request.request_id)
     if cached_req:
-        print(f"Returned cached request {request.request_id} in {time.time() - start}")
+        print(
+            f"Returned cached request {request.request_id} in {time.time() - start}",
+            flush=True,
+        )
         return cached_req
     try:
         res = await verify(request)
