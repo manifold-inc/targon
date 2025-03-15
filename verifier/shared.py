@@ -53,6 +53,7 @@ class VerificationRequest(BaseModel):
     model: str = ""
     request_params: RequestParams
     raw_chunks: List[Dict]
+    request_id: Optional[str] = None
 
 
 class RequestSamplingParams(BaseModel):

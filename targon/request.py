@@ -31,6 +31,7 @@ async def check_tokens(
     endpoint: Endpoints,
     port: int,
     url,
+    request_id: Optional[str] = None,
 ) -> Tuple[Optional[Dict], Optional[str]]:
     try:
         request_data = {
@@ -38,6 +39,7 @@ async def check_tokens(
             "request_type": endpoint.value,
             "request_params": request,
             "raw_chunks": raw_chunks,
+            "request_id": request_id,
         }
         response = requests.post(
             f"{url}:{port}/verify",

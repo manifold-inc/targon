@@ -1,4 +1,5 @@
 import traceback
+from cachetools import TTLCache
 import os
 import time
 from fastapi import FastAPI
@@ -31,6 +32,8 @@ MODEL_WRAPPER = sglang.Engine(
 
 
 app = FastAPI()
+
+cache = TTLCache(maxsize=1000, ttl=60 * 10)
 
 
 async def verify_logprobs(
@@ -194,8 +197,16 @@ def verify_usage(
 async def verify_wrapper(request: VerificationRequest) -> Dict:
     res = {}
     start = time.time()
+    cached_req = None
+    if request.request_id:
+        cached_req = cache.get(request.request_id)
+    if cached_req:
+        print(f"Returned cached request {request.request_id} in {time.time() - start}")
+        return cached_req
     try:
         res = await verify(request)
+        if request.request_id:
+            cache[request.request_id] = res
     except Exception as e:
         print(traceback.format_exc())
         print(e)

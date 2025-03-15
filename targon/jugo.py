@@ -1,4 +1,5 @@
 from typing import Dict, List
+import random
 import json
 
 import aiohttp
@@ -107,6 +108,9 @@ async def score_organics(
                 total_records += 1
         bt.logging.info(f"Found {total_records} organics")
         for model, records in organics.items():
+            # This semi-ensures that multiple validators dont hit cold cache values
+            random.shuffle(records)
+
             for record in records:
                 blocks_till = epoch_len - (subtensor.block % epoch_len)
                 if blocks_till < 15:
@@ -133,6 +137,7 @@ async def score_organics(
                     Endpoints(record["endpoint"]),
                     port,
                     url=url,
+                    request_id=record.get("pub_id"),
                 )
                 if err is not None or res is None:
                     bt.logging.info(
