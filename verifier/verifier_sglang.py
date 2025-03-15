@@ -1,7 +1,6 @@
 import traceback
 import os
 import time
-import asyncio
 from fastapi import FastAPI
 from typing import Dict, List, Optional, Tuple
 import sglang
@@ -24,21 +23,11 @@ MODEL_WRAPPER = sglang.Engine(
     model_path=MODEL_NAME,
     tp_size=TENSOR_PARALLEL,
     chunked_prefill_size=2048,
-    max_running_requests=1,
+    max_running_requests=3,
     mem_fraction_static=0.7,
     trust_remote_code=True,
     context_length=CONTEXT_LENGTH,
 )
-# MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
-#    AsyncEngineArgs(
-#        model=MODEL_NAME,
-#        gpu_memory_utilization=0.95,
-#        tensor_parallel_size=TENSOR_PARALLEL,
-#        trust_remote_code=True,
-#        max_num_batched_tokens=2048,
-#        max_num_seqs=32,
-#    )
-# )
 
 
 app = FastAPI()
@@ -293,9 +282,7 @@ async def verify(request: VerificationRequest) -> Dict:
 
     # Verify usage information
     # Response - 1 for usage chunk
-    res = verify_usage(
-        len(input_tokens), len(request.raw_chunks) - 2, reported_usage
-    )
+    res = verify_usage(len(input_tokens), len(request.raw_chunks) - 2, reported_usage)
     if res is None:
         return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
     result, message, cause = res
