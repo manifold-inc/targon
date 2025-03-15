@@ -107,8 +107,13 @@ async def score_organics(
             for _ in r:
                 total_records += 1
         bt.logging.info(f"Found {total_records} organics")
-        for model, records in organics.items():
-            # This semi-ensures that multiple validators dont hit cold cache values
+
+        # This takes some load off each verif so that not all
+        # validators are hitting them at the same time at start of interval
+        organics_list = list(organics.items())
+        for model, records in organics_list:
+            # This semi-ensures that multiple validators
+            # dont hit cold cache values
             random.shuffle(records)
 
             for record in records:
