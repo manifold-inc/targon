@@ -119,7 +119,9 @@ async def score_organics(
             records.extend(model_set)
         random.shuffle(records)
 
-        bt.logging.info(f"Found {len(records)} organics")
+        bt.logging.info(
+            f"Found {len(records)} organics. Running with {max_concurrent} concurrent"
+        )
 
         running_tasks: List[asyncio.Task[Optional[OrganicStats]]] = []
         total_completed = 0
@@ -136,6 +138,7 @@ async def score_organics(
                 continue
 
             if len(running_tasks) > max_concurrent:
+                bt.logging.info(f"{len(running_tasks)} tasks, waiting one")
                 done, pending = await asyncio.wait(
                     running_tasks, return_when=asyncio.FIRST_COMPLETED
                 )
