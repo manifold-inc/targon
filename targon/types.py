@@ -26,6 +26,7 @@ class Endpoints(Enum):
     CHAT = "CHAT"
     COMPLETION = "COMPLETION"
 
+
 class NeuronType(Enum):
     Validator = "VALIDATOR"
     Miner = "MINER"
@@ -72,6 +73,7 @@ class ValidatorConfig(BaseModel):
     skip_weight_set: Optional[bool] = False
     verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None
     set_weights_on_start: Optional[bool] = False
+    max_concurrent_organics: Optional[int] = 2
 
 
 class MinerConfig(BaseModel):

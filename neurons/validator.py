@@ -207,6 +207,7 @@ class Validator(BaseNeuron):
             self.organics,
             self.subtensor,
             self.config.epoch_length,
+            self.config_file.max_concurrent_organics or 2,
         )
         save_organics(self.organics)
 

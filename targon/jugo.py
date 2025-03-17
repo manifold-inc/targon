@@ -81,7 +81,7 @@ async def send_uid_info_to_jugo(
 
 
 async def score_organics(
-    last_bucket_id, ports, wallet, existing_scores, subtensor, epoch_len
+    last_bucket_id, ports, wallet, existing_scores, subtensor, epoch_len, max_concurrent = 2
 ):
     try:
         async with aiohttp.ClientSession() as session:
@@ -129,7 +129,7 @@ async def score_organics(
             if not port or not url:
                 continue
 
-            if len(running_tasks) > 6:
+            if len(running_tasks) > max_concurrent:
                 done, pending = await asyncio.wait(
                     running_tasks, return_when=asyncio.FIRST_COMPLETED
                 )
