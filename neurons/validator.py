@@ -252,6 +252,8 @@ class Validator(BaseNeuron):
             for model in self.organics[uid].keys():
                 # 15 sliding window, with a pop per interval for dead miners
                 self.organics[uid][model] = self.organics[uid][model][:-15]
+                if not len(self.organics[uid][model]):
+                    continue
                 self.organics[uid][model].pop(0)
 
     async def log_on_block(self, block):
