@@ -81,7 +81,13 @@ async def send_uid_info_to_jugo(
 
 
 async def score_organics(
-    last_bucket_id, ports, wallet, existing_scores, subtensor, epoch_len, max_concurrent = 2
+    last_bucket_id,
+    ports,
+    wallet,
+    existing_scores,
+    subtensor,
+    epoch_len,
+    max_concurrent=2,
 ):
     try:
         async with aiohttp.ClientSession() as session:
@@ -145,13 +151,19 @@ async def score_organics(
                 asyncio.create_task(verify_record(record, scores, port, url))
             )
 
-        organic_stats.extend([x for x in asyncio.gather(*running_tasks) if x])
+        done, _ = await asyncio.wait(running_tasks, return_when=asyncio.ALL_COMPLETED)
+        for task in list(done):
+            task_res = task.result()
+            if task_res is None:
+                continue
+            organic_stats.append(task_res)
 
         bt.logging.info(
             f"Completed {total_completed} organics in {time.time() - start}s\n{bucket_id}: {scores}"
         )
         return bucket_id, organic_stats
     except Exception as e:
+        bt.logging.error(traceback.format_exc())
         bt.logging.error(str(e))
         return None, None
 
