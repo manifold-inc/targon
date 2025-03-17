@@ -1,6 +1,6 @@
 import asyncio
-from types import CoroutineType
-from typing import Any, Awaitable, Coroutine, Dict, List, Optional, Union
+import time
+from typing import Dict, List, Optional
 import random
 import json
 
@@ -117,6 +117,7 @@ async def score_organics(
 
         running_tasks: List[asyncio.Task[Optional[OrganicStats]]] = []
         total_completed = 0
+        start = time.time()
         for record in records:
             model = record.get("model_name")
             blocks_till = epoch_len - (subtensor.block % epoch_len)
@@ -146,7 +147,9 @@ async def score_organics(
 
         organic_stats.extend([x for x in asyncio.gather(*running_tasks) if x])
 
-        bt.logging.info(f"Completed {total_completed} organics\n{bucket_id}: {scores}")
+        bt.logging.info(
+            f"Completed {total_completed} organics in {time.time() - start}s\n{bucket_id}: {scores}"
+        )
         return bucket_id, organic_stats
     except Exception as e:
         bt.logging.error(str(e))
