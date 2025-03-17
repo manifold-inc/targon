@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple
 
+import aiohttp
 import requests
 from targon.types import Endpoints
 from targon.utils import fail_with_none
@@ -41,18 +42,18 @@ async def check_tokens(
             "raw_chunks": raw_chunks,
             "request_id": request_id,
         }
-        response = requests.post(
-            f"{url}:{port}/verify",
-            headers={"Content-Type": "application/json"},
-            timeout=60,
-            json=request_data,
-        )
-
-        if response.status_code != 200:
-            return None, response.text
-        result = response.json()
-        if result.get("verified") is None:
-            return None, str(result)
-        return result, None
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{url}:{port}/verify",
+                headers={"Content-Type": "application/json"},
+                timeout=aiohttp.ClientTimeout(total=60),
+                json=request_data,
+            ) as response:
+                if response.status != 200:
+                    return None, await response.text()
+                result = await response.json()
+                if result.get("verified") is None:
+                    return None, str(result)
+                return result, None
     except Exception as e:
         return None, str(e)
