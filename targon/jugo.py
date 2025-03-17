@@ -1,4 +1,6 @@
-from typing import Dict, List
+import asyncio
+from types import CoroutineType
+from typing import Any, Awaitable, Coroutine, Dict, List, Optional, Union
 import random
 import json
 
@@ -102,114 +104,135 @@ async def score_organics(
             return last_bucket_id, None
         scores = existing_scores
         organic_stats = []
-        total_records = 0
-        for _, r in organics.items():
-            for _ in r:
-                total_records += 1
-        bt.logging.info(f"Found {total_records} organics")
 
         # This takes some load off each verif so that not all
         # validators are hitting them at the same time at start of interval
-        organics_list = list(organics.items())
-        for model, records in organics_list:
-            # This semi-ensures that multiple validators
-            # dont hit cold cache values
-            random.shuffle(records)
+        organics_list = list(organics.values())
+        records = []
+        for model_set in organics_list:
+            records.extend(model_set)
+        random.shuffle(records)
 
-            for record in records:
-                blocks_till = epoch_len - (subtensor.block % epoch_len)
-                if blocks_till < 15:
-                    break
-                pub_id = record.get("pub_id", "")
-                uid = str(record["uid"])
-                if scores.get(uid) is None:
-                    scores[uid] = {}
-                if scores[uid].get(model) is None:
-                    scores[uid][model] = []
-                if record.get("response") is None:
-                    continue
-                if not record.get("success") or len(record.get("response", [])) < 2:
-                    continue
+        bt.logging.info(f"Found {len(records)} organics")
 
-                port = ports.get(model, {}).get("port")
-                url = ports.get(model, {}).get("url")
-                if not port:
-                    continue
+        running_tasks: List[asyncio.Task[Optional[OrganicStats]]] = []
+        total_completed = 0
+        for record in records:
+            model = record.get("model_name")
+            blocks_till = epoch_len - (subtensor.block % epoch_len)
+            if blocks_till < 15:
+                break
 
-                res, err = await check_tokens(
-                    record["request"],
-                    record["response"],
-                    Endpoints(record["endpoint"]),
-                    port,
-                    url=url,
-                    request_id=record.get("pub_id"),
+            port = ports.get(model, {}).get("port")
+            url = ports.get(model, {}).get("url")
+            if not port or not url:
+                continue
+
+            if len(running_tasks) > 6:
+                done, pending = await asyncio.wait(
+                    running_tasks, return_when=asyncio.FIRST_COMPLETED
                 )
-                if err is not None or res is None:
-                    bt.logging.info(
-                        f"UID {uid} {pub_id}: Error validating organic on model {model}: {err} "
-                    )
-                    continue
-                bt.logging.info(
-                    f"UID {uid} {pub_id}: Verified organic: ({res}) model ({model}) at ({url}:{port})"
-                )
-                verified = res.get("verified", False)
-                total_input_tokens = res.get("input_tokens", 0)
-                tps = 0
-                if not verified:
-                    scores[uid][model].append(None)
-                if verified:
-                    try:
-                        response_tokens_count = int(res.get("response_tokens", 0))
-
-                        # This shouldnt happen
-                        if response_tokens_count == 0:
-                            continue
-
-                        tps = min(
-                            response_tokens_count, record["request"]["max_tokens"]
-                        ) / (int(record.get("total_time")) / 1000)
-                        context_modifier = (
-                            1
-                            + 0.5 * (total_input_tokens / 32000)
-                            + 0.25 * (total_input_tokens / 64000) ** 2
-                        )
-                        gpu_required = res.get("gpus", 1)
-                        if gpu_required >= 8:
-                            # Large models get more weight, a lot more.
-                            gpu_required = gpu_required * 2
-                        # Bring back when we have more organics scored per interval
-                        # scores[uid][model].append(gpu_required * context_modifier)
-
-                        scores[uid][model].append(gpu_required)
-                    except Exception as e:
-                        bt.logging.error(f"Error scoring record {pub_id}: {e}")
+                running_tasks = list(pending)
+                for task in list(done):
+                    task_res = task.result()
+                    if task_res is None:
                         continue
-                organic_stats.append(
-                    OrganicStats(
-                        time_to_first_token=int(record.get("time_to_first_token")),
-                        time_for_all_tokens=int(record.get("total_time"))
-                        - int(record.get("time_to_first_token")),
-                        total_time=int(record.get("total_time")),
-                        tps=tps,
-                        tokens=[],
-                        verified=verified,
-                        error=res.get("error"),
-                        cause=res.get("cause"),
-                        model=model,
-                        max_tokens=record.get("request").get("max_tokens"),
-                        seed=record.get("request").get("seed"),
-                        temperature=record.get("request").get("temperature"),
-                        uid=int(uid),
-                        hotkey=record.get("hotkey"),
-                        coldkey=record.get("coldkey"),
-                        endpoint=record.get("endpoint"),
-                        total_tokens=record.get("response_tokens"),
-                        pub_id=record.get("pub_id", ""),
-                        gpus=res.get("gpus", 1),
-                    )
-                )
-        bt.logging.info(f"{bucket_id}: {scores}")
+                    organic_stats.append(task_res)
+
+            total_completed += 1
+            running_tasks.append(
+                asyncio.create_task(verify_record(record, scores, port, url))
+            )
+
+        organic_stats.extend([x for x in asyncio.gather(*running_tasks) if x])
+
+        bt.logging.info(f"Completed {total_completed} organics\n{bucket_id}: {scores}")
         return bucket_id, organic_stats
     except Exception as e:
         bt.logging.error(str(e))
         return None, None
+
+
+async def verify_record(record, scores, port: int, url: str) -> Optional[OrganicStats]:
+    model = record.get("model_name")
+    pub_id = record.get("pub_id", "")
+    uid = str(record["uid"])
+    if scores.get(uid) is None:
+        scores[uid] = {}
+    if scores[uid].get(model) is None:
+        scores[uid][model] = []
+    if record.get("response") is None:
+        return None
+    if not record.get("success") or len(record.get("response", [])) < 2:
+        return None
+
+    res, err = await check_tokens(
+        record["request"],
+        record["response"],
+        Endpoints(record["endpoint"]),
+        port,
+        url=url,
+        request_id=record.get("pub_id"),
+    )
+    if err is not None or res is None:
+        bt.logging.info(
+            f"UID {uid} {pub_id}: Error validating organic on model {model}: {err} "
+        )
+        return None
+    bt.logging.info(
+        f"UID {uid} {pub_id}: Verified organic: ({res}) model ({model}) at ({url}:{port})"
+    )
+    verified = res.get("verified", False)
+    # total_input_tokens = res.get("input_tokens", 0)
+    tps = 0
+    if not verified:
+        scores[uid][model].append(None)
+    if verified:
+        try:
+            response_tokens_count = int(res.get("response_tokens", 0))
+
+            # This shouldnt happen
+            if response_tokens_count == 0:
+                return None
+
+            tps = min(response_tokens_count, record["request"]["max_tokens"]) / (
+                int(record.get("total_time")) / 1000
+            )
+            # context_modifier = (
+            #    1
+            #    + 0.5 * (total_input_tokens / 32000)
+            #    + 0.25 * (total_input_tokens / 64000) ** 2
+            # )
+            gpu_required = res.get("gpus", 1)
+            if gpu_required >= 8:
+                # Large models get more weight, a lot more.
+                gpu_required = gpu_required * 2
+            # Bring back when we have more organics scored per interval
+            # scores[uid][model].append(gpu_required * context_modifier)
+
+            scores[uid][model].append(gpu_required)
+        except Exception as e:
+            bt.logging.error(f"Error scoring record {pub_id}: {e}")
+            return None
+        return OrganicStats(
+            time_to_first_token=int(record.get("time_to_first_token")),
+            time_for_all_tokens=int(record.get("total_time"))
+            - int(record.get("time_to_first_token")),
+            total_time=int(record.get("total_time")),
+            tps=tps,
+            tokens=[],
+            verified=verified,
+            error=res.get("error"),
+            cause=res.get("cause"),
+            model=model,
+            max_tokens=record.get("request").get("max_tokens"),
+            seed=record.get("request").get("seed"),
+            temperature=record.get("request").get("temperature"),
+            uid=int(uid),
+            hotkey=record.get("hotkey"),
+            coldkey=record.get("coldkey"),
+            endpoint=record.get("endpoint"),
+            total_tokens=record.get("response_tokens"),
+            pub_id=record.get("pub_id", ""),
+            gpus=res.get("gpus", 1),
+        )
