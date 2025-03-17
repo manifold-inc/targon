@@ -143,6 +143,7 @@ async def score_organics(
                     running_tasks, return_when=asyncio.FIRST_COMPLETED
                 )
                 running_tasks = list(pending)
+                bt.logging.info(f"{len(done)} done, {len(pending)} pending")
                 for task in list(done):
                     task_res = task.result()
                     if task_res is None:
@@ -150,6 +151,7 @@ async def score_organics(
                     organic_stats.append(task_res)
 
             total_completed += 1
+            bt.logging.info(f"Appending task")
             running_tasks.append(
                 asyncio.create_task(verify_record(record, scores, port, url))
             )
