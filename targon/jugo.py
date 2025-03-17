@@ -146,9 +146,9 @@ async def score_organics(
                     task_res = task.result()
                     if task_res is None:
                         continue
+                    total_completed += 1
                     organic_stats.append(task_res)
 
-            total_completed += 1
             running_tasks.append(
                 asyncio.create_task(verify_record(record, scores, port, url))
             )
@@ -158,6 +158,7 @@ async def score_organics(
             task_res = task.result()
             if task_res is None:
                 continue
+            total_completed += 1
             organic_stats.append(task_res)
 
         bt.logging.info(
