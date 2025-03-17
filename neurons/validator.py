@@ -248,7 +248,11 @@ class Validator(BaseNeuron):
             )
 
         self.lock_halt = False
-        self.organics = {}
+        for uid in self.organics.keys():
+            for model in self.organics[uid].keys():
+                # 15 sliding window, with a pop per interval for dead miners
+                self.organics[uid][model] = self.organics[uid][model][:-15]
+                self.organics[uid][model].pop(0)
 
     async def log_on_block(self, block):
         blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
