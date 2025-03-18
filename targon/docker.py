@@ -114,7 +114,8 @@ def sync_output_checkers(
     # Get new image hash (if any)
     image_name = f"{MANIFOLD_VERIFIER}:{IMAGE_TAG}"
     try:
-        client.images.pull(image_name)  # type: ignore
+        if IMAGE_TAG == "latest":
+            client.images.pull(image_name)  # type: ignore
     except Exception as e:
         bt.logging.error(str(e))
     bt.logging.info(f"Syncing {models}")
@@ -257,7 +258,7 @@ def load_existing_images(
     for c in containers:
         verification_ports[c.labels["model"]] = {
             "port": int(c.labels["port"]),
-            "endpoints": [Endpoints.COMPLETION], # just for startup
+            "endpoints": [Endpoints.COMPLETION],  # just for startup
             "url": "http://localhost",
         }
 
