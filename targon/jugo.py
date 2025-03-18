@@ -232,25 +232,25 @@ async def verify_record(record, scores, port: int, url: str) -> Optional[Organic
         except Exception as e:
             bt.logging.error(f"Error scoring record {pub_id}: {e}")
             return None
-        return OrganicStats(
-            time_to_first_token=int(record.get("time_to_first_token")),
-            time_for_all_tokens=int(record.get("total_time"))
-            - int(record.get("time_to_first_token")),
-            total_time=int(record.get("total_time")),
-            tps=tps,
-            tokens=[],
-            verified=verified,
-            error=res.get("error"),
-            cause=res.get("cause"),
-            model=model,
-            max_tokens=record.get("request").get("max_tokens"),
-            seed=record.get("request").get("seed"),
-            temperature=record.get("request").get("temperature"),
-            uid=int(uid),
-            hotkey=record.get("hotkey"),
-            coldkey=record.get("coldkey"),
-            endpoint=record.get("endpoint"),
-            total_tokens=record.get("response_tokens"),
-            pub_id=record.get("pub_id", ""),
-            gpus=res.get("gpus", 1),
-        )
+    return OrganicStats(
+        time_to_first_token=int(record.get("time_to_first_token")),
+        time_for_all_tokens=int(record.get("total_time"))
+        - int(record.get("time_to_first_token")),
+        total_time=int(record.get("total_time")),
+        tps=tps,
+        tokens=[],
+        verified=verified,
+        error=res.get("error"),
+        cause=res.get("cause"),
+        model=model,
+        max_tokens=record.get("request").get("max_tokens"),
+        seed=record.get("request").get("seed"),
+        temperature=record.get("request").get("temperature"),
+        uid=int(uid),
+        hotkey=record.get("hotkey"),
+        coldkey=record.get("coldkey"),
+        endpoint=record.get("endpoint"),
+        total_tokens=record.get("response_tokens"),
+        pub_id=record.get("pub_id", ""),
+        gpus=res.get("gpus", 1),
+    )
