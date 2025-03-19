@@ -1,4 +1,4 @@
-FROM python:3.10.2
+FROM lmsysorg/sglang:v0.4.3.post4-cu124
 WORKDIR /app
 
 COPY ./requirements.txt requirements.txt
