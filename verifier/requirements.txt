@@ -1,10 +1,5 @@
-vllm==0.7.2
 fastapi==0.115.0
 numpy
 openai==1.52.0
 uvicorn==0.30.6
 cachetools==5.5.0
-
-# For sg lang
-#sgl-kernel==0.0.1
-#sglang

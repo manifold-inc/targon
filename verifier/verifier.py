@@ -1,11 +1,11 @@
+import traceback
+from cachetools import TTLCache
 import os
-import asyncio
-from fastapi import FastAPI, Response
-from typing import Dict, List, Optional, Tuple, Any, Union
-from shared import GenerateRequest, RequestType, Usage, VerificationRequest, parse_chunk
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.utils import random_uuid
-from vllm import AsyncLLMEngine, SamplingParams
+import time
+from fastapi import FastAPI
+from typing import Dict, List, Optional, Tuple
+import sglang
+from shared import RequestType, Usage, VerificationRequest, parse_chunk
 
 # Load the model.
 MODEL_NAME = os.getenv("MODEL", None)
@@ -20,197 +20,128 @@ PIPELINE_PARALLEL = int(os.getenv("PIPELINE_PARALLEL", 1))
 CONTEXT_LENGTH = os.getenv("CONTEXT_LENGTH", None)
 if CONTEXT_LENGTH != None:
     CONTEXT_LENGTH = int(CONTEXT_LENGTH)
-MODEL_WRAPPER = AsyncLLMEngine.from_engine_args(
-    AsyncEngineArgs(
-        model=MODEL_NAME,
-        gpu_memory_utilization=0.9,
-        tensor_parallel_size=TENSOR_PARALLEL,
-        trust_remote_code=True,
-        enable_chunked_prefill=False,
-    )
+MODEL_WRAPPER = sglang.Engine(
+    model_path=MODEL_NAME,
+    tp_size=TENSOR_PARALLEL,
+    chunked_prefill_size=2048,
+    max_running_requests=3,
+    mem_fraction_static=0.7,
+    trust_remote_code=True,
+    context_length=CONTEXT_LENGTH,
 )
-model_config = MODEL_WRAPPER.engine.model_config
-MODEL_WRAPPER.engine.scheduler_config.chunked_prefill_enabled = False
-
-# Lock to ensure atomicity.
-LOCK = asyncio.Lock()
 
 
 app = FastAPI()
 
-
-@app.post("/generate")
-async def generate_question(req: GenerateRequest):
-    async with LOCK:
-        try:
-            prompt = ""
-            for message in req.messages:
-                prompt += (
-                    message.get("role", "") + ": " + message.get("content", "") + "\n"
-                )
-            prompt += "\nResponse: "
-            output = MODEL_WRAPPER.generate(
-                request_id=random_uuid(),
-                prompt=prompt,
-                sampling_params=SamplingParams(**req.sampling_params.model_dump()),
-            )
-            final_output = None
-            try:
-                async for request_output in output:
-                    final_output = request_output
-            except asyncio.CancelledError:
-                return Response(status_code=499)
-
-            assert final_output is not None
-            prompt = final_output.prompt
-            assert prompt is not None
-            text_outputs = [prompt + output.text for output in final_output.outputs]
-            return {"text": text_outputs}
-        except Exception as e:
-            print(e)
-            return {"text": None}
+cache = TTLCache(maxsize=1000, ttl=60 * 10)
 
 
 async def verify_logprobs(
     temperature: float,
-    seed: int,
     max_tokens: int,
     input_text: str,
-    num_input_tokens: int,
+    input_tokens: List[int],
     output_sequence: List[str],
-    tools: Optional[List[Dict]] = None,
-    tool_choice: Optional[Union[str, Dict[str, Any]]] = None,
 ) -> Optional[Tuple[bool, str, str]]:
     """
     Compare the produced logprob values against the ground truth, or at least
     the ground truth according to this particular GPU/software pairing.
     """
-    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
-    # Set up sampling parameters
-    top_logprobs = 15
-    sampling_params_dict = {
-        "temperature": temperature,
-        "seed": seed,
-        "max_tokens": 1,
-        "logprobs": top_logprobs,
-        "prompt_logprobs": top_logprobs,
-    }
-    if tools:
-        sampling_params_dict["tools"] = tools
-        sampling_params_dict["tool_choice"] = tool_choice
-
-    sampling_params = SamplingParams(**sampling_params_dict)
-
+    TOKENIZER = MODEL_WRAPPER.tokenizer_manager.tokenizer
+    assert TOKENIZER is not None
     # Generate output for a single token
     output = None
     full_text = input_text + "".join([token for token in output_sequence])
-    output = MODEL_WRAPPER.generate(
-        prompt=full_text, sampling_params=sampling_params, request_id=random_uuid()
+    output = await MODEL_WRAPPER.async_generate(
+        prompt=full_text,
+        sampling_params={
+            "temperature": temperature,
+            "max_new_tokens": 1,
+        },
+        logprob_start_len=0,
+        top_logprobs_num=15,
+        return_logprob=True,
+        stream=False,
     )
-    final_output = None
-    try:
-        async for request_output in output:
-            final_output = request_output
-    except asyncio.CancelledError:
-        print("Asyncio Canceled")
-        return None
-    assert final_output is not None
-    output = final_output
-
-    if not output or output.prompt_logprobs is None:
-        print("Output or prompt logprobs is None")
-        return None
+    assert isinstance(output, dict)
 
     # The actual logprobs should be very close but not 100% due to GPU/driver differences
     idxs = min(
-        len(output.prompt_logprobs) - num_input_tokens,
+        output["meta_info"]["prompt_tokens"] - len(input_tokens),
         len(output_sequence) - 1,
     )
     perfect_tokens = 0
     eos_token_id = getattr(TOKENIZER, "eos_token_id", -1)
     eot_token_id = TOKENIZER.get_vocab().get("<|eot_id|>", -1)  # type: ignore
     really_low_prob = 0
-    not_first = 0
-    assert output.prompt_token_ids
+    meta = output["meta_info"]
     for idx in range(idxs):
-        try:
-            expected_logprob_set = output.prompt_logprobs[idx + num_input_tokens]
-        except:
+        # Get top logprobs
+        expected_logprob_list = meta.get("input_top_logprobs", None)
+        if expected_logprob_list == None:
             continue
-        token_id = output.prompt_token_ids[idx + num_input_tokens]
-        assert expected_logprob_set is not None
+        expected_logprob_list = expected_logprob_list[idx + len(input_tokens)]
 
+        # Get true logprob for token
+        real_logprob, token_id, _ = meta["input_token_logprobs"][
+            idx + len(input_tokens)
+        ]
+
+        # Arrage top log probs in vllm style
+        expected_logprob_set = {
+            token: logprob for logprob, token, _ in expected_logprob_list
+        }
+
+        # Check if eos / eot tokens exist in top probs
         eos_logprob = expected_logprob_set.get(eos_token_id)
         eot_logprob = expected_logprob_set.get(eot_token_id)
 
+        # Just check one variable as eot / eos
         if (eos_logprob is None and eot_logprob is not None) or (
-            eos_logprob is not None
-            and eot_logprob is not None
-            and eot_logprob.rank is not None
-            and eos_logprob.rank is not None
-            and eot_logprob.rank < eos_logprob.rank
+            eot_logprob is not None
+            and eos_logprob is not None
+            and eot_logprob < eos_logprob
         ):
             eos_logprob = eot_logprob
 
-        expected_logprob = expected_logprob_set.get(token_id)
-
+        # Get text of current token
         token_text = TOKENIZER.decode([token_id])
 
+        # Skipped eos/eot check
         if eos_logprob is not None and (
-            expected_logprob is None
+            real_logprob is None
             or (
-                eos_logprob.rank is not None
-                and expected_logprob.rank is not None
-                and eos_logprob.rank < expected_logprob.rank
-                and expected_logprob.rank > 15
+                eos_logprob is not None
+                and real_logprob is not None
+                and eos_logprob > real_logprob
+                and real_logprob < eos_logprob * 2
             )
         ):
             error_msg = f"Expected EOS/EOT token at index {idx}, {token_text=}, {expected_logprob_set=}, {eos_logprob=}"
             return False, error_msg, "SKIPPED_EOS_EOT"
 
-        if expected_logprob is None:
+        # Shouldnt happen
+        if real_logprob is None:
             continue
 
-        rank = expected_logprob.rank
-        assert rank is not None
-
-        if rank >= 75:
-            error_msg = f"Found extraordinarily improbable token '{token_text}' at index {idx}: {rank=}"
+        # Extreemly unlikely token
+        if real_logprob <= -13:
+            error_msg = f"Found extraordinarily improbable token '{token_text}' at index {idx}: {real_logprob=}"
             return False, error_msg, "UNLIKELY_TOKEN"
 
-        elif rank >= 25:
+        # Unlikely token
+        elif real_logprob <= -8:
             really_low_prob += 1
 
-        elif rank > top_logprobs:
-            continue
-
-        if rank != 1:
-            not_first += 1
-
-        expected_logprob = expected_logprob.logprob
-
-        if expected_logprob == 0:
+        # Exact token
+        if real_logprob > 0.0001:
             perfect_tokens += 1
-
-    # Check if miner produced non-top ranking tokens more than top-ranking tokens
-    ratio = not_first / len(output_sequence)
-    if ratio >= 0.5:
-        error_msg = (
-            f"{not_first} of {len(output_sequence)} [{ratio=}] tokens were not rank 1"
-        )
-        return False, error_msg, "UNLIKELY_TOKENS"
 
     # Check if miner prematurely stopped generating
     if eos_token_id > 0 or eot_token_id > 0:
         if len(output_sequence) < max_tokens:
-            last_token_probs = []
-            if output:
-                last_token_probs = output.outputs[0]
-                last_token_probs = (
-                    last_token_probs.logprobs[0]
-                    if last_token_probs and last_token_probs.logprobs
-                    else []
-                )
+            expected_logprob_list = meta["output_top_logprobs"][0]
+            last_token_probs = [token for _, token, _ in expected_logprob_list]
             if (
                 eos_token_id not in last_token_probs
                 and eot_token_id not in last_token_probs
@@ -221,11 +152,13 @@ async def verify_logprobs(
                 )
                 return False, error_msg, "EARLY_END"
 
+    # general check for distilled models (will be almost all perfect)
     perfect_avg = round(perfect_tokens / idxs, 5)
     if perfect_avg >= 1:
         error_msg = f"Overfitted response tokens. {perfect_avg}% perfect"
         return False, error_msg, "OVERFIT"
 
+    # Check for too many unlikely tokens
     if really_low_prob >= 5:
         error_msg = f"Found {really_low_prob} highly improbable tokens"
         return False, error_msg, "UNLIKELY_TOKEN"
@@ -248,7 +181,7 @@ def verify_usage(
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
     prompt_diff = usage.prompt_tokens / input_tokens
-    if prompt_diff < 0.5 or prompt_diff > 2:
+    if (prompt_diff < 0.5) or (prompt_diff > 2):
         error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
@@ -261,6 +194,29 @@ def verify_usage(
 
 
 @app.post("/verify")
+async def verify_wrapper(request: VerificationRequest) -> Dict:
+    res = {}
+    start = time.time()
+    cached_req = None
+    if request.request_id:
+        cached_req = cache.get(request.request_id)
+    if cached_req:
+        print(
+            f"Returned cached request {request.request_id} in {time.time() - start}",
+            flush=True,
+        )
+        return cached_req
+    try:
+        res = await verify(request)
+        if request.request_id:
+            cache[request.request_id] = res
+    except Exception as e:
+        print(traceback.format_exc())
+        print(e)
+    print(f"total time: {time.time() - start}s", flush=True)
+    return res
+
+
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
     output_sequence: List[str] = []
@@ -278,6 +234,7 @@ async def verify(request: VerificationRequest) -> Dict:
             "error": f"Output sequence too short! Only parsed {len(output_sequence)} tokens",
             "cause": "TOO_SHORT",
         }
+    print(f"getting completion with {len(output_sequence)} response tokens", flush=True)
 
     # Check max tokens - allow for model-specific limits
     max_allowed = request.request_params.max_tokens
@@ -307,7 +264,8 @@ async def verify(request: VerificationRequest) -> Dict:
     reported_usage = Usage(**usage_data)
 
     # Tokenize the input sequence
-    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
+    TOKENIZER = MODEL_WRAPPER.tokenizer_manager.tokenizer
+    assert TOKENIZER is not None
     input_text = (
         request.request_params.prompt
         if request.request_type == RequestType.COMPLETION.value
@@ -326,6 +284,9 @@ async def verify(request: VerificationRequest) -> Dict:
         if input_text.startswith(TOKENIZER.bos_token):  # type: ignore
             input_text = input_text[len(TOKENIZER.bos_token) :]  # type: ignore
     input_tokens = TOKENIZER(input_text).input_ids
+    if len(input_tokens) + len(output_sequence) > 128000:
+        return {"error": "Context Too Large"}
+    print(f"getting completion with {len(input_tokens)} input tokens", flush=True)
 
     # Verify!
     return_value = {
@@ -357,13 +318,10 @@ async def verify(request: VerificationRequest) -> Dict:
     # Logprob checks
     res = await verify_logprobs(
         request.request_params.temperature,
-        request.request_params.seed,
         request.request_params.max_tokens,
         str(input_text),
-        len(input_tokens),
+        input_tokens,
         output_sequence,
-        tools=request.request_params.tools,
-        tool_choice=request.request_params.tool_choice,
     )
     if res is None:
         return {"error": "Failed to check log probs", "cause": "INTERNAL_ERROR"}
@@ -378,21 +336,21 @@ async def verify(request: VerificationRequest) -> Dict:
     if not result:
         return return_value
 
-    # Random logprob check
     print("Verified Response")
     return {
         "verified": True,
-        "gpus": TENSOR_PARALLEL,
-        "response_tokens": len([token for token in output_sequence if token != ""]),
         "input_tokens": len(input_tokens),
+        "response_tokens": len([token for token in output_sequence if token != ""]),
+        "gpus": TENSOR_PARALLEL,
     }
 
 
 @app.get("/metadata")
 async def endpoints():
     ENDPOINTS = ["completion"]
-    TOKENIZER = await MODEL_WRAPPER.get_tokenizer()
-    if TOKENIZER.chat_template is not None: # type: ignore
+    TOKENIZER = MODEL_WRAPPER.tokenizer_manager.tokenizer
+    assert TOKENIZER is not None
+    if TOKENIZER.chat_template is not None:
         ENDPOINTS.append("chat")
 
     return {"endpoints": ENDPOINTS}
