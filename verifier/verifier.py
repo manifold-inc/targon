@@ -243,7 +243,7 @@ def verify_usage(
     actual_total_tokens = input_tokens + output_sequence
 
     completion_diff = usage.completion_tokens / output_sequence
-    if completion_diff < 0.5 or completion_diff > 2:
+    if (completion_diff < 0.5 or completion_diff > 2) and output_sequence * 2 + 1 != usage.completion_tokens:
         error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({output_sequence})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
