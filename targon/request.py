@@ -33,6 +33,7 @@ async def check_tokens(
     port: int,
     url,
     request_id: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> Tuple[Optional[Dict], Optional[str]]:
     try:
         request_data = {
@@ -45,7 +46,10 @@ async def check_tokens(
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{url}:{port}/verify",
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"bearer {api_key}",
+                },
                 timeout=aiohttp.ClientTimeout(total=60),
                 json=request_data,
             ) as response:

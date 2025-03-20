@@ -64,6 +64,7 @@ class VerificationPortsConfig(BaseModel):
 
 
 class MinerEndpoint(BaseModel):
+    api_key: Optional[str] = None
     port: int
     url: str
     qps: int

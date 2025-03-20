@@ -150,7 +150,15 @@ async def score_organics(
                     organic_stats.append(task_res)
 
             running_tasks.append(
-                asyncio.create_task(verify_record(record, scores, port, url))
+                asyncio.create_task(
+                    verify_record(
+                        record,
+                        scores,
+                        port,
+                        url,
+                        api_key=ports.get(model, {}).get("api_key"),
+                    )
+                )
             )
 
         done, _ = await asyncio.wait(running_tasks, return_when=asyncio.ALL_COMPLETED)
@@ -171,7 +179,9 @@ async def score_organics(
         return None, None
 
 
-async def verify_record(record, scores, port: int, url: str) -> Optional[OrganicStats]:
+async def verify_record(
+    record, scores, port: int, url: str, api_key: Optional[str] = None
+) -> Optional[OrganicStats]:
     model = record.get("model_name")
     pub_id = record.get("pub_id", "")
     uid = str(record["uid"])
@@ -191,6 +201,7 @@ async def verify_record(record, scores, port: int, url: str) -> Optional[Organic
         port,
         url=url,
         request_id=record.get("pub_id"),
+        api_key=api_key,
     )
     if err is not None or res is None:
         bt.logging.info(
