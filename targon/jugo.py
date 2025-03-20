@@ -134,7 +134,7 @@ async def score_organics(
 
             port = ports.get(model, {}).get("port")
             url = ports.get(model, {}).get("url")
-            if not port or not url:
+            if not url:
                 continue
 
             if len(running_tasks) > max_concurrent:
@@ -180,7 +180,7 @@ async def score_organics(
 
 
 async def verify_record(
-    record, scores, port: int, url: str, api_key: Optional[str] = None
+    record, scores, port: Optional[int], url: str, api_key: Optional[str] = None
 ) -> Optional[OrganicStats]:
     model = record.get("model_name")
     pub_id = record.get("pub_id", "")

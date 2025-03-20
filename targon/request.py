@@ -30,7 +30,7 @@ async def check_tokens(
     request,
     raw_chunks: List[Dict],
     endpoint: Endpoints,
-    port: int,
+    port: Optional[int],
     url,
     request_id: Optional[str] = None,
     api_key: Optional[str] = None,
@@ -43,9 +43,12 @@ async def check_tokens(
             "raw_chunks": raw_chunks,
             "request_id": request_id,
         }
+        url = f"{url}:{port}/verify"
+        if port is None:
+            url = f"{url}/verify"
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{url}:{port}/verify",
+                url,
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"bearer {api_key}",

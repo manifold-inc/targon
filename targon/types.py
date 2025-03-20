@@ -59,7 +59,7 @@ class OrganicStats(InferenceStats):
 
 class VerificationPortsConfig(BaseModel):
     api_key: Optional[str] = None
-    port: int
+    port: Optional[int] = None
     url: str
     endpoints: List[str]
 
