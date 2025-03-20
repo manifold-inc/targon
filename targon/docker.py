@@ -269,6 +269,7 @@ def load_existing_images(
             extra_ports[k] = {
                 "url": v.url,
                 "port": v.port,
+                "api_key": v.api_key,
                 "endpoints": [Endpoints(e.upper()) for e in v.endpoints],
             }
         verification_ports = verification_ports | extra_ports
