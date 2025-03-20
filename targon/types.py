@@ -58,13 +58,13 @@ class OrganicStats(InferenceStats):
 
 
 class VerificationPortsConfig(BaseModel):
+    api_key: Optional[str] = None
     port: int
     url: str
     endpoints: List[str]
 
 
 class MinerEndpoint(BaseModel):
-    api_key: Optional[str] = None
     port: int
     url: str
     qps: int
