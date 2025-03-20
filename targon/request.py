@@ -43,12 +43,12 @@ async def check_tokens(
             "raw_chunks": raw_chunks,
             "request_id": request_id,
         }
-        url = f"{url}:{port}/verify"
+        _url = f"{url}:{port}/verify"
         if port is None:
-            url = f"{url}/verify"
+            _url = f"{url}/verify"
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                url,
+                _url,
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"bearer {api_key}",
