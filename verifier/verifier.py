@@ -167,25 +167,23 @@ async def verify_logprobs(
 
 
 def verify_usage(
-    input_tokens: int,
-    output_sequence: int,
+    input_token_count: int,
+    output_token_count: int,
     usage: Usage,
 ) -> Optional[Tuple[bool, str, str]]:
-    """Verify the usage information in the response."""
-    # Count tokens including special tokens
-    actual_total_tokens = input_tokens + output_sequence
+    actual_total_tokens = input_token_count + output_token_count
 
-    completion_diff = usage.completion_tokens / output_sequence
-    if (completion_diff < 0.5 or completion_diff > 2) and output_sequence * 2 + 1 != usage.completion_tokens:
-        error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({output_sequence})"
+    completion_diff = usage.completion_tokens / output_token_count if output_token_count > 0 else float('inf')
+    if (completion_diff < 0.5 or completion_diff > 2) and output_token_count * 2 + 1 != usage.completion_tokens:
+        error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({output_token_count})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    prompt_diff = usage.prompt_tokens / input_tokens
+    prompt_diff = usage.prompt_tokens / input_token_count if input_token_count > 0 else float('inf')
     if (prompt_diff < 0.5) or (prompt_diff > 2):
-        error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_tokens})"
+        error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_token_count})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    total_diff = usage.total_tokens / (input_tokens + output_sequence)
+    total_diff = usage.total_tokens / actual_total_tokens if actual_total_tokens > 0 else float('inf')
     if total_diff < 0.5 or total_diff > 2:
         error_msg = f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
@@ -296,7 +294,14 @@ async def verify(request: VerificationRequest) -> Dict:
 
     # Verify usage information
     # Response - 1 for usage chunk
-    res = verify_usage(len(input_tokens), len(request.raw_chunks) - 2, reported_usage)
+    output_text = "".join(output_sequence)
+    output_tokens = len(TOKENIZER(output_text).input_ids)
+    
+    res = verify_usage(
+        len(input_tokens),
+        output_tokens,
+        reported_usage
+    )
     if res is None:
         return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
     result, message, cause = res
