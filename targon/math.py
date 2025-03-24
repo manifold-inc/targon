@@ -58,14 +58,17 @@ def sigmoid(num):
     return 1 / (1 + exp(-((num - 0.5) / 0.1)))
 
 
-def safe_mean_score(data):
+# Returns mean treating none as zero, and the % of nones
+def safe_mean_score(data) -> Tuple[float, float]:
     clean_data = [x for x in data if x is not None]
     if len(clean_data) == 0:
-        return 0.0
+        return 0.0, 1
     mean_value = np.mean(clean_data)
     if np.isnan(mean_value) or np.isinf(mean_value):
-        return 0.0
-    return float(mean_value) * sigmoid(len(clean_data) / len(data))
+        return 0.0, 1
+    return float(mean_value) * sigmoid(len(clean_data) / len(data)), 1 - len(
+        clean_data
+    ) / len(data)
 
 
 @fail_with_none("Failed getting Weights")
@@ -114,18 +117,16 @@ def get_weights(
                 continue
 
             # put back when throughput higher
-            # score = safe_mean_score(orgs) * (len([1 for x in orgs if x]) / len(orgs))
-            score = safe_mean_score(orgs)
-            safe_mean_scores[model] = score
+            score, fail_rate = safe_mean_score(orgs)
 
-            # Exploiting a model; zerod
-            # Leaving commented untill score throughput is up. multi-uid fucks this
-            # if len(orgs) > 5 and score == 0:
-            #    scores[uid] = 0
-            #    exploited = True
-            #    break
+            # Exploiting a model; no points for that model
+            if len(orgs) > 10 and fail_rate >= 0.15:
+                exploited = True
+                continue
+
             # More models you do, more sum you get.
             # Baseline is avg of context your serving * gpu count of that model
+            safe_mean_scores[model] = score
             scores[uid] += score
 
         data["data"]["safe_mean_scores"] = safe_mean_scores
