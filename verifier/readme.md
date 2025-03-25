@@ -1,4 +1,4 @@
-to seutp remote nodes, copy and install targon verifier on the server;
+to setup remote nodes, copy and install targon verifier on the server;
 
 1. Clone https://github.com/manifold-inc/targon
 
