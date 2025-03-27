@@ -345,7 +345,7 @@ async def verify(request: VerificationRequest) -> Dict:
     return {
         "verified": True,
         "input_tokens": len(input_tokens),
-        "response_tokens": len([token for token in output_sequence if token != ""]),
+        "response_tokens": output_tokens,
         "gpus": TENSOR_PARALLEL,
     }
 
