@@ -1,4 +1,5 @@
 import traceback
+import json
 from cachetools import TTLCache
 import os
 import time
@@ -226,6 +227,7 @@ async def verify_wrapper(request: VerificationRequest) -> Dict:
         print(traceback.format_exc())
         print(e)
     print(f"total time: {time.time() - start}s", flush=True)
+    print(json.dumps(res), flush=True)
     return res
 
 
@@ -385,7 +387,6 @@ async def verify(request: VerificationRequest) -> Dict:
     if not result:
         return return_value
 
-    print("Verified Response")
     return {
         "verified": True,
         "input_tokens": len(input_tokens),
