@@ -3,7 +3,7 @@ from cachetools import TTLCache
 import os
 import time
 from fastapi import FastAPI
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import sglang
 from shared import RequestType, Usage, VerificationRequest, parse_chunk
 
@@ -173,17 +173,31 @@ def verify_usage(
 ) -> Optional[Tuple[bool, str, str]]:
     actual_total_tokens = input_token_count + output_token_count
 
-    completion_diff = usage.completion_tokens / output_token_count if output_token_count > 0 else float('inf')
-    if (completion_diff < 0.5 or completion_diff > 2) and output_token_count * 2 + 1 != usage.completion_tokens:
+    completion_diff = (
+        usage.completion_tokens / output_token_count
+        if output_token_count > 0
+        else float("inf")
+    )
+    if (
+        completion_diff < 0.5 or completion_diff > 2
+    ) and output_token_count * 2 + 1 != usage.completion_tokens:
         error_msg = f"Reported completion tokens ({usage.completion_tokens}) does not match actual count ({output_token_count})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    prompt_diff = usage.prompt_tokens / input_token_count if input_token_count > 0 else float('inf')
+    prompt_diff = (
+        usage.prompt_tokens / input_token_count
+        if input_token_count > 0
+        else float("inf")
+    )
     if (prompt_diff < 0.5) or (prompt_diff > 2):
         error_msg = f"Reported prompt tokens ({usage.prompt_tokens}) does not match actual count ({input_token_count})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
 
-    total_diff = usage.total_tokens / actual_total_tokens if actual_total_tokens > 0 else float('inf')
+    total_diff = (
+        usage.total_tokens / actual_total_tokens
+        if actual_total_tokens > 0
+        else float("inf")
+    )
     if total_diff < 0.5 or total_diff > 2:
         error_msg = f"Reported total tokens ({usage.total_tokens}) does not match actual count ({actual_total_tokens})"
         return False, error_msg, "INCORRECT_USAGE_DATA"
@@ -215,6 +229,30 @@ async def verify_wrapper(request: VerificationRequest) -> Dict:
     return res
 
 
+# end_reason, found
+def get_end_reason(chunk: Dict[str, Any]) -> Tuple[Optional[str], bool]:
+    end_reason_list = chunk.get("choices")
+    if not isinstance(end_reason_list, list):
+        return None, False
+    if len(end_reason_list) == 0:
+        return None, False
+    end_reason_dict = end_reason_list[0]
+    if not isinstance(end_reason_dict, dict):
+        return None, False
+    finish_reason = end_reason_dict.get("finish_reason")
+    if finish_reason is None:
+        return None, False
+    if finish_reason not in [
+        "stop",
+        "length",
+        "content_filter",
+        "tool_calls",
+        "function_call",
+    ]:
+        return None, False
+    return finish_reason, True
+
+
 async def verify(request: VerificationRequest) -> Dict:
     """Verify a miner's output."""
     output_sequence: List[str] = []
@@ -226,13 +264,22 @@ async def verify(request: VerificationRequest) -> Dict:
             output_sequence.append(parsed)
 
     # If we couldn't parse enough tokens, fail
-    if len(output_sequence) == 0:
+    # Must be a min of token / usage
+    if len(output_sequence) == 0 or len(request.raw_chunks) < 2:
         return {
             "verified": False,
             "error": f"Output sequence too short! Only parsed {len(output_sequence)} tokens",
             "cause": "TOO_SHORT",
         }
     print(f"getting completion with {len(output_sequence)} response tokens", flush=True)
+
+    finish_reason, found = get_end_reason(request.raw_chunks[-2])
+    if not found:
+        return {
+            "verified": False,
+            "error": f"Finish reason not found or incorrect: {finish_reason=}",
+            "cause": "TOO_SHORT",
+        }
 
     # Check max tokens - allow for model-specific limits
     max_allowed = request.request_params.max_tokens
@@ -296,12 +343,9 @@ async def verify(request: VerificationRequest) -> Dict:
     # Response - 1 for usage chunk
     output_text = "".join(output_sequence)
     output_tokens = len(TOKENIZER(output_text).input_ids)
-    
-    res = verify_usage(
-        len(input_tokens),
-        output_tokens,
-        reported_usage
-    )
+
+    res = verify_usage(len(input_tokens), output_tokens, reported_usage)
+
     if res is None:
         return {"error": "Failed to check usage", "cause": "INTERNAL_ERROR"}
     result, message, cause = res
