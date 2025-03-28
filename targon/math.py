@@ -171,8 +171,8 @@ def get_weights(
         bt.logging.warning("No one gave responses worth scoring")
         return [], [], []
 
+    raw_weights = [max(r - (max(rewards) / 2), 0) for r in rewards]
     raw_weights = [(r**4) for r in rewards]
-    raw_weights = [max(x - (max(raw_weights) / 2), 0) for x in raw_weights]
 
     final_weights = []
     for i, (uid, w) in enumerate(zip(uids, raw_weights)):
