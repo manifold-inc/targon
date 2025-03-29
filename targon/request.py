@@ -61,7 +61,5 @@ async def check_tokens(
                 if result.get("verified") is None:
                     return None, str(result)
                 return result, None
-    except aiohttp.ClientTimeout:
-        return None, "Request timed out after 60 seconds"
     except Exception as e:
         return None, str(e)
