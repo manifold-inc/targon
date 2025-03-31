@@ -109,7 +109,7 @@ def get_weights(
         if (organic := organics.get(str(uid))) is None:
             continue
         safe_mean_scores = {}
-        exploited = False
+        fail_rate_modifier = 1
         for model, orgs in organic.items():
             # Only score when there are actually enough scored requests
 
@@ -119,9 +119,9 @@ def get_weights(
             # put back when throughput higher
             score, fail_rate = safe_mean_score(orgs)
 
-            # Exploiting a model; no points for that model
+            # Exploiting a model; less points overall
             if len(orgs) > 10 and fail_rate >= 0.15:
-                exploited = True
+                fail_rate_modifier = max(fail_rate_modifier - fail_rate, 0)
                 continue
 
             # More models you do, more sum you get.
@@ -130,9 +130,9 @@ def get_weights(
             scores[uid] += score
 
         data["data"]["safe_mean_scores"] = safe_mean_scores
-        data["data"]["is_exploiting"] = exploited
+        data["data"]["fail_rate_modifier"] = fail_rate_modifier**2
 
-        if exploited or not scores[uid]:
+        if not scores[uid]:
             continue
 
         if miner_success_rate < 0.5:
@@ -152,11 +152,14 @@ def get_weights(
         scores[uid] = scores[uid] * 100
         pre_formula = scores[uid]
         scores[uid] = (
-            scores[uid] * (miner_completed / total_organics) * miner_success_rate
+            scores[uid]
+            * (miner_completed / total_organics)
+            * miner_success_rate
+            * fail_rate_modifier
         )
         data["data"][
             "formula"
-        ] = f"sum_safe_mean_score[uid]={pre_formula} * ({miner_completed=}/{total_organics=}) * {miner_success_rate=} = {scores[uid]}"
+        ] = f"sum_safe_mean_score[uid]={pre_formula} * ({miner_completed=}/{total_organics=}) * {miner_success_rate=} * {fail_rate_modifier=} = {scores[uid]}"
         data["data"]["final_weight_before_expo"] = scores[uid]
 
     tps_list = list(scores.values())
