@@ -299,24 +299,3 @@ async def score_cvm_attestations(attestations):
                     continue
     
     return attestation_stats
-
-async def send_attestations_to_jugo(wallet, attestations):
-    try:
-        body = {
-            "attestations": attestations
-        }
-        headers = generate_header(wallet.hotkey, body)
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{JUGO_URL}/attestations",
-                headers=headers,
-                json=body,
-                timeout=aiohttp.ClientTimeout(60),
-            ) as res:
-                if res.status != 200:
-                    bt.logging.error(f"Failed to send attestations to jugo: {res.text}")
-                else:
-                    bt.logging.info("Attestations sent successfully.")
-    except Exception as e:
-        bt.logging.error(f"Error sending attestations to jugo: {e}")
-        bt.logging.error(traceback.format_exc())

@@ -28,7 +28,6 @@ from targon.jugo import (
     send_organics_to_jugo,
     send_uid_info_to_jugo,
     score_cvm_attestations,
-    send_attestations_to_jugo,
 )
 from targon.math import get_weights
 from targon.metagraph import (
@@ -338,7 +337,7 @@ class Validator(BaseNeuron):
             return
 
         bt.logging.info("Sending attestations to jugo")
-        await send_attestations_to_jugo(self.wallet, attestation_stats)
+        await send_uid_info_to_jugo(self.wallet.hotkey, session, attestation_stats)
         bt.logging.info("Sent attestations to jugo")
 
     async def set_weights_on_interval(self, block):
