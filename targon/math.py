@@ -2,7 +2,7 @@ from math import exp
 import base64
 import bittensor as bt
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 
 from targon.utils import fail_with_none
 import json
@@ -70,12 +70,60 @@ def safe_mean_score(data) -> Tuple[float, float]:
         clean_data
     ) / len(data)
 
+def calculate_attestation_score(attestations: Dict[int, Dict[str, List[Dict[str, Any]]]]) -> Dict[int, float]:
+    scores = {}
+
+    for uid, nodes in attestations.items():
+        all_attestations = []
+        verified_attestations = []
+        total_tokens = 0
+        total_gpus = 0
+
+        for node_id, attestations_list in nodes.items():
+            for attestation in attestations_list:
+                all_attestations.append(attestation)
+
+                if attestation.get("success", False) and attestation.get("validated", False):
+                    verified_attestations.append(attestation)
+                    input_tokens = attestation.get("input_tokens", 0)
+                    response_tokens = attestation.get("response_tokens", 0)
+                    gpus = len(attestation.get("gpus", []))
+                    if gpus > 0:
+                        total_tokens += (input_tokens + response_tokens)
+                        total_gpus += gpus
+    
+        # calculate success rate
+        success_rate = len(verified_attestations) / len(all_attestations) if all_attestations else 0
+
+        if success_rate < 0.5 or len(verified_attestations) < 5:
+            scores[uid] = 0
+            continue
+
+        # boost for high success rates (same as organics)
+        if success_rate >= 0.95:
+            success_rate = 1.05
+        elif success_rate >= 0.85:
+            success_rate = 1.0
+
+        # calclate tokens per GPU as throughput proxy
+        tokens_per_gpu = total_tokens / total_gpus if total_gpus > 0 else 0
+        
+        throughput_boost = min(tokens_per_gpu / 65000, 0.05)
+
+        # calculate final score with throughput boost
+        if verified_attestations:
+            base_score = 100 * success_rate
+            scores[uid] = base_score * (1 + throughput_boost)
+    
+    return scores
+
 
 @fail_with_none("Failed getting Weights")
 def get_weights(
     miner_models: Dict[int, Dict[str, int]],
     organics: Dict[str, Dict[str, list[int]]],
     metadata: Dict,
+    attestations: Dict[int, Dict[str, List[Dict[str, Any]]]]
 ) -> Tuple[List[int], List[float], List[Dict]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
@@ -84,6 +132,10 @@ def get_weights(
     total_organics = metadata["total_attempted"]
     if total_organics == 0:
         raise Exception("No organics to score")
+
+    attestation_scores = {}
+    if attestations:
+        attestation_scores = calculate_attestation_score(attestations)
 
     data_for_jugo = {}
     for uid in miner_models.keys():
@@ -100,6 +152,7 @@ def get_weights(
                 "miner_success_rate": miner_success_rate,
                 "miner_completed": miner_completed,
                 "overall_organics": total_organics,
+                "attestation_score": attestation_scores.get(uid, 0),
                 "final_weight_before_expo": 0,
                 "final_weight_after_expo_before_normal": 0,
             },
@@ -161,6 +214,12 @@ def get_weights(
             "formula"
         ] = f"sum_safe_mean_score[uid]={pre_formula} * ({miner_completed=}/{total_organics=}) * {miner_success_rate=} * {fail_rate_modifier=} = {scores[uid]}"
         data["data"]["final_weight_before_expo"] = scores[uid]
+
+        # add attestations scores
+        attestation_score = attestation_scores.get(uid, 0)
+        organic_score = scores[uid]
+        scores[uid] = (attestation_score * 0.7) + (organic_score * 0.3)
+        data["data"]["formula"] = f"attestation_score={attestation_score} * 0.7 + organic_score={organic_score} * 0.3 = {scores[uid]}"
 
     tps_list = list(scores.values())
     if len(tps_list) == 0:

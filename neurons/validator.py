@@ -322,7 +322,7 @@ class Validator(BaseNeuron):
         bt.logging.info("Sending attestations to jugo")
         await send_attestations_to_jugo(self.wallet, attestation_stats)
         bt.logging.info("Sent attestations to jugo")
-        
+
     async def set_weights_on_interval(self, block):
         if block % self.config.epoch_length:
             return
@@ -340,7 +340,7 @@ class Validator(BaseNeuron):
             bt.logging.error("Cannot set weights, failed getting metadata from jugo")
             return
         uids, weights, jugo_data = get_weights(
-            self.miner_models, self.organics, organic_metadata
+            self.miner_models, self.organics, organic_metadata, self.cvm_attestations
         )
         if not self.config_file.skip_weight_set:
             async with aiohttp.ClientSession() as session:
@@ -357,6 +357,9 @@ class Validator(BaseNeuron):
                 if not len(self.organics[uid][model]):
                     continue
                 self.organics[uid][model].pop(0)
+        
+        # clear up attestations after scoring
+        self.cvm_attestations = {}
 
     async def log_on_block(self, block):
         blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
