@@ -131,7 +131,7 @@ class Miner(BaseNeuron):
         # Miners need to return the list of cvm nodes they are using
         assert self.config_file
         assert self.config_file.cvm_nodes
-        return {node_id: f"{node.url}:{node.port}" for node_id, node in self.config_file.cvm_nodes.items() if node.port}
+        return self.config_file.cvm_nodes
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
