@@ -74,28 +74,28 @@ def calculate_attestation_score(attestations: Dict[int, Dict[str, List[Dict[str,
     scores = {}
 
     for uid, nodes in attestations.items():
-        all_attestations = []
-        verified_attestations = []
-        total_tokens = 0
-        total_gpus = 0
+        all_gpus_count = 0
+        verified_gpus_count = 0
 
         for node_id, attestations_list in nodes.items():
             for attestation in attestations_list:
-                all_attestations.append(attestation)
+                # Verify top-level success indicators
+                if not attestation.get("success") or not attestation.get("validated"):
+                    continue
 
-                if attestation.get("success", False) and attestation.get("validated", False):
-                    verified_attestations.append(attestation)
-                    input_tokens = attestation.get("input_tokens", 0)
-                    response_tokens = attestation.get("response_tokens", 0)
-                    gpus = len(attestation.get("gpus", []))
-                    if gpus > 0:
-                        total_tokens += (input_tokens + response_tokens)
-                        total_gpus += gpus
+                # Count each valid GPU
+                gpus = attestation.get("gpus", [])
+                all_gpus_count += len(gpus)
+                
+                for gpu in gpus:
+                    claims = gpu.get("claims", {})
+                    if claims.get("attestation_success") and claims.get("measres") == "success":
+                        verified_gpus_count += 1
     
-        # calculate success rate
-        success_rate = len(verified_attestations) / len(all_attestations) if all_attestations else 0
+        # calculate success rate based on individual GPUs
+        success_rate = verified_gpus_count / all_gpus_count if all_gpus_count else 0
 
-        if success_rate < 0.5 or len(verified_attestations) < 5:
+        if success_rate < 0.5 or verified_gpus_count < 8:
             scores[uid] = 0
             continue
 
@@ -105,15 +105,8 @@ def calculate_attestation_score(attestations: Dict[int, Dict[str, List[Dict[str,
         elif success_rate >= 0.85:
             success_rate = 1.0
 
-        # calclate tokens per GPU as throughput proxy
-        tokens_per_gpu = total_tokens / total_gpus if total_gpus > 0 else 0
-        
-        throughput_boost = min(tokens_per_gpu / 65000, 0.05)
-
-        # calculate final score with throughput boost
-        if verified_attestations:
-            base_score = 100 * success_rate
-            scores[uid] = base_score * (1 + throughput_boost)
+        # calculate final score
+        scores[uid] = 100 * success_rate
     
     return scores
 
