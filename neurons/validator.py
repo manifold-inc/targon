@@ -57,7 +57,7 @@ class Validator(BaseNeuron):
     config_file: ValidatorConfig
     neuron_type = NeuronType.Validator
     miner_models: Dict[int, Dict[str, int]]
-    cvm_nodes: Dict[int, Dict[str, Any]]
+    cvm_nodes: Dict[int, List[str]]
     verification_ports: Dict[str, Dict[str, Any]]
     models: List[str]
     lock_waiting = False
@@ -262,23 +262,26 @@ class Validator(BaseNeuron):
                             continue
 
                         nodes = await response.json()
-                        self.cvm_nodes[uid] = {}
+                        healthy_nodes = []
 
-                        for node_id, node_url in nodes.items():
+                        for node_url in nodes:
                             try:
                                 health_response = await session.get(
-                                    f"{node_url}/health"
+                                    f"{node_url}:4040/health"
                                 )
                                 if health_response.status == 200:
-                                    self.cvm_nodes[uid][node_id] = node_url
+                                    healthy_nodes.append(node_url)
                                 else:
                                     bt.logging.error(
-                                        f"Health check failed for node: {node_id} of miner {uid}"
+                                        f"Health check failed for node {node_url} of miner {uid}"
                                     )
                             except Exception as e:
                                 bt.logging.error(
-                                    f"Error checking health for node: {node_id} of miner {uid}: {str(e)}"
+                                    f"Error checking health for node {node_url} of miner {uid}: {str(e)}"
                                 )
+                        
+                        if healthy_nodes:
+                            self.cvm_nodes[uid] = healthy_nodes
                 except Exception as e:
                     bt.logging.error(f"Error checking miner {uid} cvm nodes: {str(e)}")
 
@@ -300,18 +303,18 @@ class Validator(BaseNeuron):
 
         async with aiohttp.ClientSession() as session:
             for uid, nodes in self.cvm_nodes.items():
-                for node_id, node_url in nodes.items():
+                for node_url in nodes:
                     try:
                         # Generate and store nonce
                         nonce = str(uuid.uuid4())
                         attest_response = await session.post(
-                            f"{node_url}/api/v1/attest",
+                            f"{node_url}:4040/api/v1/attest",
                             json={"nonce": nonce},
                             headers={"Content-Type": "application/json"},
                         )
                         if attest_response.status != 200:
                             bt.logging.error(
-                                f"Failed to attest to node {node_id} of miner {uid}: HTTP {attest_response.status}"
+                                f"Failed to attest to node {node_url} of miner {uid}: HTTP {attest_response.status}"
                             )
                         else:
                             result = await attest_response.json()
@@ -320,13 +323,13 @@ class Validator(BaseNeuron):
 
                             if uid not in self.cvm_attestations:
                                 self.cvm_attestations[uid] = {}
-                            if node_id not in self.cvm_attestations[uid]:
-                                self.cvm_attestations[uid][node_id] = []
+                            if node_url not in self.cvm_attestations[uid]:
+                                self.cvm_attestations[uid][node_url] = []
 
-                            self.cvm_attestations[uid][node_id].append(result)
+                            self.cvm_attestations[uid][node_url].append(result)
                     except Exception as e:
                         bt.logging.error(
-                            f"Error verifying node {node_id} of miner {uid}: {str(e)}"
+                            f"Error verifying node {node_url} of miner {uid}: {str(e)}"
                         )
 
         attestation_stats = await score_cvm_attestations(

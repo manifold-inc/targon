@@ -80,4 +80,4 @@ class MinerConfig(BaseModel):
     miner_endpoints: Optional[Dict[str, MinerEndpoint]] = None
     miner_api_key: Optional[str] = "1234"
     miner_nodes: Optional[List[str]] = None
-    cvm_nodes: Optional[Dict[str, str]] = None
+    cvm_nodes: Optional[List[str]] = None
