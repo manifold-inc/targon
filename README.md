@@ -8,7 +8,23 @@ NOTICE: Using this software, you must agree to the Terms and Agreements provided
 in the terms and conditions document. By downloading and running this software,
 you implicitly agree to these terms and conditions.
 
-# Table of Contents
+# Targon v6
+
+Targon v6 and v5 run in parallel. 70% of rewards go to v6 (once miners start
+passing verification) and 30% to v5.
+
+## Running v6
+
+v6 requires a Confidential Compute compatible node. We reccomend eith h100s or
+h200s. To install v6, simple run `./tvm/install` and pass the following flags
+
+@ahmed TODO
+
+This will walk you though the install and download process, and boot the CVM.
+After that, update the v5 miner.py file to report all the ip addresses of each
+CVM you have running. That should be all you need to do.
+
+# Table of Contents (v5)
 
 1. [Compute Requirements](#recommended-compute-requirements)
 1. [Installation](#installation)
