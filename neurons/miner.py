@@ -73,7 +73,7 @@ class Miner(BaseNeuron):
         self.cvm_clients = {
             node_id: httpx.AsyncClient(
                 timeout=httpx.Timeout(60 * 3),
-                base_url=f"{node.url}:{node.port}/api/v1",
+                base_url=f"{node.url}:{node.port}",
                 headers={
                     "Content-Type": "application/json",
                 },
