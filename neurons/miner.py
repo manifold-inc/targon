@@ -69,18 +69,6 @@ class Miner(BaseNeuron):
             for model, endpoint in self.config_file.miner_endpoints.items()
         }
 
-        # CVM endpoint clients
-        self.cvm_clients = {
-            node_id: httpx.AsyncClient(
-                timeout=httpx.Timeout(60 * 3),
-                base_url=f"{node.url}:{node.port}",
-                headers={
-                    "Content-Type": "application/json",
-                },
-            )
-            for node_id, node in self.config_file.cvm_nodes.items()
-        }
-
     async def create_chat_completion(self, request: Request):
         bt.logging.info(
             "\u2713",
