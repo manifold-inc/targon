@@ -240,10 +240,10 @@ class Validator(BaseNeuron):
         # check every 15 blocks
         if block % 15 != 0:
             return
-        
+
         if block != 0 and not self.is_runing:
             return
-        
+
         miner_uids = get_miner_uids(
             self.metagraph, self.uid, self.config.vpermit_tao_limit
         )
@@ -257,7 +257,9 @@ class Validator(BaseNeuron):
                     url = f"http://{axon_info.ip}:{axon_info.port}/cvm"
                     async with session.get(url) as response:
                         if response.status != 200:
-                            bt.logging.error(f"Failed to get cvm nodes from miner {uid}: HTTP {response.status}")
+                            bt.logging.error(
+                                f"Failed to get cvm nodes from miner {uid}: HTTP {response.status}"
+                            )
                             continue
 
                         nodes = await response.json()
@@ -265,28 +267,36 @@ class Validator(BaseNeuron):
 
                         for node_id, node_url in nodes.items():
                             try:
-                                health_response = await session.get(f"{node_url}/health")
+                                health_response = await session.get(
+                                    f"{node_url}/health"
+                                )
                                 if health_response.status == 200:
                                     self.cvm_nodes[uid][node_id] = node_url
                                 else:
-                                    bt.logging.error(f"Health check failed for node: {node_id} of miner {uid}")
+                                    bt.logging.error(
+                                        f"Health check failed for node: {node_id} of miner {uid}"
+                                    )
                             except Exception as e:
-                                bt.logging.error(f"Error checking health for node: {node_id} of miner {uid}: {str(e)}")
+                                bt.logging.error(
+                                    f"Error checking health for node: {node_id} of miner {uid}: {str(e)}"
+                                )
                 except Exception as e:
                     bt.logging.error(f"Error checking miner {uid} cvm nodes: {str(e)}")
 
         # Count total healthy nodes across all miners
         total_healthy_nodes = sum(len(nodes) for nodes in self.cvm_nodes.values())
-        bt.logging.info(f"Verified health of {total_healthy_nodes} cvm nodes across {len(self.cvm_nodes)} miners")
+        bt.logging.info(
+            f"Verified health of {total_healthy_nodes} cvm nodes across {len(self.cvm_nodes)} miners"
+        )
 
     async def verify_cvm_nodes(self, block):
         assert self.config.vpermit_tao_limit
         if block % 60 != 0:
             return
-        
+
         if block != 0 and not self.is_runing:
             return
-        
+
         bt.logging.info(f"Verifying {len(self.cvm_nodes)} cvm nodes")
 
         async with aiohttp.ClientSession() as session:
@@ -299,7 +309,9 @@ class Validator(BaseNeuron):
                             headers={"Content-Type": "application/json"},
                         )
                         if attest_response.status != 200:
-                            bt.logging.error(f"Failed to attest to node {node_id} of miner {uid}: HTTP {attest_response.status}")
+                            bt.logging.error(
+                                f"Failed to attest to node {node_id} of miner {uid}: HTTP {attest_response.status}"
+                            )
                         else:
                             result = await attest_response.json()
 
@@ -310,15 +322,17 @@ class Validator(BaseNeuron):
 
                             self.cvm_attestations[uid][node_id].append(result)
                     except Exception as e:
-                        bt.logging.error(f"Error verifying node {node_id} of miner {uid}: {str(e)}")
+                        bt.logging.error(
+                            f"Error verifying node {node_id} of miner {uid}: {str(e)}"
+                        )
 
         attestation_stats = await score_cvm_attestations(
             self.cvm_attestations,
         )
-        
+
         if attestation_stats is None:
             return
-        
+
         bt.logging.info("Sending attestations to jugo")
         await send_attestations_to_jugo(self.wallet, attestation_stats)
         bt.logging.info("Sent attestations to jugo")
@@ -342,11 +356,16 @@ class Validator(BaseNeuron):
         uids, weights, jugo_data = get_weights(
             self.miner_models, self.organics, organic_metadata, self.cvm_attestations
         )
-        if not self.config_file.skip_weight_set:
-            async with aiohttp.ClientSession() as session:
-                await send_uid_info_to_jugo(self.wallet.hotkey, session, jugo_data)
-            self.set_weights(
-                self.wallet, self.metagraph, self.subtensor, (uids, weights)
+        try:
+            if not self.config_file.skip_weight_set:
+                async with aiohttp.ClientSession() as session:
+                    await send_uid_info_to_jugo(self.wallet.hotkey, session, jugo_data)
+                self.set_weights(
+                    self.wallet, self.metagraph, self.subtensor, (uids, weights)
+                )
+        except Exception as e:
+            bt.logging.error(
+                f"Failed sending uid info to jugo, or failed setting weights: {e}"
             )
 
         self.lock_halt = False
@@ -357,7 +376,7 @@ class Validator(BaseNeuron):
                 if not len(self.organics[uid][model]):
                     continue
                 self.organics[uid][model].pop(0)
-        
+
         # clear up attestations after scoring
         self.cvm_attestations = {}
 
