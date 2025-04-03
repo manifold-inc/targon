@@ -303,9 +303,11 @@ class Validator(BaseNeuron):
             for uid, nodes in self.cvm_nodes.items():
                 for node_id, node_url in nodes.items():
                     try:
+                        # Generate and store nonce
+                        nonce = str(uuid.uuid4())
                         attest_response = await session.post(
                             f"{node_url}/api/v1/attest",
-                            json={"nonce": str(uuid.uuid4())},
+                            json={"nonce": nonce},
                             headers={"Content-Type": "application/json"},
                         )
                         if attest_response.status != 200:
@@ -314,6 +316,8 @@ class Validator(BaseNeuron):
                             )
                         else:
                             result = await attest_response.json()
+                            # Store nonce with result
+                            result["expected_nonce"] = nonce
 
                             if uid not in self.cvm_attestations:
                                 self.cvm_attestations[uid] = {}

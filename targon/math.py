@@ -2,12 +2,47 @@ from math import exp
 import base64
 import bittensor as bt
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
+from nv_attestation_sdk import attestation
+import os
+import json
 
 from targon.utils import fail_with_none
-import json
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+
+# Load policy at module level
+def load_policy(policy_path: str) -> str:
+    try:
+        with open(policy_path, "r") as f:
+            policy = json.load(f)
+        bt.logging.info(f"Loaded appraisal policy from {policy_path}")
+        return json.dumps(policy)
+    except Exception as e:
+        bt.logging.error(f"Failed to load appraisal policy: {e}")
+        return None
+
+# Load policy once at module level
+POLICY_PATH = os.environ.get("APPRAISAL_POLICY", "remote_policy.json")
+ATTESTATION_POLICY = load_policy(POLICY_PATH)
+
+def validate_attestation(token: str, expected_nonce: str, policy: str = ATTESTATION_POLICY) -> bool:
+    try:
+        if not policy:
+            bt.logging.error("No valid policy loaded for attestation validation")
+            return False
+            
+        NRAS_URL = "https://nras.attestation.nvidia.com/v3/attest/gpu"
+        client = attestation.Attestation("Verifier")
+        client.add_verifier(attestation.Devices.GPU, attestation.Environment.REMOTE, NRAS_URL, "")
+        client.set_token("Verifier", token)
+        client.set_nonce(expected_nonce)
+        valid = client.validate_token(policy)
+        bt.logging.info("Attestation token validated successfully.") if valid else bt.logging.error("Attestation token validation failed.")
+        return valid
+    except Exception as e:
+        bt.logging.error(f"Exception during token validation: {e}")
+        return False
 
 
 def verify_signature(msg: dict, signature: str, public_key):
@@ -51,7 +86,6 @@ def safe_mean_score(data) -> Tuple[float, float]:
         clean_data
     ) / len(data)
 
-
 def calculate_attestation_score(
     attestations: Optional[Dict[int, Dict[str, List[Dict[str, Any]]]]]
 ) -> Dict[int, float]:
@@ -65,8 +99,23 @@ def calculate_attestation_score(
         for _, attestations_list in nodes.items():
             for attestation in attestations_list:
                 # Verify top-level success indicators
-                # TODO @dhruv verify each jwt w/ nvidia
                 if not attestation.get("success") or not attestation.get("validated"):
+                    continue
+
+                # Verify nonce matches what we sent
+                expected_nonce = attestation.get("expected_nonce")
+                received_nonce = attestation.get("nonce")
+                if not expected_nonce or not received_nonce or expected_nonce != received_nonce:
+                    continue
+
+                # Validate with NVIDIA NRAS
+                token = attestation.get("token")
+                if not token:
+                    bt.logging.error(f"No attestation token provided")
+                    continue
+
+                if not validate_attestation(token, expected_nonce):
+                    bt.logging.error(f"NVIDIA attestation validation failed")
                     continue
 
                 # Count each valid GPU
@@ -74,13 +123,20 @@ def calculate_attestation_score(
 
                 for gpu in gpus:
                     claims = gpu.get("claims", {})
-                    # TODO @ahmed gpu score should be different based on gpu type;
-                    # Lets say 1pt for h100 and 2pt for h200. Make this a switch case so its easy to expand
                     if (
                         claims.get("attestation_success")
                         and claims.get("measres") == "success"
                     ):
-                        verified_gpus_count += 1
+                        # Score based on GPU model
+                        gpu_model = claims.get("hwmodel", "unknown").upper()
+                        match gpu_model:
+                            case s if "H200" in s: gpu_score = 2.0
+                            case s if "H100" in s: gpu_score = 1.0
+                            # TODO support other gpus, also nuke non h100 and h200 gpus. Pretty sure you can't do this but just in case. 
+                            case _: gpu_score = 0.1
+                        
+                        verified_gpus_count += gpu_score
+                        bt.logging.info(f"GPU {gpu.get('id', 'unknown')} model {gpu_model} scored {gpu_score}")
 
         # calculate final score
         scores[uid] = verified_gpus_count
