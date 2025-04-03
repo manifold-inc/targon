@@ -27,6 +27,8 @@ from targon.jugo import (
     score_organics,
     send_organics_to_jugo,
     send_uid_info_to_jugo,
+    score_cvm_attestations,
+    send_attestations_to_jugo,
 )
 from targon.math import get_weights
 from targon.metagraph import (
@@ -310,16 +312,13 @@ class Validator(BaseNeuron):
                     except Exception as e:
                         bt.logging.error(f"Error verifying node {node_id} of miner {uid}: {str(e)}")
 
-           # TODO: Score attestations
         attestation_stats = await score_cvm_attestations(
-            self.wallet,
             self.cvm_attestations,
         )
         
         if attestation_stats is None:
             return
         
-        # TODO: Send attestations to jugo
         bt.logging.info("Sending attestations to jugo")
         await send_attestations_to_jugo(self.wallet, attestation_stats)
         bt.logging.info("Sent attestations to jugo")

@@ -265,3 +265,56 @@ async def verify_record(
         pub_id=record.get("pub_id", ""),
         gpus=res.get("gpus", 1),
     )
+
+async def score_cvm_attestations(attestations):
+    attestation_stats = []
+    
+    for uid, nodes in attestations.items():
+        for node_id, attestations_list in nodes.items():
+            for attestation in attestations_list:
+                try:
+                    if not attestation.get("success", False):
+                        bt.logging.error(f"Attestation failed for node {node_id} of miner {uid}: {attestation.get('error')}")
+                        continue
+                        
+                    if not attestation.get("verified", False):
+                        bt.logging.error(f"Verification failed for node {node_id} of miner {uid}")
+                        continue
+                    
+                    stats = {
+                        "uid": uid,
+                        "node_id": node_id,
+                        "verified": True,
+                        "gpus": attestation.get("gpus", 1),
+                        "input_tokens": attestation.get("input_tokens", 0),
+                        "response_tokens": attestation.get("response_tokens", 0)
+                    }
+                    
+                    attestation_stats.append(stats)
+                    
+                except Exception as e:
+                    bt.logging.error(f"Error processing attestation for node {node_id} of miner {uid}: {e}")
+                    continue
+    
+    return attestation_stats
+
+async def send_attestations_to_jugo(wallet, attestations):
+    try:
+        body = {
+            "attestations": attestations
+        }
+        headers = generate_header(wallet.hotkey, body)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{JUGO_URL}/attestations",
+                headers=headers,
+                json=body,
+                timeout=aiohttp.ClientTimeout(60),
+            ) as res:
+                if res.status != 200:
+                    bt.logging.error(f"Failed to send attestations to jugo: {res.text}")
+                else:
+                    bt.logging.info("Attestations sent successfully.")
+    except Exception as e:
+        bt.logging.error(f"Error sending attestations to jugo: {e}")
+        bt.logging.error(traceback.format_exc())
