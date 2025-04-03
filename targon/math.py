@@ -2,7 +2,7 @@ from math import exp
 import base64
 import bittensor as bt
 import numpy as np
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any
 
 from targon.utils import fail_with_none
 import json
@@ -28,30 +28,11 @@ def verify_signature(msg: dict, signature: str, public_key):
         return False
 
 
-def normalize(arr: List[float], t_min=0, t_max=1) -> List[float]:
-    norm_arr = []
-    diff = t_max - t_min
-    diff_arr = max(arr) - min(arr)
-    for i in arr:
-        temp = (((i - min(arr)) * diff) / diff_arr) + t_min
-        norm_arr.append(temp)
-    return norm_arr
-
-
-def normalize_ignore_sub_zero(arr: List[float], t_min=0, t_max=1) -> List[float]:
-    norm_arr = []
-    diff = t_max - t_min
-    min_non_zero = min([a for a in arr if a > 0]) * 0.9
-    diff_arr = max(arr) - min_non_zero
-    for i in arr:
-        if i == 0:
-            i = min_non_zero * 1.05
-        if i == -1:
-            norm_arr.append(0)
-            continue
-        temp = (((i - min_non_zero) * diff) / diff_arr) + t_min
-        norm_arr.append(temp)
-    return norm_arr
+def normalize(arr: List[float]):
+    arr_sum = np.sum(arr)
+    if arr_sum == 0:
+        return arr
+    return arr / arr_sum
 
 
 def sigmoid(num):
@@ -70,44 +51,40 @@ def safe_mean_score(data) -> Tuple[float, float]:
         clean_data
     ) / len(data)
 
-def calculate_attestation_score(attestations: Dict[int, Dict[str, List[Dict[str, Any]]]]) -> Dict[int, float]:
+
+def calculate_attestation_score(
+    attestations: Optional[Dict[int, Dict[str, List[Dict[str, Any]]]]]
+) -> Dict[int, float]:
+    if not attestations:
+        return {}
     scores = {}
 
     for uid, nodes in attestations.items():
-        all_gpus_count = 0
         verified_gpus_count = 0
 
-        for node_id, attestations_list in nodes.items():
+        for _, attestations_list in nodes.items():
             for attestation in attestations_list:
                 # Verify top-level success indicators
+                # TODO @dhruv verify each jwt w/ nvidia
                 if not attestation.get("success") or not attestation.get("validated"):
                     continue
 
                 # Count each valid GPU
                 gpus = attestation.get("gpus", [])
-                all_gpus_count += len(gpus)
-                
+
                 for gpu in gpus:
                     claims = gpu.get("claims", {})
-                    if claims.get("attestation_success") and claims.get("measres") == "success":
+                    # TODO @ahmed gpu score should be different based on gpu type;
+                    # Lets say 1pt for h100 and 2pt for h200. Make this a switch case so its easy to expand
+                    if (
+                        claims.get("attestation_success")
+                        and claims.get("measres") == "success"
+                    ):
                         verified_gpus_count += 1
-    
-        # calculate success rate based on individual GPUs
-        success_rate = verified_gpus_count / all_gpus_count if all_gpus_count else 0
-
-        if success_rate < 0.5 or verified_gpus_count < 8:
-            scores[uid] = 0
-            continue
-
-        # boost for high success rates (same as organics)
-        if success_rate >= 0.95:
-            success_rate = 1.05
-        elif success_rate >= 0.85:
-            success_rate = 1.0
 
         # calculate final score
-        scores[uid] = 100 * success_rate
-    
+        scores[uid] = verified_gpus_count
+
     return scores
 
 
@@ -116,7 +93,7 @@ def get_weights(
     miner_models: Dict[int, Dict[str, int]],
     organics: Dict[str, Dict[str, list[int]]],
     metadata: Dict,
-    attestations: Dict[int, Dict[str, List[Dict[str, Any]]]]
+    attestations: Dict[int, Dict[str, List[Dict[str, Any]]]],
 ) -> Tuple[List[int], List[float], List[Dict]]:
     # Mean and sigmoid of tps scores from each model. Since all miners are queried with
     # All models, more models served = higher score. *then* it becomes a speed game.
@@ -126,9 +103,7 @@ def get_weights(
     if total_organics == 0:
         raise Exception("No organics to score")
 
-    attestation_scores = {}
-    if attestations:
-        attestation_scores = calculate_attestation_score(attestations)
+    attestation_scores = calculate_attestation_score(attestations)
 
     data_for_jugo = {}
     for uid in miner_models.keys():
@@ -208,24 +183,26 @@ def get_weights(
         ] = f"sum_safe_mean_score[uid]={pre_formula} * ({miner_completed=}/{total_organics=}) * {miner_success_rate=} * {fail_rate_modifier=} = {scores[uid]}"
         data["data"]["final_weight_before_expo"] = scores[uid]
 
-        # add attestations scores
-        attestation_score = attestation_scores.get(uid, 0)
-        organic_score = scores[uid]
-        scores[uid] = (attestation_score * 0.7) + (organic_score * 0.3)
-        data["data"]["formula"] = f"attestation_score={attestation_score} * 0.7 + organic_score={organic_score} * 0.3 = {scores[uid]}"
-
     tps_list = list(scores.values())
-    if len(tps_list) == 0:
+    attestation_scores_list = list(attestation_scores.values())
+    if len(tps_list) == 0 and sum(attestation_scores_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
         return [], [], []
+
+    # This gets post-processed again later on for final weights
     uids: List[int] = sorted(scores.keys())
-    rewards = [scores[uid] for uid in uids]
+    v5_scores = normalize([scores.get(uid, 0) for uid in uids])
+    v5_scores = [x * 0.3 for x in v5_scores]
+    v6_scores = normalize([attestation_scores.get(uid, 0) for uid in uids])
+    v6_scores = [x * 0.7 for x in v5_scores]
+    rewards = [v5_scores[uid] + v6_scores[uid] for uid in uids]
 
     bt.logging.info(f"All scores: {json.dumps(scores)}")
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
         return [], [], []
 
+    # We can leave expo on final set for now. Will need to tune as needed
     raw_weights = [max(r - (max(rewards) / 2), 0) for r in rewards]
     raw_weights = [(r**4) for r in rewards]
 
