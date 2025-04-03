@@ -2,17 +2,17 @@ from math import exp
 import base64
 import bittensor as bt
 import numpy as np
-from typing import Dict, List, Tuple, Any, Optional
 from nv_attestation_sdk import attestation
 import os
 import json
+from typing import Dict, List, Optional, Tuple, Any, Union
 
 from targon.utils import fail_with_none
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
 # Load policy at module level
-def load_policy(policy_path: str) -> str:
+def load_policy(policy_path: str) -> Optional[str]:
     try:
         with open(policy_path, "r") as f:
             policy = json.load(f)
@@ -26,7 +26,7 @@ def load_policy(policy_path: str) -> str:
 POLICY_PATH = os.environ.get("APPRAISAL_POLICY", "remote_policy.json")
 ATTESTATION_POLICY = load_policy(POLICY_PATH)
 
-def validate_attestation(token: str, expected_nonce: str, policy: str = ATTESTATION_POLICY) -> bool:
+def validate_attestation(token: str, expected_nonce: str, policy: Optional[str] = ATTESTATION_POLICY) -> bool:
     try:
         if not policy:
             bt.logging.error("No valid policy loaded for attestation validation")
@@ -63,7 +63,7 @@ def verify_signature(msg: dict, signature: str, public_key):
         return False
 
 
-def normalize(arr: List[float]):
+def normalize(arr: Union[List[int], List[float]]):
     arr_sum = np.sum(arr)
     if arr_sum == 0:
         return arr
@@ -247,7 +247,11 @@ def get_weights(
 
     # This gets post-processed again later on for final weights
     uids: List[int] = sorted(scores.keys())
-    v5_scores = normalize([scores.get(uid, 0) for uid in uids])
+
+    v5_bare = [scores.get(uid, 0) for uid in uids]
+    v5_bare = [max(r - (max(v5_bare) / 2), 0) for r in v5_bare]
+    v5_bare = [(r**4) for r in v5_bare]
+    v5_scores = normalize(v5_bare)
     v5_scores = [x * 0.3 for x in v5_scores]
     v6_scores = normalize([attestation_scores.get(uid, 0) for uid in uids])
     v6_scores = [x * 0.7 for x in v5_scores]
@@ -258,12 +262,8 @@ def get_weights(
         bt.logging.warning("No one gave responses worth scoring")
         return [], [], []
 
-    # We can leave expo on final set for now. Will need to tune as needed
-    raw_weights = [max(r - (max(rewards) / 2), 0) for r in rewards]
-    raw_weights = [(r**4) for r in rewards]
-
     final_weights = []
-    for i, (uid, w) in enumerate(zip(uids, raw_weights)):
+    for i, (uid, w) in enumerate(zip(uids, rewards)):
         data_for_jugo[uid]["data"]["final_weight_after_expo_before_normal"] = float(w)
         if rewards[i] == 0:
             data_for_jugo[uid]["data"]["final_weight_after_expo_before_normal"] = 0
