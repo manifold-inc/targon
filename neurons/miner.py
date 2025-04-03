@@ -54,7 +54,9 @@ class Miner(BaseNeuron):
         assert self.config_file
         assert self.config_file.miner_api_key
         assert self.config_file.miner_endpoints
+        assert self.config_file.cvm_nodes
 
+        # Model endpoint clients
         self.clients = {
             model: httpx.AsyncClient(
                 timeout=httpx.Timeout(60 * 3),
@@ -65,6 +67,18 @@ class Miner(BaseNeuron):
                 },
             )
             for model, endpoint in self.config_file.miner_endpoints.items()
+        }
+
+        # CVM endpoint clients
+        self.cvm_clients = {
+            node_id: httpx.AsyncClient(
+                timeout=httpx.Timeout(60 * 3),
+                base_url=f"{node.url}:{node.port}/api/v1",
+                headers={
+                    "Content-Type": "application/json",
+                },
+            )
+            for node_id, node in self.config_file.cvm_nodes.items()
         }
 
     async def create_chat_completion(self, request: Request):
@@ -112,6 +126,9 @@ class Miner(BaseNeuron):
 
     async def list_models(self, _: Request):
         return self.get_models()
+    
+    async def list_cvm_nodes(self, _: Request):
+        return self.get_cvm_nodes()
 
     def get_models(self):
         # TODO
@@ -120,6 +137,13 @@ class Miner(BaseNeuron):
         assert self.config_file
         assert self.config_file.miner_endpoints
         return {m: v.qps for m, v in self.config_file.miner_endpoints.items() if v.port}
+    
+    def get_cvm_nodes(self):
+        # TODO
+        # Miners need to return the list of cvm nodes they are using
+        assert self.config_file
+        assert self.config_file.cvm_nodes
+        return {node_id: f"{node.url}:{node.port}" for node_id, node in self.config_file.cvm_nodes.items() if node.port}
 
     async def determine_epistula_version_and_verify(self, request: Request):
         version = request.headers.get("Epistula-Version")
@@ -227,6 +251,12 @@ class Miner(BaseNeuron):
         router.add_api_route(
             "/models",
             self.list_models,
+            dependencies=[Depends(self.determine_epistula_version_and_verify)],
+            methods=["GET"],
+        )
+        router.add_api_route(
+            "/cvm",
+            self.list_cvm_nodes,
             dependencies=[Depends(self.determine_epistula_version_and_verify)],
             methods=["GET"],
         )

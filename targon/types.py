@@ -69,6 +69,9 @@ class MinerEndpoint(BaseModel):
     url: str
     qps: int
 
+class CVMNode(BaseModel):
+    port: int
+    url: str
 
 class ValidatorConfig(BaseModel):
     skip_weight_set: Optional[bool] = False
@@ -81,3 +84,4 @@ class MinerConfig(BaseModel):
     miner_endpoints: Optional[Dict[str, MinerEndpoint]] = None
     miner_api_key: Optional[str] = "1234"
     miner_nodes: Optional[List[str]] = None
+    cvm_nodes: Optional[Dict[str, CVMNode]] = None
