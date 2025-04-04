@@ -20,12 +20,28 @@ H200s. To install v6, simply run `./tvm/install` and pass the following flags
 ./tvm/install --submit --service-url http://tvm.targon.com:8080 --miner-hot-key MINER_HOT_KEY --private-key PRIVATE_KEY --public-key PUBLIC_KEY --validator-hot-key 5Hp18g9P8hLGKp9W3ZDr4bvJwba6b6bY3P2u3VdYf8yMR8FM
 ```
 
+*To test this, use the same bash command but remove the ```--submit --service-url http://tvm.targon.com:8080``` flag.*
+
 ### Explanation of Args
 
-1. **--miner-hot-key** ==> Your hotkey that is **REGISTERED** on Subnet 4
-1. **--private-key** ==> Your corresponding private key. This is used by Epistula to sign the body.
-1. **--public-key** ==> Your corresponding public key. Used for Epistula headers
-1. **--validator-hot-key** ==> Validator hotkey for the ```signed-for``` field in Epistula headers. 
+1. **--miner-hot-key** ==> Your miner ss58 address that is **REGISTERED** on SN4. 
+1. **--private-key** ==> The corresponding private key for that hotkey. Used for Epistula headers.
+1. **--public-key** ==> Your corresponding public key for that hotkey. Used for Epistula headers.
+1. **--validator-hot-key** ==> Validator hotkey for the ```signed-for``` field in Epistula headers. This should always be the Manifold Validator hotkey.
+
+### How to access your keys
+```bash
+cd bittensor
+cd wallets
+cd default // or whatever your wallet name is
+cd hotkeys
+cat // whatever you named your hotkey
+```
+
+This will print your hotkey information including:
+```
+{"accountId": "0x...", "publicKey": "0x...", "privateKey": "...", "secretPhrase": "wool ...", "secretSeed": "0x...", "ss58Address": "5..."}
+```
 
 For reference of Epistula, see [attached](https://epistula.sybil.com/).
 
