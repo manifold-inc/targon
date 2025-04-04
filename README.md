@@ -1,12 +1,10 @@
 # Targon: A Deterministic Verification of Large Language Models
 
-Targon (Bittensor Subnet 4) is a deterministic verification mechanism that is
-used to incentivize miners to run openai compliant endpoints and serve synthetic
-and organic queries.
+Targon (Bittensor Subnet 4) is a deterministic verification mechanism that is used to incentivize miners
+to run OpenAI compliant endpoints and serve synthetic and organic queries.
 
-NOTICE: Using this software, you must agree to the Terms and Agreements provided
-in the terms and conditions document. By downloading and running this software,
-you implicitly agree to these terms and conditions.
+NOTICE: Using this software, you must agree to the Terms and Agreements provided in the terms and
+conditions document. By downloading and running this software, you implicitly agree to these terms and conditions.
 
 # Targon v6
 
@@ -15,14 +13,28 @@ passing verification) and 30% to v5.
 
 ## Running v6
 
-v6 requires a Confidential Compute compatible node. We reccomend eith h100s or
-h200s. To install v6, simple run `./tvm/install` and pass the following flags
+v6 requires a Confidential Compute compatible node. We recommend either H100s or
+H200s. To install v6, simply run `./tvm/install` and pass the following flags
 
-@ahmed TODO
+```bash
+./tvm/install --submit --service-url http://tvm.targon.com:8080 --miner-hot-key MINER_HOT_KEY --private-key PRIVATE_KEY --public-key PUBLIC_KEY --validator-hot-key 5Hp18g9P8hLGKp9W3ZDr4bvJwba6b6bY3P2u3VdYf8yMR8FM
+```
 
-This will walk you though the install and download process, and boot the CVM.
-After that, update the v5 miner.py file to report all the ip addresses of each
-CVM you have running. That should be all you need to do.
+### Explanation of Args
+
+1. **--moner-hot-key** ==> Your hotkey that is **REGISTERED** on Subnet 4
+1. **--prviate-key** ==> Your corresponding private key. This is used by Epistula to sign the body.
+1. **--public-key** ==> Your corresponding public key. Used for Epistula headers
+1. **--validator-hot-key** ==> Validator hotkey for the ```signed-for``` field in Epistula headers. 
+
+For reference of Epistula, see [attached](https://epistula.sybil.com/).
+
+Running the command will run you through the download and installation. It should take about 20 minutes. 
+
+Next you need to ensure that the CVM node is exposed by your host machine on port 4040. 
+This is extremely important. Once that is done, update the v5 miner.py file to report all
+ip addresses of each CVM you are runnning. This process should be very similar to your listing of model
+endpoints.
 
 # Table of Contents (v5)
 
