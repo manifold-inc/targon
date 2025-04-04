@@ -15,7 +15,7 @@ async def main():
         print("Cannot get weights, failed getting metadata from jugo")
         return
     miner_models = {x: {} for x in range(256)}
-    uids, raw_weights, _ = get_weights(miner_models, vali.organics, organic_metadata)
+    uids, raw_weights, _ = get_weights(miner_models, vali.organics, organic_metadata, vali.cvm_attestations)
     (
         processed_weight_uids,
         processed_weights,
