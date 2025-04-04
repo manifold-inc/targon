@@ -254,8 +254,10 @@ def get_weights(
     v5_scores = normalize(v5_bare)
     v5_scores = [x * 0.3 for x in v5_scores]
     v6_scores = normalize([attestation_scores.get(uid, 0) for uid in uids])
-    v6_scores = [x * 0.7 for x in v5_scores]
-    rewards = [v5_scores[uid] + v6_scores[uid] for uid in uids]
+    v6_scores = [x * 0.7 for x in v6_scores]
+    
+    # Use enumerate to get the correct index for each UID
+    rewards = [v5_scores[i] + v6_scores[i] for i, uid in enumerate(uids)]
 
     bt.logging.info(f"All scores: {json.dumps(scores)}")
     if sum(rewards) < 1 / 1e9:
