@@ -406,7 +406,7 @@ class Validator(BaseNeuron):
             bt.logging.error("Cannot get weights, failed getting metadata from jugo")
             return
         uids, raw_weights, _ = get_weights(
-            self.miner_models, self.organics, organic_metadata
+            self.miner_models, self.organics, organic_metadata, self.cvm_attestations
         )
         (
             processed_weight_uids,
