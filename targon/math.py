@@ -23,7 +23,7 @@ def load_policy(policy_path: str) -> Optional[str]:
         return None
 
 # Load policy once at module level
-POLICY_PATH = os.environ.get("APPRAISAL_POLICY", "remote_policy.json")
+POLICY_PATH = os.environ.get("APPRAISAL_POLICY", "targon/remote_policy.json")
 ATTESTATION_POLICY = load_policy(POLICY_PATH)
 
 def validate_attestation(token: str, expected_nonce: str, policy: Optional[str] = ATTESTATION_POLICY) -> bool:
