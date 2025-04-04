@@ -97,6 +97,9 @@ class Validator(BaseNeuron):
         ## LOAD MINER SCORES CACHE
         self.organics = load_organics()
         bt.logging.info(json.dumps(self.organics, indent=2))
+        
+        ## Initialize CVM nodes tracking
+        self.cvm_nodes = {}
 
         ## Initialize cvm_attestations, might do a similar load as organics
         self.cvm_attestations = {}
