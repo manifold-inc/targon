@@ -31,10 +31,8 @@ For reference of Epistula, see [attached](https://epistula.sybil.com/).
 
 Running the command will run you through the download and installation. It should take about 20 minutes. 
 
-Next you need to ensure that the CVM node is exposed by your host machine on port 4040. 
-This is extremely important. Once that is done, update the v5 miner.py file to report all
-ip addresses of each CVM you are runnning. This process should be very similar to your listing of model
-endpoints.
+Once that is done, update the v5 miner.py file to report all ip addresses of each CVM you are runnning. 
+This process should be very similar to your listing of model endpoints.
 
 # Table of Contents (v5)
 
