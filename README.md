@@ -22,7 +22,7 @@ H200s. To install v6, simply run `./tvm/install` and pass the following flags
 
 ### Explanation of Args
 
-1. **--moner-hot-key** ==> Your hotkey that is **REGISTERED** on Subnet 4
+1. **--miner-hot-key** ==> Your hotkey that is **REGISTERED** on Subnet 4
 1. **--private-key** ==> Your corresponding private key. This is used by Epistula to sign the body.
 1. **--public-key** ==> Your corresponding public key. Used for Epistula headers
 1. **--validator-hot-key** ==> Validator hotkey for the ```signed-for``` field in Epistula headers. 
