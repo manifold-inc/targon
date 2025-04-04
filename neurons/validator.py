@@ -267,7 +267,7 @@ class Validator(BaseNeuron):
                         for node_url in nodes:
                             try:
                                 health_response = await session.get(
-                                    f"{node_url}:4040/health"
+                                    f"{node_url}/health"
                                 )
                                 if health_response.status == 200:
                                     healthy_nodes.append(node_url)
@@ -308,7 +308,7 @@ class Validator(BaseNeuron):
                         # Generate and store nonce
                         nonce = str(uuid.uuid4())
                         attest_response = await session.post(
-                            f"{node_url}:4040/api/v1/attest",
+                            f"{node_url}/api/v1/attest",
                             json={"nonce": nonce},
                             headers={"Content-Type": "application/json"},
                         )
