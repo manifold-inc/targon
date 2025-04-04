@@ -97,7 +97,7 @@ class Validator(BaseNeuron):
         ## LOAD MINER SCORES CACHE
         self.organics = load_organics()
         bt.logging.info(json.dumps(self.organics, indent=2))
-        
+
         ## Initialize CVM nodes tracking
         self.cvm_nodes = {}
 
@@ -282,7 +282,7 @@ class Validator(BaseNeuron):
                                 bt.logging.error(
                                     f"Error checking health for node {node_url} of miner {uid}: {str(e)}"
                                 )
-                        
+
                         if healthy_nodes:
                             self.cvm_nodes[uid] = healthy_nodes
                 except Exception as e:
@@ -343,7 +343,10 @@ class Validator(BaseNeuron):
             return
 
         bt.logging.info("Sending attestations to jugo")
-        await send_uid_info_to_jugo(self.wallet.hotkey, session, attestation_stats)
+        async with aiohttp.ClientSession() as jugo_session:
+            await send_uid_info_to_jugo(
+                self.wallet.hotkey, jugo_session, attestation_stats
+            )
         bt.logging.info("Sent attestations to jugo")
 
     async def set_weights_on_interval(self, block):
