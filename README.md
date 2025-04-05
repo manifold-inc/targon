@@ -25,8 +25,8 @@ H200s. To install v6, simply run `./tvm/install` and pass the following flags
 ### Explanation of Args
 
 1. **--miner-hot-key** ==> Your miner ss58 address that is **REGISTERED** on SN4. 
-1. **--private-key** ==> The corresponding private key for that hotkey. Used for Epistula headers.
-1. **--public-key** ==> Your corresponding public key for that hotkey. Used for Epistula headers.
+1. **--private-key** ==> The corresponding private key for that hotkey, **without 0x at the start**. Used for Epistula headers.
+1. **--public-key** ==> Your corresponding public key for that hotkey, **without 0x at the start**. Used for Epistula headers.
 1. **--validator-hot-key** ==> Validator hotkey for the ```signed-for``` field in Epistula headers. This should always be the Manifold Validator hotkey.
 
 ### How to access your keys
