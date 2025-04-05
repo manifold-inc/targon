@@ -11,6 +11,7 @@ from targon.utils import fail_with_none
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
+
 # Load policy at module level
 def load_policy(policy_path: str) -> Optional[str]:
     try:
@@ -22,23 +23,31 @@ def load_policy(policy_path: str) -> Optional[str]:
         bt.logging.error(f"Failed to load appraisal policy: {e}")
         return None
 
+
 # Load policy once at module level
 POLICY_PATH = os.environ.get("APPRAISAL_POLICY", "targon/remote_policy.json")
 ATTESTATION_POLICY = load_policy(POLICY_PATH)
 
-def validate_attestation(token: str, expected_nonce: str, policy: Optional[str] = ATTESTATION_POLICY) -> bool:
+
+def validate_attestation(
+    token: str, expected_nonce: str, policy: Optional[str] = ATTESTATION_POLICY
+) -> bool:
     try:
         if not policy:
             bt.logging.error("No valid policy loaded for attestation validation")
             return False
-            
+
         NRAS_URL = "https://nras.attestation.nvidia.com/v3/attest/gpu"
         client = attestation.Attestation("Verifier")
-        client.add_verifier(attestation.Devices.GPU, attestation.Environment.REMOTE, NRAS_URL, "")
+        client.add_verifier(
+            attestation.Devices.GPU, attestation.Environment.REMOTE, NRAS_URL, ""
+        )
         client.set_token("Verifier", token)
         client.set_nonce(expected_nonce)
         valid = client.validate_token(policy)
-        bt.logging.info("Attestation token validated successfully.") if valid else bt.logging.error("Attestation token validation failed.")
+        bt.logging.info(
+            "Attestation token validated successfully."
+        ) if valid else bt.logging.error("Attestation token validation failed.")
         return valid
     except Exception as e:
         bt.logging.error(f"Exception during token validation: {e}")
@@ -86,6 +95,7 @@ def safe_mean_score(data) -> Tuple[float, float]:
         clean_data
     ) / len(data)
 
+
 def calculate_attestation_score(
     attestations: Optional[Dict[int, Dict[str, List[Dict[str, Any]]]]]
 ) -> Dict[int, float]:
@@ -105,7 +115,11 @@ def calculate_attestation_score(
                 # Verify nonce matches what we sent
                 expected_nonce = attestation.get("expected_nonce")
                 received_nonce = attestation.get("nonce")
-                if not expected_nonce or not received_nonce or expected_nonce != received_nonce:
+                if (
+                    not expected_nonce
+                    or not received_nonce
+                    or expected_nonce != received_nonce
+                ):
                     continue
 
                 # Validate with NVIDIA NRAS
@@ -130,13 +144,18 @@ def calculate_attestation_score(
                         # Score based on GPU model
                         gpu_model = claims.get("hwmodel", "unknown").upper()
                         match gpu_model:
-                            case s if "H200" in s: gpu_score = 2.0
-                            case s if "H100" in s: gpu_score = 1.0
-                            # TODO support other gpus, also nuke non h100 and h200 gpus. Pretty sure you can't do this but just in case. 
-                            case _: gpu_score = 0.1
-                        
+                            case s if "H200" in s:
+                                gpu_score = 2.0
+                            case s if "H100" in s:
+                                gpu_score = 1.0
+                            # TODO support other gpus, also nuke non h100 and h200 gpus. Pretty sure you can't do this but just in case.
+                            case _:
+                                gpu_score = 0.1
+
                         verified_gpus_count += gpu_score
-                        bt.logging.info(f"GPU {gpu.get('id', 'unknown')} model {gpu_model} scored {gpu_score}")
+                        bt.logging.info(
+                            f"GPU {gpu.get('id', 'unknown')} model {gpu_model} scored {gpu_score}"
+                        )
 
         # calculate final score
         scores[uid] = verified_gpus_count
@@ -243,7 +262,8 @@ def get_weights(
     attestation_scores_list = list(attestation_scores.values())
     if len(tps_list) == 0 and sum(attestation_scores_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
-        return [], [], []
+        # Burn alpha
+        return [117], [1], []
 
     # This gets post-processed again later on for final weights
     uids: List[int] = sorted(scores.keys())
@@ -255,14 +275,14 @@ def get_weights(
     v5_scores = [x * 0.3 for x in v5_scores]
     v6_scores = normalize([attestation_scores.get(uid, 0) for uid in uids])
     v6_scores = [x * 0.7 for x in v6_scores]
-    
+
     # Use enumerate to get the correct index for each UID
     rewards = [v5_scores[i] + v6_scores[i] for i, uid in enumerate(uids)]
 
     bt.logging.info(f"All scores: {json.dumps(scores)}")
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
-        return [], [], []
+        return [117], [1], []
 
     final_weights = []
     for i, (uid, w) in enumerate(zip(uids, rewards)):
