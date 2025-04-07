@@ -161,13 +161,16 @@ async def score_organics(
                 )
             )
 
-        done, _ = await asyncio.wait(running_tasks, return_when=asyncio.ALL_COMPLETED)
-        for task in list(done):
-            task_res = task.result()
-            if task_res is None:
-                continue
-            total_completed += 1
-            organic_stats.append(task_res)
+        if len(running_tasks) != 0:
+            done, _ = await asyncio.wait(
+                running_tasks, return_when=asyncio.ALL_COMPLETED
+            )
+            for task in list(done):
+                task_res = task.result()
+                if task_res is None:
+                    continue
+                total_completed += 1
+                organic_stats.append(task_res)
 
         bt.logging.info(
             f"Completed {total_completed} organics in {time.time() - start}s\n{bucket_id}: {scores}"
@@ -266,36 +269,44 @@ async def verify_record(
         gpus=res.get("gpus", 1),
     )
 
+
 async def score_cvm_attestations(attestations):
     attestation_stats = []
-    
+
     for uid, nodes in attestations.items():
         for node_id, attestations_list in nodes.items():
             for attestation in attestations_list:
                 try:
                     stats = {
-                        "uid": uid,                    
-                        "node_id": node_id,            
+                        "uid": uid,
+                        "node_id": node_id,
                         "success": attestation.get("success", False),
                         "nonce": attestation.get("nonce", ""),
-                        "token": attestation.get("token", ""),  
-                        "claims": attestation.get("claims", {}),  
-                        "validated": attestation.get("validated", False),  
-                        "gpus": attestation.get("gpus", []),  
+                        "token": attestation.get("token", ""),
+                        "claims": attestation.get("claims", {}),
+                        "validated": attestation.get("validated", False),
+                        "gpus": attestation.get("gpus", []),
                         "error": attestation.get("error", None),
                         "input_tokens": attestation.get("input_tokens", 0),
-                        "response_tokens": attestation.get("response_tokens", 0)
+                        "response_tokens": attestation.get("response_tokens", 0),
                     }
-                    
+
                     attestation_stats.append(stats)
-                    
+
                     if not attestation.get("success", False):
-                        bt.logging.error(f"Attestation failed for node {node_id} of miner {uid}: {attestation.get('error')}")
+                        bt.logging.error(
+                            f"Attestation failed for node {node_id} of miner {uid}: {attestation.get('error')}"
+                        )
                     if not attestation.get("validated", False):
-                        bt.logging.error(f"Validation failed for node {node_id} of miner {uid}")
-                    
+                        bt.logging.error(
+                            f"Validation failed for node {node_id} of miner {uid}"
+                        )
+
                 except Exception as e:
-                    bt.logging.error(f"Error processing attestation for node {node_id} of miner {uid}: {e}")
+                    bt.logging.error(
+                        f"Error processing attestation for node {node_id} of miner {uid}: {e}"
+                    )
                     continue
-    
+
     return attestation_stats
+
