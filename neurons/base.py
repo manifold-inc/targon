@@ -108,7 +108,9 @@ class BaseNeuron:
 
         ## BITTENSOR INITIALIZATION
         self.wallet = bt.wallet(config=self.config)
-        self.subtensor = bt.subtensor(config=self.config)
+        self.subtensor = bt.subtensor(
+            config=self.config, network=self.config.subtensor.chain_endpoint
+        )
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
 
         self.loop = asyncio.get_event_loop()

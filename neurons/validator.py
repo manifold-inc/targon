@@ -359,8 +359,12 @@ class Validator(BaseNeuron):
         self.lock_halt = True
         while not self.lock_waiting and block != 0:
             sleep(1)
+        assert self.config.subtensor
 
-        self.subtensor = bt.subtensor(config=self.config)
+        self.subtensor = bt.subtensor(
+            config=self.config,
+            network=self.config.subtensor.chain_endpoint,
+        )
         organic_metadata = await get_global_stats(self.wallet)
         if organic_metadata is None:
             bt.logging.error("Cannot set weights, failed getting metadata from jugo")
