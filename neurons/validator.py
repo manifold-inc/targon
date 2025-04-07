@@ -12,7 +12,7 @@ from bittensor.utils.weight_utils import process_weights_for_netuid
 from substrateinterface import SubstrateInterface
 from targon.types import NeuronType
 from neurons.base import BaseNeuron
-from targon.broadcast import broadcast
+from targon.broadcast import broadcast, cvm_attest, cvm_healthcheck
 from targon.cache import load_organics, save_organics
 from targon.config import (
     AUTO_UPDATE,
@@ -240,7 +240,7 @@ class Validator(BaseNeuron):
             return
 
         # check every 15 blocks
-        if block % 15 != 0:
+        if block % 30 != 0:
             return
 
         if block != 0 and not self.is_runing:
@@ -251,42 +251,15 @@ class Validator(BaseNeuron):
         )
         self.cvm_nodes = {}
         bt.logging.info("Checking miner cvm nodes health")
-
+        tasks = []
         async with aiohttp.ClientSession() as session:
             for uid in miner_uids:
-                axon_info = self.metagraph.axons[uid]
-                try:
-                    url = f"http://{axon_info.ip}:{axon_info.port}/cvm"
-                    async with session.get(url) as response:
-                        if response.status != 200:
-                            bt.logging.error(
-                                f"Failed to get cvm nodes from miner {uid}: HTTP {response.status}"
-                            )
-                            continue
+                tasks.append(
+                    cvm_healthcheck(self.metagraph, uid, session, self.cvm_nodes)
+                )
 
-                        nodes = await response.json()
-                        healthy_nodes = []
-
-                        for node_url in nodes:
-                            try:
-                                health_response = await session.get(
-                                    f"{node_url}/health"
-                                )
-                                if health_response.status == 200:
-                                    healthy_nodes.append(node_url)
-                                else:
-                                    bt.logging.error(
-                                        f"Health check failed for node {node_url} of miner {uid}"
-                                    )
-                            except Exception as e:
-                                bt.logging.error(
-                                    f"Error checking health for node {node_url} of miner {uid}: {str(e)}"
-                                )
-
-                        if healthy_nodes:
-                            self.cvm_nodes[uid] = healthy_nodes
-                except Exception as e:
-                    bt.logging.error(f"Error checking miner {uid} cvm nodes: {str(e)}")
+            if len(tasks) != 0:
+                await asyncio.gather(*tasks)
 
         # Count total healthy nodes across all miners
         total_healthy_nodes = sum(len(nodes) for nodes in self.cvm_nodes.values())
@@ -304,36 +277,26 @@ class Validator(BaseNeuron):
 
         bt.logging.info(f"Verifying {len(self.cvm_nodes)} cvm nodes")
 
+        tasks = []
+        res = []
         async with aiohttp.ClientSession() as session:
             for uid, nodes in self.cvm_nodes.items():
                 for node_url in nodes:
-                    try:
-                        # Generate and store nonce
-                        nonce = str(uuid.uuid4())
-                        attest_response = await session.post(
-                            f"{node_url}/api/v1/attest",
-                            json={"nonce": nonce},
-                            headers={"Content-Type": "application/json"},
-                        )
-                        if attest_response.status != 200:
-                            bt.logging.error(
-                                f"Failed to attest to node {node_url} of miner {uid}: HTTP {attest_response.status}"
-                            )
-                        else:
-                            result = await attest_response.json()
-                            # Store nonce with result
-                            result["expected_nonce"] = nonce
+                    tasks.append(cvm_attest(node_url, uid, session))
 
-                            if uid not in self.cvm_attestations:
-                                self.cvm_attestations[uid] = {}
-                            if node_url not in self.cvm_attestations[uid]:
-                                self.cvm_attestations[uid][node_url] = []
+            if len(tasks) != 0:
+                res = await asyncio.gather(*tasks)
 
-                            self.cvm_attestations[uid][node_url].append(result)
-                    except Exception as e:
-                        bt.logging.error(
-                            f"Error verifying node {node_url} of miner {uid}: {str(e)}"
-                        )
+        for r in res:
+            if r is None:
+                continue
+            uid, node_url, result = r
+            if uid not in self.cvm_attestations:
+                self.cvm_attestations[uid] = {}
+            if node_url not in self.cvm_attestations[uid]:
+                self.cvm_attestations[uid][node_url] = []
+
+            self.cvm_attestations[uid][node_url].append(result)
 
         attestation_stats = await score_cvm_attestations(
             self.cvm_attestations,
