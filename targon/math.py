@@ -176,7 +176,8 @@ def get_weights(
     scores = {}
     total_organics = metadata["total_attempted"]
     if total_organics == 0:
-        raise Exception("No organics to score")
+        bt.logging.warning("no organics to sore, setting to 1")
+        total_organics = 1
 
     attestation_scores = calculate_attestation_score(attestations)
 
@@ -263,7 +264,7 @@ def get_weights(
     if len(tps_list) == 0 and sum(attestation_scores_list) == 0:
         bt.logging.warning("Not setting weights, no responses from miners")
         # Burn alpha
-        return [117], [1], []
+        return [28], [1], []
 
     # This gets post-processed again later on for final weights
     uids: List[int] = sorted(scores.keys())
@@ -282,7 +283,7 @@ def get_weights(
     bt.logging.info(f"All scores: {json.dumps(scores)}")
     if sum(rewards) < 1 / 1e9:
         bt.logging.warning("No one gave responses worth scoring")
-        return [117], [1], []
+        return [28], [1], []
 
     final_weights = []
     for i, (uid, w) in enumerate(zip(uids, rewards)):
