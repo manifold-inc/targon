@@ -86,7 +86,7 @@ async def get_node_health(
 ):
     try:
         health_response = await session.get(
-            f"{node_url}/health",
+            f"http://{node_url}/health",
             headers={
                 **generate_header(self_hotkey, b"", miner_hotkey),
             },
@@ -117,7 +117,7 @@ async def cvm_attest(
             {"nonce": nonce}, ensure_ascii=False, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
         attest_response = await session.post(
-            f"{node_url}/api/v1/attest",
+            f"http://{node_url}/api/v1/attest",
             data=req_bytes,
             headers={
                 "Content-Type": "application/json",
