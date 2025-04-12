@@ -44,7 +44,7 @@ async def cvm_healthcheck(
     uid: int,
     session: aiohttp.ClientSession,
     hotkey,
-) -> Tuple[str,int, List[str]]:
+) -> Tuple[str, int, List[str]]:
     axon_info = metagraph.axons[uid]
     try:
         url = f"http://{axon_info.ip}:{axon_info.port}/cvm"
@@ -59,29 +59,39 @@ async def cvm_healthcheck(
                 bt.logging.error(
                     f"Failed to get cvm nodes from miner {uid}: HTTP {response.status}"
                 )
-                return axon_info.hotkey,uid, []
+                return axon_info.hotkey, uid, []
 
             nodes = await response.json()
             healthy_nodes = []
             node_tasks = []
             for node_url in nodes:
-                node_tasks.append(get_node_health(node_url, uid, session))
+                node_tasks.append(
+                    get_node_health(node_url, uid, session, hotkey, axon_info.hotkey)
+                )
 
             if len(node_tasks) != 0:
                 responses = await asyncio.gather(*node_tasks)
                 healthy_nodes = [i for i in responses if i is not None]
 
             if len(healthy_nodes):
-                return axon_info.hotkey,uid, healthy_nodes
+                return axon_info.hotkey, uid, healthy_nodes
 
     except Exception as e:
         bt.logging.error(f"Error checking miner {uid} cvm nodes: {str(e)}")
     return axon_info.hotkey, uid, []
 
 
-async def get_node_health(node_url: str, uid: int, session: aiohttp.ClientSession):
+async def get_node_health(
+    node_url: str, uid: int, session: aiohttp.ClientSession, self_hotkey, miner_hotkey
+):
     try:
-        health_response = await session.get(f"{node_url}/health")
+        health_response = await session.get(
+            f"{node_url}/health",
+            headers={
+                **generate_header(self_hotkey, b"", miner_hotkey),
+            },
+            timeout=aiohttp.ClientTimeout(total=3),
+        )
         if health_response.status == 200:
             return node_url
         else:
