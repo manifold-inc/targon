@@ -19,65 +19,16 @@
 
 from enum import Enum
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
-
-
-class Endpoints(Enum):
-    CHAT = "CHAT"
-    COMPLETION = "COMPLETION"
-
+from typing import List, Optional
 
 class NeuronType(Enum):
     Validator = "VALIDATOR"
     Miner = "MINER"
 
-
-class InferenceStats(BaseModel):
-    time_to_first_token: float
-    time_for_all_tokens: float
-    total_time: float
-    tps: float
-    tokens: List[Any]
-    gpus: int
-    verified: bool
-    error: Optional[str] = None
-    cause: Optional[str] = None
-
-
-class OrganicStats(InferenceStats):
-    model: str
-    max_tokens: int
-    seed: int
-    temperature: float
-    uid: int
-    hotkey: str
-    coldkey: str
-    endpoint: str
-    total_tokens: int
-    pub_id: str
-
-
-class VerificationPortsConfig(BaseModel):
-    api_key: Optional[str] = None
-    port: Optional[int] = None
-    url: str
-    endpoints: List[str]
-
-
-class MinerEndpoint(BaseModel):
-    port: int
-    url: str
-    qps: int
-
 class ValidatorConfig(BaseModel):
     skip_weight_set: Optional[bool] = False
-    verification_ports: Optional[Dict[str, VerificationPortsConfig]] = None
     set_weights_on_start: Optional[bool] = False
-    max_concurrent_organics: Optional[int] = 2
 
 
 class MinerConfig(BaseModel):
-    miner_endpoints: Optional[Dict[str, MinerEndpoint]] = None
-    miner_api_key: Optional[str] = "1234"
-    miner_nodes: Optional[List[str]] = None
     cvm_nodes: Optional[List[str]] = None

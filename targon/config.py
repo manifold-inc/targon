@@ -21,7 +21,6 @@ import json
 import os
 import bittensor as bt
 
-import requests
 import dotenv
 
 from targon.types import NeuronType
@@ -117,26 +116,11 @@ def add_miner_args(parser):
     """Add miner specific arguments to the parser."""
 
     parser.add_argument(
-        "--model-endpoint",
-        dest="model_endpoint",
-        type=str,
-        help="The endpoint to use for the OpenAI Compatible client.",
-        default="http://127.0.0.1:8000/v1",
-    )
-
-    parser.add_argument(
         "--no-force-validator-permit",
         dest="no_force_validator_permit",
         action="store_true",
         help="If set, we will not force incoming requests to have a permit.",
         default=False,
-    )
-    parser.add_argument(
-        "--api-key",
-        dest="api_key",
-        type=str,
-        help="API key for openai compatable api",
-        default="12345",
     )
 
 
@@ -166,61 +150,3 @@ def add_validator_args(parser):
         help="The maximum number of TAO allowed to query a validator with a vpermit.",
         default=4096,
     )
-
-    parser.add_argument(
-        "--database.url",
-        dest="database.url",
-        type=str,
-        help="Database URL to score organic queries",
-        default=None,
-    )
-
-    parser.add_argument(
-        "--models.mode",
-        dest="models.mode",
-        type=str,
-        help="Which method to use when fetching models",
-        choices=["endpoint", "config", "default"],
-        default="default",
-    )
-    parser.add_argument(
-        "--models.endpoint",
-        dest="models.endpoint",
-        type=str,
-        help="Endpoint to query for models",
-        default="https://targon.sybil.com/api/models",
-    )
-
-
-def get_models_from_endpoint(endpoint: str):
-    try:
-        res = requests.get(endpoint)
-        bt.logging.info(res.text)
-        res = res.json()
-        if not isinstance(res, list):
-            raise Exception(
-                f"Unexpected type received from endpoint. Must be type list. got {res}"
-            )
-        return res
-    except Exception as e:
-        bt.logging.error(f"Failed to get models from {endpoint}: {str(e)}")
-    return None
-
-
-def get_models_from_config():
-    filename = "./models.txt"
-    try:
-        with open(filename, "r") as file:
-            models = file.read().strip().split("\n")
-            if not len(models):
-                bt.logging.error("No models in models file")
-            else:
-                bt.logging.info(f"Found models {str(models)}")
-            return [{"model": m} for m in models]
-    except IOError:
-        bt.logging.info("No model file found")
-    except EOFError:
-        bt.logging.warning("Curropted models file")
-    except Exception as e:
-        bt.logging.error(f"Failed reading model file: {e}")
-    return None

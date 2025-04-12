@@ -40,7 +40,6 @@ class Miner(BaseNeuron):
         ## Typesafety
         assert self.config.netuid
         assert self.config.logging
-        assert self.config.model_endpoint
 
         # Register log callback
         self.block_callbacks.append(self.log_on_block)
@@ -49,83 +48,13 @@ class Miner(BaseNeuron):
         bt.logging.info(
             "\N{grinning face with smiling eyes}", "Successfully Initialized!"
         )
-        bt.logging.info(self.config.model_endpoint)
 
         assert self.config_file
-        assert self.config_file.miner_api_key
-        assert self.config_file.miner_endpoints
         assert self.config_file.cvm_nodes
 
-        # Model endpoint clients
-        self.clients = {
-            model: httpx.AsyncClient(
-                timeout=httpx.Timeout(60 * 3),
-                base_url=f"{endpoint.url}:{endpoint.port}/v1",
-                headers={
-                    "Authorization": f"Bearer {self.config_file.miner_api_key}",
-                    "Content-Type": "application/json",
-                },
-            )
-            for model, endpoint in self.config_file.miner_endpoints.items()
-        }
-
-    async def create_chat_completion(self, request: Request):
-        bt.logging.info(
-            "\u2713",
-            f"Getting Chat Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!",
-        )
-        model = request.headers.get("X-Targon-Model")
-        assert model
-        client = self.clients[model]
-        assert client
-        req = client.build_request(
-            "POST",
-            "/chat/completions",
-            content=await request.body(),
-            headers=request.headers.items(),
-        )
-        r = await client.send(req, stream=True)
-        return StreamingResponse(
-            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
-        )
-
-    async def create_completion(self, request: Request):
-        bt.logging.info(
-            "\u2713",
-            f"Getting Completion request from {request.headers.get('Epistula-Signed-By', '')[:8]}!",
-        )
-        model = request.headers.get("X-Targon-Model")
-        assert model
-        client = self.clients[model]
-        assert client
-        req = client.build_request("POST", "/completions", content=await request.body())
-        r = await client.send(req, stream=True)
-        return StreamingResponse(
-            r.aiter_raw(), background=BackgroundTask(r.aclose), headers=r.headers
-        )
-
-    async def receive_models(self, request: Request):
-        models = await request.json()
-        bt.logging.info(
-            "\u2713",
-            f"Received model list from {request.headers.get('Epistula-Signed-By', '')[:8]}: {models}",
-        )
-        return self.get_models()
-
-    async def list_models(self, _: Request):
-        return self.get_models()
-    
     async def list_cvm_nodes(self, _: Request):
         return self.get_cvm_nodes()
 
-    def get_models(self):
-        # TODO
-        # Miners need to return {model: qps} for each model
-        # It is up to the miner to determine their qps
-        assert self.config_file
-        assert self.config_file.miner_endpoints
-        return {m: v.qps for m, v in self.config_file.miner_endpoints.items() if v.port}
-    
     def get_cvm_nodes(self):
         # TODO
         # Miners need to return the list of cvm nodes they are using
@@ -218,30 +147,6 @@ class Miner(BaseNeuron):
         app = FastAPI()
         router = APIRouter()
         router.add_api_route("/", ping, methods=["GET"])
-        router.add_api_route(
-            "/v1/chat/completions",
-            self.create_chat_completion,
-            dependencies=[Depends(self.determine_epistula_version_and_verify)],
-            methods=["POST"],
-        )
-        router.add_api_route(
-            "/v1/completions",
-            self.create_completion,
-            dependencies=[Depends(self.determine_epistula_version_and_verify)],
-            methods=["POST"],
-        )
-        router.add_api_route(
-            "/models",
-            self.receive_models,
-            dependencies=[Depends(self.determine_epistula_version_and_verify)],
-            methods=["POST"],
-        )
-        router.add_api_route(
-            "/models",
-            self.list_models,
-            dependencies=[Depends(self.determine_epistula_version_and_verify)],
-            methods=["GET"],
-        )
         router.add_api_route(
             "/cvm",
             self.list_cvm_nodes,

@@ -3,7 +3,6 @@ import numpy as np
 import asyncio
 import sys
 from threading import Thread
-import uuid
 from time import sleep
 
 import aiohttp
@@ -12,20 +11,13 @@ from bittensor.utils.weight_utils import process_weights_for_netuid
 from substrateinterface import SubstrateInterface
 from targon.types import NeuronType
 from neurons.base import BaseNeuron
-from targon.broadcast import broadcast, cvm_attest, cvm_healthcheck
-from targon.cache import load_organics, save_organics
+from targon.broadcast import cvm_attest, cvm_healthcheck
 from targon.config import (
     AUTO_UPDATE,
     HEARTBEAT,
     IS_TESTNET,
-    get_models_from_config,
-    get_models_from_endpoint,
 )
-from targon.docker import load_docker, load_existing_images, sync_output_checkers
 from targon.jugo import (
-    get_global_stats,
-    score_organics,
-    send_organics_to_jugo,
     send_uid_info_to_jugo,
     score_cvm_attestations,
 )
@@ -43,7 +35,7 @@ from targon.utils import (
 import traceback
 import bittensor as bt
 
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 from targon import (
     __version__,
     __spec_version__ as spec_version,
@@ -57,18 +49,12 @@ class Validator(BaseNeuron):
     config_file: ValidatorConfig
     neuron_type = NeuronType.Validator
     miner_models: Dict[int, Dict[str, int]]
-    cvm_nodes: Dict[int, List[str]]
-    verification_ports: Dict[str, Dict[str, Any]]
-    models: List[str]
+    cvm_nodes: Dict[int, Tuple[str, List[str]]]
     lock_waiting = False
     lock_halt = False
     is_runing = False
-    organics = {}
-    last_bucket_id = None
     heartbeat_thread: Thread
     step = 0
-    starting_docker = True
-    tool_dataset = None
     skip_next_weightset = False
 
     def __init__(self, config=None, run_init=True, standalone=False):
@@ -88,15 +74,9 @@ class Validator(BaseNeuron):
         assert self.config.cache_file
         assert self.config.vpermit_tao_limit
         assert self.config.subtensor
-        ## LOAD DOCKER
-        self.client = load_docker()
 
         ## SET MISC PARAMS
         bt.logging.info(f"Last updated at block {self.metagraph.last_update[self.uid]}")
-
-        ## LOAD MINER SCORES CACHE
-        self.organics = load_organics()
-        bt.logging.info(json.dumps(self.organics, indent=2))
 
         ## Initialize CVM nodes tracking
         self.cvm_nodes = {}
@@ -109,11 +89,8 @@ class Validator(BaseNeuron):
             [
                 self.log_on_block,
                 self.set_weights_on_interval,
-                self.sync_output_checkers_on_interval,
-                self.send_models_to_miners_on_interval,
                 self.check_cvm_nodes_health,
                 self.verify_cvm_nodes,
-                self.score_organics_on_block,
             ]
         )
 
@@ -148,90 +125,6 @@ class Validator(BaseNeuron):
             last_step = self.step
             bt.logging.info("Heartbeat")
 
-    async def send_models_to_miners_on_interval(self, block):
-        assert self.config.vpermit_tao_limit
-        if block % self.config.epoch_length:
-            return
-
-        if block != 0 and not self.is_runing:
-            return
-        miner_uids = get_miner_uids(
-            self.metagraph, self.uid, self.config.vpermit_tao_limit
-        )
-        self.miner_models = {}
-        bt.logging.info("Broadcasting models to all miners")
-        body = self.models
-        post_tasks = []
-        post_results = []
-        async with aiohttp.ClientSession() as session:
-            for uid in miner_uids:
-                bt.logging.info(f"Broadcasting models {uid}")
-                axon_info = self.metagraph.axons[uid]
-                post_tasks.append(
-                    broadcast(
-                        uid,
-                        body,
-                        axon_info,
-                        session,
-                        self.wallet.hotkey,
-                    )
-                )
-            if len(post_tasks) != 0:
-                responses = await asyncio.gather(*post_tasks)
-                post_results.extend(responses)
-                post_tasks = []
-
-        for uid, miner_models, err in post_results:
-            if err != "":
-                bt.logging.info(f"broadcast {uid}: {err}")
-            self.miner_models[uid] = miner_models
-        bt.logging.info(json.dumps(self.miner_models, indent=2))
-
-    def sync_output_checkers_on_interval(self, block):
-        if not self.is_runing:
-            return
-        if block % self.config.epoch_length:
-            return
-        self.lock_halt = True
-        while not self.lock_waiting:
-            sleep(1)
-        try:
-            models, extra = self.get_models()
-            self.models = list(set([m["model"] for m in models] + extra))
-            self.verification_ports = sync_output_checkers(
-                self.client, models, self.config_file, extra
-            )
-        finally:
-            self.lock_halt = False
-
-    async def score_organics_on_block(self, block):
-        if not self.is_runing:
-            return
-        blocks_till = self.config.epoch_length - (block % self.config.epoch_length)
-        if blocks_till < 15:
-            return
-        bt.logging.info(str(self.verification_ports))
-        bucket_id, organic_stats = await score_organics(
-            self.last_bucket_id,
-            self.verification_ports,
-            self.wallet,
-            self.organics,
-            self.subtensor,
-            self.config.epoch_length,
-            max_concurrent=self.config_file.max_concurrent_organics or 2,
-        )
-        save_organics(self.organics)
-
-        bt.logging.info("Scored Organics")
-        if bucket_id == None:
-            return
-        self.last_bucket_id = bucket_id
-        if organic_stats == None:
-            return
-        bt.logging.info("Sending organics to jugo")
-        await send_organics_to_jugo(self.wallet, organic_stats)
-        bt.logging.info("Sent organics to jugo")
-
     async def check_cvm_nodes_health(self, block):
         assert self.config.vpermit_tao_limit
 
@@ -252,16 +145,20 @@ class Validator(BaseNeuron):
         self.cvm_nodes = {}
         bt.logging.info("Checking miner cvm nodes health")
         tasks = []
+        res = []
         async with aiohttp.ClientSession() as session:
             for uid in miner_uids:
                 tasks.append(
-                    cvm_healthcheck(self.metagraph, uid, session, self.cvm_nodes)
+                    cvm_healthcheck(self.metagraph, uid, session, self.wallet.hotkey)
                 )
 
             if len(tasks) != 0:
-                await asyncio.gather(*tasks)
+                res = await asyncio.gather(*tasks)
 
         # Count total healthy nodes across all miners
+        for h, u, nodes in res:
+            self.cvm_nodes[u] = (h, nodes)
+
         total_healthy_nodes = sum(len(nodes) for nodes in self.cvm_nodes.values())
         bt.logging.info(
             f"Verified health of {total_healthy_nodes} cvm nodes across {len(self.cvm_nodes)} miners"
@@ -280,9 +177,11 @@ class Validator(BaseNeuron):
         tasks = []
         res = []
         async with aiohttp.ClientSession() as session:
-            for uid, nodes in self.cvm_nodes.items():
+            for uid, (h, nodes) in self.cvm_nodes.items():
                 for node_url in nodes:
-                    tasks.append(cvm_attest(node_url, uid, session))
+                    tasks.append(
+                        cvm_attest(node_url, uid, session, h, self.wallet.hotkey)
+                    )
 
             if len(tasks) != 0:
                 res = await asyncio.gather(*tasks)
@@ -328,13 +227,7 @@ class Validator(BaseNeuron):
             config=self.config,
             network=self.config.subtensor.chain_endpoint,
         )
-        organic_metadata = await get_global_stats(self.wallet)
-        if organic_metadata is None:
-            bt.logging.error("Cannot set weights, failed getting metadata from jugo")
-            return
-        uids, weights, jugo_data = get_weights(
-            self.miner_models, self.organics, organic_metadata, self.cvm_attestations
-        )
+        uids, weights, jugo_data = get_weights(self.cvm_attestations)
         try:
             if not self.config_file.skip_weight_set:
                 async with aiohttp.ClientSession() as session:
@@ -348,14 +241,6 @@ class Validator(BaseNeuron):
             )
 
         self.lock_halt = False
-        for uid in self.organics.keys():
-            for model in self.organics[uid].keys():
-                # 15 sliding window, with a pop per interval for dead miners
-                self.organics[uid][model] = self.organics[uid][model][:-15]
-                if not len(self.organics[uid][model]):
-                    continue
-                self.organics[uid][model].pop(0)
-
         # clear up attestations after scoring
         self.cvm_attestations = {}
 
@@ -371,13 +256,7 @@ class Validator(BaseNeuron):
         )
         if block % 10 != 0:
             return
-        organic_metadata = await get_global_stats(self.wallet)
-        if organic_metadata is None:
-            bt.logging.error("Cannot get weights, failed getting metadata from jugo")
-            return
-        uids, raw_weights, _ = get_weights(
-            self.miner_models, self.organics, organic_metadata, self.cvm_attestations
-        )
+        uids, raw_weights, _ = get_weights(self.cvm_attestations)
         (
             processed_weight_uids,
             processed_weights,
@@ -404,25 +283,6 @@ class Validator(BaseNeuron):
         )
 
         bt.logging.info(f"Validator starting at block: {self.subtensor.block}")
-
-        # Ensure everything is setup
-        models, extra = self.get_models()
-        self.models = list(set([m["model"] for m in models] + extra))
-        try:
-            self.lock_halt = True
-            existing, self.verification_ports = load_existing_images(
-                self.client, self.config_file
-            )
-            if not existing:
-                self.verification_ports = sync_output_checkers(
-                    self.client, models, self.config_file, extra
-                )
-        except Exception as e:
-            bt.logging.error(f"Failed starting up output checkers: {e}")
-        finally:
-            self.lock_halt = False
-        bt.logging.info(str(self.verification_ports))
-        await self.send_models_to_miners_on_interval(0)
 
         if self.config_file and self.config_file.set_weights_on_start:
             try:
@@ -452,7 +312,6 @@ class Validator(BaseNeuron):
 
             # Mutex for setting weights
             if self.lock_halt:
-                bt.logging.info("Halting for organics")
                 self.lock_waiting = True
                 while self.lock_halt:
                     bt.logging.info("Waiting for lock to release")
@@ -464,36 +323,6 @@ class Validator(BaseNeuron):
 
     def shutdown(self):
         pass
-
-    def get_models(self) -> Tuple[List[Dict[str, Any]], List[str]]:
-        """
-        List of models and sizes of models
-        Miners are scored based
-        - How large is the model
-        - How many models are we testing them on
-        - How fast
-
-        Ask miners what models they are running
-        score based on what models valis want
-        Let valis inspect what most popular models are
-        - Top valis manually decide via model leasing
-        - Minor valis follow along for consensus
-        """
-        assert self.config.models
-        models_from_config = []
-        if self.config_file and self.config_file.verification_ports:
-            models_from_config = list(self.config_file.verification_ports.keys())
-        match self.config.models.mode:
-            case "config":
-                models = get_models_from_config()
-                if not models:
-                    raise Exception("No models")
-            case _:
-                models = get_models_from_endpoint(self.config.models.endpoint)
-                if not models:
-                    raise Exception("No models")
-
-        return models, models_from_config
 
 
 if __name__ == "__main__":

@@ -43,18 +43,23 @@ async def cvm_healthcheck(
     metagraph: "bt.metagraph",
     uid: int,
     session: aiohttp.ClientSession,
-    cvm_nodes: Dict[int, List[str]],
-):
+    hotkey,
+) -> Tuple[str,int, List[str]]:
     axon_info = metagraph.axons[uid]
     try:
         url = f"http://{axon_info.ip}:{axon_info.port}/cvm"
-        async with session.get(url) as response:
+        async with session.get(
+            url,
+            headers={
+                **generate_header(hotkey, b"", axon_info.hotkey),
+            },
+            timeout=aiohttp.ClientTimeout(total=3),
+        ) as response:
             if response.status != 200:
                 bt.logging.error(
                     f"Failed to get cvm nodes from miner {uid}: HTTP {response.status}"
                 )
-                cvm_nodes[uid] = []
-                return
+                return axon_info.hotkey,uid, []
 
             nodes = await response.json()
             healthy_nodes = []
@@ -67,13 +72,11 @@ async def cvm_healthcheck(
                 healthy_nodes = [i for i in responses if i is not None]
 
             if len(healthy_nodes):
-                cvm_nodes[uid] = healthy_nodes
-                return
+                return axon_info.hotkey,uid, healthy_nodes
 
     except Exception as e:
         bt.logging.error(f"Error checking miner {uid} cvm nodes: {str(e)}")
-    cvm_nodes[uid] = []
-    return
+    return axon_info.hotkey, uid, []
 
 
 async def get_node_health(node_url: str, uid: int, session: aiohttp.ClientSession):
@@ -90,14 +93,26 @@ async def get_node_health(node_url: str, uid: int, session: aiohttp.ClientSessio
     return None
 
 
-async def cvm_attest(node_url: str, uid: int, session: aiohttp.ClientSession):
+async def cvm_attest(
+    node_url: str,
+    uid: int,
+    session: aiohttp.ClientSession,
+    miner_hotkey,
+    self_hotkey,
+):
     try:
         # Generate and store nonce
         nonce = str(uuid.uuid4())
+        req_bytes = json.dumps(
+            {"nonce": nonce}, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
         attest_response = await session.post(
             f"{node_url}/api/v1/attest",
-            json={"nonce": nonce},
-            headers={"Content-Type": "application/json"},
+            data=req_bytes,
+            headers={
+                "Content-Type": "application/json",
+                **generate_header(self_hotkey, req_bytes, miner_hotkey),
+            },
         )
         if attest_response.status != 200:
             bt.logging.error(
