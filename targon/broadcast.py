@@ -1,6 +1,7 @@
 import asyncio
 from typing import Dict, List, Tuple
 import uuid
+import secrets
 import bittensor as bt
 import json
 import aiohttp
@@ -111,8 +112,8 @@ async def cvm_attest(
     self_hotkey,
 ):
     try:
-        # Generate and store nonce
-        nonce = str(uuid.uuid4())
+        # TODO: This is a temporary solution to generate a nonce that is 32 bytes long
+        nonce = uuid.uuid4().hex + uuid.uuid4().hex 
         req_bytes = json.dumps(
             {"nonce": nonce}, ensure_ascii=False, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
