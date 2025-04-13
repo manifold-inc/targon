@@ -166,9 +166,9 @@ def get_weights(
     # This gets post-processed again later on for final weights
     uids = list(attestation_scores.keys())
     rewards = normalize([attestation_scores.get(uid, 0) for uid in uids])
-    rewards = [float(x * 0.3) for x in rewards]
-    # burn 70% for now
-    rewards.append(0.7)
+    rewards = [float(x * 0.15) for x in rewards]
+    # burn 85% for now
+    rewards.append(0.85)
     uids.append(28)
 
     bt.logging.info(f"All scores: {attestation_scores}")
