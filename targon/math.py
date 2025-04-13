@@ -173,7 +173,17 @@ def get_weights(
 
     bt.logging.info(f"All scores: {attestation_scores}")
     final_weights = []
+
+    for uid in uids:
+        data_for_jugo[uid] = {
+            "data": {
+                "final_weight_after_expo_before_normal": 0
+            }
+        }
+
     for uid, w in zip(uids, rewards):
         data_for_jugo[uid]["data"]["final_weight_after_expo_before_normal"] = w
+        final_weights.append(w)
+
     bt.logging.info(f"Raw Weights: {final_weights}")
     return uids, final_weights, list(data_for_jugo.values())
