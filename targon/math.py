@@ -129,7 +129,7 @@ def calculate_attestation_score(
                         and claims.get("measres") == "success"
                     ):
                         # Score based on GPU model
-                        gpu_model = claims.get("hwmodel", "unknown").upper()
+                        gpu_model = gpu.get("model", "unknown").upper()
                         match gpu_model:
                             case s if "H200" in s:
                                 gpu_score = 2.0
