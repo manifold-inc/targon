@@ -1,0 +1,7 @@
+services:
+  targon:
+    image: manifoldlabs/targon:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file: .env

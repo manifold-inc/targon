@@ -3,17 +3,21 @@ package setup
 import (
 	"os"
 
+	"github.com/joho/godotenv"
+	"github.com/subtrahend-labs/gobt/client"
 	"go.uber.org/zap"
 )
 
 type Dependencies struct {
-	Log *zap.SugaredLogger
-	Env Env
+	Log    *zap.SugaredLogger
+	Env    Env
+	Client *client.Client
 }
 type Env struct {
 	HOTKEY_PUBLIC_KEY  string
 	HOTKEY_PRIVATE_KEY string
 	HOTKEY_SS58        string
+	CHAIN_ENDPOINT     string
 }
 
 func GetEnv(key, fallback string) string {
@@ -33,23 +37,37 @@ func GetEnvOrPanic(key string, logger *zap.SugaredLogger) string {
 
 func Init() *Dependencies {
 	// Startup
-	logger, err := zap.NewProduction()
+	cfg := zap.NewProductionConfig()
+	cfg.Sampling = nil
+	logger, err := cfg.Build()
 	if err != nil {
 		panic("Failed to get logger")
 	}
 	sugar := logger.Sugar()
 
 	// Env Variables
+	err = godotenv.Load()
+	if err != nil {
+		sugar.Fatal("Error loading .env file")
+	}
 	HOTKEY_PUBLIC_KEY := GetEnvOrPanic("HOTKEY_PUBLIC_KEY", sugar)
 	HOTKEY_PRIVATE_KEY := GetEnvOrPanic("HOTKEY_PRIVATE_KEY", sugar)
 	HOTKEY_SS58 := GetEnvOrPanic("HOTKEY_SS58", sugar)
+	CHAIN_ENDPOINT := os.Getenv("CHAIN_ENDPOINT")
+
+	client, err := client.NewClient(CHAIN_ENDPOINT)
+	if err != nil {
+		sugar.Fatalf("Error creating client: %s", err)
+	}
 
 	return &Dependencies{
-		Log: sugar,
+		Log:    sugar,
+		Client: client,
 		Env: Env{
 			HOTKEY_PRIVATE_KEY: HOTKEY_PRIVATE_KEY,
 			HOTKEY_PUBLIC_KEY:  HOTKEY_PUBLIC_KEY,
 			HOTKEY_SS58:        HOTKEY_SS58,
+			CHAIN_ENDPOINT:     CHAIN_ENDPOINT,
 		},
 	}
 }
