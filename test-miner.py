@@ -37,8 +37,7 @@ async def main(uid: int):
         print(json.dumps(attestation_stats, indent=2))
 
 
-UID = -1
 if __name__ == "__main__":
-    asyncio.run(main(UID))
+    asyncio.run(main(int(input("Enter uid: "))))
 
 # python scripts/print_weights.py --wallet.name _
