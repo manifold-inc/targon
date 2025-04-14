@@ -3,11 +3,8 @@ import time
 from bittensor.core.axon import FastAPIThreadedServer
 from bittensor.core.extrinsics.serving import serve_extrinsic
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
-import httpx
 import netaddr
 import requests
-from starlette.background import BackgroundTask
-from starlette.responses import StreamingResponse
 
 from targon.types import NeuronType
 from neurons.base import BaseNeuron

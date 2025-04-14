@@ -17,3 +17,4 @@ packages
 models.txt
 vllm
 config.json
+*.log
