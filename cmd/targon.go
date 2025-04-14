@@ -48,4 +48,8 @@ func main() {
 		)
 	}
 	deps.Log.Sync()
+	sub, _ := deps.Client.Api.RPC.Chain.SubscribeNewHeads()
+	for head := range sub.Chan() {
+		deps.Log.Infow("New block", "block", fmt.Sprintf("%v", head.Number))
+	}
 }
