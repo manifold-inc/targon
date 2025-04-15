@@ -74,7 +74,10 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.Neurons))
 	for _, n := range c.Neurons {
-		go GetCVMNodes(c, &wg, client, &n)
+		go func() {
+			GetCVMNodes(c, client, &n)
+			wg.Done()
+		}()
 	}
 	wg.Wait()
 	c.Deps.Log.Infof("Found %d miners with nodes", len(c.NeuronNodes))
