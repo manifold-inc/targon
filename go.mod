@@ -4,8 +4,10 @@ go 1.23.6
 
 require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.2-0.20240919131012-e3b938563803
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/subtrahend-labs/gobt v0.0.1-beta.2
+	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/zap v1.27.0
 )
 
@@ -27,7 +29,6 @@ require (
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect

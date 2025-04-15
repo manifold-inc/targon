@@ -14,11 +14,16 @@ type BaseValidator struct {
 	mainfunc                    func(i <-chan (bool), o chan<- (bool))
 	onSubscriptionError         func(err error)
 	onSubscriptionCreationError func(err error)
+	startup                     func()
 	NetUID                      int
 }
 
 func (b *BaseValidator) AddBlockCallback(f func(types.Header)) {
 	b.callbacks = append(b.callbacks, f)
+}
+
+func (b *BaseValidator) SetStartupFunc(f func()) {
+	b.startup = f
 }
 
 func (b *BaseValidator) SetMainFunc(f func(i <-chan (bool), o chan<- (bool))) {
