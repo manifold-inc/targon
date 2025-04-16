@@ -75,8 +75,8 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 	wg.Add(len(c.Neurons))
 	for _, n := range c.Neurons {
 		go func() {
+			defer wg.Done()
 			GetCVMNodes(c, client, &n)
-			wg.Done()
 		}()
 	}
 	wg.Wait()
