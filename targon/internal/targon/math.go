@@ -1,8 +1,4 @@
-package main
-
-import (
-	"fmt"
-)
+package targon
 
 func Normalize(arr []float64, sumTo float64) []float64 {
 	sum := 0.0
@@ -17,14 +13,4 @@ func Normalize(arr []float64, sumTo float64) []float64 {
 		newArr = append(newArr, (num/sum)*sumTo)
 	}
 	return newArr
-}
-
-func main() {
-	arr := []float64{1, 1, 2, 2, 2, 5, 1, 2, 3, 4}
-	res := Normalize(arr, .5)
-	sum := 0.0
-	for _, num := range res {
-		sum += num
-	}
-	fmt.Printf("%+v\n%+v\n", res, sum)
 }
