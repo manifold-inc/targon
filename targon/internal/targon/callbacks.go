@@ -90,3 +90,9 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 		c.Deps.Log.Infow("nodes for "+k, "nodes", len(v))
 	}
 }
+
+func setWeights(c *Core, h types.Header) {
+	if h.Number%360 != 0 || c.NeuronHardware == nil {
+		return
+	}
+}

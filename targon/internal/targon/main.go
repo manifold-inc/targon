@@ -11,12 +11,9 @@ func SetMainFunc(v *validator.BaseValidator, c *Core) {
 }
 
 func mainFunc(c *Core, i <-chan bool, o chan<- bool) {
-	for {
-		select {
-		case <-i:
-			c.Deps.Log.Info("Shuting down...")
-			o <- true
-			return
-		}
+	for range i {
+		c.Deps.Log.Info("Shuting down...")
+		o <- true
+		return
 	}
 }
