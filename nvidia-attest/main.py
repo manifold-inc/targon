@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from nv_attestation_sdk import attestation
 from fastapi import FastAPI
 import json
-from typing import Optional
+from typing import Dict, List, Optional
 from logconfig import setupLogging
 
 logger = setupLogging()
@@ -15,6 +15,7 @@ def load_policy(policy_path: str) -> Optional[str]:
             policy = json.load(f)
         return json.dumps(policy)
     except Exception as e:
+        logger.error(f"No policy found: {e}")
         return None
 
 
@@ -29,8 +30,38 @@ def ping():
     return ""
 
 
-class Request(BaseModel):
+class AttestClaimInfo(BaseModel):
+    hwmodel: str
+    driver_version: str
+    vbios_version: str
+    measres: str
+    attestation_success: bool
+
+
+class AttestGPUInfo(BaseModel):
+    driver_version: str
+    vbios_version: str
+    measres: str
+    attestation_success: bool
+
+
+class AttestGPU(BaseModel):
+    id: str
+    model: str
+    claims: AttestGPUInfo
+
+
+class AttestResponse(BaseModel):
+    success: bool
+    nonce: str
     token: str
+    claims: Dict[str, AttestClaimInfo]
+    validated: bool
+    gpus: List[AttestGPU]
+
+
+class Request(BaseModel):
+    data: AttestResponse
     expected_nonce: str
 
 
@@ -42,9 +73,10 @@ def attest(req: Request) -> bool:
         client.add_verifier(
             attestation.Devices.GPU, attestation.Environment.REMOTE, NRAS_URL, ""
         )
-        client.set_token("Verifier", req.token)
+        client.set_token("Verifier", req.data.token)
         client.set_nonce(req.expected_nonce)
         valid: bool = client.validate_token(ATTESTATION_POLICY)  # type: ignore
         return valid
     except Exception as e:
+        logger.error(f"Error during attestation: {e}")
         return False

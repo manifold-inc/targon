@@ -9,11 +9,11 @@ import (
 )
 
 type Core struct {
-	Neurons       []runtime.NeuronInfo
-	NeuronsMu     sync.RWMutex
-	Deps          *setup.Dependencies
-	NeuronNodes   map[string][]string
-	NeuronNodesMu sync.Mutex
+	Neurons          []runtime.NeuronInfo
+	Deps             *setup.Dependencies
+	NeuronHardware   map[string][]string
+	// Global core lock
+	mu               sync.Mutex
 }
 
 func CreateCore(d *setup.Dependencies) *Core {

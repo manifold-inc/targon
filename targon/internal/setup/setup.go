@@ -14,10 +14,11 @@ type Dependencies struct {
 	Client *client.Client
 }
 type Env struct {
-	HOTKEY_PUBLIC_KEY  string
-	HOTKEY_PRIVATE_KEY string
-	HOTKEY_SS58        string
-	CHAIN_ENDPOINT     string
+	HOTKEY_PUBLIC_KEY      string
+	HOTKEY_PRIVATE_KEY     string
+	HOTKEY_SS58            string
+	CHAIN_ENDPOINT         string
+	NVIDIA_ATTEST_ENDPOINT string
 }
 
 func GetEnv(key, fallback string) string {
@@ -54,6 +55,7 @@ func Init() *Dependencies {
 	HOTKEY_PRIVATE_KEY := GetEnvOrPanic("HOTKEY_PRIVATE_KEY", sugar)
 	HOTKEY_SS58 := GetEnvOrPanic("HOTKEY_SS58", sugar)
 	CHAIN_ENDPOINT := os.Getenv("CHAIN_ENDPOINT")
+	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 
 	client, err := client.NewClient(CHAIN_ENDPOINT)
 	if err != nil {
@@ -64,10 +66,11 @@ func Init() *Dependencies {
 		Log:    sugar,
 		Client: client,
 		Env: Env{
-			HOTKEY_PRIVATE_KEY: HOTKEY_PRIVATE_KEY,
-			HOTKEY_PUBLIC_KEY:  HOTKEY_PUBLIC_KEY,
-			HOTKEY_SS58:        HOTKEY_SS58,
-			CHAIN_ENDPOINT:     CHAIN_ENDPOINT,
+			HOTKEY_PRIVATE_KEY:     HOTKEY_PRIVATE_KEY,
+			HOTKEY_PUBLIC_KEY:      HOTKEY_PUBLIC_KEY,
+			HOTKEY_SS58:            HOTKEY_SS58,
+			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
+			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,
 		},
 	}
 }

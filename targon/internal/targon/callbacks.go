@@ -37,6 +37,8 @@ func getNeuronsCallback(v *validator.BaseValidator, c *Core, h types.Header) {
 	if h.Number%360 != 1 && c.Neurons != nil {
 		return
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.Deps.Log.Info("Updating neurons")
 	blockHash, err := c.Deps.Client.Api.RPC.Chain.GetBlockHash(uint64(h.Number))
 	if err != nil {
@@ -48,23 +50,25 @@ func getNeuronsCallback(v *validator.BaseValidator, c *Core, h types.Header) {
 		c.Deps.Log.Errorw("Failed getting neurons", "error", err)
 		return
 	}
-	c.NeuronsMu.Lock()
-	defer c.NeuronsMu.Unlock()
 	c.Neurons = neurons
 	c.Deps.Log.Info("Neurons Updated")
 }
 
 func resetState(c *Core, h types.Header) {
-	if h.Number%360 != 1 && c.NeuronNodes != nil {
+	if h.Number%360 != 1 && c.NeuronHardware != nil {
 		return
 	}
-	c.NeuronNodes = map[string][]string{}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.NeuronHardware = map[string][]string{}
 }
 
 func getCVMNodesCallback(c *Core, h types.Header) {
 	if h.Number%10 != 1 || c.Neurons == nil {
 		return
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	tr := &http.Transport{
 		ResponseHeaderTimeout: 2 * time.Second,
 		MaxConnsPerHost:       1,
@@ -73,6 +77,7 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.Neurons))
+	c.Deps.Log.Infow("Checking CVM nodes for %d miners", len(c.Neurons))
 	for _, n := range c.Neurons {
 		go func() {
 			defer wg.Done()
@@ -80,8 +85,8 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 		}()
 	}
 	wg.Wait()
-	c.Deps.Log.Infof("Found %d miners with nodes", len(c.NeuronNodes))
-	for k, v := range c.NeuronNodes {
+	c.Deps.Log.Infof("Found %d miners with nodes", len(c.NeuronHardware))
+	for k, v := range c.NeuronHardware {
 		c.Deps.Log.Infow("nodes for "+k, "nodes", len(v))
 	}
 }
