@@ -11,6 +11,7 @@ import (
 	"targon/validator"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	_ "github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 
@@ -99,7 +100,16 @@ func logWeights(c *Core, h types.Header) {
 		return
 	}
 	uids, scores := getWeights(c)
+	c.Deps.Log.Info("Current Weights", "uids", fmt.Sprintf("%+v", uids), "scores", fmt.Sprintf("%+v", scores))
+}
+
+func setWeights(c *Core, h types.Header) {
+	if h.Number%360 != 0 || c.NeuronHardware == nil {
+		return
+	}
+	uids, scores := getWeights(c)
 	c.Deps.Log.Info("Setting Weights", "uids", fmt.Sprintf("%+v", uids), "scores", fmt.Sprintf("%+v", scores))
+	// Actually set weights
 }
 
 func getWeights(c *Core) ([]int, []float64) {

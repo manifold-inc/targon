@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"targon/internal/setup"
 )
 
 func Normalize(arr []float64, sumTo float64) []float64 {
@@ -20,11 +22,6 @@ func Normalize(arr []float64, sumTo float64) []float64 {
 }
 
 func main() {
-	arr := []float64{1, 1, 2, 2, 2, 5, 1, 2, 3, 4}
-	res := Normalize(arr, .5)
-	sum := 0.0
-	for _, num := range res {
-		sum += num
-	}
-	fmt.Printf("%+v\n%+v\n", res, sum)
+	v, _ := setup.ParseVersion("6.1.0")
+	fmt.Printf("%+v\n", v)
 }

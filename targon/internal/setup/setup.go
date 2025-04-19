@@ -1,8 +1,12 @@
 package setup
 
 import (
+	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/joho/godotenv"
 	"github.com/subtrahend-labs/gobt/client"
 	"go.uber.org/zap"
@@ -19,6 +23,7 @@ type Env struct {
 	HOTKEY_SS58            string
 	CHAIN_ENDPOINT         string
 	NVIDIA_ATTEST_ENDPOINT string
+	VERSION                types.U64
 }
 
 func GetEnv(key, fallback string) string {
@@ -56,6 +61,11 @@ func Init() *Dependencies {
 	HOTKEY_SS58 := GetEnvOrPanic("HOTKEY_SS58", sugar)
 	CHAIN_ENDPOINT := os.Getenv("CHAIN_ENDPOINT")
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
+	VERSION := GetEnvOrPanic("VERSION", sugar)
+	parsedVer, err := ParseVersion(VERSION)
+	if err != nil {
+		sugar.Fatal(err)
+	}
 
 	client, err := client.NewClient(CHAIN_ENDPOINT)
 	if err != nil {
@@ -71,6 +81,29 @@ func Init() *Dependencies {
 			HOTKEY_SS58:            HOTKEY_SS58,
 			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
 			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,
+			VERSION:                *parsedVer,
 		},
 	}
+}
+
+func ParseVersion(v string) (*types.U64, error) {
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("not a valid version string: %v", v)
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("not a valid version string: %v", v)
+	}
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("not a valid version string: %v", v)
+	}
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return nil, fmt.Errorf("not a valid version string: %v", v)
+	}
+	ver := (major * 100000) + (minor * 1000) + patch
+	typedVer := types.NewU64(uint64(ver))
+	return &typedVer, nil
 }
