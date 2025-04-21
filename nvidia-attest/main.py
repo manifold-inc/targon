@@ -1,4 +1,3 @@
-import os
 from pydantic import BaseModel
 from nv_attestation_sdk import attestation
 from fastapi import FastAPI
@@ -9,18 +8,14 @@ from logconfig import setupLogging
 logger = setupLogging()
 
 
-def load_policy(policy_path: str) -> Optional[str]:
+def load_policy() -> Optional[str]:
     try:
-        with open(policy_path, "r") as f:
+        with open("remote_policy.json", "r") as f:
             policy = json.load(f)
         return json.dumps(policy)
     except Exception as e:
         logger.error(f"No policy found: {e}")
         return None
-
-
-POLICY_PATH = os.environ.get("APPRAISAL_POLICY", "targon/remote_policy.json")
-ATTESTATION_POLICY = load_policy(POLICY_PATH)
 
 app = FastAPI()
 
