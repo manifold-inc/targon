@@ -4,6 +4,7 @@ WORKDIR /app
 
 
 # Make sure we arent missing anything
+COPY remote_policy.json .
 COPY requirements.txt . 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY . .
