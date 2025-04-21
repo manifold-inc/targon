@@ -51,10 +51,6 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		Log.Debugw("Failed reading miner response", "error", err)
 		return nil, err
 	}
-	if true {
-		Log.Info("Miner responded, returning early")
-		return nil, errors.New("")
-	}
 	nwg := sync.WaitGroup{}
 	nwg.Add(len(nodes))
 	gpusModels := []string{}
