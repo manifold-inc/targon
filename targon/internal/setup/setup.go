@@ -25,6 +25,7 @@ type Env struct {
 	NVIDIA_ATTEST_ENDPOINT string
 	VERSION                types.U64
 	DEBUG                  bool
+	NETUID                 int
 }
 
 func GetEnv(key, fallback string) string {
@@ -62,6 +63,10 @@ func Init() *Dependencies {
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
 	DEBUG := GetEnv("DEBUG", "0")
+	netuid, err := strconv.Atoi(GetEnv("NETUID", "4"))
+	if err != nil {
+		sugar.Fatalw("Invalid netuid", "error", err)
+	}
 	parsedVer, err := ParseVersion(VERSION)
 	if err != nil {
 		sugar.Fatal(err)
@@ -82,7 +87,7 @@ func Init() *Dependencies {
 		sugar.Fatalf("Error creating client: %s", err)
 	}
 
-	kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, network)
+	kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, client.Network)
 	if err != nil {
 		sugar.Fatalw("Failed creating keyring par", err)
 	}
@@ -96,6 +101,7 @@ func Init() *Dependencies {
 			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
 			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,
 			VERSION:                *parsedVer,
+			NETUID:                 netuid,
 		},
 	}
 }

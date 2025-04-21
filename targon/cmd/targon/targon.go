@@ -11,7 +11,7 @@ func main() {
 	deps.Log.Infof("Starting validator with key [%s] on chain [%s]", deps.Hotkey.Address, deps.Env.CHAIN_ENDPOINT)
 
 	core := targon.CreateCore(deps)
-	validator := validator.NewValidator(4)
+	validator := validator.NewValidator(deps.Env.NETUID)
 	deps.Log.Infof("Creating validator on netuid [%d]", validator.NetUID)
 
 	targon.AddBlockCallbakcs(validator, core)
