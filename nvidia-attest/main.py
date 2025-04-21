@@ -75,3 +75,5 @@ def attest(req: Request) -> bool:
     except Exception as e:
         logger.error(f"Error during attestation: {e}")
         return False
+
+logger.info("Starting nvidia-attest")
