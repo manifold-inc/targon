@@ -1,22 +1,24 @@
 services:
-  targon:
-    image: manifoldlabs/targon:latest
-    build:
-      dockerfile: Dockerfile
-      context: ./targon
-    env_file: .env
-
   nvidia-attest: 
     image: manifoldlabs/targon-nvidia-attest:latest
+    ports:
+      - 3344:80
     build:
       dockerfile: Dockerfile
       context: ./nvidia-attest
 
       # TODO check this is correct
-  watchtower:
-    image: containrrr/watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /root/.docker/config.json:/config.json
-    command: --interval 60
+  #targon:
+  #  image: manifoldlabs/targon:latest
+  #  build:
+  #    dockerfile: Dockerfile
+  #    context: ./targon
+  #  env_file: .env
+
+  #watchtower:
+  #  image: containrrr/watchtower
+  #  volumes:
+  #    - /var/run/docker.sock:/var/run/docker.sock
+  #    - /root/.docker/config.json:/config.json
+  #  command: --interval 60
 
