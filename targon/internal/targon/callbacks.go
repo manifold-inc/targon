@@ -2,17 +2,20 @@ package targon
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"targon/internal/setup"
 	"targon/validator"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	_ "github.com/subtrahend-labs/gobt/extrinsics"
+	"github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/runtime"
+	"github.com/subtrahend-labs/gobt/sigtools"
 )
 
 func AddBlockCallbakcs(v *validator.BaseValidator, c *Core) {
@@ -103,20 +106,46 @@ func logWeights(c *Core, h types.Header) {
 	c.Deps.Log.Info("Current Weights", "uids", fmt.Sprintf("%+v", uids), "scores", fmt.Sprintf("%+v", scores))
 }
 
-func setWeights(c *Core, h types.Header) {
+func setWeights(v *validator.BaseValidator, c *Core, h types.Header) {
 	if h.Number%360 != 0 || c.NeuronHardware == nil {
 		return
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	uids, scores := getWeights(c)
 	c.Deps.Log.Info("Setting Weights", "uids", fmt.Sprintf("%+v", uids), "scores", fmt.Sprintf("%+v", scores))
 	// Actually set weights
+	ext, err := extrinsics.SetWeightsExt(c.Deps.Client, types.U16(v.NetUID), uids, scores, c.Deps.Env.VERSION)
+	if err != nil {
+		c.Deps.Log.Warnw("Failed creating setweights ext", "error", err)
+		return
+	}
+	ops, err := sigtools.CreateSigningOptions(c.Deps.Client, c.Deps.Hotkey, nil)
+	if err != nil {
+		c.Deps.Log.Errorw("Failed creating sigining opts", "error", err)
+		return
+	}
+	err = ext.Sign(
+		c.Deps.Hotkey,
+		c.Deps.Client.Meta,
+		ops...,
+	)
+	if err != nil {
+		c.Deps.Log.Errorw("Error signing setweights", "error", err)
+		return
+	}
+
+	hash, err := c.Deps.Client.Api.RPC.Author.SubmitExtrinsic(*ext)
+	if err != nil {
+		c.Deps.Log.Errorw("Error submitting extrinsic", "error", err)
+		return
+	}
+	c.Deps.Log.Infow("Set weights on chain successfully", "hash", hash.Hex())
 }
 
-func getWeights(c *Core) ([]int, []float64) {
+func getWeights(c *Core) ([]types.U16, []types.U16) {
 	// TODO some sort of multi-check per interval
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	var uids []int
+	var uids []types.U16
 	var scores []float64
 	for k, v := range c.NeuronHardware {
 		thisScore := 0.0
@@ -135,13 +164,26 @@ func getWeights(c *Core) ([]int, []float64) {
 			continue
 		}
 		uidInt, _ := strconv.Atoi(k)
-		uids = append(uids, uidInt)
+
+		uids = append(uids, types.NewU16(uint16(uidInt)))
 		scores = append(scores, thisScore)
 	}
 	minerCut := .15
 	burnKey := 28
 	scores = Normalize(scores, minerCut)
 	scores = append(scores, 1-minerCut)
-	uids = append(uids, burnKey)
-	return uids, scores
+	uids = append(uids, types.NewU16(uint16(burnKey)))
+
+	var finalScores []types.U16
+	var finalUids []types.U16
+	for i, s := range scores {
+		fw := math.Round(float64(setup.U16MAX) * s)
+		if fw == 0 {
+			continue
+		}
+		finalScores = append(finalScores, types.NewU16(uint16(fw)))
+		finalUids = append(finalUids, uids[i])
+	}
+
+	return finalUids, finalScores
 }

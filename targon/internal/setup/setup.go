@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/joho/godotenv"
 	"github.com/subtrahend-labs/gobt/client"
@@ -16,11 +17,13 @@ type Dependencies struct {
 	Log    *zap.SugaredLogger
 	Env    Env
 	Client *client.Client
+	Hotkey signature.KeyringPair
 }
 type Env struct {
 	HOTKEY_PUBLIC_KEY      string
 	HOTKEY_PRIVATE_KEY     string
 	HOTKEY_SS58            string
+	HOTKEY_PHRASE          string
 	CHAIN_ENDPOINT         string
 	NVIDIA_ATTEST_ENDPOINT string
 	VERSION                types.U64
@@ -56,9 +59,7 @@ func Init() *Dependencies {
 	if err != nil {
 		sugar.Fatal("Error loading .env file")
 	}
-	HOTKEY_PUBLIC_KEY := GetEnvOrPanic("HOTKEY_PUBLIC_KEY", sugar)
-	HOTKEY_PRIVATE_KEY := GetEnvOrPanic("HOTKEY_PRIVATE_KEY", sugar)
-	HOTKEY_SS58 := GetEnvOrPanic("HOTKEY_SS58", sugar)
+	HOTKEY_PHRASE := GetEnvOrPanic("HOTKEY_PHRASE", sugar)
 	CHAIN_ENDPOINT := os.Getenv("CHAIN_ENDPOINT")
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
@@ -72,13 +73,17 @@ func Init() *Dependencies {
 		sugar.Fatalf("Error creating client: %s", err)
 	}
 
+	kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, network)
+	if err != nil {
+		sugar.Fatalw("Failed creating keyring par", err)
+	}
+
 	return &Dependencies{
 		Log:    sugar,
 		Client: client,
+		Hotkey: kp,
 		Env: Env{
-			HOTKEY_PRIVATE_KEY:     HOTKEY_PRIVATE_KEY,
-			HOTKEY_PUBLIC_KEY:      HOTKEY_PUBLIC_KEY,
-			HOTKEY_SS58:            HOTKEY_SS58,
+			HOTKEY_PHRASE:          HOTKEY_PHRASE,
 			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
 			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,
 			VERSION:                *parsedVer,
