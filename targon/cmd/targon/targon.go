@@ -8,7 +8,7 @@ import (
 
 func main() {
 	deps := setup.Init()
-	deps.Log.Infof("Starting validator with key [%s] on chain [%s]", deps.Env.HOTKEY_SS58, deps.Env.CHAIN_ENDPOINT)
+	deps.Log.Infof("Starting validator with key [%s] on chain [%s]", deps.Hotkey.Address, deps.Env.CHAIN_ENDPOINT)
 
 	core := targon.CreateCore(deps)
 	validator := validator.NewValidator(4)

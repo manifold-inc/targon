@@ -20,13 +20,11 @@ type Dependencies struct {
 	Hotkey signature.KeyringPair
 }
 type Env struct {
-	HOTKEY_PUBLIC_KEY      string
-	HOTKEY_PRIVATE_KEY     string
-	HOTKEY_SS58            string
 	HOTKEY_PHRASE          string
 	CHAIN_ENDPOINT         string
 	NVIDIA_ATTEST_ENDPOINT string
 	VERSION                types.U64
+	DEBUG                  bool
 }
 
 func GetEnv(key, fallback string) string {
@@ -57,15 +55,26 @@ func Init() *Dependencies {
 	// Env Variables
 	err = godotenv.Load()
 	if err != nil {
-		sugar.Fatal("Error loading .env file")
+		sugar.Fatalw("Error loading .env file", err)
 	}
 	HOTKEY_PHRASE := GetEnvOrPanic("HOTKEY_PHRASE", sugar)
 	CHAIN_ENDPOINT := os.Getenv("CHAIN_ENDPOINT")
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
+	DEBUG := GetEnv("DEBUG", "0")
 	parsedVer, err := ParseVersion(VERSION)
 	if err != nil {
 		sugar.Fatal(err)
+	}
+	debug := DEBUG == "1"
+	if debug {
+		cfg := zap.NewDevelopmentConfig()
+		cfg.Sampling = nil
+		logger, err := cfg.Build()
+		if err != nil {
+			panic("Failed to get logger")
+		}
+		sugar = logger.Sugar()
 	}
 
 	client, err := client.NewClient(CHAIN_ENDPOINT)
@@ -83,7 +92,7 @@ func Init() *Dependencies {
 		Client: client,
 		Hotkey: kp,
 		Env: Env{
-			HOTKEY_PHRASE:          HOTKEY_PHRASE,
+			DEBUG:                  debug,
 			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
 			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,
 			VERSION:                *parsedVer,

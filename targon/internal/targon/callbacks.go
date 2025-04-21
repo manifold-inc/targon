@@ -31,6 +31,11 @@ func AddBlockCallbakcs(v *validator.BaseValidator, c *Core) {
 	v.AddBlockCallback(func(h types.Header) {
 		logWeights(c, h)
 	})
+	if !c.Deps.Env.DEBUG {
+		v.AddBlockCallback(func(h types.Header) {
+			setWeights(v, c, h)
+		})
+	}
 }
 
 func logBlockCallback(c *Core, h types.Header) {
@@ -84,7 +89,7 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.Neurons))
-	c.Deps.Log.Infow("Checking CVM nodes for %d miners", len(c.Neurons))
+	c.Deps.Log.Infof("Checking CVM nodes for %d miners", len(c.Neurons))
 	for _, n := range c.Neurons {
 		go func() {
 			defer wg.Done()
@@ -111,7 +116,10 @@ func setWeights(v *validator.BaseValidator, c *Core, h types.Header) {
 		return
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	defer func() {
+		c.mu.Unlock()
+		resetState(c, h)
+	}()
 	uids, scores := getWeights(c)
 	c.Deps.Log.Info("Setting Weights", "uids", fmt.Sprintf("%+v", uids), "scores", fmt.Sprintf("%+v", scores))
 	// Actually set weights

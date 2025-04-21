@@ -25,7 +25,7 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		Log.Warnw("Failed to generate request to miner", "error", err)
 		return nil, err
 	}
-	headers, err := validator.GetEpistulaHeaders(c.Deps.Env.HOTKEY_SS58, c.Deps.Env.HOTKEY_PUBLIC_KEY, c.Deps.Env.HOTKEY_PRIVATE_KEY, utils.AccountIDToSS58(n.Hotkey), []byte{})
+	headers, err := validator.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
 	if err != nil {
 		Log.Warnw("Failed generating epistula headers", "error", err)
 		return nil, err
@@ -51,6 +51,10 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		Log.Debugw("Failed reading miner response", "error", err)
 		return nil, err
 	}
+	if true {
+		Log.Info("Miner responded, returning early")
+		return nil, errors.New("")
+	}
 	nwg := sync.WaitGroup{}
 	nwg.Add(len(nodes))
 	gpusModels := []string{}
@@ -63,7 +67,6 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 				return
 			}
 
-			// TODO this should return gpu information we can use for scoring
 			gpus, err := CheckCVMAttest(c, client, n, node)
 			if err != nil {
 				return
@@ -87,7 +90,7 @@ func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Warnw("Failed to generate request to miner", "error", err)
 		return false
 	}
-	headers, err := validator.GetEpistulaHeaders(c.Deps.Env.HOTKEY_SS58, c.Deps.Env.HOTKEY_PUBLIC_KEY, c.Deps.Env.HOTKEY_PRIVATE_KEY, utils.AccountIDToSS58(n.Hotkey), []byte{})
+	headers, err := validator.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
 	if err != nil {
 		Log.Warnw("Failed generating epistula headers", "error", err)
 		return false
@@ -124,7 +127,7 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Warnw("Failed to generate request to miner", "error", err)
 		return nil, err
 	}
-	headers, err := validator.GetEpistulaHeaders(c.Deps.Env.HOTKEY_SS58, c.Deps.Env.HOTKEY_PUBLIC_KEY, c.Deps.Env.HOTKEY_PRIVATE_KEY, utils.AccountIDToSS58(n.Hotkey), body)
+	headers, err := validator.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), body)
 	if err != nil {
 		Log.Warnw("Failed generating epistula headers", "error", err)
 		return nil, err
