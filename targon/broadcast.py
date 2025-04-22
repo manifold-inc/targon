@@ -90,7 +90,7 @@ async def get_node_health(
             headers={
                 **generate_header(self_hotkey, b"", miner_hotkey),
             },
-            timeout=aiohttp.ClientTimeout(total=5*60),
+            timeout=aiohttp.ClientTimeout(total=5),
         )
         if health_response.status == 200:
             return node_url
@@ -123,7 +123,7 @@ async def cvm_attest(
                 "Content-Type": "application/json",
                 **generate_header(self_hotkey, req_bytes, miner_hotkey),
             },
-            timeout=aiohttp.ClientTimeout(total=30*60),
+            timeout=aiohttp.ClientTimeout(total=20),
         )
         if attest_response.status != 200:
             bt.logging.error(
