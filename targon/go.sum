@@ -64,6 +64,8 @@ github.com/subtrahend-labs/gobt v0.0.1-beta.3 h1:5RC1oIRuOET+0bpVNLeT2c+5YXuuD0t
 github.com/subtrahend-labs/gobt v0.0.1-beta.3/go.mod h1:aPBo3Nx/V/AJeUXKBmDIdVrjGemUyv73X30/jQqLBzo=
 github.com/subtrahend-labs/gobt v0.0.1-beta.4 h1:Q+dKmrD7mGJ3TPYxuvyTSIkgW9roS/iKA4FO4jdV1Xs=
 github.com/subtrahend-labs/gobt v0.0.1-beta.4/go.mod h1:aPBo3Nx/V/AJeUXKBmDIdVrjGemUyv73X30/jQqLBzo=
+github.com/subtrahend-labs/gobt v0.0.1-beta.6 h1:JA4SU754ei+LAXp+oNJFvSyreEW77EnHsilSVgLFbNo=
+github.com/subtrahend-labs/gobt v0.0.1-beta.6/go.mod h1:aPBo3Nx/V/AJeUXKBmDIdVrjGemUyv73X30/jQqLBzo=
 github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFAEVmqU=
 github.com/tklauser/go-sysconf v0.3.12/go.mod h1:Ho14jnntGE1fpdOqQEEaiKRpvIavV0hSfmBq8nJbHYI=
 github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+Fk=

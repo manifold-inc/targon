@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	"targon/internal/subtensor/utils"
-	"targon/validator"
 
 	"github.com/google/uuid"
+	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 
@@ -25,7 +25,7 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		Log.Warnw("Failed to generate request to miner", "error", err)
 		return nil, err
 	}
-	headers, err := validator.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
+	headers, err := boilerplate.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
 	if err != nil {
 		Log.Warnw("Failed generating epistula headers", "error", err)
 		return nil, err
@@ -86,7 +86,7 @@ func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Warnw("Failed to generate request to miner", "error", err)
 		return false
 	}
-	headers, err := validator.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
+	headers, err := boilerplate.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
 	if err != nil {
 		Log.Warnw("Failed generating epistula headers", "error", err)
 		return false
@@ -123,7 +123,7 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Warnw("Failed to generate request to miner", "error", err)
 		return nil, err
 	}
-	headers, err := validator.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), body)
+	headers, err := boilerplate.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), body)
 	if err != nil {
 		Log.Warnw("Failed generating epistula headers", "error", err)
 		return nil, err

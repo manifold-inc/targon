@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"targon/internal/setup"
-	"targon/validator"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"github.com/subtrahend-labs/gobt/sigtools"
+	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
-func AddBlockCallbakcs(v *validator.BaseValidator, c *Core) {
+func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 	v.AddBlockCallback(func(h types.Header) {
 		logBlockCallback(c, h)
 	})
@@ -43,7 +43,7 @@ func logBlockCallback(c *Core, h types.Header) {
 	c.Deps.Log.Infow("New block", "block", fmt.Sprintf("%v", h.Number), "left_in_interval", fmt.Sprintf("%d", 360-(h.Number%360)))
 }
 
-func getNeuronsCallback(v *validator.BaseValidator, c *Core, h types.Header) {
+func getNeuronsCallback(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 	// Run after first block of interval
 	if h.Number%360 != 1 && c.Neurons != nil {
 		return
@@ -111,7 +111,7 @@ func logWeights(c *Core, h types.Header) {
 	c.Deps.Log.Info("Current Weights", "uids", fmt.Sprintf("%+v", uids), "scores", fmt.Sprintf("%+v", scores))
 }
 
-func setWeights(v *validator.BaseValidator, c *Core, h types.Header) {
+func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 	if h.Number%360 != 0 || c.NeuronHardware == nil {
 		return
 	}

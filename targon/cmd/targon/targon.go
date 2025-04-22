@@ -3,7 +3,8 @@ package main
 import (
 	"targon/internal/setup"
 	"targon/internal/targon"
-	"targon/validator"
+
+	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
 func main() {
@@ -11,7 +12,7 @@ func main() {
 	deps.Log.Infof("Starting validator with key [%s] on chain [%s]", deps.Hotkey.Address, deps.Env.CHAIN_ENDPOINT)
 
 	core := targon.CreateCore(deps)
-	validator := validator.NewValidator(deps.Env.NETUID)
+	validator := boilerplate.NewChainSubscriber(deps.Env.NETUID)
 	deps.Log.Infof("Creating validator on netuid [%d]", validator.NetUID)
 
 	targon.AddBlockCallbakcs(validator, core)

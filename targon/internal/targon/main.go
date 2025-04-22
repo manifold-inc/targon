@@ -1,10 +1,8 @@
 package targon
 
-import (
-	"targon/validator"
-)
+import "github.com/subtrahend-labs/gobt/boilerplate"
 
-func SetMainFunc(v *validator.BaseValidator, c *Core) {
+func SetMainFunc(v *boilerplate.BaseChainSubscriber, c *Core) {
 	v.SetMainFunc(func(i <-chan bool, o chan<- bool) {
 		mainFunc(c, i, o)
 	})
