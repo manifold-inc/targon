@@ -1,7 +1,6 @@
 import asyncio
 from typing import Dict, List, Tuple
 import uuid
-import secrets
 import bittensor as bt
 import json
 import aiohttp
@@ -91,7 +90,7 @@ async def get_node_health(
             headers={
                 **generate_header(self_hotkey, b"", miner_hotkey),
             },
-            timeout=aiohttp.ClientTimeout(total=3),
+            timeout=aiohttp.ClientTimeout(total=5*60),
         )
         if health_response.status == 200:
             return node_url
@@ -124,6 +123,7 @@ async def cvm_attest(
                 "Content-Type": "application/json",
                 **generate_header(self_hotkey, req_bytes, miner_hotkey),
             },
+            timeout=aiohttp.ClientTimeout(total=30*60),
         )
         if attest_response.status != 200:
             bt.logging.error(
