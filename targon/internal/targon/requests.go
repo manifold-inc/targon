@@ -155,6 +155,14 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		return nil, err
 	}
 
+	if !attestRes.AttestationResult {
+		return nil, errors.New("attestation failed")
+	}
+
+	if !attestRes.Valid {
+		return nil, errors.New("attestation invalid")
+	}
+
 	// Validate Attestation
 	body, _ = json.Marshal(map[string]any{"data": attestRes, "expected_nonce": nonce})
 	req, err = http.NewRequest("POST", fmt.Sprintf("%s/attest", c.Deps.Env.NVIDIA_ATTEST_ENDPOINT), bytes.NewBuffer(body))
@@ -188,14 +196,6 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Debugw("GPU information did not pass verification")
 		return nil, errors.New("GPU Information did not pass verification")
 	}
-	gpus := []string{}
-	for _, gi := range attestRes.GPUs {
-		gpus = append(gpus, gi.Model)
-	}
-	if len(gpus) == 0 {
-		err := errors.New("no gpus in attest report")
-		Log.Debugw(err.Error())
-		return nil, err
-	}
-	return gpus, nil
+
+	return nil, nil
 }

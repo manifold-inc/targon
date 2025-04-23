@@ -1,12 +1,9 @@
 package targon
 
 type AttestResponse struct {
-	Success   bool                   `json:"success,omitempty"`
-	Nonce     string                 `json:"nonce,omitempty"`
-	Token     string                 `json:"token,omitempty"`
-	Claims    map[string]AttestClaim `json:"claims,omitempty"`
-	Validated bool                   `json:"validated,omitempty"`
-	GPUs      []AttestGPU            `json:"gpus,omitempty"`
+	AttestationResult bool   `json:"attestation_result,omitempty"`
+	Token             string `json:"token,omitempty"`
+	Valid             bool   `json:"valid,omitempty"`
 }
 
 type AttestClaim struct {
