@@ -26,3 +26,11 @@ type AttestGPUInfo struct {
 	Measres            string `json:"measres,omitempty"`
 	AttestationSuccess bool   `json:"attestation_success,omitempty"`
 }
+
+type GPUAttestationResponse struct {
+	GPUAttestationSuccess    bool `json:"gpu_attestation_success"`
+	SwitchAttestationSuccess bool `json:"switch_attestation_success"`
+	GPUClaims                map[string]struct {
+		GPUType string `json:"gpu_type"`
+	} `json:"gpu_claims,omitempty"`
+}

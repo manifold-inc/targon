@@ -19,6 +19,7 @@ def load_policy(filename: str) -> Optional[str]:
         return None
 
 
+
 app = FastAPI()
 GPU_ATTESTATION_POLICY = load_policy("gpu_remote_policy")
 SWITCH_ATTESTATION_POLICY = load_policy("switch_remote_policy")

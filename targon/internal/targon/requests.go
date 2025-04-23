@@ -186,16 +186,30 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Debugw("Failed reading response body from nvidia-attest", "error", err)
 		return nil, err
 	}
-	isValid := false
-	err = json.Unmarshal(resBody, &isValid)
+
+	var attestResponse GPUAttestationResponse
+	err = json.Unmarshal(resBody, &attestResponse)
 	if err != nil {
 		Log.Debugw("Failed decoding json response from nvidia-attest", "error", err)
 		return nil, err
 	}
-	if !isValid {
-		Log.Debugw("GPU information did not pass verification")
-		return nil, errors.New("GPU Information did not pass verification")
+
+	if !attestResponse.GPUAttestationSuccess || !attestResponse.SwitchAttestationSuccess {
+		Log.Debugw("GPU or switch attestation failed",
+			"gpu_success", attestResponse.GPUAttestationSuccess,
+			"switch_success", attestResponse.SwitchAttestationSuccess)
+		return nil, errors.New("GPU or switch attestation failed")
 	}
 
-	return nil, nil
+	// Extract GPU types from the claims
+	var gpuTypes []string
+	if attestResponse.GPUClaims != nil {
+		for _, claims := range attestResponse.GPUClaims {
+			gpuTypes = append(gpuTypes, claims.GPUType)
+			Log.Debugw("GPU attestation successful",
+				"gpu_type", claims.GPUType)
+		}
+	}
+
+	return gpuTypes, nil
 }
