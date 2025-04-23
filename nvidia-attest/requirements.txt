@@ -3,3 +3,4 @@ uvicorn==0.30.6
 python-json-logger==3.2.1
 nv-attestation-sdk==2.4.0
 pyyaml==6.0.2
+pyjwt==2.10.1
