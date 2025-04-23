@@ -18,4 +18,5 @@ models.txt
 vllm
 config.json
 *.log
-!remote_policy.json
+!gpu_remote_policy.json
+!switch_remote_policy.json

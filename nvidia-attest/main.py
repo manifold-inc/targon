@@ -9,9 +9,9 @@ import jwt
 logger = setupLogging()
 
 
-def load_policy() -> Optional[str]:
+def load_policy(filename: str) -> Optional[str]:
     try:
-        with open("remote_policy.json", "r") as f:
+        with open(filename, "r") as f:
             policy = json.load(f)
         return json.dumps(policy)
     except Exception as e:
@@ -20,12 +20,12 @@ def load_policy() -> Optional[str]:
 
 
 app = FastAPI()
-ATTESTATION_POLICY = load_policy()
+GPU_ATTESTATION_POLICY = load_policy("gpu_remote_policy")
+SWITCH_ATTESTATION_POLICY = load_policy("switch_remote_policy")
 
 @app.get("/")
 def ping():
     return ""
-
 
 class AttestClaimInfo(BaseModel):
     hwmodel: str
@@ -134,7 +134,7 @@ def attest(req: Request) -> bool:
         )
         client.set_token("Verifier", req.data.token)
         client.set_nonce(req.expected_nonce)
-        valid: bool = client.validate_token(ATTESTATION_POLICY)  # type: ignore
+        valid: bool = client.validate_token(GPU_ATTESTATION_POLICY)  # type: ignore
         if not valid:
             return False
         
@@ -142,6 +142,7 @@ def attest(req: Request) -> bool:
         if not claims:
             return False
         
+
 
     except Exception as e:
         logger.error(f"Error during attestation: {e}")
