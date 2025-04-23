@@ -1,416 +1,427 @@
-# Targon: A Deterministic Verification of Large Language Models
+# Targon: The Confidential Decentralized AI Cloud
 
-Targon (Bittensor Subnet 4) is a deterministic verification mechanism that is used to incentivize miners
-to run OpenAI compliant endpoints and serve synthetic and organic queries.
+Targon is a next-generation AI infrastructure platform that leverages Confidential Compute (CC) technology to secure the entire AI stack. By providing a secure execution environment from hardware to application layers, Targon enables verifiable and trustworthy AI operations across the entire infrastructure in a decentralized fashion.
 
-NOTICE: Using this software, you must agree to the Terms and Agreements provided in the terms and
-conditions document. By downloading and running this software, you implicitly agree to these terms and conditions.
+NOTICE: Using this software, you must agree to the Terms and Agreements provided in the terms and conditions document. By downloading and running this software, you implicitly agree to these terms and conditions.
 
-# Targon v6
+## Table of Contents
 
-Targon v6 and v5 run in parallel. 70% of rewards go to v6 (once miners start
-passing verification) and 30% to v5.
-
-## Running v6
-
-v6 requires a Confidential Compute compatible node. We recommend either H100s or
-H200s. To install v6, simply run `./tvm/install` and pass the following flags
-
-```bash
-./tvm/install --submit --service-url http://tvm.targon.com:8080 --miner-hot-key MINER_HOT_KEY --private-key PRIVATE_KEY --public-key PUBLIC_KEY --validator-hot-key 5Hp18g9P8hLGKp9W3ZDr4bvJwba6b6bY3P2u3VdYf8yMR8FM
-```
-
-*To test this, use the same bash command but remove the ```--submit --service-url http://tvm.targon.com:8080``` flag.*
-
-### Explanation of Args
-
-1. **--miner-hot-key** ==> Your miner ss58 address that is **REGISTERED** on SN4. 
-1. **--private-key** ==> The corresponding private key for that hotkey, **without 0x at the start**. Used for Epistula headers.
-1. **--public-key** ==> Your corresponding public key for that hotkey, **without 0x at the start**. Used for Epistula headers.
-1. **--validator-hot-key** ==> Validator hotkey for the ```signed-for``` field in Epistula headers. This should always be the Manifold Validator hotkey.
-
-### How to access your keys
-```bash
-cd bittensor
-cd wallets
-cd default // or whatever your wallet name is
-cd hotkeys
-cat // whatever you named your hotkey
-```
-
-This will print your hotkey information including:
-```
-{"accountId": "0x...", "publicKey": "0x...", "privateKey": "...", "secretPhrase": "wool ...", "secretSeed": "0x...", "ss58Address": "5..."}
-```
-
-For reference of Epistula, see [attached](https://epistula.sybil.com/).
-
-Running the command will run you through the download and installation. It should take about 20 minutes. 
-
-Once that is done, update the v5 miner.py file to report all ip addresses of each CVM you are runnning. 
-This process should be very similar to your listing of model endpoints.
-
-# Table of Contents (v5)
-
-1. [Compute Requirements](#recommended-compute-requirements)
-1. [Installation](#installation)
-   - [Install PM2](#install-pm2)
-   - [Install Targon](#install-targon-on-your-machine)
-1. [How to Run Targon](#how-to-run-targon)
-   - [Running VLLM](#vllm)
-   - [Running a Miner](#running-a-miner)
-   - [Running a Validator](#running-a-validator)
-1. [What is a Deterministic Verification Network?](#what-is-a-deterministic-verification-network)
-   - [Role of a Miner](#role-of-a-miner)
-   - [Role of a Validator](#role-of-a-validator)
-1. [Features of Targon](#features-of-targon)
-   - [Full OpenAI Compliance](#full-openai-compliance)
-   - [Targon-Hub](#targon-hub)
-1. [How to Contribute](#how-to-contribute)
-
-# Recommended Compute Requirements
-
-For validators we recommend a 8xA100, although a 1xA100 could also be used. We
-plan on focusing on bringing these costs down in the coming updates.
-
-For miners, A100 or H100s are common choices. Benchmarking is up to the miner to
-determine what GPU works best for their optimizations.
-
-#### Minimum Viable Compute Recommendations
-
-- **VRAM:** 80 GB
-- **Storage:** 200 GB
-- **RAM:** 16 GB
-- **CPU**: 4 core
-
-# Installation
+1. [Overview](#overview)
+   - [Core Security Features](#core-security-features)
+   - [AI Infrastructure Capabilities](#ai-infrastructure-capabilities)
+   - [Current Implementation](#current-implementation)
+   - [Future Roadmap](#future-roadmap)
+2. [Running a Validator](#running-a-validator)
+   - [Validator Prerequisites](#validator-prerequisites)
+     - [Docker Installation](#docker-installation)
+     - [Docker Compose Installation](#docker-compose-installation)
+     - [Other Prerequisites](#other-prerequisites)
+   - [Validator Installation](#validator-installation)
+     - [Clone Repository](#1-clone-repository)
+     - [Environment Setup](#2-environment-setup)
+     - [Build Services](#3-build-services)
+   - [Validator Service Architecture](#validator-service-architecture)
+     - [NVIDIA Attest Service](#nvidia-attest-service)
+     - [Targon Service](#targon-service)
+   - [Validator Monitoring and Maintenance](#validator-monitoring-and-maintenance)
+     - [Logs](#logs)
+     - [Updates](#updates)
+     - [Troubleshooting](#troubleshooting)
+3. [Running a Miner](#running-a-miner)
+   - [Miner Prerequisites](#miner-prerequisites)
+   - [Launching TVM](#launching-tvm)
+     - [TVM Configuration](#tvm-configuration)
+     - [TVM Installation](#tvm-installation)
+     - [Updating Miner Config](#updating-miner-configuration)
+4. [Contribution Guidelines](#contribution-guidelines)
 
 ## Overview
 
-In order to run Targon, you will need to install PM2 and the Targon package. The
-following instructions apply only to Ubuntu OSes. For your specific OS, please
-refer to the official documentation.
+Targon provides a comprehensive secure AI infrastructure powered by Confidential Compute technology:
 
-### Install PM2 on your machine
+### Core Security Features
 
-#### Download NVM
+- Hardware-enforced memory encryption and protection
+- Secure boot with hardware root of trust
+- GPU TEE (Trusted Execution Environment) for isolated execution
+- Remote attestation for verifiable computation
+- Secure key management and cryptographic operations
+- Protected execution environment with memory isolation
 
-To install or update nvm, you should run the install script. To do that, you may
-either download and run the script manually, or use the following cURL or Wget
-command:
+### AI Infrastructure Capabilities
 
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-```
+- End-to-end secure model inference pipeline
+- Hardware-level attestation and verification
+- Protected model execution with Confidential Compute isolation
+- Verifiable computation through remote attestation
+- Secure memory management for AI workloads
+- Isolated execution environment for sensitive operations
 
-#### Add NVM to bash profile
+### Current Implementation
 
-Running either of the above commands downloads a script and runs it. The script
-clones the nvm repository to ~/.nvm, and attempts to add the source lines from
-the snippet below to the correct profile file (~/.bash_profile, ~/.zshrc,
-~/.profile, or ~/.bashrc).
+- NVIDIA Confidential Compute integration
+- Hardware-level security guarantees
+- Protected inference execution
+- Remote attestation capabilities
+- Secure memory encryption
+- Isolated compute resources
 
-```bash
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-```
+### Future Roadmap
 
-#### Install Node
-
-```bash
-nvm install node
-```
-
-#### Install PM2
-
-```bash
-npm install pm2@latest -g
-```
-
-You have now installed PM2.
-
-### Install Targon on your machine
-
-#### Clone the repository
-
-```bash
-git clone https://github.com/manifold-inc/targon.git
-cd targon
-```
-
-#### Install dependencies
-
-```bash
-python3 -m pip install -e .
-```
-
-You have now installed Targon. You can now run a validator or a miner.
-
-# How to Run Targon
-
-## Running a Miner
-
-Before starting or registering your miner in Targon, first you will want to run
-VLLM serving different images validators are requesting. You can find a list at
-https://stats.sybil.com/stats/validator under the live tab. The more models you
-run, the higher your incentive.
-
-You will also need to include
-`--enable-auto-tool-choice --tool-call-parser llama3_json` and
-`--enable-auto-tool-choice --tool-call-parser hermes` for your Llama and Hermes
-vLLM instances to support tool calling.
-
-Once you have one (or multiple) models running, modify the default miner code to
-proxy to the proper VLLM instance on each request. Verifiers will include the
-`X-Targon-Model` header so that the miner node does not need to parse the actual
-body.
-
-In the `miner.py` script you will find two functions called `list_models` and
-`list_nodes`. To serve multiple models you must:
-
-1. Fill this out to respond to validators with any model you currently have
-   available along with an estimate on how many queries per second you can
-   handle (below is an example):
-
-```py
-async def list_models(self):
-    return {
-        "ExampleName/Meta-Llama-3.1-8B-Instruct": 4,
-        "ExampleName/mythomax-l2-13b": 4,
-        "ExampleName/Hermes-3-Llama-3.1-8B": 4,
-        "ExampleName/Nxcode-CQ-7B-orpo": 4,
-        "ExampleName/deepseek-coder-33b-instruct": 4,
-        "ExampleName/Llama-3.1-Nemotron-70B-Instruct-HF": 4,
-    }
-```
-
-2. Update the `create_chat_completion` and `create_completion` methods in
-   neurons/miner.py to route to the appropriate vllm upstream server based on
-   the model (which is either in the headers or from the request payload's model
-   param)
-
-Once this is complete, you are ready to continue starting your miner node.
-
-### PM2
-
-Running a miner through PM2 will require the vLLM instance to be running.
-
-```bash
-pm2 start neurons/miner.py --name miner --interpreter  python3 -- --wallet.name [WALLET_NAME] --netuid 4 --wallet.hotkey [WALLET_HOTKEY] --subtensor.network finney --model-endpoint [MODEL_ENDPOINT] --api_key [API_KEY] --axon.port [AXON PORT] --logging.trace
-```
-
-> Please replace the following with your specific configuration:
->
-> - \[WALLET_NAME\]
-> - \[WALLET_HOTKEY\]
-> - \[MODEL_ENDPOINT\]
-> - \[API_KEY\]
-> - \[AXON_PORT\]
-
-NOTE: Trace logging is very verbose. You can use `--logging.info` instead for
-less log bloat.
-
-Additionally:
-
-```bash
---no-force-validator-permit [TRUE/FALSE]
-
-```
-
-is defaulted to false to force incoming requests to have a permit. Set this to
-true if you are having trouble getting requests from validators on the 'test'
-network.
+- Secure model training with Confidential Compute
+- Protected data processing and storage
+- Bare metal access for secure AI workloads
+- Comprehensive AI development platform
+- Developer-friendly tools and interfaces
+- Automated scaling and resource management
+- Multi-vendor Confidential Compute support:
+  - AMD SEV-SNP integration
+  - Additional hardware security technologies
 
 ## Running a Validator
 
-### PM2
+### Validator Prerequisites
 
-Validators are simply run through pm2, enabling auto restarts and auto updates.
-A validator should be run on at least an A100, but the larger the better, as
-larger clusters can handle more models. The machine should have
-[nvidia-smi / cuda](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#ubuntu)
-installed along with [docker](https://docs.docker.com/engine/install/ubuntu/).
+#### Docker Installation
 
-**No vllm instance needed**
+1. **Set up Docker's apt repository**
 
-Validator Instance:
+   ```bash
+   # Add Docker's official GPG key
+   sudo apt-get update
+   sudo apt-get install ca-certificates curl gnupg
+   sudo install -m 0755 -d /etc/apt/keyrings
+   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+   sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-```bash
-pm2 start neurons/validator.py --name validator --interperter python3 -- --wallet.name [WALLET_NAME]
+   # Add the repository to Apt sources
+   echo \
+     "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+     "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   ```
 
-```
+2. **Install Docker Engine**
 
-> Please replace the following with your specific configuration:
->
-> - \[WALLET_NAME\]
+   ```bash
+   # Update the package index
+   sudo apt-get update
 
-## Explanation of Args
+   # Install Docker Engine, containerd, and Docker Compose
+   sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   ```
 
-### Shared Args
+3. **Verify Installation**
 
-1. **--netuid** ==> Subnet Netuid. *Defaults to 4*
-1. **--epoch-length** ==> Default epoch length (how often we set weights,
-   measured in 12 second blocks). *Defaults to 360*
-1. **--mock** ==> Mock neuron and all network components. *Defaults to False*
+   ```bash
+   # Verify Docker Engine installation
+   sudo docker run hello-world
+   ```
 
-### Miner Args
+4. **Post-installation Steps**
 
-1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
-   \- wallet-hot) / neuron.name. *Defaults to miner*
-1. **--force_validator.permit** ==> If set, forces incoming requests to have a
-   permit. *Defaults to True*
-1. **--model-endpoint** ==> Endpoint to use for the OpenAi CompatibleClient.
-   *Defaults to "http://127.0.0.1:8000/v1"*
-1. **--api-key** ==> API key for OpenAi Compatible API. *Defaults to "12345"*
+   ```bash
+   # Create the docker group
+   sudo groupadd docker
 
-### Validator Args
+   # Add your user to the docker group
+   sudo usermod -aG docker $USER
 
-1. **--neuron.name** ==> Trials for this neuron go in neuron.root/ (wallet-cold
-   \- wallet-hot) / neuron.name. *Defaults to validator*
-1. **--timeout** ==> The timeout for each forward call in seconds. *Defaults to
-   8*
-1. **--vpermit-tao-limit** ==> The maximum number of TAO allowed to query a
-   validator with a permit. *Defaults to 4096*
-1. **--cache-file** ==> Pickle file to save score cache to. *Defaults to
-   cache.pickle*
-1. **--database.url** ==> Database URL to save Miner Data to Targon Hub.
-1. **--autoupdate-off** ==> Disable automatic updates to Targon on latest
-   version on Main if set. *Defaults to True*
-1. **--models.mode** ==> Mode to use for determining what models to run. Can be
-   one of:`default`, or `config`.
-   - `endpoint`: defaults to `https://targon.sybil.com/api/models`. This will
-     mimic the manifold validator
-   - `default`: only run NousResearch/Meta-Llama-3.1-8B-Instruct
-   - `config`: parse a text file named `models.txt` with a list of models
-     separated by newlines
-1. **--models.endpoint** ==> Only used when models.mode is `endpoint`. Sets the
-   api endpoint to ping for list of models. Defaults to targon hub.
+   # Activate the changes to groups
+   newgrp docker
+   ```
 
-> Example model config file `models.txt`
->
-> ```
-> NousResearch/Meta-Llama-3.1-8B-Instruct
-> NousResearch/Meta-Llama-3.1-70B-Instruct
-> NousResearch/Meta-Llama-3.1-405B-Instruct
-> ```
+#### Docker Compose Installation
 
-## Validator .env
-
-Some more robust settings can be applied via a .env file. Eventually, targon
-aims to move all settings to a .env file instead of cli arguments. Currently,
-the following .env variables are supported with their defaults.
-
-```
-AUTO_UPDATE=False # Turn off autoupdate. Overrides cli flag.
-IMAGE_TAG=latest # Verifier image tag. Useful for testing new updates.
-HEARTBEAT=False # Enable heartbeat. Requires pm2. Set to True to enable heartbeat monitoring.
-IS_TESTNET=False # If validator should run in testnet.
-```
-
-## Autoupdate
-
-Autoupdate is implemented in targon/utils.py. This is to ensure that your
-codebase matches the latest version on Main of the Targon Github Repository.
-
-### Validator Autoupdate
-
-Validator Autoupdate is implemented and defaulted to run once weights have been
-set. To **disable**, please add the flag to your command line build:
+Docker Compose is included in the Docker Engine installation above. Verify it's installed:
 
 ```bash
-pm2 start neurons/validator.py --name validator --interpreter python3 -- --wallet.name [WALLET_NAME] --autoupdate-off
+docker compose version
 ```
 
-### Miner Autoupdate
+#### Other Prerequisites
 
-Miner Autoupdate is **not** implemented. Miners will need to check the Targon
-repository and update themselves as new versions are released. If interested in
-utilizing the autoupdate feature that Validators use, please follow the steps
-below:
+- Basic compute resources (any device capable of running a Go binary and Python)
 
-*NOTE*: This will not be maintained by the Manifold Labs Team.
+### Validator Installation
 
-1. Import the autoupdate function into your miner script (neurons/miner.py) at
-   the top of the file.
+#### 1. Clone Repository
 
-```python
-from targon.updater import autoupdate
+   ```bash
+   git clone https://github.com/manifold-inc/targon.git
+   cd targon
+   ```
+
+#### 2. Environment Setup
+
+   Create a `.env` file in the project directory:
+
+   ```bash
+   # NVIDIA Attest Service
+   NVIDIA_ATTEST_ENDPOINT=http://localhost:3344
+
+   # Targon Configuration
+   VERSION=6.1.0
+   NETUID=4
+   CHAIN_ENDPOINT=wss://entrypoint-finney.opentensor.ai:443
+   ```
+
+#### 3. Build Services
+
+   ```bash
+   # Build NVIDIA Attest Service
+   docker compose build nvidia-attest
+
+   # Build Targon Service
+   docker compose build targon
+   ```
+
+### Validator Service Architecture
+
+#### NVIDIA Attest Service
+
+- Handles GPU attestation
+- Runs on port 3344
+- Required for validator operations
+- Provides hardware-level security verification
+
+#### Targon Service
+
+- Main application service
+- Handles validator operations
+- Communicates with Bittensor network
+- Built from Go source code
+
+### Validator Monitoring and Maintenance
+
+#### Logs
+
+```bash
+# View all logs
+docker compose logs -f
+
+# View specific service logs
+docker compose logs -f nvidia-attest
 ```
 
-3. Call the function at a place of your choosing.
+#### Updates
 
-```python
-    if self.config.autoupdate:
-        autoupdate(branch="main")
+```bash
+# Pull latest code
+git pull origin main
 
+# Rebuild and restart services
+docker compose down
+docker compose build
+docker compose up -d
 ```
 
-4. Relaunch your miner with the changes.
+#### Troubleshooting
 
-# What is A Deterministic Verification Network
+```bash
+# Check service status
+docker compose ps
 
-Validators send queries to miners that are then scored for speed, and verified
-by comparing the logprobs of the responses to a validators own model.
+# View detailed logs
+docker compose logs -f --tail=100
 
-## Role of a Miner
-
-A miner is a node that is responsible for generating a output from a query, both
-organic and synthetic.
-
-## Role of a Validator
-
-A validator is a node that is responsible for verifying a miner's output. The
-validator will send an openai compliant request to a miner with. The miner will
-then send back a response with the output. The validator will then use the log
-prob values of the response to verify that each miners response is accurate.
-Validators will keep score of each miners response time and use their averages
-to assign scores each epoch. Specifically, miner scores are the sum of the
-average TPS per model.
-
-# Features of Targon
-
-## Full OpenAI Compliance
-
-Validators can query miners directly using any openai package, and Epistula
-headers. Below is boilerplate for querying a miner in python.
-
-```py
-miner = openai.AsyncOpenAI(
-    base_url=f"http://{axon.ip}:{axon.port}/v1",
-    api_key="sn4",
-    max_retries=0,
-    timeout=Timeout(12, connect=5, read=5),
-    http_client=openai.DefaultAsyncHttpxClient(
-        event_hooks={
-            "request": [
-                # This injects Epistula headers right before the request is sent.
-                # wallet.hotkey is the public / private keypair
-                #
-                # You can find this function in the `epistula.py` file in 
-                # the targon repo
-                create_header_hook(wallet.hotkey, axon.hotkey_ss58)
-            ]
-        }
-    ),
-)
+# Restart services
+docker compose restart
 ```
 
-# How to Contribute
+## Running a Miner
 
-## Code Review
+### Miner Prerequisites
 
-Project maintainers reserve the right to weigh the opinions of peer reviewers
-using common sense judgement and may also weigh based on merit. Reviewers that
-have demonstrated a deeper commitment and understanding of the project over time
-or who have clear domain expertise may naturally have more weight, as one would
-expect in all walks of life. Where a patch set affects consensus-critical code,
-the bar will be much higher in terms of discussion and peer review requirements,
-keeping in mind that mistakes could be very costly to the wider community. This
-includes refactoring of consensus-critical code. Where a patch set proposes to
-change the Targon subnet, it must have been discussed extensively on the discord
-server and other channels, be accompanied by a widely discussed BIP and have a
-generally widely perceived technical consensus of being a worthwhile change
-based on the judgement of the maintainers. That being said, Manifold welcomes
-all PR's for the betterment of the subnet and Bittensor as a whole. We are
-striving for improvement at every interval and believe through open
-communication and sharing of ideas will success be attainable.
+Targon currently supprots Intel TDX Enabled Machines. Please refer to the documentation attached to set up your hardware before launching TVM.
+
+[Nvidia Deployment Guide for Intel TDX and KVM](https://docs.nvidia.com/cc-deployment-guide-tdx.pdf)
+
+Please ensure that your GPUs are configured to PPCIE Mode.
+
+### Launching TVM
+
+After completing all the prerequisite steps above, you are ready to run TVM. This process will:
+
+1. Attest your hardware configuration
+2. Execute the launch script for TVM
+3. Verify the Confidential Compute environment
+
+If you encounter any errors during this process, please review and correct your hardware configuration according to the guidelines in the previous sections.
+
+#### TVM Configuration
+
+Before installing TVM, you'll need to gather the following information:
+
+1. **Required Arguments**
+   - `--miner-hot-key`: Your miner SS58 address that is **REGISTERED** on SN4
+   - `--private-key`: The corresponding private key for your hotkey (without 0x prefix)
+   - `--public-key`: Your corresponding public key (without 0x prefix)
+   - `--validator-hot-key`: Validator hotkey for Epistula headers (always the Manifold Validator hotkey)
+
+2. **Accessing Your Keys**
+
+   ```bash
+   cd bittensor
+   cd wallets
+   cd default  # or your wallet name
+   cd hotkeys
+   cat <your_hotkey_name>
+   ```
+
+   This will display your hotkey information:
+
+   ```json
+   {
+     "accountId": "0x...",
+     "publicKey": "0x...",
+     "privateKey": "...",
+     "secretPhrase": "wool ...",
+     "secretSeed": "0x...",
+     "ss58Address": "5..."
+   }
+   ```
+
+#### TVM Installation
+
+1. **Clone Repository**
+
+   ```bash
+   # Clone the repository
+   git clone https://github.com/manifold-inc/targon.git
+   cd targon
+   ```
+
+2. **Run TVM Installer**
+
+   ```bash
+   # Run the TVM installer with network submission
+   ./tvm/install --submit --service-url http://tvm.targon.com:8080 --miner-hot-key MINER_HOT_KEY --private-key PRIVATE_KEY --public-key PUBLIC_KEY --validator-hot-key 5Hp18g9P8hLGKp9W3ZDr4bvJwba6b6bY3P2u3VdYf8yMR8FM
+   ```
+
+   > **Note**: To test without submitting to the network, remove the `--submit --service-url` flags.
+
+If you encounter any issues during verification, ensure that:
+
+- All prerequisite steps were completed successfully
+- Your GPU is properly configured for Confidential Compute
+- Your keys are correctly formatted and valid
+
+At this point, all setup on your TVM nodes is complete.
+
+### Updating Miner Configuration
+
+After setting up your TVM nodes, you need to update your miner configuration to report the IP addresses of each CVM you are running. 
+
+1. **Update the Configuration**
+   Edit your `miner.py` file to include the IP addresses of your TVM nodes. Add them to the list of endpoints that your miner reports to the network.
+
+   ```python
+   def get_cvm_nodes(self):
+       # Return the list of TVM nodes you are using
+       assert self.config_file
+       assert self.config_file.cvm_nodes
+       return self.config_file.cvm_nodes
+   ```
+
+   Make sure your configuration file includes the TVM nodes in the correct format:
+  
+   ```python
+   cvm_nodes = [
+       "http://<TVM_NODE_1_IP>:PORT",
+       "http://<TVM_NODE_2_IP>:PORT",
+   ]
+   ```
+
+2. **Verify Configuration**
+   - Ensure all TVM node IPs are correctly formatted
+   - Verify that the ports match your TVM node configurations
+   - Test the connection to each TVM node
+
+> **Note**: Make sure to keep your TVM node IPs up to date. If you add or remove TVM nodes, update this configuration accordingly.
+
+## Contribution Guidelines
+
+### Code Review Process
+
+1. **Review Requirements**
+   - All code changes must be reviewed by at least one maintainer
+   - Consensus-critical code requires multiple reviews
+   - Maintainers may weigh reviewer opinions based on expertise and project commitment
+
+2. **Review Standards**
+   - Code must follow project style guidelines
+   - Changes must include appropriate tests
+   - Documentation must be updated for significant changes
+   - Performance impacts must be considered and documented
+
+### Subnet Changes
+
+1. **Proposal Requirements**
+   - Must be discussed on Discord and other community channels
+   - Must demonstrate clear technical consensus
+   - Must be approved by project maintainers
+
+2. **Implementation Process**
+   - Changes must be thoroughly tested
+   - Must include migration plans if needed
+   - Must consider backward compatibility
+   - Must document security implications
+
+### Getting Started
+
+1. **Development Setup**
+
+   ```bash
+   # Clone the repository
+   git clone https://github.com/manifold-inc/targon.git
+   cd targon
+
+   # Create a new branch
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Making Changes**
+   - Follow the existing code style
+   - Write clear commit messages
+   - Include tests for new features
+   - Update documentation as needed
+
+3. **Submitting Changes**
+
+   ```bash
+   # Push your changes
+   git push origin feature/your-feature-name
+
+   # Create a pull request on GitHub
+   # Fill out the PR template completely
+   ```
+
+### Best Practices
+
+1. **Code Quality**
+   - Write clear, maintainable code
+   - Include comments for complex logic
+   - Follow security best practices
+   - Consider performance implications
+
+2. **Documentation**
+   - Update README for significant changes
+   - Document new features thoroughly
+   - Include usage examples
+
+### Community Guidelines
+
+1. **Communication**
+   - Be respectful and professional
+   - Provide constructive feedback
+   - Help others when possible
+   - Follow the project's code of conduct
+
+2. **Collaboration**
+   - Respond to review comments promptly
+   - Be open to feedback and suggestions
+   - Help maintain project quality
+   - Share knowledge with the community
+
+Remember: The goal is to improve Targon and Bitten
