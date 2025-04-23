@@ -44,14 +44,14 @@ class GPUClaims(BaseModel):
 class AttestationResponse(BaseModel):
     gpu_attestation_success: bool
     switch_attestation_success: bool
-    gpu_claims: Optional[Dict[str, GPUClaims]] = None
+    gpu_claims: Optional[Dict[str, GPUClaims]] | bool = None
 
 class Request(BaseModel):
     gpu: GPUAttestation
     switch: SwitchAttestation
     expected_nonce: str
 
-def extract_gpu_claims_from_token(token_data: str, expected_nonce: str) -> Dict[str, Any]:
+def extract_gpu_claims_from_token(token_data: str, expected_nonce: str) -> Dict[str, Any] | bool:
     """
     Extract claims from token data using PyJWT.
     
@@ -90,22 +90,25 @@ def extract_gpu_claims_from_token(token_data: str, expected_nonce: str) -> Dict[
                                                 options={"verify_signature": False},
                                                 algorithms=["ES384", "HS256"]  # Support both NVIDIA's ES384 and test HS256
                                             )
+
+
+                                            if gpu_token_data.get("eat_nonce") != expected_nonce:
+                                                return False
+
                                             
                                             # Add this GPU's claims to our results
                                             gpu_claims[gpu_id] = {
                                                 "gpu_type": gpu_token_data.get("gpu_type", "Unknown"),
                                             }
 
-                                            if gpu_token_data.get("eat_nonce") != expected_nonce:
-                                                return False
                                             
                                         except jwt.PyJWTError as e:
                                             logger.debug(f"Failed to decode JWT for {gpu_id}: {str(e)}")
-                                            gpu_claims[gpu_id] = {
-                                                "error": f"Failed to decode JWT: {str(e)}"
-                                            }
+                                            return False
+
             except Exception as e:
                 logger.debug(f"Failed to parse token as JSON: {str(e)}")
+                return False
         
         # If we successfully extracted claims, return them
         if gpu_claims:
@@ -113,11 +116,11 @@ def extract_gpu_claims_from_token(token_data: str, expected_nonce: str) -> Dict[
             
         # If we get here, we couldn't extract claims
         logger.debug("Unable to extract claims from token")
-        return {}
+        return False
         
     except Exception as e:
         logger.warning(f"Error extracting claims from token: {str(e)}")
-        return {}
+        return False
 
 def extract_switch_claims_from_token(token_data: str, expected_nonce: str) -> bool:
     """
@@ -181,7 +184,7 @@ def extract_switch_claims_from_token(token_data: str, expected_nonce: str) -> bo
 def attest(req: Request) -> AttestationResponse:
     try:        
         # GPU Attestation
-        gpu_client = attestation.Attestation("GPUVerifier")
+        gpu_client = attestation.Attestation()
         gpu_client.set_name("HGX-node")
         gpu_client.set_nonce(req.expected_nonce)
         gpu_client.set_claims_version("2.0")
@@ -189,7 +192,7 @@ def attest(req: Request) -> AttestationResponse:
         
         gpu_client.add_verifier(
             dev=attestation.Devices.GPU,
-            env=attestation.Environment.LOCAL,
+            env=attestation.Environment.REMOTE,
             url="https://nras.attestation.nvidia.com/v3/attest/gpu",
             evidence="",
             ocsp_url="https://ocsp.ndis.nvidia.com/",
@@ -197,7 +200,7 @@ def attest(req: Request) -> AttestationResponse:
         )
 
         # Set the token from the request
-        gpu_client.set_token("GPUVerifier", req.gpu.token)
+        gpu_client.set_token("HGX-node", req.gpu.token)
         
         # Validate GPU token with policy
         if not gpu_client.validate_token(GPU_ATTESTATION_POLICY):
@@ -215,7 +218,7 @@ def attest(req: Request) -> AttestationResponse:
             )
 
         # Switch Attestation
-        switch_client = attestation.Attestation("SwitchVerifier")
+        switch_client = attestation.Attestation()
         switch_client.set_name("HGX-node")
         switch_client.set_nonce(req.expected_nonce)
         switch_client.set_claims_version("2.0")
@@ -223,7 +226,7 @@ def attest(req: Request) -> AttestationResponse:
         
         switch_client.add_verifier(
             dev=attestation.Devices.SWITCH,
-            env=attestation.Environment.LOCAL,
+            env=attestation.Environment.REMOTE,
             url="https://nras.attestation.nvidia.com/v3/attest/switch",
             evidence="",
             ocsp_url="https://ocsp.ndis.nvidia.com/",
@@ -231,14 +234,13 @@ def attest(req: Request) -> AttestationResponse:
         )
 
         # Set the token from the request
-        switch_client.set_token("SwitchVerifier", req.switch.token)
+        switch_client.set_token("HGX-node", req.switch.token)
         
         # Validate switch token with policy
         if not switch_client.validate_token(SWITCH_ATTESTATION_POLICY):
             return AttestationResponse(
                 gpu_attestation_success=True,
                 switch_attestation_success=False,
-                gpu_claims=gpu_claims
             )
 
         # Verify switch claims
@@ -246,7 +248,6 @@ def attest(req: Request) -> AttestationResponse:
             return AttestationResponse(
                 gpu_attestation_success=True,
                 switch_attestation_success=False,
-                gpu_claims=gpu_claims
             )
 
         return AttestationResponse(
