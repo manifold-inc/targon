@@ -2,18 +2,14 @@ package targon
 
 type AttestResponse struct {
 	GPU struct {
-		Nonce             string  `json:"nonce"`
-		Error             *string `json:"error"`
-		AttestationResult bool    `json:"attestation_result"`
-		Token             string  `json:"token"`
-		Valid             bool    `json:"valid"`
+		AttestationResult bool   `json:"attestation_result"`
+		Token             string `json:"token"`
+		Valid             bool   `json:"valid"`
 	} `json:"gpu"`
 	Switch struct {
-		Nonce             string  `json:"nonce"`
-		Error             *string `json:"error"`
-		AttestationResult bool    `json:"attestation_result"`
-		Token             string  `json:"token"`
-		Valid             bool    `json:"valid"`
+		AttestationResult bool   `json:"attestation_result"`
+		Token             string `json:"token"`
+		Valid             bool   `json:"valid"`
 	} `json:"switch"`
 }
 

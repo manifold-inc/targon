@@ -12,10 +12,10 @@ import (
 	"targon/internal/setup"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"github.com/subtrahend-labs/gobt/sigtools"
-	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
 func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
