@@ -155,16 +155,28 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		return nil, err
 	}
 
-	if !attestRes.AttestationResult {
-		return nil, errors.New("attestation failed")
+	if !attestRes.GPU.AttestationResult {
+		return nil, errors.New("gpu attestation failed")
 	}
 
-	if !attestRes.Valid {
-		return nil, errors.New("attestation invalid")
+	if !attestRes.GPU.Valid {
+		return nil, errors.New("gpu attestation invalid")
+	}
+
+	if !attestRes.Switch.AttestationResult {
+		return nil, errors.New("switch attestation failed")
+	}
+
+	if !attestRes.Switch.Valid {
+		return nil, errors.New("switch attestation invalid")
 	}
 
 	// Validate Attestation
-	body, _ = json.Marshal(map[string]any{"data": attestRes, "expected_nonce": nonce})
+	body, _ = json.Marshal(map[string]any{
+		"gpu":            attestRes.GPU,
+		"switch":         attestRes.Switch,
+		"expected_nonce": nonce,
+	})
 	req, err = http.NewRequest("POST", fmt.Sprintf("%s/attest", c.Deps.Env.NVIDIA_ATTEST_ENDPOINT), bytes.NewBuffer(body))
 	if err != nil {
 		Log.Warnw("Failed to generate request to nvidia-attest", "error", err)
