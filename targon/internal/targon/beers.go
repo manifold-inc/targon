@@ -11,8 +11,8 @@ import (
 )
 
 type GPUData struct {
-	UID      string   `json:"uid"`
-	GPUTypes []string `json:"gpu_types"`
+	Uid      string   `json:"uid"`
+	Data []string `json:"data"`
 }
 
 func sendGPUDataToBeers(c *Core, client *http.Client, data any) error {
