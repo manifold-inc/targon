@@ -17,6 +17,48 @@ import (
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 
+const BEERS_URL = "https://beers.targon.com"
+
+type GPUData struct {
+	UID      string   `json:"uid"`
+	GPUTypes []string `json:"gpu_types"`
+}
+
+func sendGPUDataToBeers(c *Core, client *http.Client, data []GPUData, n *runtime.NeuronInfo) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal GPU data: %w", err)
+	}
+
+	headers, err := boilerplate.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), body)
+	if err != nil {
+		return fmt.Errorf("failed generating epistula headers: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/mongo", BEERS_URL), bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	req.Close = true
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request to beers: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("beers endpoint returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string, error) {
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
@@ -75,6 +117,16 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 	nwg.Wait()
 
 	c.NeuronHardware[fmt.Sprintf("%d", n.UID.Int64())] = gpusModels
+
+	// Send GPU data to beers
+	gpuData := GPUData{
+		UID:      uid,
+		GPUTypes: gpusModels,
+	}
+	if err := sendGPUDataToBeers(c, client, []GPUData{gpuData}, n); err != nil {
+		Log.Warnw("Failed to send GPU data to beers", "error", err)
+	}
+
 	return gpusModels, nil
 }
 
