@@ -98,8 +98,14 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 	}
 	wg.Wait()
 	c.Deps.Log.Infof("Found %d miners with nodes", len(c.NeuronHardware))
+
+	var beersData []GPUData
 	for k, v := range c.NeuronHardware {
+		beersData = append(beersData, GPUData{UID: k, GPUTypes: v})
 		c.Deps.Log.Infow("nodes for "+k, "nodes", len(v))
+	}
+	if err := sendGPUDataToBeers(c, client, beersData); err != nil {
+		c.Deps.Log.Warnw("Failed to send GPU data to beers", "error", err)
 	}
 }
 
