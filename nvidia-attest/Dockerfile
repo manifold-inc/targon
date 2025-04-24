@@ -5,7 +5,8 @@ WORKDIR /app
 
 # Make sure we arent missing anything
 RUN apt-get -y update; apt-get -y install curl
-COPY remote_policy.json .
+COPY gpu_remote_policy.json .
+COPY switch_remote_policy.json .
 COPY requirements.txt . 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY . .
