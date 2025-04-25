@@ -12,8 +12,6 @@ import (
 	"targon/internal/setup"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types/extrinsic"
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types/extrinsic/extensions"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/runtime"
@@ -133,7 +131,6 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 		return
 	}
 	ops, err := sigtools.CreateSigningOptions(c.Deps.Client, c.Deps.Hotkey, nil)
-	extrinsic.PayloadMutatorFns[extensions.SignedExtensionName("CommitmentsSignedExtension")] = func(payload *extrinsic.Payload) {}
 	if err != nil {
 		c.Deps.Log.Errorw("Failed creating sigining opts", "error", err)
 		return
