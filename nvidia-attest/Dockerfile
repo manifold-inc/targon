@@ -11,6 +11,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY . .
 
+#TODO: better way to do this
+ENV VERSION=6.1.1
+
 HEALTHCHECK --interval=1s --timeout=5s --retries=15 CMD curl --silent --fail http://0.0.0.0 > /dev/null || exit 1
 
 RUN export PYTHONUNBUFFERED=1
