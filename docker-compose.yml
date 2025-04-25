@@ -1,0 +1,13 @@
+services:
+  nvidia-attest: 
+    image: manifoldlabs/targon-nvidia-attest:latest
+    build:
+      dockerfile: Dockerfile
+      context: ./nvidia-attest
+
+  targon:
+    image: manifoldlabs/targon:latest
+    build:
+      dockerfile: Dockerfile
+      context: ./targon
+    env_file: .env

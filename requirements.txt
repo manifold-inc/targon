@@ -1,8 +1,0 @@
-bittensor==9.0.0
-pandas==2.2.2
-numpy==2.0.1
-nanoid==2.0.0
-python-dotenv==1.0.1
-substrate-interface==1.7.11
-uuid==1.30.0
-nv-attestation-sdk==2.3.0
