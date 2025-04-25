@@ -20,7 +20,7 @@ import (
 
 func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 	v.AddBlockCallback(func(h types.Header) {
-		logBlockCallback(c, h)
+		go logBlockCallback(c, h)
 	})
 	v.AddBlockCallback(func(h types.Header) {
 		getNeuronsCallback(v, c, h)
@@ -31,11 +31,11 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 	v.AddBlockCallback(func(h types.Header) {
 		logWeights(c, h)
 	})
-	//if !c.Deps.Env.DEBUG {
-	//	v.AddBlockCallback(func(h types.Header) {
-	//		setWeights(v, c, h)
-	//	})
-	//}
+	if !c.Deps.Env.DEBUG {
+		v.AddBlockCallback(func(h types.Header) {
+			setWeights(v, c, h)
+		})
+	}
 }
 
 func logBlockCallback(c *Core, h types.Header) {
