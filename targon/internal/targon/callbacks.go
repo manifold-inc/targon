@@ -178,7 +178,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16) {
 		uids = append(uids, types.NewU16(uint16(uidInt)))
 		scores = append(scores, thisScore)
 	}
-	minerCut := .15
+	minerCut := .25
 	burnKey := 28
 	scores = Normalize(scores, minerCut)
 	scores = append(scores, 1-minerCut)

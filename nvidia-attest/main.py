@@ -237,7 +237,7 @@ def attest(req: Request) -> AttestationResponse:
 
         gpu_client.add_verifier(
             dev=attestation.Devices.GPU,
-            env=attestation.Environment.REMOTE,
+            env=attestation.Environment.LOCAL,
             url="https://nras.attestation.nvidia.com/v3/attest/gpu",
             evidence="",
             ocsp_url="https://ocsp.ndis.nvidia.com/",
@@ -273,7 +273,7 @@ def attest(req: Request) -> AttestationResponse:
 
         switch_client.add_verifier(
             dev=attestation.Devices.SWITCH,
-            env=attestation.Environment.REMOTE,
+            env=attestation.Environment.LOCAL,
             url="https://nras.attestation.nvidia.com/v3/attest/switch",
             evidence="",
             ocsp_url="https://ocsp.ndis.nvidia.com/",
