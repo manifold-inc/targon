@@ -9,14 +9,13 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 
 	"targon/internal/subtensor/utils"
 
 	"github.com/google/uuid"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
+	"go.uber.org/zap"
 )
 
 func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string, error) {
@@ -26,15 +25,22 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		err := errors.New("inactive miner")
 		Log.Debug(err.Error())
 		return nil, err
-
 	}
 	var neuronIpAddr net.IP = n.AxonInfo.IP.Bytes()
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/cvm", neuronIpAddr, n.AxonInfo.Port), nil)
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("http://%s:%d/cvm", neuronIpAddr, n.AxonInfo.Port),
+		nil,
+	)
 	if err != nil {
 		Log.Warnw("Failed to generate request to miner", "error", err)
 		return nil, err
 	}
-	headers, err := boilerplate.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
+	headers, err := boilerplate.GetEpistulaHeaders(
+		c.Deps.Hotkey,
+		utils.AccountIDToSS58(n.Hotkey),
+		[]byte{},
+	)
 	if err != nil {
 		Log.Warnw("Failed generating epistula headers", "error", err)
 		return nil, err
@@ -48,57 +54,62 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		Log.Debugw("Failed sending request to miner", "error", err)
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		Log.Debugw("Miner sent back unexpected status", "status", fmt.Sprintf("%d", resp.StatusCode))
+		Log.Debugw(
+			"Miner sent back unexpected status",
+			"status",
+			fmt.Sprintf("%d", resp.StatusCode),
+		)
 		return nil, fmt.Errorf("bad status code %d", resp.StatusCode)
 	}
 	var nodes []string
 	err = json.NewDecoder(resp.Body).Decode(&nodes)
-	resp.Body.Close()
 	if err != nil {
 		Log.Debugw("Failed reading miner response", "error", err)
 		return nil, err
 	}
-	nwg := sync.WaitGroup{}
-	nwg.Add(len(nodes))
-	gpusModels := []string{}
-	nmu := sync.Mutex{}
-
-	tr := &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Minute,
-		MaxConnsPerHost:     1,
-		DisableKeepAlives:   true,
-	}
-	attestClient := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
-
-	for _, node := range nodes {
-		go func() {
-			defer nwg.Done()
-			ok := CheckCVMHealth(c, client, n, node)
-			if !ok {
-				c.Deps.Log.Infow("Failed healthcheck", "uid", uid)
-				return
-			}
-
-			c.Deps.Log.Infow("Passed Healthcheck", "uid", uid)
-			gpus, err := CheckCVMAttest(c, attestClient, n, node)
-			if err != nil {
-				c.Deps.Log.Infow("Failed Attest", "uid", uid, "error", err)
-				return
-			}
-			c.Deps.Log.Infow("Passed CVM Attest", "uid", uid)
-			nmu.Lock()
-			gpusModels = append(gpusModels, gpus...)
-			nmu.Unlock()
-		}()
-	}
-	nwg.Wait()
-
-	c.Deps.Log.Infow("Found gpu models for miner", "uid", uid)
-	c.NeuronHardware[uid] = gpusModels
-
-	return gpusModels, nil
+	return nodes, nil
+	//nwg := sync.WaitGroup{}
+	//nwg.Add(len(nodes))
+	//gpusModels := []string{}
+	//nmu := sync.Mutex{}
+	//
+	//tr := &http.Transport{
+	//	TLSHandshakeTimeout: 5 * time.Minute,
+	//	MaxConnsPerHost:     1,
+	//	DisableKeepAlives:   true,
+	//}
+	//attestClient := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
+	//
+	//for _, node := range nodes {
+	//	go func() {
+	//		defer nwg.Done()
+	//		ok := CheckCVMHealth(c, client, n, node)
+	//		if !ok {
+	//			c.Deps.Log.Infow("Failed healthcheck", "uid", uid)
+	//			return
+	//		}
+	//
+	//		c.Deps.Log.Infow("Passed Healthcheck", "uid", uid)
+	//		gpus, err := CheckCVMAttest(c, attestClient, n, node)
+	//		if err != nil {
+	//			c.Deps.Log.Infow("Failed Attest", "uid", uid, "error", err)
+	//			return
+	//		}
+	//		c.Deps.Log.Infow("Passed CVM Attest", "uid", uid)
+	//		nmu.Lock()
+	//		gpusModels = append(gpusModels, gpus...)
+	//		nmu.Unlock()
+	//	}()
+	//}
+	//nwg.Wait()
+	//
+	//c.Deps.Log.Infow("Found gpu models for miner", "uid", uid)
+	//c.NeuronHardware[uid] = gpusModels
+	//
+	//return gpusModels, nil
 }
 
 func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP string) bool {
@@ -110,7 +121,11 @@ func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Debugw("Failed to generate request to miner", "error", err)
 		return false
 	}
-	headers, err := boilerplate.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), []byte{})
+	headers, err := boilerplate.GetEpistulaHeaders(
+		c.Deps.Hotkey,
+		utils.AccountIDToSS58(n.Hotkey),
+		[]byte{},
+	)
 	if err != nil {
 		Log.Debugw("Failed generating epistula headers", "error", err)
 		return false
@@ -132,22 +147,32 @@ type AttestBody struct {
 	Nonce string `json:"nonce"`
 }
 
-func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP string) ([]string, error) {
-	uid := fmt.Sprintf("%d", n.UID.Int64())
-	Log := c.Deps.Log.With("uid", uid)
-	h1 := strings.ReplaceAll(uuid.NewString(), "-", "")
-	h2 := strings.ReplaceAll(uuid.NewString(), "-", "")
-	nonce := h1 + h2
+func getCVMAttestFromNode(
+	c *Core,
+	client *http.Client,
+	n *runtime.NeuronInfo,
+	cvmIP string,
+	log *zap.SugaredLogger,
+	nonce string,
+) (*AttestResponse, error) {
 	data := AttestBody{Nonce: nonce}
 	body, _ := json.Marshal(data)
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/api/v1/attest", cvmIP), bytes.NewBuffer(body))
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%s/api/v1/attest", cvmIP),
+		bytes.NewBuffer(body),
+	)
 	if err != nil {
-		Log.Debugw("Failed to generate request to miner", "error", err)
+		log.Debugw("Failed to generate request to miner", "error", err)
 		return nil, err
 	}
-	headers, err := boilerplate.GetEpistulaHeaders(c.Deps.Hotkey, utils.AccountIDToSS58(n.Hotkey), body)
+	headers, err := boilerplate.GetEpistulaHeaders(
+		c.Deps.Hotkey,
+		utils.AccountIDToSS58(n.Hotkey),
+		body,
+	)
 	if err != nil {
-		Log.Debugw("Failed generating epistula headers", "error", err)
+		log.Debugw("Failed generating epistula headers", "error", err)
 		return nil, err
 	}
 
@@ -158,24 +183,110 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
-		Log.Debugw("Failed sending request to miner", "error", err)
+		log.Debugw("Failed sending request to miner", "error", err)
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		Log.Debugw("Bad status code from miner attest", "status", fmt.Sprintf("%d", resp.StatusCode))
+		log.Debugw(
+			"Bad status code from miner attest",
+			"status",
+			fmt.Sprintf("%d", resp.StatusCode),
+		)
 		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
 	}
 	resBody, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
 	if err != nil {
-		Log.Debugw("Failed reading response", "error", err)
+		log.Debugw("Failed reading response", "error", err)
 		return nil, err
 	}
 	var attestRes AttestResponse
 	err = json.Unmarshal(resBody, &attestRes)
 	if err != nil {
-		Log.Debugw("Failed unmarshaling response", "error", err)
+		log.Debugw("Failed unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &attestRes, nil
+}
+
+func verifyAttestResponse(
+	c *Core,
+	client *http.Client,
+	attestRes *AttestResponse,
+	nonce string,
+	log *zap.SugaredLogger,
+) (*GPUAttestationResponse, error) {
+	// Validate Attestation
+	body, err := json.Marshal(map[string]any{
+		"gpu":            attestRes.GPU,
+		"switch":         attestRes.Switch,
+		"expected_nonce": nonce,
+	})
+	if err != nil {
+		return nil, errors.New("failed marshaling miner attest response")
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/attest", c.Deps.Env.NVIDIA_ATTEST_ENDPOINT),
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		log.Warnw("Failed to generate request to nvidia-attest", "error", err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Close = true
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Warnw("Failed sending request to nvidia-attest", "error", err)
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		log.Warnw(
+			"Bad status code from nvidia-attest",
+			"status",
+			fmt.Sprintf("%d", resp.StatusCode),
+		)
+		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
+	}
+	resBody, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		log.Warnw("Failed reading response body from nvidia-attest", "error", err)
+		return nil, err
+	}
+
+	var attestResponse GPUAttestationResponse
+	err = json.Unmarshal(resBody, &attestResponse)
+	if err != nil {
+		log.Debugw("Failed decoding json response from nvidia-attest", "error", err)
+		return nil, err
+	}
+
+	if !attestResponse.GPUAttestationSuccess || !attestResponse.SwitchAttestationSuccess {
+		log.Debugw("GPU or switch attestation failed",
+			"gpu_success", attestResponse.GPUAttestationSuccess,
+			"switch_success", attestResponse.SwitchAttestationSuccess)
+		return nil, errors.New("GPU or switch attestation failed")
+	}
+	return &attestResponse, nil
+}
+
+func CheckCVMAttest(
+	c *Core,
+	client *http.Client,
+	n *runtime.NeuronInfo,
+	cvmIP string,
+) ([]string, error) {
+	uid := fmt.Sprintf("%d", n.UID.Int64())
+	Log := c.Deps.Log.With("uid", uid)
+	h1 := strings.ReplaceAll(uuid.NewString(), "-", "")
+	h2 := strings.ReplaceAll(uuid.NewString(), "-", "")
+	nonce := h1 + h2
+	attestRes, err := getCVMAttestFromNode(c, client, n, cvmIP, Log, nonce)
+	if err != nil {
 		return nil, err
 	}
 
@@ -203,53 +314,10 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		return nil, err
 	}
 
-	// Validate Attestation
-	body, err = json.Marshal(map[string]any{
-		"gpu":            attestRes.GPU,
-		"switch":         attestRes.Switch,
-		"expected_nonce": nonce,
-	})
+	// TODO
+	attestResponse, err := verifyAttestResponse(c, client, attestRes, nonce, Log)
 	if err != nil {
-		Log.Debug("failed marshaling miner attest response", "error", err.Error())
-		return nil, errors.New("failed marshaling miner attest response")
-	}
-
-	req, err = http.NewRequest("POST", fmt.Sprintf("%s/attest", c.Deps.Env.NVIDIA_ATTEST_ENDPOINT), bytes.NewBuffer(body))
-	if err != nil {
-		Log.Warnw("Failed to generate request to nvidia-attest", "error", err)
 		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Close = true
-	resp, err = client.Do(req)
-	if err != nil {
-		Log.Warnw("Failed sending request to nvidia-attest", "error", err)
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		Log.Warnw("Bad status code from nvidia-attest", "status", fmt.Sprintf("%d", resp.StatusCode))
-		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
-	}
-	resBody, err = io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		Log.Warnw("Failed reading response body from nvidia-attest", "error", err)
-		return nil, err
-	}
-
-	var attestResponse GPUAttestationResponse
-	err = json.Unmarshal(resBody, &attestResponse)
-	if err != nil {
-		Log.Debugw("Failed decoding json response from nvidia-attest", "error", err)
-		return nil, err
-	}
-
-	if !attestResponse.GPUAttestationSuccess || !attestResponse.SwitchAttestationSuccess {
-		Log.Debugw("GPU or switch attestation failed",
-			"gpu_success", attestResponse.GPUAttestationSuccess,
-			"switch_success", attestResponse.SwitchAttestationSuccess)
-		return nil, errors.New("GPU or switch attestation failed")
 	}
 
 	// Extract GPU types from the claims

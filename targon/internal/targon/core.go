@@ -9,13 +9,29 @@ import (
 )
 
 type Core struct {
-	Neurons        []runtime.NeuronInfo
-	Deps           *setup.Dependencies
-	NeuronHardware map[string][]string
+	Neurons map[string]runtime.NeuronInfo
+	Deps    *setup.Dependencies
+	// uid -> nodes
+	Mnmu       sync.Mutex
+	MinerNodes map[string][]string
+	// uid -> nodes -> []passed
+	Hpmu              sync.Mutex
+	HealthcheckPasses map[string]map[string][]bool
+	// uid -> nodes -> gpus
+	PAmu              sync.Mutex
+	PassedAttestation map[string]map[string][]string
+
 	// Global core lock
 	mu sync.Mutex
 }
 
 func CreateCore(d *setup.Dependencies) *Core {
-	return &Core{Deps: d, NeuronHardware: map[string][]string{}}
+	// TODO init maps
+	return &Core{
+		Deps:              d,
+		MinerNodes:        map[string][]string{},
+		HealthcheckPasses: map[string]map[string][]bool{},
+		PassedAttestation: map[string]map[string][]string{},
+		Neurons:           map[string]runtime.NeuronInfo{},
+	}
 }

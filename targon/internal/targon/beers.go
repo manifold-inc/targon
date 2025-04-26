@@ -5,17 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
 	"targon/internal/setup"
 
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
 type GPUData struct {
-	Uid      string   `json:"uid"`
+	Uid  string              `json:"uid"`
 	Data map[string][]string `json:"data"`
 }
 
 func sendGPUDataToBeers(c *Core, client *http.Client, data any) error {
+	if c.Deps.Env.DEBUG {
+		return nil
+	}
 	body, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal GPU data: %w", err)
@@ -26,7 +30,11 @@ func sendGPUDataToBeers(c *Core, client *http.Client, data any) error {
 		return fmt.Errorf("failed generating epistula headers: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/mongo", setup.BEERS_URL), bytes.NewBuffer(body))
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/mongo", setup.BEERS_URL),
+		bytes.NewBuffer(body),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -49,4 +57,3 @@ func sendGPUDataToBeers(c *Core, client *http.Client, data any) error {
 
 	return nil
 }
-

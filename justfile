@@ -7,6 +7,10 @@ default:
 up:
   docker compose up -d --build --force-recreate
 
+down:
+  docker compose down --remove-orphans
+
 update:
   git pull
   docker compose up -d --build --force-recreate
+
