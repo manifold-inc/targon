@@ -1,13 +1,12 @@
 {
-  "version": "3.0",
-  "authorization-rules": {
+  "version":"3.0",
+  "authorization-rules":{
     "type": "JWT",
     "overall-claims": {
-      "iss": "LOCAL_SWITCH_VERIFIER",
       "x-nvidia-overall-att-result": true,
       "x-nvidia-ver": "2.0"
     },
-    "detached-claims": {
+    "detached-claims":{
       "measres": "success",
       "x-nvidia-switch-arch-check": true,
       "x-nvidia-switch-bios-rim-measurements-available": true,

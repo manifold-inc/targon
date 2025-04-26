@@ -247,7 +247,7 @@ def attest(req: Request) -> AttestationResponse:
         )
 
         # Set the token from the request
-        gpu_client.set_token("HGX-node", req.gpu.token)
+        gpu_client.set_token("HGX-node", req.gpu_remote.token)
 
         # Validate GPU token with policy
         if not gpu_client.validate_token(GPU_ATTESTATION_POLICY):
@@ -284,7 +284,7 @@ def attest(req: Request) -> AttestationResponse:
         )
 
         # Set the token from the request
-        switch_client.set_token("HGX-node", req.switch.token)
+        switch_client.set_token("HGX-node", req.switch_remote.token)
 
         # Validate switch token with policy
         if not switch_client.validate_token(SWITCH_ATTESTATION_POLICY):
