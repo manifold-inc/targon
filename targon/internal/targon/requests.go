@@ -48,7 +48,6 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		Log.Debugw("Failed sending request to miner", "error", err)
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		Log.Debugw("Miner sent back unexpected status", "status", fmt.Sprintf("%d", resp.StatusCode))
@@ -56,6 +55,7 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 	}
 	var nodes []string
 	err = json.NewDecoder(resp.Body).Decode(&nodes)
+	resp.Body.Close()
 	if err != nil {
 		Log.Debugw("Failed reading miner response", "error", err)
 		return nil, err
@@ -124,10 +124,8 @@ func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Debugw("Failed sending request to miner", "error", err)
 		return false
 	}
-	if resp.StatusCode != http.StatusOK {
-		return false
-	}
-	return true
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
 }
 
 type AttestBody struct {
@@ -164,10 +162,12 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		Log.Debugw("Bad status code from miner attest", "status", fmt.Sprintf("%d", resp.StatusCode))
 		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
 	}
 	resBody, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
 	if err != nil {
 		Log.Debugw("Failed reading response", "error", err)
 		return nil, err
@@ -227,10 +227,12 @@ func CheckCVMAttest(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		Log.Warnw("Bad status code from nvidia-attest", "status", fmt.Sprintf("%d", resp.StatusCode))
 		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
 	}
 	resBody, err = io.ReadAll(resp.Body)
+	resp.Body.Close()
 	if err != nil {
 		Log.Warnw("Failed reading response body from nvidia-attest", "error", err)
 		return nil, err
