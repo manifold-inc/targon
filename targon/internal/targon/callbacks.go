@@ -97,7 +97,7 @@ func getCVMNodesCallback(c *Core, h types.Header) {
 
 	var beersData []GPUData
 	for k, v := range c.NeuronHardware {
-		beersData = append(beersData, GPUData{Uid: k, Data: v})
+		beersData = append(beersData, GPUData{Uid: k, Data: map[string][]string{"nodes": v}})
 		c.Deps.Log.Infow("nodes for "+k, "nodes", len(v))
 	}
 	if err := sendGPUDataToBeers(c, client, beersData); err != nil {
