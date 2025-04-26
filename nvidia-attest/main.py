@@ -53,8 +53,10 @@ class AttestationResponse(BaseModel):
 
 
 class Request(BaseModel):
-    gpu: GPUAttestation
-    switch: SwitchAttestation
+    gpu_remote: GPUAttestation
+    switch_remote: SwitchAttestation
+    gpu_local_token: str
+    switch_local_token: str
     expected_nonce: str
 
 
@@ -237,7 +239,7 @@ def attest(req: Request) -> AttestationResponse:
 
         gpu_client.add_verifier(
             dev=attestation.Devices.GPU,
-            env=attestation.Environment.LOCAL,
+            env=attestation.Environment.REMOTE,
             url="https://nras.attestation.nvidia.com/v3/attest/gpu",
             evidence="",
             ocsp_url="https://ocsp.ndis.nvidia.com/",
@@ -256,13 +258,14 @@ def attest(req: Request) -> AttestationResponse:
 
         # Verify GPU claims
         gpu_claims, err = extract_gpu_claims_from_token(
-            req.gpu.token, req.expected_nonce
+            req.gpu_local_token, req.expected_nonce
         )
         if err is not None:
             logger.info(f"Error extracting gpu claims: {err}")
             return AttestationResponse(
                 gpu_attestation_success=False, switch_attestation_success=False
             )
+        gpu_client.clear_verifiers()
 
         # Switch Attestation
         switch_client = attestation.Attestation()
@@ -273,7 +276,7 @@ def attest(req: Request) -> AttestationResponse:
 
         switch_client.add_verifier(
             dev=attestation.Devices.SWITCH,
-            env=attestation.Environment.LOCAL,
+            env=attestation.Environment.REMOTE,
             url="https://nras.attestation.nvidia.com/v3/attest/switch",
             evidence="",
             ocsp_url="https://ocsp.ndis.nvidia.com/",
@@ -292,7 +295,7 @@ def attest(req: Request) -> AttestationResponse:
             )
 
         # Verify switch claims
-        err = extract_switch_claims_from_token(req.switch.token, req.expected_nonce)
+        err = extract_switch_claims_from_token(req.switch_local_token, req.expected_nonce)
         if err is not None:
             logger.info(f"Error extracting switch claims: {err}")
             return AttestationResponse(
@@ -300,6 +303,7 @@ def attest(req: Request) -> AttestationResponse:
                 switch_attestation_success=False,
             )
 
+        switch_client.clear_verifiers()
         logger.info("Successfully passed attesstation")
         return AttestationResponse(
             gpu_attestation_success=True,

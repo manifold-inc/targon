@@ -218,9 +218,11 @@ func verifyAttestResponse(
 ) (*GPUAttestationResponse, error) {
 	// Validate Attestation
 	body, err := json.Marshal(map[string]any{
-		"gpu":            attestRes.GPU,
-		"switch":         attestRes.Switch,
-		"expected_nonce": nonce,
+		"gpu_remote":         attestRes.GPURemote,
+		"switch_remote":      attestRes.SwitchRemote,
+		"gpu_local_token":    attestRes.GPULocal.Token,
+		"switch_local_token": attestRes.SwitchLocal.Token,
+		"expected_nonce":     nonce,
 	})
 	if err != nil {
 		return nil, errors.New("failed marshaling miner attest response")
@@ -290,31 +292,53 @@ func CheckCVMAttest(
 		return nil, err
 	}
 
-	if !attestRes.GPU.AttestationResult {
-		err = errors.New("gpu attestation failed")
+	if !attestRes.GPULocal.AttestationResult {
+		err = errors.New("local gpu attestation failed")
 		Log.Debug(err.Error())
 		return nil, err
 	}
 
-	if !attestRes.GPU.Valid {
-		err = errors.New("gpu attestation invalid")
+	if !attestRes.GPULocal.Valid {
+		err = errors.New("local gpu attestation invalid")
 		Log.Debug(err.Error())
 		return nil, err
 	}
 
-	if !attestRes.Switch.AttestationResult {
-		err = errors.New("switch attestation failed")
+	if !attestRes.GPURemote.AttestationResult {
+		err = errors.New("remote gpu attestation failed")
 		Log.Debug(err.Error())
 		return nil, err
 	}
 
-	if !attestRes.Switch.Valid {
-		err = errors.New("switch attestation invalid")
+	if !attestRes.GPURemote.Valid {
+		err = errors.New("remote gpu attestation invalid")
 		Log.Debug(err.Error())
 		return nil, err
 	}
 
-	// TODO
+	if !attestRes.SwitchLocal.AttestationResult {
+		err = errors.New("local switch attestation failed")
+		Log.Debug(err.Error())
+		return nil, err
+	}
+
+	if !attestRes.SwitchLocal.Valid {
+		err = errors.New("local switch attestation invalid")
+		Log.Debug(err.Error())
+		return nil, err
+	}
+	if !attestRes.SwitchRemote.AttestationResult {
+		err = errors.New("remote switch attestation failed")
+		Log.Debug(err.Error())
+		return nil, err
+	}
+
+	if !attestRes.SwitchRemote.Valid {
+		err = errors.New("remote switch attestation invalid")
+		Log.Debug(err.Error())
+		return nil, err
+	}
+
 	attestResponse, err := verifyAttestResponse(c, client, attestRes, nonce, Log)
 	if err != nil {
 		return nil, err

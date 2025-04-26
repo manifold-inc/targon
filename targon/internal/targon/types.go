@@ -1,16 +1,26 @@
 package targon
 
 type AttestResponse struct {
-	GPU struct {
+	GPULocal struct {
 		AttestationResult bool   `json:"attestation_result"`
 		Token             string `json:"token"`
 		Valid             bool   `json:"valid"`
-	} `json:"gpu"`
-	Switch struct {
+	} `json:"gpu_local"`
+	SwitchLocal struct {
 		AttestationResult bool   `json:"attestation_result"`
 		Token             string `json:"token"`
 		Valid             bool   `json:"valid"`
-	} `json:"switch"`
+	} `json:"switch_local"`
+	GPURemote struct {
+		AttestationResult bool   `json:"attestation_result"`
+		Token             string `json:"token"`
+		Valid             bool   `json:"valid"`
+	} `json:"gpu_remote"`
+	SwitchRemote struct {
+		AttestationResult bool   `json:"attestation_result"`
+		Token             string `json:"token"`
+		Valid             bool   `json:"valid"`
+	} `json:"switch_remote"`
 }
 
 type AttestClaim struct {
