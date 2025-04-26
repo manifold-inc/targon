@@ -54,7 +54,7 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		// Not on specific tempo;
 		// helps reduce stress on cvm nodes from number of pings
 		chance := rand.Float32()
-		if chance < .80 {
+		if chance < .95 {
 			return
 		}
 		getPassingAttestations(c)
