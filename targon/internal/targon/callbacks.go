@@ -54,19 +54,19 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		// Not on specific tempo;
 		// helps reduce stress on cvm nodes from number of pings
 		chance := rand.Float32()
-		if chance < .95 {
+		if chance < .95 && len(c.PassedAttestation) != 0 {
 			return
 		}
 		getPassingAttestations(c)
 	})
 	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%10 != 2 || len(c.MinerNodes) == 0 {
+		if h.Number%10 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
 		pingHealthChecks(c)
 	})
 	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%15 != 2 || len(c.MinerNodes) == 0 {
+		if h.Number%10 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
 		logWeights(c)
