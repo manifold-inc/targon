@@ -71,45 +71,6 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		return nil, err
 	}
 	return nodes, nil
-	//nwg := sync.WaitGroup{}
-	//nwg.Add(len(nodes))
-	//gpusModels := []string{}
-	//nmu := sync.Mutex{}
-	//
-	//tr := &http.Transport{
-	//	TLSHandshakeTimeout: 5 * time.Minute,
-	//	MaxConnsPerHost:     1,
-	//	DisableKeepAlives:   true,
-	//}
-	//attestClient := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
-	//
-	//for _, node := range nodes {
-	//	go func() {
-	//		defer nwg.Done()
-	//		ok := CheckCVMHealth(c, client, n, node)
-	//		if !ok {
-	//			c.Deps.Log.Infow("Failed healthcheck", "uid", uid)
-	//			return
-	//		}
-	//
-	//		c.Deps.Log.Infow("Passed Healthcheck", "uid", uid)
-	//		gpus, err := CheckCVMAttest(c, attestClient, n, node)
-	//		if err != nil {
-	//			c.Deps.Log.Infow("Failed Attest", "uid", uid, "error", err)
-	//			return
-	//		}
-	//		c.Deps.Log.Infow("Passed CVM Attest", "uid", uid)
-	//		nmu.Lock()
-	//		gpusModels = append(gpusModels, gpus...)
-	//		nmu.Unlock()
-	//	}()
-	//}
-	//nwg.Wait()
-	//
-	//c.Deps.Log.Infow("Found gpu models for miner", "uid", uid)
-	//c.NeuronHardware[uid] = gpusModels
-	//
-	//return gpusModels, nil
 }
 
 func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP string) bool {
