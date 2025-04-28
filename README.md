@@ -168,13 +168,19 @@ Create a `.env` file in the project directory:
 ### Required
 HOTKEY_PHRASE="your hotkey phrase"
 
-### Optional
-# NVIDIA Attest Service
-NVIDIA_ATTEST_ENDPOINT=http://localhost:3344
+### Optional (dont set unless needed)
 
-# Targon Configuration
-NETUID=4
-CHAIN_ENDPOINT=wss://entrypoint-finney.opentensor.ai:443
+## Attest endpoint, if running go code outside docker compose
+# NVIDIA_ATTEST_ENDPOINT=http://nvidia-attest:3344
+
+## Netuid validator is running on. Useful for testnet
+# NETUID=4
+
+## Chain to connect to
+# CHAIN_ENDPOINT=wss://entrypoint-finney.opentensor.ai:443
+
+## Sends discord notifications for things like setting weights
+# DISCORD_URL=
 ```
 
 #### 3. Run Targon

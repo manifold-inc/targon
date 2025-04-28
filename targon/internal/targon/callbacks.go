@@ -75,7 +75,7 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
-		setWeights(v, c)
+		setWeights(v, c, h)
 	})
 }
 
@@ -259,7 +259,7 @@ func resetState(c *Core) {
 	c.PassedAttestation = map[string]map[string][]string{}
 }
 
-func setWeights(v *boilerplate.BaseChainSubscriber, c *Core) {
+func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 	c.mu.Lock()
 	defer func() {
 		c.mu.Unlock()
@@ -273,6 +273,24 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core) {
 		"scores",
 		fmt.Sprintf("%+v", scores),
 	)
+	go func() {
+		color := "3447003"
+		title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
+		desc := fmt.Sprintf("UIDS: %v\n\neights: %v", uids, scores)
+		uname := "Validator Weights"
+		msg := Message{
+			Username: &uname,
+			Embeds: &[]Embed{{
+				Title:       &title,
+				Description: &desc,
+				Color:       &color,
+			}},
+		}
+		err := SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
+		if err != nil {
+			c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
+		}
+	}()
 	if c.Deps.Env.DEBUG {
 		c.Deps.Log.Warn("Skipping weightset due to debug flag")
 		return

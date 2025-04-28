@@ -26,6 +26,7 @@ type Env struct {
 	VERSION                types.U64
 	DEBUG                  bool
 	NETUID                 int
+	DISCORD_URL            string
 }
 
 func GetEnv(key, fallback string) string {
@@ -62,6 +63,7 @@ func Init() *Dependencies {
 	CHAIN_ENDPOINT := GetEnv("CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443")
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
+	DISCORD_URL := GetEnv("DISCORD_URL", "")
 	DEBUG := GetEnv("DEBUG", "0")
 	netuid, err := strconv.Atoi(GetEnv("NETUID", "4"))
 	if err != nil {
@@ -102,6 +104,7 @@ func Init() *Dependencies {
 			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,
 			VERSION:                *parsedVer,
 			NETUID:                 netuid,
+			DISCORD_URL:            DISCORD_URL,
 		},
 	}
 }
