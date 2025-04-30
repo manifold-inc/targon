@@ -7,6 +7,12 @@ default:
 up:
   docker compose up -d --build --force-recreate
 
+up-miner:
+  docker compose -f docker-compose.miner.yml up --build --force-recreate
+
+down-miner:
+  docker compose -f docker-compose.miner.yml down --remove-orphans
+
 down:
   docker compose down --remove-orphans
 
