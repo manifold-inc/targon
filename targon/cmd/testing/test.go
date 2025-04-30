@@ -3,25 +3,22 @@ package main
 import (
 	"fmt"
 
-	"targon/internal/setup"
+	"github.com/subtrahend-labs/gobt/client"
+	"github.com/subtrahend-labs/gobt/runtime"
 )
 
-func Normalize(arr []float64, sumTo float64) []float64 {
-	sum := 0.0
-	for _, num := range arr {
-		sum += num
-	}
-	if sum == 0.0 {
-		return arr
-	}
-	newArr := []float64{}
-	for _, num := range arr {
-		newArr = append(newArr, (num/sum)*sumTo)
-	}
-	return newArr
-}
-
 func main() {
-	v, _ := setup.ParseVersion("6.1.0")
-	fmt.Printf("%+v\n", v)
+	c, _ := client.NewClient("wss://test.finney.opentensor.ai:443")
+	// c, _ := client.NewClient("wss://entrypoint-finney.opentensor.ai:443")
+	blockHash, err := c.Api.RPC.Chain.GetBlockHashLatest()
+	if err != nil {
+		panic(err)
+	}
+	neurons, err := runtime.GetNeurons(c, uint16(337), &blockHash)
+	if err != nil {
+		panic(err)
+	}
+	for i, n := range neurons {
+		fmt.Printf("%d: %d\n", i, n.AxonInfo.Version)
+	}
 }

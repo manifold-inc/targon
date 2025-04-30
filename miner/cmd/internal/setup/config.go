@@ -7,13 +7,14 @@ import (
 )
 
 type Config struct {
-	Port          string   `json:"port,omitempty"`
+	Port          int      `json:"port,omitempty"`
 	Nodes         []string `json:"nodes,omitempty"`
-	HotkeySS58    string   `json:"hotkey_ss58,omitempty"`
+	HotkeyPhrase  string   `json:"hotkey_phrase,omitempty"`
 	ChainEndpoint string   `json:"chain_endpoint,omitempty"`
 	Debug         bool     `json:"debug,omitempty"`
 	Netuid        *int     `json:"netuid,omitempty"`
 	DiscordUrl    string   `json:"discord_url,omitempty"`
+	Ip            string   `json:"ip,omitempty"`
 }
 
 func LoadConfig() *Config {
@@ -36,11 +37,14 @@ func LoadConfig() *Config {
 	if config.Netuid == nil {
 		config.Netuid = &defaultNetuid
 	}
-	if config.Port == "" {
+	if config.Port == 0 {
 		panic("No port specified")
 	}
-	if config.HotkeySS58 == "" {
+	if config.HotkeyPhrase == "" {
 		panic("No hotkey specified")
+	}
+	if config.Ip == "" {
+		panic("No ip specified")
 	}
 	return &config
 }

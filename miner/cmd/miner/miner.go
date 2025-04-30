@@ -33,7 +33,7 @@ func CreateCore(d *setup.Dependencies) *Core {
 func main() {
 	deps := setup.Init()
 	deps.Log.Infof(
-		"Starting validator with key [%s] on chain [%s] version [%d]",
+		"Starting validator with key [%s] on chain [%s]",
 		deps.Hotkey.Address,
 		deps.Config.ChainEndpoint,
 	)
@@ -42,12 +42,28 @@ func main() {
 	validator := boilerplate.NewChainSubscriber(*deps.Config.Netuid)
 	deps.Log.Infof("Starting Miner on netuid [%d]", validator.NetUID)
 	validator.AddBlockCallback(func(h types.Header) {
+		uid := "Unknown"
+		emi := "Unknown"
+		ip := "Unknown"
+		if len(core.Neurons) != 0 {
+			n := core.Neurons[core.Deps.Hotkey.Address]
+			uid = fmt.Sprintf("%d", n.UID.Int64())
+			emi = fmt.Sprintf("%d", n.Emission.Int64())
+			netip := n.AxonInfo.IP.Bytes()
+			ip = fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
+		}
 		core.Deps.Log.Infow(
 			"New block",
 			"block",
 			fmt.Sprintf("%v", h.Number),
 			"left_in_interval",
 			fmt.Sprintf("%d", 360-(h.Number%360)),
+			"uid",
+			uid,
+			"ip",
+			ip,
+			"Emission",
+			emi,
 		)
 	})
 	validator.AddBlockCallback(func(h types.Header) {
@@ -94,7 +110,7 @@ func main() {
 			signed_for := c.Request().Header.Get("Epistula-Signed-For")
 			signed_by := c.Request().Header.Get("Epistula-Signed-By")
 			err := boilerplate.VerifyEpistulaHeaders(
-				core.Deps.Config.HotkeySS58,
+				core.Deps.Hotkey.Address,
 				sig,
 				[]byte{},
 				timestamp,
@@ -140,5 +156,9 @@ func main() {
 	validator.SetOnSubscriptionError(func(e error) {
 		deps.Log.Infow("Subscription Error", "error", e)
 	})
+	err := setup.ServeMiner(deps)
+	if err != nil {
+		deps.Log.Errorw("Failed serving extrinsic", "error", err)
+	}
 	validator.Start(deps.Client)
 }

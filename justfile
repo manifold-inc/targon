@@ -8,7 +8,8 @@ up:
   docker compose up -d --build --force-recreate
 
 up-miner:
-  docker compose -f docker-compose.miner.yml up --build --force-recreate
+  docker compose -f docker-compose.miner.yml up -d --build --force-recreate
+  docker compose -f docker-compose.miner.yml logs -f
 
 down-miner:
   docker compose -f docker-compose.miner.yml down --remove-orphans

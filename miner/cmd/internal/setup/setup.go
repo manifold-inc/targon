@@ -43,11 +43,17 @@ func Init() *Dependencies {
 	if err != nil {
 		sugar.Fatalf("Error creating client: %s", err)
 	}
-	sugar.Infof("Starting miner with config %+v", *c)
+	kp, err := signature.KeyringPairFromSecret(c.HotkeyPhrase, client.Network)
+	if err != nil {
+		sugar.Fatalw("Failed creating keyring par", err)
+	}
+	c.HotkeyPhrase = ""
+	sugar.Infof("Starting miner with config [hotkey phrase hidden] %+v", *c)
 	return &Dependencies{
 		Log:    sugar,
 		Client: client,
 		Config: *c,
+		Hotkey: kp,
 	}
 }
 
