@@ -178,7 +178,10 @@ func main() {
 }
 
 func CheckAlreadyRegistered(core *Core) bool {
-	n := core.Neurons[core.Deps.Hotkey.Address]
+	n, found := core.Neurons[core.Deps.Hotkey.Address]
+	if !found {
+		return false
+	}
 	netip := n.AxonInfo.IP.Bytes()
 	currentIp := fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
 	configIp := fmt.Sprintf("http://%s:%d", core.Deps.Config.Ip, core.Deps.Config.Port)

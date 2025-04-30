@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"targon/internal/subtensor/utils"
+
 	"github.com/subtrahend-labs/gobt/client"
 	"github.com/subtrahend-labs/gobt/runtime"
 )
@@ -19,6 +21,6 @@ func main() {
 		panic(err)
 	}
 	for i, n := range neurons {
-		fmt.Printf("%d: %d\n", i, n.AxonInfo.Version)
+		fmt.Printf("%d: %s\n", i, utils.AccountIDToSS58(n.Hotkey))
 	}
 }
