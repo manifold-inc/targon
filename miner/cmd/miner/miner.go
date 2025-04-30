@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 
@@ -35,7 +36,7 @@ func UpdateCore(core *Core, h types.Header) {
 	defer core.mu.Unlock()
 
 	// Grab vpermits
-	res, err := storage.GetValidatorPermits(core.Deps.Client, types.NewU16(4), nil)
+	res, err := storage.GetValidatorPermits(core.Deps.Client, types.NewU16(uint16(*core.Deps.Config.Netuid)), nil)
 	if err != nil {
 		core.Deps.Log.Errorw("Failed getting validator permits", "error", err)
 		return
@@ -48,7 +49,7 @@ func UpdateCore(core *Core, h types.Header) {
 		core.Deps.Log.Errorw("Failed getting blockhash for neurons", "error", err)
 		return
 	}
-	neurons, err := runtime.GetNeurons(core.Deps.Client, uint16(4), &blockHash)
+	neurons, err := runtime.GetNeurons(core.Deps.Client, uint16(*core.Deps.Config.Netuid), &blockHash)
 	if err != nil {
 		core.Deps.Log.Errorw("Failed getting neurons", "error", err)
 		return
@@ -77,11 +78,11 @@ func main() {
 		uid := "Unknown"
 		emi := "Unknown"
 		ip := "Unknown"
-		if len(core.Neurons) != 0 {
-			n := core.Neurons[core.Deps.Hotkey.Address]
+		n, found := core.Neurons[core.Deps.Hotkey.Address]
+		if found {
 			uid = fmt.Sprintf("%d", n.UID.Int64())
 			emi = fmt.Sprintf("%d", n.Emission.Int64())
-			netip := n.AxonInfo.IP.Bytes()
+			var netip net.IP = n.AxonInfo.IP.Bytes()
 			ip = fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
 		}
 		core.Deps.Log.Infow(
@@ -108,6 +109,7 @@ func main() {
 	validator.SetMainFunc(func(i <-chan bool, o chan<- bool) {
 		e := echo.New()
 		e.GET("/cvm", func(c echo.Context) error {
+			deps.Log.Infof("Getting request from [%s]", c.RealIP())
 			sig := c.Request().Header.Get("Epistula-Request-Signature")
 			timestamp := c.Request().Header.Get("Epistula-Timestamp")
 			uuid := c.Request().Header.Get("Epistula-Uuid")
@@ -124,6 +126,7 @@ func main() {
 			)
 			// Failed signature
 			if err != nil {
+				deps.Log.Warnf("Failed signature with error: %s", err)
 				return c.String(http.StatusForbidden, "Invalid Signature")
 			}
 			core.mu.Lock()
@@ -131,26 +134,31 @@ func main() {
 
 			// VPermit array is not ready
 			if core.ValidatorPermits == nil {
+				deps.Log.Warn("Validator permits is nil")
 				return c.String(http.StatusInternalServerError, "Still starting up...")
 			}
 
 			// Neuron hotkey not found
 			neuron, ok := core.Neurons[signed_by]
 			if !ok {
+				deps.Log.Warnf("Signed_by not found in neurons: %s", signed_by)
 				return c.String(http.StatusForbidden, "Not valid signer")
 			}
 
 			// No vpermit found for validator
 			if !(*core.ValidatorPermits)[int(neuron.UID.Int64())] {
+				deps.Log.Warnf("No vpermit for %s", signed_by)
 				return c.String(http.StatusForbidden, "No VPermit")
 			}
-			deps.Log.Infof("Getting request from [%s]", signed_by)
+			deps.Log.Infof("Responding to request from request from [%s]", signed_by)
 			return c.JSON(http.StatusOK, core.Deps.Config.Nodes)
 		})
 		e.GET("/", func(c echo.Context) error {
 			return c.String(http.StatusOK, "PONG")
 		})
-		e.Logger.Fatal(e.Start(":1323"))
+		e.Start(fmt.Sprintf(":%d", core.Deps.Config.Port))
+		<-i
+		o <- true
 	})
 
 	validator.SetOnSubscriptionCreationError(func(e error) {
@@ -160,7 +168,11 @@ func main() {
 	validator.SetOnSubscriptionError(func(e error) {
 		deps.Log.Infow("Subscription Error", "error", e)
 	})
-	h, err := core.Deps.Client.Api.RPC.Chain.GetHeaderLatest()
+	hash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
+	if err != nil {
+		deps.Log.Fatal("Failed to get initial header")
+	}
+	h, err := core.Deps.Client.Api.RPC.Chain.GetHeader(hash)
 	if err != nil {
 		deps.Log.Fatal("Failed to get initial header")
 	}
@@ -182,7 +194,7 @@ func CheckAlreadyRegistered(core *Core) bool {
 	if !found {
 		return false
 	}
-	netip := n.AxonInfo.IP.Bytes()
+	var netip net.IP = n.AxonInfo.IP.Bytes()
 	currentIp := fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
 	configIp := fmt.Sprintf("http://%s:%d", core.Deps.Config.Ip, core.Deps.Config.Port)
 	return currentIp == configIp

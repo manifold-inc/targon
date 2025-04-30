@@ -38,7 +38,7 @@ func LoadConfig() *Config {
 		config.Netuid = &defaultNetuid
 	}
 	if config.Port == 0 {
-		panic("No port specified")
+		config.Port = 7777
 	}
 	if config.HotkeyPhrase == "" {
 		panic("No hotkey specified")

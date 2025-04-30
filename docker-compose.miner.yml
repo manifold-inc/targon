@@ -1,6 +1,8 @@
 services:
   miner:
     restart: always
+    ports:
+      - 7777:7777
     build:
       dockerfile: Dockerfile
       context: ./miner
