@@ -29,7 +29,6 @@ func main() {
 	})
 	validator.SetOnSubscriptionError(func(e error) {
 		deps.Log.Infow("Subscription Error", "error", e)
-		panic(e)
 	})
 	validator.Start(deps.Client)
 }
