@@ -2,49 +2,24 @@ package setup
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	"github.com/joho/godotenv"
 	"github.com/subtrahend-labs/gobt/client"
 	"go.uber.org/zap"
 )
 
 type Dependencies struct {
 	Log    *zap.SugaredLogger
-	Env    Env
 	Client *client.Client
 	Hotkey signature.KeyringPair
 	Config Config
 }
-type Env struct {
-	HOTKEY_SS58    string
-	MINER_PORT     string
-	CHAIN_ENDPOINT string
-	DEBUG          bool
-	NETUID         int
-	DISCORD_URL    string
-}
-
-func GetEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
-}
-
-func GetEnvOrPanic(key string, logger *zap.SugaredLogger) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	logger.Panicf("Could not find env key [%s]", key)
-	return ""
-}
 
 func Init() *Dependencies {
+	c := LoadConfig()
 	// Startup
 	cfg := zap.NewProductionConfig()
 	cfg.Sampling = nil
@@ -54,22 +29,7 @@ func Init() *Dependencies {
 	}
 	sugar := logger.Sugar()
 
-	// Env Variables
-	err = godotenv.Load()
-	if err != nil {
-		sugar.Fatalw("Error loading .env file", err)
-	}
-	HOTKEY_SS58 := GetEnvOrPanic("HOTKEY_SS58", sugar)
-	MINER_PORT := GetEnvOrPanic("MINER_PORT", sugar)
-	CHAIN_ENDPOINT := GetEnv("CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443")
-	DISCORD_URL := GetEnv("DISCORD_URL", "")
-	DEBUG := GetEnv("DEBUG", "0")
-	netuid, err := strconv.Atoi(GetEnv("NETUID", "4"))
-	if err != nil {
-		sugar.Fatalw("Invalid netuid", "error", err)
-	}
-	debug := DEBUG == "1"
-	if debug {
+	if c.Debug {
 		cfg := zap.NewDevelopmentConfig()
 		cfg.Sampling = nil
 		logger, err := cfg.Build()
@@ -79,23 +39,15 @@ func Init() *Dependencies {
 		sugar = logger.Sugar()
 	}
 
-	client, err := client.NewClient(CHAIN_ENDPOINT)
+	client, err := client.NewClient(c.ChainEndpoint)
 	if err != nil {
 		sugar.Fatalf("Error creating client: %s", err)
 	}
-
+	sugar.Infof("Starting miner with config %+v", *c)
 	return &Dependencies{
 		Log:    sugar,
 		Client: client,
-		Env: Env{
-			HOTKEY_SS58:    HOTKEY_SS58,
-			DEBUG:          debug,
-			CHAIN_ENDPOINT: CHAIN_ENDPOINT,
-			NETUID:         netuid,
-			DISCORD_URL:    DISCORD_URL,
-			MINER_PORT:     MINER_PORT,
-		},
-		Config: *LoadConfig(),
+		Config: *c,
 	}
 }
 

@@ -35,11 +35,11 @@ func main() {
 	deps.Log.Infof(
 		"Starting validator with key [%s] on chain [%s] version [%d]",
 		deps.Hotkey.Address,
-		deps.Env.CHAIN_ENDPOINT,
+		deps.Config.ChainEndpoint,
 	)
 
 	core := CreateCore(deps)
-	validator := boilerplate.NewChainSubscriber(deps.Env.NETUID)
+	validator := boilerplate.NewChainSubscriber(*deps.Config.Netuid)
 	deps.Log.Infof("Starting Miner on netuid [%d]", validator.NetUID)
 	validator.AddBlockCallback(func(h types.Header) {
 		core.Deps.Log.Infow(
@@ -94,7 +94,7 @@ func main() {
 			signed_for := c.Request().Header.Get("Epistula-Signed-For")
 			signed_by := c.Request().Header.Get("Epistula-Signed-By")
 			err := boilerplate.VerifyEpistulaHeaders(
-				core.Deps.Env.HOTKEY_SS58,
+				core.Deps.Config.HotkeySS58,
 				sig,
 				[]byte{},
 				timestamp,

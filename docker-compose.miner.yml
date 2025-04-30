@@ -4,6 +4,5 @@ services:
     build:
       dockerfile: Dockerfile
       context: ./miner
-    env_file: .env
     volumes:
       - ./config.json:/app/config.json
