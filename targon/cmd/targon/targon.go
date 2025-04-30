@@ -24,7 +24,7 @@ func main() {
 	targon.SetMainFunc(validator, core)
 
 	validator.SetOnSubscriptionCreationError(func(e error) {
-		deps.Log.Infow("Creation Error", "error", e)
+		deps.Log.Infow("Failed to connect to chain", "error", e)
 		panic(e)
 	})
 	validator.SetOnSubscriptionError(func(e error) {

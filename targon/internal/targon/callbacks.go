@@ -42,7 +42,6 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		getMinerNodes(c)
 	})
 	// get passing attestations
-	// TODO make more often, and random
 	v.AddBlockCallback(func(h types.Header) {
 		if c.Neurons == nil {
 			return
