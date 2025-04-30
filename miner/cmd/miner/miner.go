@@ -30,6 +30,38 @@ func CreateCore(d *setup.Dependencies) *Core {
 	}
 }
 
+func UpdateCore(core *Core, h types.Header) {
+	core.mu.Lock()
+	defer core.mu.Unlock()
+
+	// Grab vpermits
+	res, err := storage.GetValidatorPermits(core.Deps.Client, types.NewU16(4), nil)
+	if err != nil {
+		core.Deps.Log.Errorw("Failed getting validator permits", "error", err)
+		return
+	}
+	core.ValidatorPermits = res
+
+	// grab neurons
+	blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHash(uint64(h.Number))
+	if err != nil {
+		core.Deps.Log.Errorw("Failed getting blockhash for neurons", "error", err)
+		return
+	}
+	neurons, err := runtime.GetNeurons(core.Deps.Client, uint16(4), &blockHash)
+	if err != nil {
+		core.Deps.Log.Errorw("Failed getting neurons", "error", err)
+		return
+	}
+
+	// we need to make sure the map is reset
+	core.Neurons = map[string]runtime.NeuronInfo{}
+	for _, n := range neurons {
+		core.Neurons[setup.AccountIDToSS58(n.Hotkey)] = n
+	}
+	core.Deps.Log.Info("Neurons Updated")
+}
+
 func main() {
 	deps := setup.Init()
 	deps.Log.Infof(
@@ -71,35 +103,7 @@ func main() {
 			return
 		}
 		core.Deps.Log.Infow("Fetching validator list", "block", fmt.Sprintf("%v", h.Number))
-		core.mu.Lock()
-		defer core.mu.Unlock()
-
-		// Grab vpermits
-		res, err := storage.GetValidatorPermits(core.Deps.Client, types.NewU16(4), nil)
-		if err != nil {
-			core.Deps.Log.Errorw("Failed getting validator permits", "error", err)
-			return
-		}
-		core.ValidatorPermits = res
-
-		// grab neurons
-		blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHash(uint64(h.Number))
-		if err != nil {
-			core.Deps.Log.Errorw("Failed getting blockhash for neurons", "error", err)
-			return
-		}
-		neurons, err := runtime.GetNeurons(core.Deps.Client, uint16(4), &blockHash)
-		if err != nil {
-			core.Deps.Log.Errorw("Failed getting neurons", "error", err)
-			return
-		}
-
-		// we need to make sure the map is reset
-		core.Neurons = map[string]runtime.NeuronInfo{}
-		for _, n := range neurons {
-			core.Neurons[setup.AccountIDToSS58(n.Hotkey)] = n
-		}
-		core.Deps.Log.Info("Neurons Updated")
+		UpdateCore(core, h)
 	})
 	validator.SetMainFunc(func(i <-chan bool, o chan<- bool) {
 		e := echo.New()
@@ -156,9 +160,27 @@ func main() {
 	validator.SetOnSubscriptionError(func(e error) {
 		deps.Log.Infow("Subscription Error", "error", e)
 	})
-	err := setup.ServeMiner(deps)
+	h, err := core.Deps.Client.Api.RPC.Chain.GetHeaderLatest()
 	if err != nil {
-		deps.Log.Errorw("Failed serving extrinsic", "error", err)
+		deps.Log.Fatal("Failed to get initial header")
+	}
+	UpdateCore(core, *h)
+	if !CheckAlreadyRegistered(core) {
+		core.Deps.Log.Info("Setting miner info, differs from config")
+		err = setup.ServeMiner(deps)
+		if err != nil {
+			deps.Log.Errorw("Failed serving extrinsic", "error", err)
+		}
+	} else {
+		core.Deps.Log.Info("Skipping set miner info, already set to config settings")
 	}
 	validator.Start(deps.Client)
+}
+
+func CheckAlreadyRegistered(core *Core) bool {
+	n := core.Neurons[core.Deps.Hotkey.Address]
+	netip := n.AxonInfo.IP.Bytes()
+	currentIp := fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
+	configIp := fmt.Sprintf("http://%s:%d", core.Deps.Config.Ip, core.Deps.Config.Port)
+	return currentIp == configIp
 }
