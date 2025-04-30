@@ -1,5 +1,6 @@
 services:
   miner:
+    restart: always
     build:
       dockerfile: Dockerfile
       context: ./miner
