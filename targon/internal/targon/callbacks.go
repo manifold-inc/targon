@@ -227,21 +227,19 @@ func pingHealthChecks(c *Core) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
+				c.mu.Lock()
 				n := c.Neurons[uid]
+				c.mu.Unlock()
 				ok := CheckCVMHealth(c, client, &n, node)
+				c.Hpmu.Lock()
+				defer c.Hpmu.Unlock()
 				if c.HealthcheckPasses[uid] == nil {
-					c.Hpmu.Lock()
 					c.HealthcheckPasses[uid] = map[string][]bool{}
-					c.Hpmu.Unlock()
 				}
 				if c.HealthcheckPasses[uid][node] == nil {
-					c.Hpmu.Lock()
 					c.HealthcheckPasses[uid][node] = []bool{}
-					c.Hpmu.Unlock()
 				}
-				c.Hpmu.Lock()
 				c.HealthcheckPasses[uid][node] = append(c.HealthcheckPasses[uid][node], ok)
-				c.Hpmu.Unlock()
 			}()
 		}
 	}
