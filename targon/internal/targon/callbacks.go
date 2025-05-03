@@ -169,9 +169,9 @@ func getPassingAttestations(c *Core) {
 		for _, node := range nodes {
 			// Dont check nodes that have already passed this interval
 			if c.PassedAttestation[uid] == nil {
-				c.PAmu.Lock()
+				c.mu.Lock()
 				c.PassedAttestation[uid] = map[string][]string{}
-				c.PAmu.Unlock()
+				c.mu.Unlock()
 			}
 			if c.PassedAttestation[uid][node] != nil {
 				continue
@@ -180,12 +180,22 @@ func getPassingAttestations(c *Core) {
 			go func() {
 				defer wg.Done()
 				n := c.Neurons[uid]
-				gpus, err := CheckCVMAttest(c, client, &n, node)
+				gpus, serialNums, err := CheckCVMAttest(c, client, &n, node)
 				if err != nil {
 					return
 				}
-				c.PAmu.Lock()
-				defer c.PAmu.Unlock()
+
+				// ensure no duplicate nodes
+				c.mu.Lock()
+				defer c.mu.Unlock()
+				for _, v := range serialNums {
+					if c.GPUids[v] {
+						c.Deps.Log.Infow("Found duplicate GPU ID", "uid", uid)
+						return
+					}
+					c.GPUids[v] = true
+				}
+				// Only add gpus if not duplicates
 				c.PassedAttestation[uid][node] = gpus
 			}()
 		}
@@ -251,6 +261,7 @@ func resetState(c *Core) {
 	defer c.mu.Unlock()
 	c.Neurons = map[string]runtime.NeuronInfo{}
 	c.MinerNodes = map[string][]string{}
+	c.GPUids = map[string]bool{}
 	// TODO maybe keep this alive longer than an interval
 	c.HealthcheckPasses = map[string]map[string][]bool{}
 	c.PassedAttestation = map[string]map[string][]string{}
@@ -331,6 +342,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16) {
 	// TODO some sort of multi-check per interval
 	var uids []types.U16
 	var scores []float64
+	gpus := map[string]int{}
 	// for each uid
 	for uid, nodes := range c.MinerNodes {
 		thisScore := 0.0
@@ -345,6 +357,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16) {
 			// for each gpu
 			for _, gpu := range c.PassedAttestation[uid][n] {
 				ml := strings.ToLower(gpu)
+				gpus[ml] += 1
 				switch {
 				case strings.Contains(ml, "h100"):
 					thisScore += 1
@@ -378,6 +391,10 @@ func getWeights(c *Core) ([]types.U16, []types.U16) {
 		}
 		finalScores = append(finalScores, types.NewU16(uint16(fw)))
 		finalUids = append(finalUids, uids[i])
+	}
+
+	for gpu, count := range gpus {
+		c.Deps.Log.Infof("%s count: %d", gpu, count)
 	}
 
 	return finalUids, finalScores

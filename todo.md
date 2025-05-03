@@ -6,3 +6,4 @@ ______________________________________________________________________
 
 - get tao price
 - get sn emission
+- Check gpu id uniqueness

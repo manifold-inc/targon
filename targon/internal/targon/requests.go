@@ -242,7 +242,7 @@ func CheckCVMAttest(
 	client *http.Client,
 	n *runtime.NeuronInfo,
 	cvmIP string,
-) ([]string, error) {
+) ([]string, []string, error) {
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
 	h1 := strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -250,70 +250,77 @@ func CheckCVMAttest(
 	nonce := h1 + h2
 	attestRes, err := getCVMAttestFromNode(c, client, n, cvmIP, Log, nonce)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !attestRes.GPULocal.AttestationResult {
 		err = errors.New("local gpu attestation failed")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !attestRes.GPULocal.Valid {
 		err = errors.New("local gpu attestation invalid")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !attestRes.GPURemote.AttestationResult {
 		err = errors.New("remote gpu attestation failed")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !attestRes.GPURemote.Valid {
 		err = errors.New("remote gpu attestation invalid")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !attestRes.SwitchLocal.AttestationResult {
 		err = errors.New("local switch attestation failed")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !attestRes.SwitchLocal.Valid {
 		err = errors.New("local switch attestation invalid")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 	if !attestRes.SwitchRemote.AttestationResult {
 		err = errors.New("remote switch attestation failed")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !attestRes.SwitchRemote.Valid {
 		err = errors.New("remote switch attestation invalid")
 		Log.Debug(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	attestResponse, err := verifyAttestResponse(c, client, attestRes, nonce, Log)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Extract GPU types from the claims
 	var gpuTypes []string
+	var snums []string
 	if attestResponse.GPUClaims != nil {
 		for _, claims := range attestResponse.GPUClaims {
 			gpuTypes = append(gpuTypes, claims.GPUType)
-			Log.Debugw("GPU attestation successful",
-				"gpu_type", claims.GPUType)
+			snums = append(snums, claims.GPUID)
 		}
 	}
+	if attestResponse.SwitchClaims != nil {
+		for _, claims := range attestResponse.SwitchClaims {
+			snums = append(snums, claims.SwitchID)
+		}
+	}
+	Log.Infow("GPU attestation successful",
+		"gpu_types", fmt.Sprintf("%v", gpuTypes))
 
-	return gpuTypes, nil
+	return gpuTypes, snums, nil
 }

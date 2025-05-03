@@ -44,12 +44,19 @@ class SwitchAttestation(BaseModel):
 
 class GPUClaims(BaseModel):
     gpu_type: str
+    gpu_id: str
+
+
+class SwitchClaims(BaseModel):
+    switch_type: str
+    switch_id: str
 
 
 class AttestationResponse(BaseModel):
     gpu_attestation_success: bool
     switch_attestation_success: bool
     gpu_claims: Optional[Dict[str, GPUClaims]] | bool = None
+    switch_claims: Optional[Dict[str, SwitchClaims]] | bool = None
 
 
 class Request(BaseModel):
@@ -121,6 +128,9 @@ def extract_gpu_claims_from_token(
 
                                             # Add this GPU's claims to our results
                                             gpu_claims[gpu_id] = {
+                                                "gpu_id": gpu_token_data.get(
+                                                    "ueid", "Unknown"
+                                                ),
                                                 "gpu_type": gpu_token_data.get(
                                                     "gpu_type", "Unknown"
                                                 ),
@@ -151,7 +161,7 @@ def extract_gpu_claims_from_token(
 
 def extract_switch_claims_from_token(
     token_data: str, expected_nonce: str
-) -> Optional[str]:
+) -> Union[Tuple[Dict[str, Any], None], Tuple[None, str]]:
     """
     Extract claims from switch token data using PyJWT.
 
@@ -163,6 +173,7 @@ def extract_switch_claims_from_token(
         True if claims are extracted successfully and nonce matches, False otherwise
     """
     try:
+        switch_claims = {}
         # Handle string token (likely in JSON format)
         if isinstance(token_data, str):
             try:
@@ -205,25 +216,34 @@ def extract_switch_claims_from_token(
                                                 switch_token_data.get("eat_nonce")
                                                 != expected_nonce
                                             ):
-                                                return "Nonce does not match"
+                                                return None, "Nonce does not match"
 
                                             # Return the switch claims
-                                            return None
+                                            switch_claims[switch_id] = {
+                                                "switch_id": switch_token_data.get(
+                                                    "ueid", "Unknown"
+                                                ),
+                                                "switch_type": switch_token_data.get(
+                                                    "hwmodel", "Unknown"
+                                                ),
+                                            }
                                         except jwt.PyJWTError as e:
                                             logger.debug(
                                                 f"Failed to decode JWT for {switch_id}: {str(e)}"
                                             )
-                                            return "Failed decoding JWT token"
+                                            return None, "Failed decoding JWT token"
             except Exception as e:
                 logger.debug(f"Failed to parse token as JSON: {str(e)}")
 
+        if switch_claims:
+            return switch_claims, None
         # If we get here, we couldn't extract claims
         logger.debug("Unable to extract claims from token")
-        return "Unable to extract claims from token"
+        return None, "Unable to extract claims from token"
 
     except Exception as e:
         logger.warning(f"Error extracting claims from token: {str(e)}")
-        return "Error extracting claims from token"
+        return None, "Error extracting claims from token"
 
 
 @app.post("/attest", response_model=AttestationResponse)
@@ -295,7 +315,9 @@ def attest(req: Request) -> AttestationResponse:
             )
 
         # Verify switch claims
-        err = extract_switch_claims_from_token(req.switch_local_token, req.expected_nonce)
+        switch_claims, err = extract_switch_claims_from_token(
+            req.switch_local_token, req.expected_nonce
+        )
         if err is not None:
             logger.info(f"Error extracting switch claims: {err}")
             return AttestationResponse(
@@ -304,12 +326,14 @@ def attest(req: Request) -> AttestationResponse:
             )
 
         switch_client.clear_verifiers()
-        logger.info("Successfully passed attesstation")
-        return AttestationResponse(
+        res = AttestationResponse(
             gpu_attestation_success=True,
             switch_attestation_success=True,
             gpu_claims=gpu_claims,
+            switch_claims=switch_claims,
         )
+        logger.info(f"Successfully passed attesstation, {res=}")
+        return res
 
     except Exception as e:
         logger.error(f"Error during attestation: {e}")

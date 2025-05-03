@@ -18,8 +18,9 @@ type Core struct {
 	Hpmu              sync.Mutex
 	HealthcheckPasses map[string]map[string][]bool
 	// uid -> nodes -> gpus
-	PAmu              sync.Mutex
 	PassedAttestation map[string]map[string][]string
+	// gpu id -> seen
+	GPUids map[string]bool
 
 	// Global core lock
 	mu sync.Mutex
@@ -33,5 +34,6 @@ func CreateCore(d *setup.Dependencies) *Core {
 		HealthcheckPasses: map[string]map[string][]bool{},
 		PassedAttestation: map[string]map[string][]string{},
 		Neurons:           map[string]runtime.NeuronInfo{},
+		GPUids:            map[string]bool{},
 	}
 }
