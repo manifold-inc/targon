@@ -21,6 +21,9 @@ type Core struct {
 	PassedAttestation map[string]map[string][]string
 	// gpu id -> seen
 	GPUids map[string]bool
+	// SN Emission
+	EmissionPool *float64
+	TaoPrice *float64
 
 	// Global core lock
 	mu sync.Mutex

@@ -17,6 +17,7 @@ import (
 	"github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"github.com/subtrahend-labs/gobt/sigtools"
+	"github.com/subtrahend-labs/gobt/storage"
 )
 
 // TODO
@@ -33,6 +34,27 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 			return
 		}
 		getNeuronsCallback(v, c, h)
+	})
+	// get emission for this interval
+	v.AddBlockCallback(func(h types.Header) {
+		if c.EmissionPool != nil {
+			return
+		}
+		taoPrice, err := GetTaoPrice()
+		if err != nil {
+			c.Deps.Log.Errorw("Failed getting tao price", "error", err)
+			return
+		}
+		c.TaoPrice = &taoPrice
+		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
+		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), &h.ParentHash)
+		if err != nil {
+			c.Deps.Log.Errorw("Failed getting sn tao emissions", "error", err)
+			return
+		}
+		emi := (float64(*p) / 1e9) * .41 * 360 * *c.TaoPrice
+		c.EmissionPool = &emi
+		c.Deps.Log.Infof("Current sn miner emission pool in $ %f", *c.EmissionPool)
 	})
 	// get miner nodes
 	v.AddBlockCallback(func(h types.Header) {
@@ -262,6 +284,8 @@ func resetState(c *Core) {
 	c.Neurons = map[string]runtime.NeuronInfo{}
 	c.MinerNodes = map[string][]string{}
 	c.GPUids = map[string]bool{}
+	// Dont really need to wipe tao price
+	c.EmissionPool = nil
 	// TODO maybe keep this alive longer than an interval
 	c.HealthcheckPasses = map[string]map[string][]bool{}
 	c.PassedAttestation = map[string]map[string][]string{}
