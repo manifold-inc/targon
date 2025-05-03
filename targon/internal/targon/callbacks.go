@@ -1,6 +1,7 @@
 package targon
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -101,7 +102,7 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 }
 
 func logWeights(c *Core) {
-	uids, scores := getWeights(c)
+	uids, scores, _ := getWeights(c)
 	c.Deps.Log.Infow(
 		"Current Weights",
 		"uids",
@@ -297,7 +298,10 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 		c.mu.Unlock()
 		resetState(c)
 	}()
-	uids, scores := getWeights(c)
+	uids, scores, err := getWeights(c)
+	if err != nil {
+		c.Deps.Log.Errorw("Failed getting weights", "error", err)
+	}
 	c.Deps.Log.Info(
 		"Setting Weights",
 		"uids",
@@ -362,8 +366,12 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 	c.Deps.Log.Infow("Set weights on chain successfully", "hash", hash.Hex())
 }
 
-func getWeights(c *Core) ([]types.U16, []types.U16) {
+func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 	// TODO some sort of multi-check per interval
+	if c.EmissionPool == nil {
+		return []types.U16{}, []types.U16{}, errors.New("Emission pool is not set")
+	}
+	minerCut := 0.0
 	var uids []types.U16
 	var scores []float64
 	gpus := map[string]int{}
@@ -384,9 +392,13 @@ func getWeights(c *Core) ([]types.U16, []types.U16) {
 				gpus[ml] += 1
 				switch {
 				case strings.Contains(ml, "h100"):
-					thisScore += 1
+					score := 2 / *c.EmissionPool
+					thisScore += score
+					minerCut += score
 				case strings.Contains(ml, "h200"):
-					thisScore += 2
+					score := 3 / *c.EmissionPool
+					thisScore += score
+					minerCut += score
 				default:
 					continue
 				}
@@ -400,11 +412,15 @@ func getWeights(c *Core) ([]types.U16, []types.U16) {
 		uids = append(uids, types.NewU16(uint16(uidInt)))
 		scores = append(scores, thisScore)
 	}
-	minerCut := .25
 	burnKey := 28
 	scores = Normalize(scores, minerCut)
 	scores = append(scores, 1-minerCut)
 	uids = append(uids, types.NewU16(uint16(burnKey)))
+
+	for gpu, count := range gpus {
+		c.Deps.Log.Infof("%s count: %d", gpu, count)
+	}
+	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", uids), "scores", fmt.Sprintf("%v", scores))
 
 	var finalScores []types.U16
 	var finalUids []types.U16
@@ -417,9 +433,5 @@ func getWeights(c *Core) ([]types.U16, []types.U16) {
 		finalUids = append(finalUids, uids[i])
 	}
 
-	for gpu, count := range gpus {
-		c.Deps.Log.Infof("%s count: %d", gpu, count)
-	}
-
-	return finalUids, finalScores
+	return finalUids, finalScores, nil
 }
