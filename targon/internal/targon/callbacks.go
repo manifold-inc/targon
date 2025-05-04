@@ -369,7 +369,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 	// TODO some sort of multi-check per interval
 	if c.EmissionPool == nil {
-		return []types.U16{}, []types.U16{}, errors.New("Emission pool is not set")
+		return []types.U16{}, []types.U16{}, errors.New("emission pool is not set")
 	}
 	minerCut := 0.0
 	var uids []types.U16
@@ -390,13 +390,15 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 			for _, gpu := range c.PassedAttestation[uid][n] {
 				ml := strings.ToLower(gpu)
 				gpus[ml] += 1
+				// score is GPU cost per hour * hours in interval (1.5) / total coming
+				// into sn this interval
 				switch {
 				case strings.Contains(ml, "h100"):
-					score := 2 / *c.EmissionPool
+					score := (2.5 * 1.5) / *c.EmissionPool
 					thisScore += score
 					minerCut += score
 				case strings.Contains(ml, "h200"):
-					score := 3 / *c.EmissionPool
+					score := (3.5 * 1.5) / *c.EmissionPool
 					thisScore += score
 					minerCut += score
 				default:
