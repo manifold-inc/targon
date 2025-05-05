@@ -320,7 +320,9 @@ func CheckCVMAttest(
 		}
 	}
 	Log.Infow("GPU attestation successful",
-		"gpu_types", fmt.Sprintf("%v", gpuTypes))
+		"gpu_types", fmt.Sprintf("%v", gpuTypes),
+		"ip", cvmIP,
+	)
 
 	return gpuTypes, snums, nil
 }
