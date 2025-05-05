@@ -433,7 +433,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 	var finalScores []types.U16
 	var finalUids []types.U16
 	for i, s := range scores {
-		fw := math.Round(float64(setup.U16MAX) * s)
+		fw := math.Floor(float64(setup.U16MAX) * s)
 		if fw == 0 {
 			continue
 		}
