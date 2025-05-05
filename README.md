@@ -250,7 +250,7 @@ documentation attached to set up your hardware before launching TVM.
 [Nvidia Deployment Guide for Intel TDX and KVM](https://docs.nvidia.com/cc-deployment-guide-tdx.pdf)
 
 Please ensure that your GPUs are configured to PPCIE Mode and you have more than
-3 TB of storage.
+1.5 TB of storage.
 
 ### Launching TVM
 
@@ -331,134 +331,35 @@ At this point, all setup on your TVM nodes is complete.
 > WARNING: You must wait approximately 1 hour after this step before updating
 > your configuration file for CVM Nodes. Otherwise, you will fail attestation.
 
-### Updating Miner Configuration
+### Updating/Running Miner
 
-After setting up your TVM nodes and waiting an hour, you need to update your
-miner configuration to report the IP addresses of each CVM you are running.
+After setting up your TVM nodes, you need to update your miner configuration to
+report the IP addresses of each CVM you are running.
 
-1. **Update the Configuration** Edit your `miner.py` file to include the IP
-   addresses of your TVM nodes. Add them to the list of endpoints that your
-   miner reports to the network.
+1. **Update/Create the Configuration File** Edit `config.json` file to include
+   the IP addresses of your TVM nodes. Add them to the list of endpoints that
+   your miner reports to the network, along with any other desired paramaters.
 
-   ```python
-   def get_cvm_nodes(self):
-       # Return the list of TVM nodes you are using
-       assert self.config_file
-       assert self.config_file.cvm_nodes
-       return self.config_file.cvm_nodes
+   Example `config.json`
+
+   ```json
+    {
+    // ONLY include pure IP address of each node
+    "nodes": ["0.0.0.0", "1.1.1.1"],
+    "hotkey_phrase": "one one one one one three one one one one one two",
+    // External ip of your miner, used to register axon on bittensor
+    "ip": "160.202.129.179",
+    // Port for miner to use
+    "port": 7777,
+    // Chain endpoint for your miner to connect to
+    "chain_endpoint": "wss://test.finney.opentensor.ai:443",
+    // Netuid to use, only change when running testnet miner on 337
+    "netuid": 4
+    }
    ```
-
-   Make sure your configuration file includes the TVM nodes in the correct
-   format:
-
-   ```python
-   cvm_nodes = [
-       "http://<TVM_NODE_1_IP>:PORT",
-       "http://<TVM_NODE_2_IP>:PORT",
-   ]
-   ```
-
-1. **Verify Configuration**
-
-   - Ensure all TVM node IPs are correctly formatted
-   - Verify that the ports match your TVM node configurations
-   - Test the connection to each TVM node
 
 > **Note**: Make sure to keep your TVM node IPs up to date. If you add or remove
 > TVM nodes, update this configuration accordingly.
 
-## Contribution Guidelines
-
-### Code Review Process
-
-1. **Review Requirements**
-
-   - All code changes must be reviewed by at least one maintainer
-   - Consensus-critical code requires multiple reviews
-   - Maintainers may weigh reviewer opinions based on expertise and project
-     commitment
-
-1. **Review Standards**
-
-   - Code must follow project style guidelines
-   - Changes must include appropriate tests
-   - Documentation must be updated for significant changes
-   - Performance impacts must be considered and documented
-
-### Subnet Changes
-
-1. **Proposal Requirements**
-
-   - Must be discussed on Discord and other community channels
-   - Must demonstrate clear technical consensus
-   - Must be approved by project maintainers
-
-1. **Implementation Process**
-
-   - Changes must be thoroughly tested
-   - Must include migration plans if needed
-   - Must consider backward compatibility
-   - Must document security implications
-
-### Getting Started
-
-1. **Development Setup**
-
-   ```bash
-   # Clone the repository
-   git clone https://github.com/manifold-inc/targon.git
-   cd targon
-
-   # Create a new branch
-   git checkout -b feature/your-feature-name
-   ```
-
-1. **Making Changes**
-
-   - Follow the existing code style
-   - Write clear commit messages
-   - Include tests for new features
-   - Update documentation as needed
-
-1. **Submitting Changes**
-
-   ```bash
-   # Push your changes
-   git push origin feature/your-feature-name
-
-   # Create a pull request on GitHub
-   # Fill out the PR template completely
-   ```
-
-### Best Practices
-
-1. **Code Quality**
-
-   - Write clear, maintainable code
-   - Include comments for complex logic
-   - Follow security best practices
-   - Consider performance implications
-
-1. **Documentation**
-
-   - Update README for significant changes
-   - Document new features thoroughly
-   - Include usage examples
-
-### Community Guidelines
-
-1. **Communication**
-
-   - Be respectful and professional
-   - Provide constructive feedback
-   - Help others when possible
-   - Follow the project's code of conduct
-
-1. **Collaboration**
-
-   - Respond to review comments promptly
-   - Be open to feedback and suggestions
-   - Help maintain project quality
-   - Share knowledge with the community
-
-Remember: The goal is to improve Targon and Bitten
+1. **Start Miner** Run
+   `docker compose -f docker-compose.miner.yml up -d --build`
