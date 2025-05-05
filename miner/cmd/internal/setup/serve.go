@@ -67,7 +67,7 @@ func ServeMiner(d *Dependencies) error {
 	
 	tout := make(chan bool, 1)
 	go func() {
-		time.Sleep(15 * time.Second)
+		time.Sleep(60 * time.Second)
 		tout <- true
 	}()
 	d.Log.Info("Waiting for posted axon info")
