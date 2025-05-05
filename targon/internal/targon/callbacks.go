@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"targon/internal/discord"
 	"targon/internal/setup"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -312,17 +313,17 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 	go func() {
 		color := "3447003"
 		title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
-		desc := fmt.Sprintf("UIDS: %v\n\neights: %v", uids, scores)
-		uname := "Validator Weights"
-		msg := Message{
+		desc := fmt.Sprintf("UIDS: %v\n\nweights: %v", uids, scores)
+		uname := "Validator Logs"
+		msg := discord.Message{
 			Username: &uname,
-			Embeds: &[]Embed{{
+			Embeds: &[]discord.Embed{{
 				Title:       &title,
 				Description: &desc,
 				Color:       &color,
 			}},
 		}
-		err := SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
+		err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
 		if err != nil {
 			c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
 		}

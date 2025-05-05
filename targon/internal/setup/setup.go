@@ -6,11 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"targon/internal/discord"
+
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/joho/godotenv"
 	"github.com/subtrahend-labs/gobt/client"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Dependencies struct {
@@ -52,6 +55,32 @@ func Init() *Dependencies {
 	if err != nil {
 		panic("Failed to get logger")
 	}
+	DISCORD_URL := GetEnv("DISCORD_URL", "")
+	zapcore.RegisterHooks(
+		logger.Core(),
+		func(e zapcore.Entry) error {
+			if e.Level != zap.ErrorLevel {
+				return nil
+			}
+			go func() {
+				color := "15548997"
+				title := "Validator Error"
+				desc := fmt.Sprintf("%s\n\n%s", e.Message, e.Stack)
+				uname := "Validator Logs"
+				msg := discord.Message{
+					Username: &uname,
+					Embeds: &[]discord.Embed{{
+						Title:       &title,
+						Description: &desc,
+						Color:       &color,
+					}},
+				}
+				discord.SendDiscordMessage(DISCORD_URL, msg)
+			}()
+
+			return nil
+		},
+	)
 	sugar := logger.Sugar()
 
 	// Env Variables
@@ -63,7 +92,6 @@ func Init() *Dependencies {
 	CHAIN_ENDPOINT := GetEnv("CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443")
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
-	DISCORD_URL := GetEnv("DISCORD_URL", "")
 	DEBUG := GetEnv("DEBUG", "0")
 	netuid, err := strconv.Atoi(GetEnv("NETUID", "4"))
 	if err != nil {

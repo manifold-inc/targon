@@ -1,4 +1,4 @@
-package targon
+package discord
 
 import (
 	"bytes"
