@@ -433,14 +433,23 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 
 	var finalScores []types.U16
 	var finalUids []types.U16
+	sumScores := uint16(0)
 	for i, s := range scores {
+		// send dust to burn
+		if i == len(scores)-1 {
+			continue
+		}
 		fw := math.Floor(float64(setup.U16MAX) * s)
 		if fw == 0 {
 			continue
 		}
-		finalScores = append(finalScores, types.NewU16(uint16(fw)))
+		thisScore := uint16(fw)
+		finalScores = append(finalScores, types.NewU16(thisScore))
 		finalUids = append(finalUids, uids[i])
+		sumScores += thisScore
 	}
+	finalScores = append(finalScores, types.NewU16(setup.U16MAX-sumScores))
+	finalUids = append(finalUids, types.NewU16(uint16(burnKey)))
 
 	return finalUids, finalScores, nil
 }
