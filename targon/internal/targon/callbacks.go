@@ -303,7 +303,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 	if err != nil {
 		c.Deps.Log.Errorw("Failed getting weights", "error", err)
 	}
-	c.Deps.Log.Info(
+	c.Deps.Log.Infow(
 		"Setting Weights",
 		"uids",
 		fmt.Sprintf("%+v", uids),
