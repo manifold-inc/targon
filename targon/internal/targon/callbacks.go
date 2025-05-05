@@ -394,11 +394,13 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 				// into sn this interval
 				switch {
 				case strings.Contains(ml, "h100"):
-					score := (2.5 * 1.5) / *c.EmissionPool
+					// score := (2.5 * 1.5) / *c.EmissionPool
+					score := (2.5 * 1.5)
 					thisScore += score
 					minerCut += score
 				case strings.Contains(ml, "h200"):
-					score := (3.5 * 1.5) / *c.EmissionPool
+					// score := (3.5 * 1.5) / *c.EmissionPool
+					score := (3.5 * 1.5)
 					thisScore += score
 					minerCut += score
 				default:
@@ -415,6 +417,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 		scores = append(scores, thisScore)
 	}
 	burnKey := 28
+	minerCut = .3 // 30 % of emissions
 	scores = Normalize(scores, minerCut)
 	scores = append(scores, 1-minerCut)
 	uids = append(uids, types.NewU16(uint16(burnKey)))
