@@ -374,6 +374,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 	minerCut := 0.0
 	var uids []types.U16
 	var scores []float64
+	var cvmNodes []string
 	gpus := map[string]int{}
 	// for each uid
 	for uid, nodes := range c.MinerNodes {
@@ -386,6 +387,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 			if c.PassedAttestation[uid][n] == nil {
 				continue
 			}
+			cvmNodes = append(cvmNodes, n)
 			// for each gpu
 			for _, gpu := range c.PassedAttestation[uid][n] {
 				ml := strings.ToLower(gpu)
@@ -425,6 +427,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 	for gpu, count := range gpus {
 		c.Deps.Log.Infof("%s count: %d", gpu, count)
 	}
+	c.Deps.Log.Infof("CVM IPs: %v", cvmNodes)
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", uids), "scores", fmt.Sprintf("%v", scores))
 
 	var finalScores []types.U16
