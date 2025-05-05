@@ -77,7 +77,8 @@ func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
 	cvmIP = strings.TrimPrefix(cvmIP, "http://")
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/health", cvmIP), nil)
+	cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/health", cvmIP), nil)
 	if err != nil {
 		Log.Debugw("Failed to generate request to miner", "error", err)
 		return false
@@ -120,7 +121,7 @@ func getCVMAttestFromNode(
 	body, _ := json.Marshal(data)
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("http://%s/api/v1/attest", cvmIP),
+		fmt.Sprintf("http://%s:8080/api/v1/attest", cvmIP),
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
@@ -248,6 +249,8 @@ func CheckCVMAttest(
 	h1 := strings.ReplaceAll(uuid.NewString(), "-", "")
 	h2 := strings.ReplaceAll(uuid.NewString(), "-", "")
 	nonce := h1 + h2
+	cvmIP = strings.TrimPrefix(cvmIP, "http://")
+	cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 	attestRes, err := getCVMAttestFromNode(c, client, n, cvmIP, Log, nonce)
 	if err != nil {
 		return nil, nil, err
