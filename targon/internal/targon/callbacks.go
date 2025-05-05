@@ -283,14 +283,14 @@ func pingHealthChecks(c *Core) {
 func resetState(c *Core) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.Neurons = map[string]runtime.NeuronInfo{}
-	c.MinerNodes = map[string][]string{}
-	c.GPUids = map[string]bool{}
+	c.Neurons = make(map[string]runtime.NeuronInfo)
+	c.MinerNodes = make(map[string][]string)
+	c.GPUids = make(map[string]bool)
 	// Dont really need to wipe tao price
 	c.EmissionPool = nil
 	// TODO maybe keep this alive longer than an interval
-	c.HealthcheckPasses = map[string]map[string][]bool{}
-	c.PassedAttestation = map[string]map[string][]string{}
+	c.HealthcheckPasses = make(map[string]map[string][]bool)
+	c.PassedAttestation = make(map[string]map[string][]string)
 }
 
 func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
