@@ -55,32 +55,6 @@ func Init() *Dependencies {
 	if err != nil {
 		panic("Failed to get logger")
 	}
-	DISCORD_URL := GetEnv("DISCORD_URL", "")
-	zapcore.RegisterHooks(
-		logger.Core(),
-		func(e zapcore.Entry) error {
-			if e.Level != zap.ErrorLevel {
-				return nil
-			}
-			go func() {
-				color := "15548997"
-				title := "Validator Error"
-				desc := fmt.Sprintf("%s\n\n%s", e.Message, e.Stack)
-				uname := "Validator Logs"
-				msg := discord.Message{
-					Username: &uname,
-					Embeds: &[]discord.Embed{{
-						Title:       &title,
-						Description: &desc,
-						Color:       &color,
-					}},
-				}
-				discord.SendDiscordMessage(DISCORD_URL, msg)
-			}()
-
-			return nil
-		},
-	)
 	sugar := logger.Sugar()
 
 	// Env Variables
@@ -88,6 +62,7 @@ func Init() *Dependencies {
 	if err != nil {
 		sugar.Fatalw("Error loading .env file", err)
 	}
+	DISCORD_URL := GetEnv("DISCORD_URL", "")
 	HOTKEY_PHRASE := GetEnvOrPanic("HOTKEY_PHRASE", sugar)
 	CHAIN_ENDPOINT := GetEnv("CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443")
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
@@ -121,6 +96,30 @@ func Init() *Dependencies {
 	if err != nil {
 		sugar.Fatalw("Failed creating keyring par", err)
 	}
+	sugar = sugar.WithOptions(zap.Hooks(
+		func(e zapcore.Entry) error {
+			if e.Level != zap.ErrorLevel {
+				return nil
+			}
+			go func() {
+				color := "15548997"
+				title := "Validator Error"
+				desc := fmt.Sprintf("%s\n\n%s", e.Message, e.Stack)
+				uname := "Validator Logs"
+				msg := discord.Message{
+					Username: &uname,
+					Embeds: &[]discord.Embed{{
+						Title:       &title,
+						Description: &desc,
+						Color:       &color,
+					}},
+				}
+				discord.SendDiscordMessage(DISCORD_URL, msg)
+			}()
+
+			return nil
+		},
+	))
 
 	return &Dependencies{
 		Log:    sugar,
