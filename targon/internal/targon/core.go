@@ -23,7 +23,7 @@ type Core struct {
 	GPUids map[string]bool
 	// SN Emission
 	EmissionPool *float64
-	TaoPrice *float64
+	TaoPrice     *float64
 
 	// Global core lock
 	mu sync.Mutex
