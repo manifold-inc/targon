@@ -101,7 +101,7 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		setWeights(v, c, h)
 	})
 	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%7200 != 0 {
+		if h.Number%720 != 0 {
 			return
 		}
 		sendDailyGPUSummary(c, h)
@@ -500,8 +500,8 @@ func sendDailyGPUSummary(c *Core, h types.Header) {
 	title := fmt.Sprintf("Daily GPU Summary at block %v", h.Number)
 	desc := fmt.Sprintf(
 		"Total Attested GPUs: %d\n"+
-			"Active CVM Nodes: %d\n\n"+
-			"GPU Type Breakdown:\n%s\n\n"+
+			"Active CVM Nodes: %d\n"+
+			"GPU Type Breakdown:\n%s\n"+
 			"Per Miner Breakdown:\n%s",
 		totalGPUs,
 		activeNodes,
@@ -519,6 +519,11 @@ func sendDailyGPUSummary(c *Core, h types.Header) {
 		}},
 	}
 	err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
+	c.Deps.Log.Infow("Sent daily GPU summary",
+		"total_gpus", totalGPUs,
+		"active_nodes", activeNodes,
+		"gpu_types", gpuTypes,
+	)
 	if err != nil {
 		c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
 	}
