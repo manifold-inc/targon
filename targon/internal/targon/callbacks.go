@@ -101,7 +101,7 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		setWeights(v, c, h)
 	})
 	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%720 != 0 {
+		if h.Number%719 != 0 {
 			return
 		}
 		sendDailyGPUSummary(c, h)
