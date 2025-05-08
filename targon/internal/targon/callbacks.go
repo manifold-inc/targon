@@ -100,6 +100,12 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		}
 		setWeights(v, c, h)
 	})
+	v.AddBlockCallback(func(h types.Header) {
+		if h.Number%720 != 0 {
+			return
+		}
+		sendDailyGPUSummary(c, h)
+	})
 }
 
 func logWeights(c *Core) {
@@ -452,4 +458,89 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 	finalUids = append(finalUids, types.NewU16(uint16(burnKey)))
 
 	return finalUids, finalScores, nil
+}
+
+type minerStats struct {
+	gpuCount int
+	gpuTypes map[string]int
+}
+
+func sendDailyGPUSummary(c *Core, h types.Header) {
+	stats := make(map[string]*minerStats)
+	totalGPUs := 0
+	activeNodes := 0
+
+	for uid, nodes := range c.PassedAttestation {
+		if stats[uid] == nil {
+			stats[uid] = &minerStats{
+				gpuTypes: make(map[string]int),
+			}
+		}
+
+		for _, gpus := range nodes {
+			activeNodes++
+			for _, gpu := range gpus {
+				gpuLower := strings.ToLower(gpu)
+				totalGPUs++
+				stats[uid].gpuCount++
+				stats[uid].gpuTypes[gpuLower]++
+			}
+		}
+	}
+
+	// Aggregate GPU types across all miners
+	gpuTypes := make(map[string]int)
+	for _, miner := range stats {
+		for gpu, count := range miner.gpuTypes {
+			gpuTypes[gpu] += count
+		}
+	}
+
+	color := "5763719"
+	title := fmt.Sprintf("Daily GPU Summary at block %v", h.Number)
+	desc := fmt.Sprintf(
+		"Total Attested GPUs: %d\n"+
+			"Active CVM Nodes: %d\n"+
+			"GPU Type Breakdown:\n%s\n"+
+			"Per Miner Breakdown:\n%s",
+		totalGPUs,
+		activeNodes,
+		formatGPUBreakdown(gpuTypes),
+		formatMinerBreakdown(stats),
+	)
+
+	uname := "GPU Monitor"
+	msg := discord.Message{
+		Username: &uname,
+		Embeds: &[]discord.Embed{{
+			Title:       &title,
+			Description: &desc,
+			Color:       &color,
+		}},
+	}
+	err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
+	c.Deps.Log.Infow("Sent daily GPU summary",
+		"total_gpus", totalGPUs,
+		"active_nodes", activeNodes,
+		"gpu_types", gpuTypes,
+	)
+	if err != nil {
+		c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
+	}
+}
+
+func formatGPUBreakdown(gpuTypes map[string]int) string {
+	var sb strings.Builder
+	for gpu, count := range gpuTypes {
+		sb.WriteString(fmt.Sprintf("- %s: %d\n", gpu, count))
+	}
+	return sb.String()
+}
+
+func formatMinerBreakdown(stats map[string]*minerStats) string {
+	var sb strings.Builder
+	for uid, miner := range stats {
+		sb.WriteString(fmt.Sprintf("- Miner %s: %d GPUs\n", uid, miner.gpuCount))
+	}
+	return sb.String()
 }
