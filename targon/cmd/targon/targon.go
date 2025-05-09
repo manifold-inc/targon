@@ -20,7 +20,7 @@ func main() {
 	validator := boilerplate.NewChainSubscriber(deps.Env.NETUID)
 	deps.Log.Infof("Creating validator on netuid [%d]", validator.NetUID)
 
-	targon.AddBlockCallbakcs(validator, core)
+	targon.AddBlockCallbacks(validator, core)
 	targon.SetMainFunc(validator, core)
 
 	validator.SetOnSubscriptionCreationError(func(e error) {

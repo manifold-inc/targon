@@ -25,7 +25,7 @@ import (
 // TODO
 // Confrim set weight hash success
 
-func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
+func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
 	v.AddBlockCallback(func(h types.Header) {
 		go logBlockCallback(c, h)
 	})
@@ -95,16 +95,16 @@ func AddBlockCallbakcs(v *boilerplate.BaseChainSubscriber, c *Core) {
 		logWeights(c)
 	})
 	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
-			return
-		}
-		setWeights(v, c, h)
-	})
-	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%720 != 0 {
 			return
 		}
 		sendDailyGPUSummary(c, h)
+	})
+	v.AddBlockCallback(func(h types.Header) {
+		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
+			return
+		}
+		setWeights(v, c, h)
 	})
 }
 
