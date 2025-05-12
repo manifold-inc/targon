@@ -150,13 +150,22 @@ func main() {
 				deps.Log.Warnf("No vpermit for %s", signed_by)
 				return c.String(http.StatusForbidden, "No VPermit")
 			}
+
+			stake := neuron.Stake[0].Amount.Int64()
+			stakeInTao := stake / 1e9
+			// Check if stake is below min stake, default 1000
+			if stakeInTao < int64(deps.Config.MinStake) {
+				deps.Log.Warnf("Stake is too low: %dt", stakeInTao)
+				return c.String(http.StatusForbidden, "Stake too low")
+			}
+
 			deps.Log.Infof("Responding to request from request from [%s]", signed_by)
 			return c.JSON(http.StatusOK, core.Deps.Config.Nodes)
 		})
 		e.GET("/", func(c echo.Context) error {
 			return c.String(http.StatusOK, "PONG")
 		})
-		e.Start(fmt.Sprintf(":%d", core.Deps.Config.Port))
+		_ = e.Start(fmt.Sprintf(":%d", core.Deps.Config.Port))
 		<-i
 		o <- true
 	})
