@@ -15,6 +15,7 @@ type Config struct {
 	Netuid        *int     `json:"netuid,omitempty"`
 	DiscordUrl    string   `json:"discord_url,omitempty"`
 	Ip            string   `json:"ip,omitempty"`
+	MinStake      int      `json:"min_stake"`
 }
 
 func LoadConfig() *Config {
@@ -22,13 +23,18 @@ func LoadConfig() *Config {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	var config Config
 	bytes, err := io.ReadAll(f)
 	if err != nil {
 		panic(err)
 	}
-	json.Unmarshal(bytes, &config)
+	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		panic("Failed reading config")
+	}
 
 	if config.ChainEndpoint == "" {
 		config.ChainEndpoint = "wss://entrypoint-finney.opentensor.ai:443"
@@ -45,6 +51,9 @@ func LoadConfig() *Config {
 	}
 	if config.Ip == "" {
 		panic("No ip specified")
+	}
+	if config.MinStake == 0 {
+		config.MinStake = 1000
 	}
 	return &config
 }
