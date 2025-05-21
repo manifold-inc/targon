@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"miner/cmd/internal/setup"
 
@@ -106,6 +107,16 @@ func main() {
 		core.Deps.Log.Infow("Fetching validator list", "block", fmt.Sprintf("%v", h.Number))
 		UpdateCore(core, h)
 	})
+
+	// block timer
+	t := time.AfterFunc(1*time.Hour, func() {
+		core.Deps.Log.Error("havint seen any blocks in over an hour, am i stuck?")
+	})
+	validator.AddBlockCallback(func(h types.Header) {
+		t.Reset(1 * time.Hour)
+
+	})
+
 	validator.SetMainFunc(func(i <-chan bool, o chan<- bool) {
 		e := echo.New()
 		e.GET("/cvm", func(c echo.Context) error {
