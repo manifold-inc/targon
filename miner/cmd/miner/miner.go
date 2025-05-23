@@ -67,7 +67,7 @@ func UpdateCore(core *Core, h types.Header) {
 func main() {
 	deps := setup.Init()
 	deps.Log.Infof(
-		"Starting validator with key [%s] on chain [%s]",
+		"Starting miner with key [%s] on chain [%s]",
 		deps.Hotkey.Address,
 		deps.Config.ChainEndpoint,
 	)
