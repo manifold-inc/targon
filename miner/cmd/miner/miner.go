@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"miner/cmd/internal/setup"
 
@@ -66,7 +67,7 @@ func UpdateCore(core *Core, h types.Header) {
 func main() {
 	deps := setup.Init()
 	deps.Log.Infof(
-		"Starting validator with key [%s] on chain [%s]",
+		"Starting miner with key [%s] on chain [%s]",
 		deps.Hotkey.Address,
 		deps.Config.ChainEndpoint,
 	)
@@ -106,6 +107,16 @@ func main() {
 		core.Deps.Log.Infow("Fetching validator list", "block", fmt.Sprintf("%v", h.Number))
 		UpdateCore(core, h)
 	})
+
+	// block timer
+	t := time.AfterFunc(1*time.Hour, func() {
+		core.Deps.Log.Error("havint seen any blocks in over an hour, am i stuck?")
+	})
+	validator.AddBlockCallback(func(h types.Header) {
+		t.Reset(1 * time.Hour)
+
+	})
+
 	validator.SetMainFunc(func(i <-chan bool, o chan<- bool) {
 		e := echo.New()
 		e.GET("/cvm", func(c echo.Context) error {
@@ -150,13 +161,22 @@ func main() {
 				deps.Log.Warnf("No vpermit for %s", signed_by)
 				return c.String(http.StatusForbidden, "No VPermit")
 			}
+
+			stake := neuron.Stake[0].Amount.Int64()
+			stakeInTao := stake / 1e9
+			// Check if stake is below min stake, default 1000
+			if stakeInTao < int64(deps.Config.MinStake) {
+				deps.Log.Warnf("Stake is too low: %dt", stakeInTao)
+				return c.String(http.StatusForbidden, "Stake too low")
+			}
+
 			deps.Log.Infof("Responding to request from request from [%s]", signed_by)
 			return c.JSON(http.StatusOK, core.Deps.Config.Nodes)
 		})
 		e.GET("/", func(c echo.Context) error {
 			return c.String(http.StatusOK, "PONG")
 		})
-		e.Start(fmt.Sprintf(":%d", core.Deps.Config.Port))
+		_ = e.Start(fmt.Sprintf(":%d", core.Deps.Config.Port))
 		<-i
 		o <- true
 	})

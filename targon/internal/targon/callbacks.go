@@ -26,6 +26,13 @@ import (
 // Confrim set weight hash success
 
 func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
+	// block timer
+	t := time.AfterFunc(1*time.Hour, func() {
+		c.Deps.Log.Error("havint seen any blocks in over an hour, am i stuck?")
+	})
+	v.AddBlockCallback(func(h types.Header) {
+		t.Reset(1 * time.Hour)
+	})
 	v.AddBlockCallback(func(h types.Header) {
 		go logBlockCallback(c, h)
 	})

@@ -54,7 +54,9 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 		Log.Debugw("Failed sending request to miner", "error", err)
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		Log.Debugw(
@@ -101,7 +103,9 @@ func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP s
 		Log.Debugw("Failed sending request to miner", "error", err)
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -148,7 +152,9 @@ func getCVMAttestFromNode(
 		log.Debugw("Failed sending request to miner", "error", err)
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		log.Debugw(
 			"Bad status code from miner attest",
@@ -206,8 +212,10 @@ func verifyAttestResponse(
 		log.Warnw("Failed sending request to nvidia-attest", "error", err)
 		return nil, err
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
 		log.Warnw(
 			"Bad status code from nvidia-attest",
 			"status",
@@ -216,7 +224,6 @@ func verifyAttestResponse(
 		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
 	}
 	resBody, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
 	if err != nil {
 		log.Warnw("Failed reading response body from nvidia-attest", "error", err)
 		return nil, err

@@ -114,7 +114,7 @@ func Init() *Dependencies {
 						Color:       &color,
 					}},
 				}
-				discord.SendDiscordMessage(DISCORD_URL, msg)
+				_ = discord.SendDiscordMessage(DISCORD_URL, msg)
 			}()
 
 			return nil
