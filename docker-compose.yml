@@ -1,13 +1,7 @@
 services:
   nvidia-attest: 
-    image: manifoldlabs/targon-attest
+    image: manifoldlabs/targon-attest@latest
     restart: always
-    build:
-      dockerfile: Dockerfile
-      context: ./nvidia-attest
-      platforms:
-        - linux/arm
-        - linux/amd64
 
   targon:
     restart: always
