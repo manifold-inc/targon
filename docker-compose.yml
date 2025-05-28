@@ -1,6 +1,6 @@
 services:
   nvidia-attest: 
-    image: manifoldlabs/targon-attest@latest
+    image: ghcr.io/manifold-inc/targon-nvidia-attest:latest
     restart: always
 
   targon:
