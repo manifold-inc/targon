@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"flag"
@@ -12,7 +12,7 @@ import (
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 
-func main() {
+func Temp() {
 	deps := setup.Init()
 	deps.Log.Infof(
 		"Starting validator with key [%s] on chain [%s] version [%d]",

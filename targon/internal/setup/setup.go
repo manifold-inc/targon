@@ -47,10 +47,18 @@ func GetEnvOrPanic(key string, logger *zap.SugaredLogger) string {
 	return ""
 }
 
-func Init() *Dependencies {
+func Init(opts ...any) *Dependencies {
+	var level *zapcore.Level
+	if len(opts) != 0 {
+		l := opts[0].(zapcore.Level)
+		level = &l
+	}
 	// Startup
 	cfg := zap.NewProductionConfig()
 	cfg.Sampling = nil
+	if level != nil {
+		cfg.Level.SetLevel(*level)
+	}
 	logger, err := cfg.Build()
 	if err != nil {
 		panic("Failed to get logger")
@@ -80,6 +88,9 @@ func Init() *Dependencies {
 	if debug {
 		cfg := zap.NewDevelopmentConfig()
 		cfg.Sampling = nil
+		if level != nil {
+			cfg.Level.SetLevel(*level)
+		}
 		logger, err := cfg.Build()
 		if err != nil {
 			panic("Failed to get logger")
