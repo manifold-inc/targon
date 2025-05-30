@@ -9,24 +9,24 @@ import (
 )
 
 type Core struct {
-	Neurons map[string]runtime.NeuronInfo
-	Deps    *setup.Dependencies
+	Neurons map[string]runtime.NeuronInfo `bson:"-"`
+	Deps    *setup.Dependencies           `bson:"-"`
+	Mnmu       sync.Mutex          `bson:"-"`
 	// uid -> nodes
-	Mnmu       sync.Mutex
-	MinerNodes map[string][]string
+	MinerNodes map[string][]string `bson:"miner_nodes,omitempty"`
 	// uid -> nodes -> []passed
-	Hpmu              sync.Mutex
-	HealthcheckPasses map[string]map[string][]bool
+	Hpmu              sync.Mutex                   `bson:"-"`
+	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
-	PassedAttestation map[string]map[string][]string
+	PassedAttestation map[string]map[string][]string `bson:"passed_attestation,omitempty"`
 	// gpu id -> seen
-	GPUids map[string]bool
+	GPUids map[string]bool `bson:"gp_uids,omitempty"`
 	// SN Emission
-	EmissionPool *float64
-	TaoPrice     *float64
+	EmissionPool *float64 `bson:"emission_pool,omitempty"`
+	TaoPrice     *float64 `bson:"tao_price,omitempty"`
 
 	// Global core lock
-	mu sync.Mutex
+	mu sync.Mutex `bson:"-"`
 }
 
 func CreateCore(d *setup.Dependencies) *Core {

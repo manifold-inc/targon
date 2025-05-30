@@ -12,6 +12,8 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/joho/godotenv"
 	"github.com/subtrahend-labs/gobt/client"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -21,6 +23,7 @@ type Dependencies struct {
 	Env    Env
 	Client *client.Client
 	Hotkey signature.KeyringPair
+	Mongo  *mongo.Client
 }
 type Env struct {
 	HOTKEY_PHRASE          string
@@ -76,6 +79,21 @@ func Init(opts ...any) *Dependencies {
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
 	DEBUG := GetEnv("DEBUG", "0")
+
+	MONGO_USERNAME := GetEnv("MONGO_USERNAME", "")
+	MONGO_PASSWORD := GetEnv("MONGO_PASSWORD", "")
+	var mongoClient *mongo.Client
+	if MONGO_USERNAME != "" && MONGO_PASSWORD != "" {
+		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s@mongo:27017/targon?authSource=admin&authMechanism=SCRAM-SHA-256", MONGO_USERNAME, MONGO_PASSWORD))
+
+		client, err := mongo.Connect(clientOpts)
+		if err == nil {
+			mongoClient = client
+		} else {
+			sugar.Warn("failed connecting to mongo", "error", err)
+		}
+	}
+
 	netuid, err := strconv.Atoi(GetEnv("NETUID", "4"))
 	if err != nil {
 		sugar.Fatalw("Invalid netuid", "error", err)
@@ -136,6 +154,7 @@ func Init(opts ...any) *Dependencies {
 		Log:    sugar,
 		Client: client,
 		Hotkey: kp,
+		Mongo:  mongoClient,
 		Env: Env{
 			DEBUG:                  debug,
 			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,

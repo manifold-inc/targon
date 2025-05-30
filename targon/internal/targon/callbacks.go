@@ -89,27 +89,37 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
 		}
 		getPassingAttestations(c)
 	})
+	// Ping miner healthchecks
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%10 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
 		pingHealthChecks(c)
 	})
+	// Log weights
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%10 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
 		logWeights(c)
 	})
+	// Discord Notifications
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%720 != 0 {
 			return
 		}
 		sendDailyGPUSummary(c, h)
 	})
+	// Set Weights
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
 			return
+		}
+		if c.Deps.Mongo != nil {
+			err := SyncMongo(c, int(h.Number))
+			if err != nil {
+				c.Deps.Log.Errorw("failed syncing to mongo", "error", err)
+			}
 		}
 		setWeights(v, c, h)
 	})

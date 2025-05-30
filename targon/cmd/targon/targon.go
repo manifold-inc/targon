@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"targon/internal/setup"
 	"targon/internal/targon"
 
@@ -15,6 +16,13 @@ func main() {
 		deps.Env.CHAIN_ENDPOINT,
 		deps.Env.VERSION,
 	)
+	if deps.Mongo != nil {
+		defer func() {
+			if err := deps.Mongo.Disconnect(context.Background()); err != nil {
+				deps.Log.Errorw("failed disconnecting from mongo", "error", err)
+			}
+		}()
+	}
 
 	core := targon.CreateCore(deps)
 	validator := boilerplate.NewChainSubscriber(deps.Env.NETUID)
