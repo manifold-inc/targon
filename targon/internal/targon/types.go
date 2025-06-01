@@ -32,11 +32,11 @@ type AttestClaim struct {
 }
 
 type GPUAttestationResponse struct {
-	GPUAttestationSuccess    bool `json:"gpu_attestation_success"`
-	SwitchAttestationSuccess bool `json:"switch_attestation_success"`
+	GPUIds                   []string `json:"gpu_ids"`
+	GPUAttestationSuccess    bool     `json:"gpu_attestation_success"`
+	SwitchAttestationSuccess bool     `json:"switch_attestation_success"`
 	GPUClaims                map[string]struct {
 		GPUType string `json:"gpu_type"`
-		GPUID   string `json:"gpu_id"`
 	} `json:"gpu_claims,omitempty"`
 	SwitchClaims map[string]struct {
 		SwitchType string `json:"switch_type"`

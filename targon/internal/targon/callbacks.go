@@ -227,7 +227,7 @@ func getPassingAttestations(c *Core) {
 			go func() {
 				defer wg.Done()
 				n := c.Neurons[uid]
-				gpus, serialNums, err := CheckCVMAttest(c, client, &n, node)
+				gpus, ueids, err := CheckCVMAttest(c, client, &n, node)
 				if err != nil {
 					return
 				}
@@ -235,9 +235,12 @@ func getPassingAttestations(c *Core) {
 				// ensure no duplicate nodes
 				c.mu.Lock()
 				defer c.mu.Unlock()
-				for _, v := range serialNums {
+				for _, v := range ueids {
 					if c.GPUids[v] {
 						c.Deps.Log.Infow("Found duplicate GPU ID", "uid", uid)
+						// Add empty string so that we dont ping this node again,
+						// but dont pass any actual gpus
+						c.PassedAttestation[uid][node] = []string{}
 						return
 					}
 					c.GPUids[v] = true

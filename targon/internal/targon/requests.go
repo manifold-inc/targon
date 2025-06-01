@@ -188,8 +188,8 @@ func verifyAttestResponse(
 	body, err := json.Marshal(map[string]any{
 		"gpu_remote":         attestRes.GPURemote,
 		"switch_remote":      attestRes.SwitchRemote,
-		"gpu_local_token":    attestRes.GPULocal.Token,
-		"switch_local_token": attestRes.SwitchLocal.Token,
+		"gpu_local":    attestRes.GPULocal,
+		"switch_local": attestRes.SwitchLocal,
 		"expected_nonce":     nonce,
 	})
 	if err != nil {
@@ -317,16 +317,15 @@ func CheckCVMAttest(
 
 	// Extract GPU types from the claims
 	var gpuTypes []string
-	var snums []string
 	if attestResponse.GPUClaims != nil {
 		for _, claims := range attestResponse.GPUClaims {
 			gpuTypes = append(gpuTypes, claims.GPUType)
-			snums = append(snums, claims.GPUID)
 		}
 	}
+	ueids := attestResponse.GPUIds
 	if attestResponse.SwitchClaims != nil {
 		for _, claims := range attestResponse.SwitchClaims {
-			snums = append(snums, claims.SwitchID)
+			ueids = append(ueids, claims.SwitchID)
 		}
 	}
 	Log.Infow("GPU attestation successful",
@@ -334,5 +333,5 @@ func CheckCVMAttest(
 		"ip", cvmIP,
 	)
 
-	return gpuTypes, snums, nil
+	return gpuTypes, ueids, nil
 }
