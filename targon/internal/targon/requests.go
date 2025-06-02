@@ -10,12 +10,10 @@ import (
 	"net/http"
 	"strings"
 
-	"targon/internal/subtensor/utils"
-
-	"github.com/google/uuid"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"go.uber.org/zap"
+	"targon/internal/subtensor/utils"
 )
 
 func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string, error) {
@@ -186,11 +184,11 @@ func verifyAttestResponse(
 ) (*GPUAttestationResponse, error) {
 	// Validate Attestation
 	body, err := json.Marshal(map[string]any{
-		"gpu_remote":         attestRes.GPURemote,
-		"switch_remote":      attestRes.SwitchRemote,
-		"gpu_local":    attestRes.GPULocal,
-		"switch_local": attestRes.SwitchLocal,
-		"expected_nonce":     nonce,
+		"gpu_remote":     attestRes.GPURemote,
+		"switch_remote":  attestRes.SwitchRemote,
+		"gpu_local":      attestRes.GPULocal,
+		"switch_local":   attestRes.SwitchLocal,
+		"expected_nonce": nonce,
 	})
 	if err != nil {
 		return nil, errors.New("failed marshaling miner attest response")
@@ -253,9 +251,7 @@ func CheckCVMAttest(
 ) ([]string, []string, error) {
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
-	h1 := strings.ReplaceAll(uuid.NewString(), "-", "")
-	h2 := strings.ReplaceAll(uuid.NewString(), "-", "")
-	nonce := h1 + h2
+	nonce := NewNonce(c.Deps.Hotkey.Address)
 	cvmIP = strings.TrimPrefix(cvmIP, "http://")
 	cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 	attestRes, err := getCVMAttestFromNode(c, client, n, cvmIP, Log, nonce)
