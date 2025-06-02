@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"miner/cmd/internal/setup"
+	"miner/internal/setup"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/labstack/echo/v4"
