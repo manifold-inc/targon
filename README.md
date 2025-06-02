@@ -1,10 +1,10 @@
 # Targon: The Confidential Decentralized AI Cloud
 
 Targon is a next-generation AI infrastructure platform that leverages
-Confidential Compute (CC) technology to secure the entire AI stack. By providing
-a secure execution environment from hardware to application layers, Targon
-enables verifiable and trustworthy AI operations across the entire
-infrastructure in a decentralized fashion.
+Confidential Compute (CC) and Protected pcie (PPCIE) technology to secure the
+entire stack. By providing a secure execution environment from hardware to
+application layers, Targon enables verifiable and trustworthy operations across
+the entire infrastructure in a decentralized fashion.
 
 NOTICE: Using this software, you must agree to the Terms and Agreements provided
 in the terms and conditions document. By downloading and running this software,
@@ -43,8 +43,8 @@ you implicitly agree to these terms and conditions.
 
 ## Overview
 
-Targon provides a comprehensive secure AI infrastructure powered by Confidential
-Compute technology:
+Targon provides a comprehensive secure AI infrastructure powered by CC and PPCIE
+technology:
 
 ### Core Security Features
 
@@ -59,14 +59,15 @@ Compute technology:
 
 - End-to-end secure model inference pipeline
 - Hardware-level attestation and verification
-- Protected model execution with Confidential Compute isolation
+- Protected model execution with CC or PPCIE isolation
 - Verifiable computation through remote attestation
 - Secure memory management for AI workloads
 - Isolated execution environment for sensitive operations
 
 ### Current Implementation
 
-- NVIDIA Confidential Compute integration
+- NVIDIA Confidential Compute integration OR
+- NVIDIA PPCIE
 - Hardware-level security guarantees
 - Protected inference execution
 - Remote attestation capabilities
@@ -75,13 +76,13 @@ Compute technology:
 
 ### Future Roadmap
 
-- Secure model training with Confidential Compute
+- Secure model training with Confidential Compute or PPCIE
 - Protected data processing and storage
 - Bare metal access for secure AI workloads
 - Comprehensive AI development platform
 - Developer-friendly tools and interfaces
 - Automated scaling and resource management
-- Multi-vendor Confidential Compute support:
+- Multi-vendor Confidential Compute / PPCIE support:
   - AMD SEV-SNP integration
   - Additional hardware security technologies
 
@@ -259,7 +260,7 @@ This process will:
 
 1. Attest your hardware configuration
 1. Execute the launch script for TVM
-1. Verify the Confidential Compute environment
+1. Verify the environment Integrity
 
 If you encounter any errors during this process, please review and correct your
 hardware configuration according to the guidelines in the previous sections.
@@ -323,7 +324,7 @@ Before installing TVM, you'll need to gather the following information:
 If you encounter any issues during verification, ensure that:
 
 - All prerequisite steps were completed successfully
-- Your GPU is properly configured for Confidential Compute
+- Your GPU is properly configured for Confidential Compute / PPCIE
 - Your keys are correctly formatted and valid
 
 At this point, all setup on your TVM nodes is complete.
