@@ -2,7 +2,7 @@ package monitor
 
 import (
 	"fmt"
-	"miner/cmd/internal/setup"
+	"miner/internal/setup"
 	"net/http"
 	"strings"
 	"time"
