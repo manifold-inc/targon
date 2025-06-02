@@ -218,6 +218,7 @@ func getPassingAttestations(c *Core) {
 			if c.PassedAttestation[uid] == nil {
 				c.mu.Lock()
 				c.PassedAttestation[uid] = map[string][]string{}
+				c.ICONS[uid] = map[string]string{}
 				c.mu.Unlock()
 			}
 			if c.PassedAttestation[uid][node] != nil {
@@ -227,7 +228,7 @@ func getPassingAttestations(c *Core) {
 			go func() {
 				defer wg.Done()
 				n := c.Neurons[uid]
-				gpus, ueids, err := CheckCVMAttest(c, client, &n, node)
+				gpus, ueids, icon, err := CheckCVMAttest(c, client, &n, node)
 				if err != nil {
 					return
 				}
@@ -235,6 +236,7 @@ func getPassingAttestations(c *Core) {
 				// ensure no duplicate nodes
 				c.mu.Lock()
 				defer c.mu.Unlock()
+				c.ICONS[uid][node] = icon
 				for _, v := range ueids {
 					if c.GPUids[v] {
 						c.Deps.Log.Infow("Found duplicate GPU ID", "uid", uid)
@@ -317,6 +319,7 @@ func resetState(c *Core) {
 	// TODO maybe keep this alive longer than an interval
 	c.HealthcheckPasses = make(map[string]map[string][]bool)
 	c.PassedAttestation = make(map[string]map[string][]string)
+	c.ICONS = make(map[string]map[string]string)
 }
 
 func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {

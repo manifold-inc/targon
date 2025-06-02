@@ -118,7 +118,7 @@ func getCVMAttestFromNode(
 	cvmIP string,
 	log *zap.SugaredLogger,
 	nonce string,
-) (*AttestResponse, error) {
+) (*AttestPayload, error) {
 	data := AttestBody{Nonce: nonce}
 	body, _ := json.Marshal(data)
 	req, err := http.NewRequest(
@@ -166,13 +166,17 @@ func getCVMAttestFromNode(
 		log.Debugw("Failed reading response", "error", err)
 		return nil, err
 	}
+	icon := resp.Header.Get("X-Targon-ICON")
+	if len(icon) == 0 {
+		icon = "false"
+	}
 	var attestRes AttestResponse
 	err = json.Unmarshal(resBody, &attestRes)
 	if err != nil {
 		log.Debugw("Failed unmarshaling response", "error", err)
 		return nil, err
 	}
-	return &attestRes, nil
+	return &AttestPayload{Attest: &attestRes, ICON: icon}, nil
 }
 
 func verifyAttestResponse(
@@ -248,67 +252,68 @@ func CheckCVMAttest(
 	client *http.Client,
 	n *runtime.NeuronInfo,
 	cvmIP string,
-) ([]string, []string, error) {
+) ([]string, []string, string, error) {
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
 	nonce := NewNonce(c.Deps.Hotkey.Address)
 	cvmIP = strings.TrimPrefix(cvmIP, "http://")
 	cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-	attestRes, err := getCVMAttestFromNode(c, client, n, cvmIP, Log, nonce)
+	attestPayload, err := getCVMAttestFromNode(c, client, n, cvmIP, Log, nonce)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
+	attestRes := attestPayload.Attest
 
 	if !attestRes.GPULocal.AttestationResult {
 		err = errors.New("local gpu attestation failed")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	if !attestRes.GPULocal.Valid {
 		err = errors.New("local gpu attestation invalid")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	if !attestRes.GPURemote.AttestationResult {
 		err = errors.New("remote gpu attestation failed")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	if !attestRes.GPURemote.Valid {
 		err = errors.New("remote gpu attestation invalid")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	if !attestRes.SwitchLocal.AttestationResult {
 		err = errors.New("local switch attestation failed")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	if !attestRes.SwitchLocal.Valid {
 		err = errors.New("local switch attestation invalid")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 	if !attestRes.SwitchRemote.AttestationResult {
 		err = errors.New("remote switch attestation failed")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	if !attestRes.SwitchRemote.Valid {
 		err = errors.New("remote switch attestation invalid")
 		Log.Debug(err.Error())
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	attestResponse, err := verifyAttestResponse(c, client, attestRes, nonce, Log)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "false", err
 	}
 
 	// Extract GPU types from the claims
@@ -329,5 +334,5 @@ func CheckCVMAttest(
 		"ip", cvmIP,
 	)
 
-	return gpuTypes, ueids, nil
+	return gpuTypes, ueids, attestPayload.ICON, nil
 }

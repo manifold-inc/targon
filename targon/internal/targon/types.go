@@ -1,5 +1,10 @@
 package targon
 
+type AttestPayload struct {
+	Attest *AttestResponse
+	ICON   string
+}
+
 type AttestResponse struct {
 	GPULocal struct {
 		AttestationResult bool   `json:"attestation_result"`

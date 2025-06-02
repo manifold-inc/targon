@@ -11,7 +11,7 @@ import (
 type Core struct {
 	Neurons map[string]runtime.NeuronInfo `bson:"-"`
 	Deps    *setup.Dependencies           `bson:"-"`
-	Mnmu       sync.Mutex          `bson:"-"`
+	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
 	MinerNodes map[string][]string `bson:"miner_nodes,omitempty"`
 	// uid -> nodes -> []passed
@@ -19,6 +19,8 @@ type Core struct {
 	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
 	PassedAttestation map[string]map[string][]string `bson:"passed_attestation,omitempty"`
+	// uid -> nodes -> icons
+	ICONS map[string]map[string]string `bson:"icons,omitempty"`
 	// gpu id -> seen
 	GPUids map[string]bool `bson:"gp_uids,omitempty"`
 	// SN Emission

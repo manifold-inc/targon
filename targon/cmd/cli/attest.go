@@ -52,7 +52,7 @@ func Temp() {
 		core.Deps.Log.Fatalf("Failed to get nodes: %s", err)
 	}
 	for _, n := range nodes {
-		gpus, _, err := targon.CheckCVMAttest(core, client, neuron, n)
+		gpus, _, _, err := targon.CheckCVMAttest(core, client, neuron, n)
 		if err != nil {
 			core.Deps.Log.Infow("CVM attest error", "err", err)
 			continue
