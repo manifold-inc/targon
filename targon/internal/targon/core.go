@@ -38,6 +38,7 @@ func CreateCore(d *setup.Dependencies) *Core {
 		MinerNodes:        map[string][]string{},
 		HealthcheckPasses: map[string]map[string][]bool{},
 		PassedAttestation: map[string]map[string][]string{},
+		ICONS:             map[string]map[string]string{},
 		Neurons:           map[string]runtime.NeuronInfo{},
 		GPUids:            map[string]bool{},
 	}
