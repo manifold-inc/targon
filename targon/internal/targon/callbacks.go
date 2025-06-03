@@ -201,9 +201,10 @@ func getMinerNodes(c *Core) {
 
 func getPassingAttestations(c *Core) {
 	tr := &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second,
-		MaxConnsPerHost:     1,
-		DisableKeepAlives:   true,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 1 * time.Minute,
+		MaxConnsPerHost:       1,
+		DisableKeepAlives:     true,
 	}
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
 	wg := sync.WaitGroup{}
@@ -426,13 +427,11 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 				// into sn this interval
 				switch {
 				case strings.Contains(ml, "h100"):
-					// score := (2.5 * 1.5) / *c.EmissionPool
-					score := (2.5 * 1.5)
+					score := (2.5 * 1.233) / *c.EmissionPool
 					thisScore += score
 					minerCut += score
 				case strings.Contains(ml, "h200"):
-					// score := (3.5 * 1.5) / *c.EmissionPool
-					score := (3.5 * 1.5)
+					score := (3.5 * 1.233) / *c.EmissionPool
 					thisScore += score
 					minerCut += score
 				default:
@@ -449,7 +448,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 		scores = append(scores, thisScore)
 	}
 	burnKey := 28
-	minerCut = .5 // 50 % of emissions
+	minerCut = math.Min(minerCut, .7) // Diulte after 70% emission hit
 	scores = Normalize(scores, minerCut)
 	scores = append(scores, 1-minerCut)
 	uids = append(uids, types.NewU16(uint16(burnKey)))
