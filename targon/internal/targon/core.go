@@ -14,8 +14,8 @@ type Core struct {
 	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
 	MinerNodes map[string][]string `bson:"miner_nodes,omitempty"`
-	// uid -> nodes -> []passed
 	Hpmu              sync.Mutex                   `bson:"-"`
+	// uid -> nodes -> []passed
 	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
 	PassedAttestation map[string]map[string][]string `bson:"passed_attestation,omitempty"`

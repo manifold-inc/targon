@@ -4,8 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
+
+func init(){
+	_ = godotenv.Load()
+}
 
 var RootCmd = &cobra.Command{
 	Use:   "targon",

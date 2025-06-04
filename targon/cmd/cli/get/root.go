@@ -13,7 +13,7 @@ func init() {
 
 var getCmd = &cobra.Command{
 	Use:   "get",
-	Short: "",
+	Short: "g",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Get targon info")

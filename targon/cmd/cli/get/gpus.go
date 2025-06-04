@@ -1,68 +1,78 @@
 package get
 
 import (
+	"context"
 	"fmt"
-	"net/http"
+	"os"
+	"strconv"
+
 	"targon/internal/setup"
 	"targon/internal/targon"
 	"targon/internal/utils"
-	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/subtrahend-labs/gobt/runtime"
-	"go.uber.org/zap"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-var uid int
+var (
+	uidflag  int
+	allflag  bool
+	gpusflag bool
+)
 
 func init() {
-	ipsCmd.Flags().IntVar(&uid, "uid", -1, "Specific uid to grab GPU info for")
+	ipsCmd.Flags().IntVar(&uidflag, "uid", -1, "Specific uid to grab node ips for")
+	ipsCmd.Flags().BoolVar(&allflag, "all", false, "Show all nodes not just ones passing attestation")
+	ipsCmd.Flags().BoolVar(&gpusflag, "gpus", false, "Show gpus for that node")
 	getCmd.AddCommand(ipsCmd)
 }
 
 var ipsCmd = &cobra.Command{
-	Use:   "ips",
-	Short: "",
+	Use:   "nodes",
+	Short: "n",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		deps := setup.Init(zap.FatalLevel)
-		core := targon.CreateCore(deps)
-
-		blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
+		m, err := setup.InitMongo()
 		if err != nil {
-			fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
+			fmt.Println(utils.Wrap("failed connecting to mongo", err))
+			os.Exit(-1)
+		}
+		minerCol := m.Database("targon").Collection("miner_info")
+		opts := options.FindOne().SetSort(bson.D{{Key: "block", Value: -1}}) // Sort by 'value' in descending order
+
+		// Find the record with the max value
+		var result targon.MinerInfo
+		err = minerCol.FindOne(context.TODO(), bson.D{}, opts).Decode(&result)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				fmt.Println("No documents found")
+				return
+			}
+			fmt.Println(err)
 			return
 		}
-		var neurons []runtime.NeuronInfo
-		switch uid {
-		case -1:
-			neurons, err = runtime.GetNeurons(core.Deps.Client, uint16(core.Deps.Env.NETUID), &blockHash)
-			if err != nil {
-				fmt.Println(utils.Wrap("Failed getting neurons", err))
-				return
-			}
-		default:
-			neuron, err := runtime.GetNeuron(core.Deps.Client, uint16(core.Deps.Env.NETUID), uint16(uid), &blockHash)
-			if err != nil {
-				fmt.Println(utils.Wrap("Failed getting neuron", err))
-				return
-			}
-			neurons = append(neurons, *neuron)
+		if allflag {
+			fmt.Println("not supported yet")
+			return
 		}
-		tr := &http.Transport{
-			TLSHandshakeTimeout: 5 * time.Second,
-			MaxConnsPerHost:     1,
-			DisableKeepAlives:   true,
-		}
-		client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
-		for _, neuron := range neurons {
-			nodes, err := targon.GetCVMNodes(core, client, &neuron)
-			if err != nil {
+
+		for uid, nodes := range result.Core.PassedAttestation {
+			intuid, _ := strconv.Atoi(uid)
+			if uidflag != intuid && uidflag != -1 {
 				continue
 			}
-			fmt.Printf("UID %d GPU Info:\n", neuron.UID.Int64())
-			for _, node := range nodes {
-				fmt.Printf("%s\n", node)
+			if len(nodes) == 0 {
+				continue
+			}
+			fmt.Printf("UID %s nodes\n", uid)
+			for node, gpus := range nodes {
+				if gpusflag {
+					fmt.Printf("%s: %v", node, gpus)
+				} else {
+					fmt.Println(node)
+				}
 			}
 			fmt.Println()
 		}
