@@ -6,11 +6,6 @@ import (
 	"time"
 )
 
-type MinerInfo struct {
-	Core  *Core `bson:"inline"`
-	Block int   `bson:"block"`
-}
-
 func SyncMongo(core *Core, block int) error {
 	if core.Deps.Mongo == nil {
 		return errors.New("no mongo client")

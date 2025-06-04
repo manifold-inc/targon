@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -15,7 +16,9 @@ type Dependencies struct {
 	Log    *zap.SugaredLogger
 	Client *client.Client
 	Hotkey signature.KeyringPair
-	Config Config
+	Config *Config
+	NodeMu sync.Mutex
+	Nodes  []string
 }
 
 func Init() *Dependencies {
@@ -52,8 +55,9 @@ func Init() *Dependencies {
 	return &Dependencies{
 		Log:    sugar,
 		Client: client,
-		Config: *c,
+		Config: c,
 		Hotkey: kp,
+		Nodes:  []string{},
 	}
 }
 

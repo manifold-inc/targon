@@ -5,6 +5,11 @@ type AttestPayload struct {
 	ICON   string
 }
 
+type MinerInfo struct {
+	Core  *Core `bson:"inline"`
+	Block int   `bson:"block"`
+}
+
 type AttestResponse struct {
 	GPULocal struct {
 		AttestationResult bool   `json:"attestation_result"`

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"miner/internal/monitor"
 	"miner/internal/setup"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -75,6 +76,24 @@ func main() {
 	core := CreateCore(deps)
 	validator := boilerplate.NewChainSubscriber(*deps.Config.Netuid)
 	deps.Log.Infof("Starting Miner on netuid [%d]", validator.NetUID)
+
+	// Register new nodes and update from config
+	validator.AddBlockCallback(func(h types.Header) {
+		if h.Number%30 != 1 && core.ValidatorPermits != nil {
+			return
+		}
+		deps.Log.Info("Updating and registering nodes from config")
+		deps.NodeMu.Lock()
+		deps.Config = setup.LoadConfig()
+		deps.NodeMu.Unlock()
+
+		newNodes := monitor.GetAndRegNodes(deps)
+		deps.NodeMu.Lock()
+		deps.Nodes = newNodes
+		deps.NodeMu.Unlock()
+	})
+
+	// Logging
 	validator.AddBlockCallback(func(h types.Header) {
 		uid := "Unknown"
 		emi := "Unknown"
@@ -100,6 +119,8 @@ func main() {
 			emi,
 		)
 	})
+
+	// Update validator and neurons list
 	validator.AddBlockCallback(func(h types.Header) {
 		if h.Number%360 != 1 && core.ValidatorPermits != nil {
 			return
@@ -114,7 +135,6 @@ func main() {
 	})
 	validator.AddBlockCallback(func(h types.Header) {
 		t.Reset(1 * time.Hour)
-
 	})
 
 	validator.SetMainFunc(func(i <-chan bool, o chan<- bool) {
@@ -171,6 +191,12 @@ func main() {
 			}
 
 			deps.Log.Infof("Responding to request from request from [%s]", signed_by)
+
+			// Backwards compact
+			// Enabling later
+			//if len(core.Deps.Nodes) != 0 {
+			//	return c.JSON(http.StatusOK, core.Deps.Nodes)
+			//}
 			return c.JSON(http.StatusOK, core.Deps.Config.Nodes)
 		})
 		e.GET("/", func(c echo.Context) error {
@@ -206,6 +232,16 @@ func main() {
 	} else {
 		core.Deps.Log.Info("Skipping set miner info, already set to config settings")
 	}
+	// Need to do this before we start up too
+	deps.Log.Info("Updating and registering nodes from config")
+	deps.NodeMu.Lock()
+	deps.Config = setup.LoadConfig()
+	deps.NodeMu.Unlock()
+
+	newNodes := monitor.GetAndRegNodes(deps)
+	deps.NodeMu.Lock()
+	deps.Nodes = newNodes
+	deps.NodeMu.Unlock()
 	validator.Start(deps.Client)
 }
 
