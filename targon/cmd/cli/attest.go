@@ -84,7 +84,6 @@ var ipsCmd = &cobra.Command{
 			fmt.Println(utils.Wrap("Failed getting neurons", err))
 			return
 		}
-		fmt.Printf("Axon Info: %+v\n", neuron)
 
 		tr := &http.Transport{
 			TLSHandshakeTimeout: 5 * time.Second,
@@ -98,6 +97,7 @@ var ipsCmd = &cobra.Command{
 			fmt.Println(utils.Wrap("Failed to get nodes: %s", err))
 			return
 		}
+		fmt.Printf("Nodes: %v\n", nodes)
 		fmt.Println("CVM attest results")
 		for _, n := range nodes {
 			gpus, _, _, err := targon.CheckCVMAttest(core, client, neuron, n)

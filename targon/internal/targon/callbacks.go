@@ -201,10 +201,9 @@ func getMinerNodes(c *Core) {
 
 func getPassingAttestations(c *Core) {
 	tr := &http.Transport{
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 1 * time.Minute,
-		MaxConnsPerHost:       1,
-		DisableKeepAlives:     true,
+		TLSHandshakeTimeout: 5 * time.Second,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
 	}
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
 	wg := sync.WaitGroup{}
