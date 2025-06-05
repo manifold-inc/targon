@@ -194,9 +194,9 @@ func main() {
 
 			// Backwards compact
 			// Enabling later
-			//if len(core.Deps.Nodes) != 0 {
-			//	return c.JSON(http.StatusOK, core.Deps.Nodes)
-			//}
+			if len(core.Deps.Nodes) != 0 {
+				return c.JSON(http.StatusOK, core.Deps.Nodes)
+			}
 			return c.JSON(http.StatusOK, core.Deps.Config.Nodes)
 		})
 		e.GET("/", func(c echo.Context) error {
