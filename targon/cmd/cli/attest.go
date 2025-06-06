@@ -100,7 +100,7 @@ var ipsCmd = &cobra.Command{
 
 		nodes, err := targon.GetCVMNodes(core, client, neuron)
 		if err != nil {
-			fmt.Println(utils.Wrap("Failed to get nodes: %s", err))
+			fmt.Println(utils.Wrap("Failed to get nodes", err))
 			return
 		}
 		fmt.Printf("Nodes: %v\n", nodes)
