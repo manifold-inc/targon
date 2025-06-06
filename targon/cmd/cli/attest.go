@@ -35,22 +35,29 @@ var ipsCmd = &cobra.Command{
 	Short: "Manually attest a miner or ip address",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		deps := setup.Init(zap.FatalLevel)
+		deps := setup.Init(zap.DebugLevel)
 		core := targon.CreateCore(deps)
 
 		if uidflag == -1 && ipflag == "" {
 			fmt.Println("Please specify uid or ip")
 			return
 		}
-		if len(ipflag) != 0 {
-			tr := &http.Transport{
-				TLSHandshakeTimeout: 5 * time.Second,
-				MaxConnsPerHost:     1,
-				DisableKeepAlives:   true,
-			}
-			client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
 
-			neuron := runtime.NeuronInfo{
+		var neuron *runtime.NeuronInfo
+		if uidflag != -1 {
+			blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
+			if err != nil {
+				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
+				return
+			}
+			neuron, err = runtime.GetNeuron(core.Deps.Client, uint16(core.Deps.Env.NETUID), uint16(uidflag), &blockHash)
+			if err != nil {
+				fmt.Println(utils.Wrap("Failed getting neurons", err))
+				return
+			}
+		}
+		if uidflag == -1 {
+			neuron = &runtime.NeuronInfo{
 				UID:    types.NewUCompact(big.NewInt(444)),
 				Hotkey: types.AccountID(deps.Hotkey.PublicKey),
 			}
@@ -63,25 +70,24 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("Failed creating miner keyring par", err))
 				fmt.Println("Using HOTKEY_PHRASE")
 			}
+		}
+
+		if len(ipflag) != 0 {
+			tr := &http.Transport{
+				TLSHandshakeTimeout: 5 * time.Second,
+				MaxConnsPerHost:     1,
+				DisableKeepAlives:   true,
+			}
+			client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
+
 			// Mock Neuron, use self hotkey
-			gpus, _, _, err := targon.CheckCVMAttest(core, client, &neuron, ipflag)
+			gpus, _, _, err := targon.CheckCVMAttest(core, client, neuron, ipflag)
 			if err != nil {
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
 			}
 			fmt.Printf("node: %s \n", ipflag)
 			fmt.Printf("gpus: %v\n\n", gpus)
-			return
-		}
-
-		blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
-		if err != nil {
-			fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
-			return
-		}
-		neuron, err := runtime.GetNeuron(core.Deps.Client, uint16(core.Deps.Env.NETUID), uint16(uidflag), &blockHash)
-		if err != nil {
-			fmt.Println(utils.Wrap("Failed getting neurons", err))
 			return
 		}
 
