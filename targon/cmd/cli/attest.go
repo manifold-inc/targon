@@ -35,7 +35,7 @@ var ipsCmd = &cobra.Command{
 	Short: "Manually attest a miner or ip address",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		deps := setup.Init(zap.DebugLevel)
+		deps := setup.Init(zap.FatalLevel)
 		core := targon.CreateCore(deps)
 
 		if uidflag == -1 && ipflag == "" {
