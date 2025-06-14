@@ -447,7 +447,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 		scores = append(scores, thisScore)
 	}
 	burnKey := 28
-	minerCut = math.Min(minerCut, .7) // Diulte after 70% emission hit
+	minerCut = math.Min(minerCut, 1) // Diulte after 100% emission hit
 	scores = Normalize(scores, minerCut)
 	scores = append(scores, 1-minerCut)
 	uids = append(uids, types.NewU16(uint16(burnKey)))
