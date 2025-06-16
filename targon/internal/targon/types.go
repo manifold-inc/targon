@@ -53,3 +53,14 @@ type GPUAttestationResponse struct {
 		SwitchID   string `json:"switch_id"`
 	} `json:"switch_claims,omitempty"`
 }
+
+type EmissionsData struct {
+	Block        int                `bson:"block"`
+	UIDs         []uint16           `bson:"uids"`
+	Scores       []uint16           `bson:"scores"`
+	RawScores    []float64          `bson:"raw_scores"`
+	MinerScores  map[string]float64 `bson:"miner_scores"`
+	EmissionPool float64            `bson:"emission_pool"`
+	TaoPrice     float64            `bson:"tao_price"`
+	Timestamp    int64              `bson:"timestamp"`
+}

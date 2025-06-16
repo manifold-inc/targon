@@ -126,7 +126,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
 }
 
 func logWeights(c *Core) {
-	uids, scores, _ := getWeights(c)
+	uids, scores, _, _ := getWeights(c)
 	c.Deps.Log.Infow(
 		"Current Weights",
 		"uids",
@@ -328,7 +328,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 		c.mu.Unlock()
 		resetState(c)
 	}()
-	uids, scores, err := getWeights(c)
+	uids, scores, minerScores, err := getWeights(c)
 	if err != nil {
 		c.Deps.Log.Errorw("Failed getting weights", "error", err)
 	}
@@ -339,6 +339,43 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 		"scores",
 		fmt.Sprintf("%+v", scores),
 	)
+
+	// Store emissions data to MongoDB
+	if c.Deps.Mongo != nil && c.EmissionPool != nil && c.TaoPrice != nil {
+		rawScores := []float64{}
+		uidsUint16 := []uint16{}
+		scoresUint16 := []uint16{}
+
+		for _, uid := range uids {
+			uidsUint16 = append(uidsUint16, uint16(uid))
+		}
+		for _, score := range scores {
+			scoresUint16 = append(scoresUint16, uint16(score))
+		}
+
+		for _, score := range scores {
+			rawScore := (float64(score) / float64(setup.U16MAX)) * *c.EmissionPool
+			rawScores = append(rawScores, rawScore)
+		}
+
+		emissionsData := EmissionsData{
+			Block:        int(h.Number),
+			UIDs:         uidsUint16,
+			Scores:       scoresUint16,
+			RawScores:    rawScores,
+			MinerScores:  minerScores,
+			EmissionPool: *c.EmissionPool,
+			TaoPrice:     *c.TaoPrice,
+			Timestamp:    time.Now().Unix(),
+		}
+
+		if err := StoreEmissions(c, emissionsData); err != nil {
+			c.Deps.Log.Warnw("Failed storing emissions to mongo", "error", err)
+		} else {
+			c.Deps.Log.Infow("Stored emissions data to MongoDB", "block", h.Number)
+		}
+	}
+
 	go func() {
 		color := "3447003"
 		title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
@@ -396,16 +433,16 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 	c.Deps.Log.Infow("Set weights on chain successfully", "hash", hash.Hex())
 }
 
-func getWeights(c *Core) ([]types.U16, []types.U16, error) {
-	// TODO some sort of multi-check per interval
+func getWeights(c *Core) ([]types.U16, []types.U16, map[string]float64, error) {
 	if c.EmissionPool == nil {
-		return []types.U16{}, []types.U16{}, errors.New("emission pool is not set")
+		return []types.U16{}, []types.U16{}, nil, errors.New("emission pool is not set")
 	}
 	minerCut := 0.0
 	var uids []types.U16
 	var scores []float64
 	var cvmNodes []string
 	gpus := map[string]int{}
+	minerScores := map[string]float64{}
 	// for each uid
 	for uid, nodes := range c.MinerNodes {
 		thisScore := 0.0
@@ -438,6 +475,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 				}
 			}
 		}
+		minerScores[uid] = thisScore
 		if thisScore < 0.01 {
 			continue
 		}
@@ -478,7 +516,7 @@ func getWeights(c *Core) ([]types.U16, []types.U16, error) {
 	finalScores = append(finalScores, types.NewU16(setup.U16MAX-sumScores))
 	finalUids = append(finalUids, types.NewU16(uint16(burnKey)))
 
-	return finalUids, finalScores, nil
+	return finalUids, finalScores, minerScores, nil
 }
 
 type minerStats struct {
