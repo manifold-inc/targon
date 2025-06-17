@@ -6,8 +6,15 @@ type AttestPayload struct {
 }
 
 type MinerInfo struct {
-	Core  *Core `bson:"inline"`
-	Block int   `bson:"block"`
+	Core         *Core              `bson:"inline"`
+	Block        int                `bson:"block"`
+	UIDs         []uint16           `bson:"uids,omitempty"`
+	Scores       []uint16           `bson:"scores,omitempty"`
+	RawScores    []float64          `bson:"raw_scores,omitempty"`
+	MinerScores  map[string]float64 `bson:"miner_scores,omitempty"`
+	EmissionPool *float64           `bson:"emission_pool,omitempty"`
+	TaoPrice     *float64           `bson:"tao_price,omitempty"`
+	Timestamp    int64              `bson:"timestamp,omitempty"`
 }
 
 type AttestResponse struct {
@@ -52,15 +59,4 @@ type GPUAttestationResponse struct {
 		SwitchType string `json:"switch_type"`
 		SwitchID   string `json:"switch_id"`
 	} `json:"switch_claims,omitempty"`
-}
-
-type EmissionsData struct {
-	Block        int                `bson:"block"`
-	UIDs         []uint16           `bson:"uids"`
-	Scores       []uint16           `bson:"scores"`
-	RawScores    []float64          `bson:"raw_scores"`
-	MinerScores  map[string]float64 `bson:"miner_scores"`
-	EmissionPool float64            `bson:"emission_pool"`
-	TaoPrice     float64            `bson:"tao_price"`
-	Timestamp    int64              `bson:"timestamp"`
 }
