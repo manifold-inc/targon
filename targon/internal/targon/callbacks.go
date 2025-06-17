@@ -115,7 +115,57 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
-		setWeights(v, c, h)
+		if c.Deps.Mongo != nil {
+			minerInfo := MinerInfo{Core: c, Block: int(h.Number)}
+			err := SyncMongo(c, minerInfo)
+			if err != nil {
+				c.Deps.Log.Errorw("failed syncing to mongo", "error", err)
+			}
+		}
+	})
+	// store emissions to MongoDB
+	v.AddBlockCallback(func(h types.Header) {
+		if h.Number%360 != 0 || len(c.MinerNodes) == 0 || c.Deps.Mongo == nil {
+			return
+		}
+
+		uids, scores, err := getWeights(c)
+		if err != nil {
+			c.Deps.Log.Errorw("Failed getting weights for emissions", "error", err)
+			return
+		}
+
+		emissions := make([]float64, len(scores))
+		incentives := make([]float64, len(scores))
+
+		for i, score := range scores {
+			emissions[i] = (float64(score) / float64(setup.U16MAX))
+			incentives[i] = (float64(score) / float64(setup.U16MAX)) * *c.EmissionPool
+		}
+
+		uidsInt := make([]uint16, len(uids))
+		for i, uid := range uids {
+			uidsInt[i] = uint16(uid)
+			uidsInt = append(uidsInt, uint16(uid))
+		}
+
+		minerInfo := MinerInfo{
+			Core:         c,
+			Block:        int(h.Number),
+			EmissionPool: *c.EmissionPool,
+			TaoPrice:     *c.TaoPrice,
+			Timestamp:    time.Now().Unix(),
+			Weights: Weights{
+				UIDs:       uidsInt,
+				Incentives: incentives,
+			},
+		}
+
+		if err := SyncMongo(c, minerInfo); err != nil {
+			c.Deps.Log.Errorw("Failed syncing emissions to mongo", "error", err)
+		} else {
+			c.Deps.Log.Infow("Stored emissions data to MongoDB", "block", h.Number, "miners", len(uidsInt))
+		}
 	})
 }
 
@@ -334,39 +384,6 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 		fmt.Sprintf("%+v", scores),
 	)
 
-	// Store emissions data to MongoDB
-	if c.Deps.Mongo != nil {
-		uidsUint16 := make([]uint16, len(uids))
-		scoresUint16 := make([]uint16, len(scores))
-		rawScores := make([]float64, len(scores))
-
-		for i, uid := range uids {
-			uidsUint16[i] = uint16(uid)
-		}
-		for i, score := range scores {
-			scoresUint16[i] = uint16(score)
-			rawScores[i] = (float64(score) / float64(setup.U16MAX)) * *c.EmissionPool
-		}
-
-		minerInfo := MinerInfo{
-			Core:         c,
-			Block:        int(h.Number),
-			UIDs:         uidsUint16,
-			Scores:       scoresUint16,
-			RawScores:    rawScores,
-			MinerScores:  nil,
-			EmissionPool: c.EmissionPool,
-			TaoPrice:     c.TaoPrice,
-			Timestamp:    time.Now().Unix(),
-		}
-
-		if err := SyncMongo(c, minerInfo); err != nil {
-			c.Deps.Log.Errorw("Failed syncing to mongo", "error", err)
-		} else {
-			c.Deps.Log.Infow("Stored miner info to MongoDB", "block", h.Number)
-		}
-	}
-
 	go func() {
 		color := "3447003"
 		title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
@@ -425,6 +442,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 }
 
 func getWeights(c *Core) ([]types.U16, []types.U16, error) {
+	// TODO some sort of multi-check per interval
 	if c.EmissionPool == nil {
 		return []types.U16{}, []types.U16{}, errors.New("emission pool is not set")
 	}
