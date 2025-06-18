@@ -110,62 +110,52 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
 		}
 		sendDailyGPUSummary(c, h)
 	})
-	// Set Weights
+	// Set Weights and sync to MongoDB
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
-		if c.Deps.Mongo != nil {
-			minerInfo := MinerInfo{Core: c, Block: int(h.Number)}
-			err := SyncMongo(c, minerInfo)
-			if err != nil {
-				c.Deps.Log.Errorw("failed syncing to mongo", "error", err)
-			}
-		}
-	})
-	// store emissions to MongoDB
-	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%360 != 0 || len(c.MinerNodes) == 0 || c.Deps.Mongo == nil {
-			return
-		}
-
 		uids, scores, err := getWeights(c)
 		if err != nil {
-			c.Deps.Log.Errorw("Failed getting weights for emissions", "error", err)
+			c.Deps.Log.Errorw("Failed getting weights for MongoDB sync", "error", err)
 			return
 		}
 
-		emissions := make([]float64, len(scores))
-		incentives := make([]float64, len(scores))
+		if c.Deps.Mongo != nil {
+			incentives := make([]float64, len(scores))
+			for i, score := range scores {
+				incentives[i] = (float64(score) / float64(setup.U16MAX))
+			} // <- ADDED THIS MISSING CLOSING BRACE FOR THE FOR LOOP
 
-		for i, score := range scores {
-			emissions[i] = (float64(score) / float64(setup.U16MAX))
-			incentives[i] = (float64(score) / float64(setup.U16MAX)) * *c.EmissionPool
-		}
+			uidsInt := make([]uint16, len(uids))
+			for i, uid := range uids {
+				uidsInt[i] = uint16(uid)
+			}
 
-		uidsInt := make([]uint16, len(uids))
-		for i, uid := range uids {
-			uidsInt[i] = uint16(uid)
-			uidsInt = append(uidsInt, uint16(uid))
-		}
+			minerInfo := MinerInfo{
+				Core:         c,
+				Block:        int(h.Number),
+				EmissionPool: *c.EmissionPool,
+				TaoPrice:     *c.TaoPrice,
+				Timestamp:    time.Now().Unix(),
+				Weights: Weights{
+					UIDs:       uidsInt,
+					Incentives: incentives,
+				},
+			}
 
-		minerInfo := MinerInfo{
-			Core:         c,
-			Block:        int(h.Number),
-			EmissionPool: *c.EmissionPool,
-			TaoPrice:     *c.TaoPrice,
-			Timestamp:    time.Now().Unix(),
-			Weights: Weights{
-				UIDs:       uidsInt,
-				Incentives: incentives,
-			},
-		}
+			if err := SyncMongo(c, minerInfo); err != nil {
+				c.Deps.Log.Errorw("Failed syncing complete data to mongo", "error", err)
+				return
+			}
 
-		if err := SyncMongo(c, minerInfo); err != nil {
-			c.Deps.Log.Errorw("Failed syncing emissions to mongo", "error", err)
-		} else {
-			c.Deps.Log.Infow("Stored emissions data to MongoDB", "block", h.Number, "miners", len(uidsInt))
+			c.Deps.Log.Infow("Weights set and complete data synced",
+				"uids", uids,
+				"scores", scores,
+				"block", h.Number,
+				"miners", len(uidsInt))
 		}
+		setWeights(v, c, h, uids, scores)
 	})
 }
 
@@ -366,16 +356,13 @@ func resetState(c *Core) {
 	c.ICONS = make(map[string]map[string]string)
 }
 
-func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
+func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header, uids []types.U16, scores []types.U16) {
 	c.mu.Lock()
 	defer func() {
 		c.mu.Unlock()
 		resetState(c)
 	}()
-	uids, scores, err := getWeights(c)
-	if err != nil {
-		c.Deps.Log.Errorw("Failed getting weights", "error", err)
-	}
+
 	c.Deps.Log.Infow(
 		"Setting Weights",
 		"uids",
@@ -386,7 +373,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header) {
 
 	go func() {
 		color := "3447003"
-		title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
+		title := fmt.Sprintf("Validator setting weights at block %v", h.Number) // chnage to get weights
 		desc := fmt.Sprintf("UIDS: %v\n\nweights: %v", uids, scores)
 		uname := "Validator Logs"
 		msg := discord.Message{
