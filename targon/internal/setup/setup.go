@@ -33,6 +33,7 @@ type Env struct {
 	DEBUG                  bool
 	NETUID                 int
 	DISCORD_URL            string
+	TOWER_URL              string
 }
 
 func GetEnv(key, fallback string) string {
@@ -79,6 +80,7 @@ func Init(opts ...any) *Dependencies {
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
 	DEBUG := GetEnv("DEBUG", "0")
+	TOWER_URL := GetEnv("TOWER_URL", "https://tower.targon.com")
 
 	mongoClient, err := InitMongo()
 	if err != nil {
@@ -153,6 +155,7 @@ func Init(opts ...any) *Dependencies {
 			VERSION:                *parsedVer,
 			NETUID:                 netuid,
 			DISCORD_URL:            DISCORD_URL,
+			TOWER_URL:              TOWER_URL,
 		},
 	}
 }

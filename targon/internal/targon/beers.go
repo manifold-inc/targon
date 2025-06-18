@@ -16,7 +16,7 @@ type GPUData struct {
 	Data map[string][]string `json:"data"`
 }
 
-func sendGPUDataToBeers(c *Core, client *http.Client, data any) error {
+func SendGPUDataToBeers(c *Core, client *http.Client, data any) error {
 	if c.Deps.Env.DEBUG {
 		return nil
 	}

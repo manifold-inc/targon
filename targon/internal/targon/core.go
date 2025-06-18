@@ -28,7 +28,7 @@ type Core struct {
 	TaoPrice     *float64 `bson:"tao_price,omitempty"`
 
 	// Global core lock
-	mu sync.Mutex `bson:"-"`
+	Mu sync.Mutex `bson:"-"`
 }
 
 func CreateCore(d *setup.Dependencies) *Core {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"targon/internal/callbacks"
 	"targon/internal/setup"
 	"targon/internal/targon"
 
@@ -28,7 +29,7 @@ func main() {
 	validator := boilerplate.NewChainSubscriber(deps.Env.NETUID)
 	deps.Log.Infof("Creating validator on netuid [%d]", validator.NetUID)
 
-	targon.AddBlockCallbacks(validator, core)
+	callbacks.AddBlockCallbacks(validator, core)
 	targon.SetMainFunc(validator, core)
 
 	validator.SetOnSubscriptionCreationError(func(e error) {
