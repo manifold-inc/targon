@@ -74,13 +74,13 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
+		tr := &http.Transport{
+			TLSHandshakeTimeout: 5 * time.Second,
+			MaxConnsPerHost:     1,
+			DisableKeepAlives:   true,
+		}
+		client := &http.Client{Transport: tr, Timeout: 5 * time.Minute * core.Deps.Env.TIMEOUT_MULT}
 		if len(ipflag) != 0 {
-			tr := &http.Transport{
-				TLSHandshakeTimeout: 5 * time.Second,
-				MaxConnsPerHost:     1,
-				DisableKeepAlives:   true,
-			}
-			client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
 
 			// Mock Neuron, use self hotkey
 			uid := fmt.Sprintf("%d", neuron.UID.Int64())
@@ -101,13 +101,6 @@ var ipsCmd = &cobra.Command{
 			fmt.Printf("gpus: %v\n\n", gpus)
 			return
 		}
-
-		tr := &http.Transport{
-			TLSHandshakeTimeout: 5 * time.Second,
-			MaxConnsPerHost:     1,
-			DisableKeepAlives:   true,
-		}
-		client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
 
 		nodes, err := cvm.GetNodes(core, client, neuron)
 		if err != nil {

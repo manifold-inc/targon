@@ -12,11 +12,11 @@ import (
 
 func getMinerNodes(c *targon.Core) {
 	tr := &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second,
+		TLSHandshakeTimeout: 5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
 	}
-	client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
+	client := &http.Client{Transport: tr, Timeout: 5 * time.Second * c.Deps.Env.TIMEOUT_MULT}
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.Neurons))
 	c.Deps.Log.Infof("Checking CVM nodes for %d miners", len(c.Neurons))

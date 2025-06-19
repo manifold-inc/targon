@@ -13,22 +13,22 @@ import (
 
 func getPassingAttestations(c *targon.Core) {
 	attestClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 5 * time.Minute,
+		TLSHandshakeTimeout:   5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
+		ResponseHeaderTimeout: 5 * time.Minute * c.Deps.Env.TIMEOUT_MULT,
 		MaxConnsPerHost:       1,
 		DisableKeepAlives:     true,
-	}, Timeout: 5 * time.Minute}
+	}, Timeout: 5 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
 
 	verifyAttestClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 3 * time.Minute,
+		TLSHandshakeTimeout:   5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
+		ResponseHeaderTimeout: 3 * time.Minute * c.Deps.Env.TIMEOUT_MULT,
 		DisableKeepAlives:     true,
-	}, Timeout: 3 * time.Minute}
+	}, Timeout: 3 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
 	towerClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 1 * time.Minute,
+		TLSHandshakeTimeout:   5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
+		ResponseHeaderTimeout: 1 * time.Minute * c.Deps.Env.TIMEOUT_MULT,
 		DisableKeepAlives:     true,
-	}, Timeout: 1 * time.Minute}
+	}, Timeout: 1 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
 	wg := sync.WaitGroup{}
 	c.Deps.Log.Infof("Getting Attestations for %d miners", len(c.Neurons))
 
@@ -115,10 +115,10 @@ func getPassingAttestations(c *targon.Core) {
 		)
 	}
 	client := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second,
+		TLSHandshakeTimeout: 5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
-	}, Timeout: 1 * time.Minute}
+	}, Timeout: 1 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
 	if err := targon.SendGPUDataToBeers(c, client, beersData); err != nil {
 		c.Deps.Log.Warnw("Failed to send GPU data to beers", "error", err)
 	}
