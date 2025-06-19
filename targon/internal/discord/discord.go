@@ -6,7 +6,29 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
+
+func LogWeightsToDiscord(disc_url string, uids, scores []types.U16, h types.Header) error {
+	color := "3447003"
+	title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
+	desc := fmt.Sprintf("UIDS: %v\n\nweights: %v", uids, scores)
+	uname := "Validator Logs"
+	msg := Message{
+		Username: &uname,
+		Embeds: &[]Embed{{
+			Title:       &title,
+			Description: &desc,
+			Color:       &color,
+		}},
+	}
+	err := SendDiscordMessage(disc_url, msg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func SendDiscordMessage(url string, message Message) error {
 	if len(url) == 0 {
@@ -25,7 +47,9 @@ func SendDiscordMessage(url string, message Message) error {
 	}
 
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 
 		responseBody, err := io.ReadAll(resp.Body)
 		if err != nil {

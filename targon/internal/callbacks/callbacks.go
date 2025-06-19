@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"time"
 
+	"targon/internal/discord"
 	"targon/internal/pyth"
 	"targon/internal/targon"
 
@@ -114,12 +115,33 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
-		if c.Deps.Mongo != nil {
-			err := targon.SyncMongo(c, int(h.Number))
+		uids, scores, err := getWeights(c)
+		if err != nil {
+			c.Deps.Log.Errorw("Failed getting weights", "error", err)
+			return
+		}
+
+		go func() {
+			err := discord.LogWeightsToDiscord(c.Deps.Env.DISCORD_URL, uids, scores, h)
 			if err != nil {
-				c.Deps.Log.Errorw("failed syncing to mongo", "error", err)
+				c.Deps.Log.Warnw("Failed logging to discord", "error", err)
+			}
+		}()
+
+		if c.Deps.Mongo != nil {
+			syncErr := targon.SyncMongo(c, uids, scores, h)
+			if syncErr != nil {
+				c.Deps.Log.Errorw("Failed syncing complete data to mongo", "error", syncErr)
+			}
+
+			if syncErr == nil {
+				c.Deps.Log.Infow("Weights set and complete data synced",
+					"uids", uids,
+					"scores", scores,
+					"block", h.Number,
+					"miners", len(uids))
 			}
 		}
-		setWeights(v, c, h)
+		setWeights(v, c, uids, scores)
 	})
 }

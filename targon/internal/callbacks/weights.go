@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"targon/internal/discord"
 	"targon/internal/setup"
 	"targon/internal/targon"
 
@@ -17,16 +16,13 @@ import (
 	"github.com/subtrahend-labs/gobt/sigtools"
 )
 
-func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, h types.Header) {
+func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, uids []types.U16, scores []types.U16) {
 	c.Mu.Lock()
 	defer func() {
 		c.Mu.Unlock()
 		resetState(c)
 	}()
-	uids, scores, err := getWeights(c)
-	if err != nil {
-		c.Deps.Log.Errorw("Failed getting weights", "error", err)
-	}
+
 	c.Deps.Log.Infow(
 		"Setting Weights",
 		"uids",
@@ -34,24 +30,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, h types.Head
 		"scores",
 		fmt.Sprintf("%+v", scores),
 	)
-	go func() {
-		color := "3447003"
-		title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
-		desc := fmt.Sprintf("UIDS: %v\n\nweights: %v", uids, scores)
-		uname := "Validator Logs"
-		msg := discord.Message{
-			Username: &uname,
-			Embeds: &[]discord.Embed{{
-				Title:       &title,
-				Description: &desc,
-				Color:       &color,
-			}},
-		}
-		err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
-		if err != nil {
-			c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
-		}
-	}()
+
 	if c.Deps.Env.DEBUG {
 		c.Deps.Log.Warn("Skipping weightset due to debug flag")
 		return
