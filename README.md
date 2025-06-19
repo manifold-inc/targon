@@ -169,7 +169,12 @@ Create a `.env` file in the project directory:
 ### Required
 HOTKEY_PHRASE="your hotkey phrase"
 
-### Optional (dont set unless needed)
+### Optional
+
+# Sets a multiplier on all http connection timeouts
+TIMEOUT_MULT=1
+
+### Dev Variables (dont set unless needed)
 
 ## Attest endpoint, if running go code outside docker compose
 # NVIDIA_ATTEST_ENDPOINT=http://nvidia-attest:3344
@@ -182,6 +187,7 @@ HOTKEY_PHRASE="your hotkey phrase"
 
 ## Sends discord notifications for things like setting weights
 # DISCORD_URL=
+
 ```
 
 #### 3. Run Targon
@@ -242,6 +248,11 @@ docker compose up -d --build --force-recreate
 ```
 
 ## Running a Miner
+
+Miners run a confidential virtual machine that provides computing power to the
+subnet. This is used to run inference, train models, and more. Miners only need
+to manage running the CVM, CICD of new releases (which are rare), uptime, and
+resource allocation (disk space, internet speed, etc).
 
 ### Miner Prerequisites
 
