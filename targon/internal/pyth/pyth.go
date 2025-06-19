@@ -1,4 +1,4 @@
-package targon
+package pyth
 
 import (
 	"encoding/json"

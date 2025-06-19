@@ -6,6 +6,8 @@ services:
     restart: always
 
   targon:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: always
     build:
       dockerfile: Dockerfile

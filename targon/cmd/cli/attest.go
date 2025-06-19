@@ -5,8 +5,10 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"targon/internal/cvm"
 	"targon/internal/setup"
 	"targon/internal/targon"
 	"targon/internal/utils"
@@ -72,16 +74,25 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
+		tr := &http.Transport{
+			TLSHandshakeTimeout: 5 * time.Second,
+			MaxConnsPerHost:     1,
+			DisableKeepAlives:   true,
+		}
+		client := &http.Client{Transport: tr, Timeout: 5 * time.Minute * core.Deps.Env.TIMEOUT_MULT}
 		if len(ipflag) != 0 {
-			tr := &http.Transport{
-				TLSHandshakeTimeout: 5 * time.Second,
-				MaxConnsPerHost:     1,
-				DisableKeepAlives:   true,
-			}
-			client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
 
 			// Mock Neuron, use self hotkey
-			gpus, _, _, err := targon.CheckCVMAttest(core, client, neuron, ipflag)
+			uid := fmt.Sprintf("%d", neuron.UID.Int64())
+			log := core.Deps.Log.With("uid", uid)
+			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
+			cvmIP := strings.TrimPrefix(ipflag, "http://")
+			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+			attestPayload, err := cvm.GetAttestFromNode(log, core, client, neuron, cvmIP, nonce)
+			if err != nil {
+				return
+			}
+			gpus, _, err := cvm.CheckAttest(log, core, client, attestPayload.Attest, nonce)
 			if err != nil {
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
@@ -91,14 +102,7 @@ var ipsCmd = &cobra.Command{
 			return
 		}
 
-		tr := &http.Transport{
-			TLSHandshakeTimeout: 5 * time.Second,
-			MaxConnsPerHost:     1,
-			DisableKeepAlives:   true,
-		}
-		client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
-
-		nodes, err := targon.GetCVMNodes(core, client, neuron)
+		nodes, err := cvm.GetNodes(core, client, neuron)
 		if err != nil {
 			fmt.Println(utils.Wrap("Failed to get nodes", err))
 			return
@@ -106,7 +110,16 @@ var ipsCmd = &cobra.Command{
 		fmt.Printf("Nodes: %v\n", nodes)
 		fmt.Println("CVM attest results")
 		for _, n := range nodes {
-			gpus, _, _, err := targon.CheckCVMAttest(core, client, neuron, n)
+			uid := fmt.Sprintf("%d", neuron.UID.Int64())
+			log := core.Deps.Log.With("uid", uid)
+			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
+			cvmIP := strings.TrimPrefix(n, "http://")
+			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+			attestPayload, err := cvm.GetAttestFromNode(log, core, client, neuron, cvmIP, nonce)
+			if err != nil {
+				return
+			}
+			gpus, _, err := cvm.CheckAttest(log, core, client, attestPayload.Attest, nonce)
 			if err != nil {
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				continue

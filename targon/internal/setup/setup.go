@@ -5,12 +5,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"targon/internal/discord"
 	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/joho/godotenv"
 	"github.com/subtrahend-labs/gobt/client"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -33,6 +35,8 @@ type Env struct {
 	DEBUG                  bool
 	NETUID                 int
 	DISCORD_URL            string
+	TOWER_URL              string
+	TIMEOUT_MULT           time.Duration
 }
 
 func GetEnv(key, fallback string) string {
@@ -79,6 +83,13 @@ func Init(opts ...any) *Dependencies {
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
 	DEBUG := GetEnv("DEBUG", "0")
+	TOWER_URL := GetEnv("TOWER_URL", "https://tower.targon.com")
+	TIMEOUT_MULT_STR := GetEnv("TIMEOUT_MULT", "1")
+	TIMEOUT_MULT, err := strconv.Atoi(TIMEOUT_MULT_STR)
+	if err != nil {
+		log.Error("Failed converting env variable TIMEOUT_MULT to int")
+		TIMEOUT_MULT = 1
+	}
 
 	mongoClient, err := InitMongo()
 	if err != nil {
@@ -153,6 +164,8 @@ func Init(opts ...any) *Dependencies {
 			VERSION:                *parsedVer,
 			NETUID:                 netuid,
 			DISCORD_URL:            DISCORD_URL,
+			TOWER_URL:              TOWER_URL,
+			TIMEOUT_MULT:           time.Duration(TIMEOUT_MULT),
 		},
 	}
 }

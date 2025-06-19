@@ -14,7 +14,7 @@ type Core struct {
 	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
 	MinerNodes map[string][]string `bson:"miner_nodes,omitempty"`
-	Hpmu              sync.Mutex                   `bson:"-"`
+	Hpmu       sync.Mutex          `bson:"-"`
 	// uid -> nodes -> []passed
 	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
@@ -23,12 +23,12 @@ type Core struct {
 	ICONS map[string]map[string]string `bson:"icons,omitempty"`
 	// gpu id -> seen
 	GPUids map[string]bool `bson:"gp_uids,omitempty"`
-	// SN Emission
+	// Total tao emission pool for mieners
 	EmissionPool *float64 `bson:"emission_pool,omitempty"`
 	TaoPrice     *float64 `bson:"tao_price,omitempty"`
 
 	// Global core lock
-	mu sync.Mutex `bson:"-"`
+	Mu sync.Mutex `bson:"-"`
 }
 
 func CreateCore(d *setup.Dependencies) *Core {

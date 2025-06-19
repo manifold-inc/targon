@@ -1,4 +1,4 @@
-package targon
+package cvm
 
 import (
 	"bytes"
@@ -10,13 +10,15 @@ import (
 	"net/http"
 	"strings"
 
+	"targon/internal/subtensor/utils"
+	"targon/internal/targon"
+
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"go.uber.org/zap"
-	"targon/internal/subtensor/utils"
 )
 
-func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string, error) {
+func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]string, error) {
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
 	if n.AxonInfo.IP.String() == "0" {
@@ -73,7 +75,7 @@ func GetCVMNodes(c *Core, client *http.Client, n *runtime.NeuronInfo) ([]string,
 	return nodes, nil
 }
 
-func CheckCVMHealth(c *Core, client *http.Client, n *runtime.NeuronInfo, cvmIP string) bool {
+func CheckHealth(c *targon.Core, client *http.Client, n *runtime.NeuronInfo, cvmIP string) bool {
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
 	cvmIP = strings.TrimPrefix(cvmIP, "http://")
@@ -111,14 +113,14 @@ type AttestBody struct {
 	Nonce string `json:"nonce"`
 }
 
-func getCVMAttestFromNode(
-	c *Core,
+func GetAttestFromNode(
+	log *zap.SugaredLogger,
+	c *targon.Core,
 	client *http.Client,
 	n *runtime.NeuronInfo,
 	cvmIP string,
-	log *zap.SugaredLogger,
 	nonce string,
-) (*AttestPayload, error) {
+) (*targon.AttestPayload, error) {
 	data := AttestBody{Nonce: nonce}
 	body, _ := json.Marshal(data)
 	req, err := http.NewRequest(
@@ -170,22 +172,22 @@ func getCVMAttestFromNode(
 	if len(icon) == 0 {
 		icon = "false"
 	}
-	var attestRes AttestResponse
+	var attestRes targon.AttestResponse
 	err = json.Unmarshal(resBody, &attestRes)
 	if err != nil {
 		log.Debugw("Failed unmarshaling response", "error", err)
 		return nil, err
 	}
-	return &AttestPayload{Attest: &attestRes, ICON: icon}, nil
+	return &targon.AttestPayload{Attest: &attestRes, ICON: icon}, nil
 }
 
 func verifyAttestResponse(
-	c *Core,
+	c *targon.Core,
 	client *http.Client,
-	attestRes *AttestResponse,
+	attestRes *targon.AttestResponse,
 	nonce string,
 	log *zap.SugaredLogger,
-) (*GPUAttestationResponse, error) {
+) (*targon.GPUAttestationResponse, error) {
 	// Validate Attestation
 	body, err := json.Marshal(map[string]any{
 		"gpu_remote":     attestRes.GPURemote,
@@ -231,7 +233,7 @@ func verifyAttestResponse(
 		return nil, err
 	}
 
-	var attestResponse GPUAttestationResponse
+	var attestResponse targon.GPUAttestationResponse
 	err = json.Unmarshal(resBody, &attestResponse)
 	if err != nil {
 		log.Debugw("Failed decoding json response from nvidia-attest", "error", err)
@@ -247,73 +249,64 @@ func verifyAttestResponse(
 	return &attestResponse, nil
 }
 
-func CheckCVMAttest(
-	c *Core,
+func CheckAttest(
+	log *zap.SugaredLogger,
+	c *targon.Core,
 	client *http.Client,
-	n *runtime.NeuronInfo,
-	cvmIP string,
-) ([]string, []string, string, error) {
-	uid := fmt.Sprintf("%d", n.UID.Int64())
-	Log := c.Deps.Log.With("uid", uid)
-	nonce := NewNonce(c.Deps.Hotkey.Address)
-	cvmIP = strings.TrimPrefix(cvmIP, "http://")
-	cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-	attestPayload, err := getCVMAttestFromNode(c, client, n, cvmIP, Log, nonce)
-	if err != nil {
-		return nil, nil, "false", err
-	}
-	attestRes := attestPayload.Attest
-
-	if !attestRes.GPULocal.AttestationResult {
+	attestation *targon.AttestResponse,
+	nonce string,
+) ([]string, []string, error) {
+	var err error
+	if !attestation.GPULocal.AttestationResult {
 		err = errors.New("local gpu attestation failed")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
 
-	if !attestRes.GPULocal.Valid {
+	if !attestation.GPULocal.Valid {
 		err = errors.New("local gpu attestation invalid")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
 
-	if !attestRes.GPURemote.AttestationResult {
+	if !attestation.GPURemote.AttestationResult {
 		err = errors.New("remote gpu attestation failed")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
 
-	if !attestRes.GPURemote.Valid {
+	if !attestation.GPURemote.Valid {
 		err = errors.New("remote gpu attestation invalid")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
 
-	if !attestRes.SwitchLocal.AttestationResult {
+	if !attestation.SwitchLocal.AttestationResult {
 		err = errors.New("local switch attestation failed")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
 
-	if !attestRes.SwitchLocal.Valid {
+	if !attestation.SwitchLocal.Valid {
 		err = errors.New("local switch attestation invalid")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
-	if !attestRes.SwitchRemote.AttestationResult {
+	if !attestation.SwitchRemote.AttestationResult {
 		err = errors.New("remote switch attestation failed")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
 
-	if !attestRes.SwitchRemote.Valid {
+	if !attestation.SwitchRemote.Valid {
 		err = errors.New("remote switch attestation invalid")
-		Log.Debug(err.Error())
-		return nil, nil, "false", err
+		log.Debug(err.Error())
+		return nil, nil, err
 	}
 
-	attestResponse, err := verifyAttestResponse(c, client, attestRes, nonce, Log)
+	attestResponse, err := verifyAttestResponse(c, client, attestation, nonce, log)
 	if err != nil {
-		return nil, nil, "false", err
+		return nil, nil, err
 	}
 
 	// Extract GPU types from the claims
@@ -329,10 +322,57 @@ func CheckCVMAttest(
 			ueids = append(ueids, claims.SwitchID)
 		}
 	}
-	Log.Infow("GPU attestation successful",
+	log.Infow("GPU attestation successful",
 		"gpu_types", fmt.Sprintf("%v", gpuTypes),
-		"ip", cvmIP,
 	)
 
-	return gpuTypes, ueids, attestPayload.ICON, nil
+	return gpuTypes, ueids, nil
+}
+
+func CheckTower(
+	log *zap.SugaredLogger,
+	c *targon.Core,
+	client *http.Client,
+	ip string,
+) bool {
+	body, _ := json.Marshal(map[string]string{
+		"ip_address": ip,
+	})
+	req, err := http.NewRequest("POST", c.Deps.Env.TOWER_URL+"/check", bytes.NewBuffer(body))
+	if err != nil {
+		log.Debugw("Failed to generate request to tower", "error", err)
+		return false
+	}
+	headers, err := boilerplate.GetEpistulaHeaders(
+		c.Deps.Hotkey,
+		"",
+		body,
+	)
+	if err != nil {
+		log.Debugw("Failed generating epistula headers", "error", err)
+		return false
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Close = true
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Debugw("Failed sending request to tower", "error", err)
+		return false
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != 200 {
+		return false
+	}
+	resBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Warnw("failed reading tower body", "error", err)
+		return false
+	}
+	response := strings.TrimSpace(string(resBody))
+	return response == "passed"
 }
