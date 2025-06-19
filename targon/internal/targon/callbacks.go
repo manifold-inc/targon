@@ -117,15 +117,33 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
 		}
 		uids, scores, err := getWeights(c)
 		if err != nil {
-			c.Deps.Log.Errorw("Failed getting weights for MongoDB sync", "error", err)
+			c.Deps.Log.Errorw("Failed getting weights", "error", err)
 			return
 		}
+		go func() {
+			color := "3447003"
+			title := fmt.Sprintf("Validator setting weights at block %v", h.Number)
+			desc := fmt.Sprintf("UIDS: %v\n\nweights: %v", uids, scores)
+			uname := "Validator Logs"
+			msg := discord.Message{
+				Username: &uname,
+				Embeds: &[]discord.Embed{{
+					Title:       &title,
+					Description: &desc,
+					Color:       &color,
+				}},
+			}
+			err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
+			if err != nil {
+				c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
+			}
+		}()
 
 		if c.Deps.Mongo != nil {
 			incentives := make([]float64, len(scores))
 			for i, score := range scores {
 				incentives[i] = (float64(score) / float64(setup.U16MAX))
-			} // <- ADDED THIS MISSING CLOSING BRACE FOR THE FOR LOOP
+			}
 
 			uidsInt := make([]uint16, len(uids))
 			for i, uid := range uids {
@@ -144,18 +162,20 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *Core) {
 				},
 			}
 
-			if err := SyncMongo(c, minerInfo); err != nil {
-				c.Deps.Log.Errorw("Failed syncing complete data to mongo", "error", err)
-				return
+			syncErr := SyncMongo(c, minerInfo)
+			if syncErr != nil {
+				c.Deps.Log.Errorw("Failed syncing complete data to mongo", "error", syncErr)
 			}
 
-			c.Deps.Log.Infow("Weights set and complete data synced",
-				"uids", uids,
-				"scores", scores,
-				"block", h.Number,
-				"miners", len(uidsInt))
+			if syncErr == nil {
+				c.Deps.Log.Infow("Weights set and complete data synced",
+					"uids", uids,
+					"scores", scores,
+					"block", h.Number,
+					"miners", len(uidsInt))
+			}
 		}
-		setWeights(v, c, h, uids, scores)
+		setWeights(v, c, uids, scores)
 	})
 }
 
@@ -356,7 +376,7 @@ func resetState(c *Core) {
 	c.ICONS = make(map[string]map[string]string)
 }
 
-func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header, uids []types.U16, scores []types.U16) {
+func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, uids []types.U16, scores []types.U16) {
 	c.mu.Lock()
 	defer func() {
 		c.mu.Unlock()
@@ -371,24 +391,6 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *Core, h types.Header, uid
 		fmt.Sprintf("%+v", scores),
 	)
 
-	go func() {
-		color := "3447003"
-		title := fmt.Sprintf("Validator setting weights at block %v", h.Number) // chnage to get weights
-		desc := fmt.Sprintf("UIDS: %v\n\nweights: %v", uids, scores)
-		uname := "Validator Logs"
-		msg := discord.Message{
-			Username: &uname,
-			Embeds: &[]discord.Embed{{
-				Title:       &title,
-				Description: &desc,
-				Color:       &color,
-			}},
-		}
-		err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
-		if err != nil {
-			c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
-		}
-	}()
 	if c.Deps.Env.DEBUG {
 		c.Deps.Log.Warn("Skipping weightset due to debug flag")
 		return
