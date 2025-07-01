@@ -12,7 +12,6 @@ import (
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/joho/godotenv"
 	"github.com/subtrahend-labs/gobt/client"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -87,9 +86,10 @@ func Init(opts ...any) *Dependencies {
 	TIMEOUT_MULT_STR := GetEnv("TIMEOUT_MULT", "1")
 	TIMEOUT_MULT, err := strconv.Atoi(TIMEOUT_MULT_STR)
 	if err != nil {
-		log.Error("Failed converting env variable TIMEOUT_MULT to int")
+		sugar.Error("Failed converting env variable TIMEOUT_MULT to int")
 		TIMEOUT_MULT = 1
 	}
+	sugar.Infof("Running with TIMEOUT_MULT=%d", time.Duration(TIMEOUT_MULT))
 
 	mongoClient, err := InitMongo()
 	if err != nil {
