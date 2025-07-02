@@ -28,6 +28,7 @@ type Dependencies struct {
 }
 type Env struct {
 	HOTKEY_PHRASE          string
+	ATTEST_RATE            float64
 	CHAIN_ENDPOINT         string
 	NVIDIA_ATTEST_ENDPOINT string
 	VERSION                types.U64
@@ -90,6 +91,16 @@ func Init(opts ...any) *Dependencies {
 		TIMEOUT_MULT = 1
 	}
 	sugar.Infof("Running with TIMEOUT_MULT=%d", time.Duration(TIMEOUT_MULT))
+
+	ATTEST_RATE_STR := GetEnv("ATTEST_RATE", ".95")
+	ATTEST_RATE, err := strconv.ParseFloat(ATTEST_RATE_STR, 64)
+	if err != nil {
+		sugar.Error("Failed converting env ATTEST_RATE to float")
+		ATTEST_RATE = .95
+		TIMEOUT_MULT = 1
+	}
+	ATTEST_RATE = min(ATTEST_RATE, .95)
+	sugar.Infof("Running with ATTEST_RATE=%d", ATTEST_RATE)
 
 	mongoClient, err := InitMongo()
 	if err != nil {
@@ -166,6 +177,7 @@ func Init(opts ...any) *Dependencies {
 			DISCORD_URL:            DISCORD_URL,
 			TOWER_URL:              TOWER_URL,
 			TIMEOUT_MULT:           time.Duration(TIMEOUT_MULT),
+			ATTEST_RATE:            ATTEST_RATE,
 		},
 	}
 }
