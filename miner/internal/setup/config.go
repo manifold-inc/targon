@@ -7,15 +7,19 @@ import (
 )
 
 type Config struct {
-	Port          int      `json:"port,omitempty"`
-	Nodes         []string `json:"nodes,omitempty"`
-	HotkeyPhrase  string   `json:"hotkey_phrase,omitempty"`
-	ChainEndpoint string   `json:"chain_endpoint,omitempty"`
-	Debug         bool     `json:"debug,omitempty"`
-	Netuid        *int     `json:"netuid,omitempty"`
-	DiscordUrl    string   `json:"discord_url,omitempty"`
-	Ip            string   `json:"ip,omitempty"`
-	MinStake      int      `json:"min_stake"`
+	Port          int        `json:"port,omitempty"`
+	Nodes         []NodeItem `json:"nodes,omitempty"`
+	HotkeyPhrase  string     `json:"hotkey_phrase,omitempty"`
+	ChainEndpoint string     `json:"chain_endpoint,omitempty"`
+	Debug         bool       `json:"debug,omitempty"`
+	Netuid        *int       `json:"netuid,omitempty"`
+	DiscordUrl    string     `json:"discord_url,omitempty"`
+	Ip            string     `json:"ip,omitempty"`
+	MinStake      int        `json:"min_stake"`
+}
+type NodeItem struct {
+	Ip    string `json:"ip"`
+	Price int    `json:"bid"`
 }
 
 func LoadConfig() *Config {

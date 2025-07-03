@@ -22,13 +22,13 @@ func GetAndRegNodes(deps *setup.Dependencies) []string {
 			DisableKeepAlives:   true,
 		}
 		client := &http.Client{Transport: tr, Timeout: 20 * time.Second}
-		node = strings.TrimPrefix(node, "http://")
-		node = strings.TrimSuffix(node, ":8080")
+		nodeip := strings.TrimPrefix(node.Ip, "http://")
+		nodeip = strings.TrimSuffix(nodeip, ":8080")
 		ss58 := map[string]string{
 			"ss58": deps.Hotkey.Address,
 		}
 		body, _ := json.Marshal(ss58)
-		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8080/api/v1/register", node), bytes.NewBuffer(body))
+		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8080/api/v1/register", nodeip), bytes.NewBuffer(body))
 		if err != nil {
 			deps.Log.Debugw("Failed to generate request to miner", "error", err)
 			continue
@@ -45,7 +45,7 @@ func GetAndRegNodes(deps *setup.Dependencies) []string {
 			deps.Log.Errorf("CVM Hotkey is not self hotkey: %s", respBody)
 			continue
 		}
-		newNodes = append(newNodes, node)
+		newNodes = append(newNodes, nodeip)
 	}
 	return newNodes
 }
@@ -58,7 +58,7 @@ func MonitorNodes(deps *setup.Dependencies) {
 		for range ticker.C {
 			deps.Log.Info("Checking nodes")
 			for _, n := range deps.Config.Nodes {
-				ok := CheckCVMHealth(deps, n)
+				ok := CheckCVMHealth(deps, n.Ip)
 				if !ok {
 					deps.Log.Errorf("Failed checking health of node at ip %s", n)
 				}
