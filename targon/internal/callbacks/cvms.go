@@ -13,19 +13,15 @@ import (
 
 func getPassingAttestations(c *targon.Core) {
 	attestClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout:   5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
-		MaxConnsPerHost:       1,
-		DisableKeepAlives:     true,
+		TLSHandshakeTimeout: 5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
 	}, Timeout: 5 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
 
 	verifyAttestClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout:   5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
-		DisableKeepAlives:     true,
+		TLSHandshakeTimeout: 5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
+		DisableKeepAlives:   true,
 	}, Timeout: 3 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
-	towerClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout:   5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
-		DisableKeepAlives:     true,
-	}, Timeout: 1 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
 	wg := sync.WaitGroup{}
 	c.Deps.Log.Infof("Getting Attestations for %d miners", len(c.Neurons))
 
@@ -69,7 +65,7 @@ func getPassingAttestations(c *targon.Core) {
 					return
 				}
 
-				passed := cvm.CheckTower(log, c, towerClient, cvmIP)
+				passed := c.Deps.Tower.Check(cvmIP)
 				if !passed {
 					log.Info("Node failed tower check")
 					return

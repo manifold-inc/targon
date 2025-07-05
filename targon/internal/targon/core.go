@@ -25,6 +25,7 @@ type Core struct {
 	GPUids map[string]bool `bson:"gp_uids,omitempty"`
 	// Total tao emission pool for mieners
 	EmissionPool *float64 `bson:"emission_pool,omitempty"`
+	MaxBid       int      `bson:"max_bid,omitempty"`
 	TaoPrice     *float64 `bson:"tao_price,omitempty"`
 
 	// Global core lock

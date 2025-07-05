@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"targon/internal/discord"
-	"targon/internal/pyth"
 	"targon/internal/targon"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -38,17 +37,19 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		getNeuronsCallback(v, c, h)
 	})
 
-	// get emission for this interval
+	// get emission and auction data for this interval
 	v.AddBlockCallback(func(h types.Header) {
 		if c.EmissionPool != nil {
 			return
 		}
-		taoPrice, err := pyth.GetTaoPrice()
+		// Get tower pyth price and emission slice along with min burn
+		auctionData, err := c.Deps.Tower.AuctionDetails()
 		if err != nil {
 			c.Deps.Log.Errorw("Failed getting tao price", "error", err)
 			return
 		}
-		c.TaoPrice = &taoPrice
+		c.TaoPrice = &auctionData.TaoPrice
+		c.MaxBid = auctionData.MaxBid
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
 		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), &h.ParentHash)
 		if err != nil {

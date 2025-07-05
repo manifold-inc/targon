@@ -2,12 +2,14 @@ package setup
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"targon/internal/discord"
+	"targon/internal/tower"
 	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
@@ -25,6 +27,7 @@ type Dependencies struct {
 	Client *client.Client
 	Hotkey signature.KeyringPair
 	Mongo  *mongo.Client
+	Tower  *tower.Tower
 }
 type Env struct {
 	HOTKEY_PHRASE          string
@@ -35,7 +38,6 @@ type Env struct {
 	DEBUG                  bool
 	NETUID                 int
 	DISCORD_URL            string
-	TOWER_URL              string
 	TIMEOUT_MULT           time.Duration
 }
 
@@ -163,11 +165,18 @@ func Init(opts ...any) *Dependencies {
 		},
 	))
 
+	towerClient := &http.Client{Transport: &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second * time.Duration(TIMEOUT_MULT),
+		DisableKeepAlives:   true,
+	}, Timeout: 1 * time.Minute * time.Duration(TIMEOUT_MULT)}
+	t := tower.NewTower(towerClient, TOWER_URL, &kp, sugar)
+
 	return &Dependencies{
 		Log:    sugar,
 		Client: client,
 		Hotkey: kp,
 		Mongo:  mongoClient,
+		Tower:  t,
 		Env: Env{
 			DEBUG:                  debug,
 			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
@@ -175,7 +184,6 @@ func Init(opts ...any) *Dependencies {
 			VERSION:                *parsedVer,
 			NETUID:                 netuid,
 			DISCORD_URL:            DISCORD_URL,
-			TOWER_URL:              TOWER_URL,
 			TIMEOUT_MULT:           time.Duration(TIMEOUT_MULT),
 			ATTEST_RATE:            ATTEST_RATE,
 		},
