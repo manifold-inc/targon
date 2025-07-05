@@ -23,8 +23,9 @@ type Tower struct {
 }
 
 type AuctionDetails struct {
-	TaoPrice float64 `json:"tao_price"`
-	MaxBid   int     `json:"max_bid"`
+	TaoPrice float64        `json:"tao_price"`
+	Auctions map[string]int `json:"auctions"`
+	MaxBid   int            `json:"max_bid"`
 }
 
 func NewTower(client *http.Client, url string, hotkey *signature.KeyringPair, log *zap.SugaredLogger) *Tower {

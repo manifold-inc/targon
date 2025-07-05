@@ -18,4 +18,7 @@ func resetState(c *targon.Core) {
 	c.HealthcheckPasses = make(map[string]map[string][]bool)
 	c.PassedAttestation = make(map[string]map[string][]string)
 	c.ICONS = make(map[string]map[string]string)
+	c.Auctions = make(map[string]int)
+	c.MaxBid = 0
+	c.TaoPrice = nil
 }
