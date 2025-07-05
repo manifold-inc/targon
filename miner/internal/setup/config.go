@@ -19,7 +19,7 @@ type Config struct {
 }
 type NodeItem struct {
 	Ip    string `json:"ip"`
-	Price int    `json:"bid"`
+	Price int    `json:"price"`
 }
 
 func LoadConfig() *Config {

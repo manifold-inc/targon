@@ -37,7 +37,7 @@ func getPassingAttestations(c *targon.Core) {
 				c.ICONS[uid] = map[string]string{}
 				c.Mu.Unlock()
 			}
-			if c.PassedAttestation[uid][node] != nil {
+			if c.PassedAttestation[uid][node.Ip] != nil {
 				continue
 			}
 			wg.Add(1)
@@ -46,7 +46,7 @@ func getPassingAttestations(c *targon.Core) {
 				n := c.Neurons[uid]
 				uid := fmt.Sprintf("%d", n.UID.Int64())
 				nonce := targon.NewNonce(c.Deps.Hotkey.Address)
-				cvmIP := strings.TrimPrefix(node, "http://")
+				cvmIP := strings.TrimPrefix(node.Ip, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 				log := c.Deps.Log.With("uid", uid, "ip", cvmIP)
 				attestPayload, err := cvm.GetAttestFromNode(log, c, attestClient, &n, cvmIP, nonce)
@@ -75,19 +75,19 @@ func getPassingAttestations(c *targon.Core) {
 				// ensure no duplicate nodes
 				c.Mu.Lock()
 				defer c.Mu.Unlock()
-				c.ICONS[uid][node] = icon
+				c.ICONS[uid][node.Ip] = icon
 				for _, v := range ueids {
 					if c.GPUids[v] {
 						c.Deps.Log.Infow("Found duplicate GPU ID", "uid", uid)
 						// Add empty string so that we dont ping this node again,
 						// but dont pass any actual gpus
-						c.PassedAttestation[uid][node] = []string{}
+						c.PassedAttestation[uid][node.Ip] = []string{}
 						return
 					}
 					c.GPUids[v] = true
 				}
 				// Only add gpus if not duplicates
-				c.PassedAttestation[uid][node] = gpus
+				c.PassedAttestation[uid][node.Ip] = gpus
 			}()
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -70,102 +71,95 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, uids []types
 	c.Deps.Log.Infow("Set weights on chain successfully", "hash", hash.Hex())
 }
 
+type MinerBid struct {
+	targon.MinerNode
+	uid  string
+	gpus int
+}
+
 func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
-	// TODO some sort of multi-check per interval
 	if c.EmissionPool == nil {
 		return []types.U16{}, []types.U16{}, errors.New("emission pool is not set")
 	}
-	minerCut := 0.0
-	var uids []types.U16
-	var scores []float64
-	var cvmNodes []string
-	gpus := map[string]int{}
-	// for each uid
+
+	// auction => miner nodes
+	auction := map[string][]MinerBid{}
+
+	// For each uid, for each node, add any passing nodes to the auction map
+	// under the respective auction
 	for uid, nodes := range c.MinerNodes {
-		thisScore := 0.0
-		// for each node
 		for _, n := range nodes {
 			if c.PassedAttestation[uid] == nil {
 				continue
 			}
-			if c.PassedAttestation[uid][n] == nil {
+			if c.PassedAttestation[uid][n.Ip] == nil {
 				continue
 			}
-			cvmNodes = append(cvmNodes, n)
-			// for each gpu
-			for _, gpu := range c.PassedAttestation[uid][n] {
-				ml := strings.ToLower(gpu)
-				gpus[ml] += 1
-				// score is GPU cost per hour * hours in interval (1.5) / total coming
-				// into sn this interval
-				switch {
-				case strings.Contains(ml, "h100"):
-					score := (2.5 * 1.233) / *c.EmissionPool
-					thisScore += score
-					minerCut += score
-				case strings.Contains(ml, "h200"):
-					score := (3.5 * 1.233) / *c.EmissionPool
-					thisScore += score
-					minerCut += score
-				default:
-					continue
+			if len(c.PassedAttestation[uid][n.Ip]) == 0 {
+				continue
+			}
+			gpu := strings.ToLower(c.PassedAttestation[uid][n.Ip][0])
+			for auctionBucket := range c.Auctions {
+				if strings.Contains(gpu, auctionBucket) {
+					auction[auctionBucket] = append(auction[auctionBucket], MinerBid{
+						MinerNode: n,
+						uid:       uid,
+						gpus:      len(c.PassedAttestation[uid][n.Ip]),
+					})
+					break
 				}
 			}
 		}
-		if thisScore < 0.01 {
-			continue
+	}
+
+	// uid -> % of emission
+	payouts := map[string]float64{}
+
+	// For each auction, sort the bids in ascending order and accept bids untill
+	// we have hit the cap for this auction
+	for auctiontype, pool := range c.Auctions {
+		sort.Slice(auction[auctiontype], func(i, j int) bool {
+			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
+		})
+		// need to get max % of the pool for this auction
+		maxEmission := *c.EmissionPool * (float64(pool) / 100)
+		emissionSum := 0.0
+		for _, bid := range auction[auctiontype] {
+			// GPUs * the bid price/h * interval duration approx / emission pool
+			// 	== percent of emission pool for this node for this interval
+			thisEmission := (float64(bid.gpus) * ((float64(bid.Price) / 100) * 1.233)) / *c.EmissionPool
+			if thisEmission+emissionSum > maxEmission {
+				// continue instead of break incase there is someone with a lower gpu
+				// count that can sneak in here (not that we really support that right now)
+				continue
+			}
+			emissionSum += thisEmission
+			if _, ok := payouts[bid.uid]; !ok {
+				payouts[bid.uid] = 0
+			}
+			payouts[bid.uid] += thisEmission
 		}
-		uidInt, _ := strconv.Atoi(uid)
-
-		uids = append(uids, types.NewU16(uint16(uidInt)))
-		scores = append(scores, thisScore)
 	}
-	burnKey := 28
-	minerCut = math.Min(minerCut, 1) // Diulte after 100% emission hit
-	scores = normalize(scores, minerCut)
-	scores = append(scores, 1-minerCut)
-	uids = append(uids, types.NewU16(uint16(burnKey)))
-
-	for gpu, count := range gpus {
-		c.Deps.Log.Infof("%s count: %d", gpu, count)
-	}
-	c.Deps.Log.Infof("CVM IPs: %v", cvmNodes)
-	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", uids), "scores", fmt.Sprintf("%v", scores))
 
 	var finalScores []types.U16
 	var finalUids []types.U16
 	sumScores := uint16(0)
-	for i, s := range scores {
-		// send dust to burn
-		if i == len(scores)-1 {
-			continue
-		}
-		fw := math.Floor(float64(setup.U16MAX) * s)
+	for uid, payout := range payouts {
+		fw := math.Floor(float64(setup.U16MAX) * payout)
 		if fw == 0 {
 			continue
 		}
 		thisScore := uint16(fw)
+		uidInt, _ := strconv.Atoi(uid)
 		finalScores = append(finalScores, types.NewU16(thisScore))
-		finalUids = append(finalUids, uids[i])
+		finalUids = append(finalUids, types.NewU16(uint16(uidInt)))
 		sumScores += thisScore
 	}
+	burnKey := 28
 	finalScores = append(finalScores, types.NewU16(setup.U16MAX-sumScores))
 	finalUids = append(finalUids, types.NewU16(uint16(burnKey)))
 
-	return finalUids, finalScores, nil
-}
+	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))
 
-func normalize(arr []float64, sumTo float64) []float64 {
-	sum := 0.0
-	for _, num := range arr {
-		sum += num
-	}
-	if sum == 0.0 {
-		return arr
-	}
-	newArr := []float64{}
-	for _, num := range arr {
-		newArr = append(newArr, (num/sum)*sumTo)
-	}
-	return newArr
+	return finalUids, finalScores, nil
 }

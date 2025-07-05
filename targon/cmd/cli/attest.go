@@ -113,7 +113,7 @@ var ipsCmd = &cobra.Command{
 			uid := fmt.Sprintf("%d", neuron.UID.Int64())
 			log := core.Deps.Log.With("uid", uid)
 			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
-			cvmIP := strings.TrimPrefix(n, "http://")
+			cvmIP := strings.TrimPrefix(n.Ip, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 			attestPayload, err := cvm.GetAttestFromNode(log, core, client, neuron, cvmIP, nonce)
 			if err != nil {
@@ -124,7 +124,7 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				continue
 			}
-			fmt.Printf("node: %s \n", n)
+			fmt.Printf("node: %s \n", n.Ip)
 			fmt.Printf("gpus: %v\n\n", gpus)
 		}
 	},

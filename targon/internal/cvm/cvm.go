@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]string, error) {
+func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]targon.MinerNode, error) {
 	uid := fmt.Sprintf("%d", n.UID.Int64())
 	Log := c.Deps.Log.With("uid", uid)
 	if n.AxonInfo.IP.String() == "0" {
@@ -66,13 +66,36 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]str
 		)
 		return nil, fmt.Errorf("bad status code %d", resp.StatusCode)
 	}
-	var nodes []string
-	err = json.NewDecoder(resp.Body).Decode(&nodes)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		Log.Debugw("Failed reading miner response", "error", err)
 		return nil, err
 	}
-	return nodes, nil
+
+	// Backwards compat; remove later on
+	var nodesv2 []targon.MinerNode
+	var nodesv1 []string
+	err = json.Unmarshal(body, &nodesv2)
+	if err != nil {
+		err = json.Unmarshal(body, &nodesv1)
+		if err != nil {
+			Log.Debugw("Failed reading miner response", "error", err)
+			return nil, err
+		}
+		for _, node := range nodesv1 {
+			nodesv2 = append(nodesv2, targon.MinerNode{
+				Ip:    node,
+				Price: 120,
+			})
+		}
+	}
+
+	// Max price is max bid, min price is 1
+	for _, v := range nodesv2 {
+		v.Price = max(min(v.Price, c.MaxBid), 1)
+	}
+
+	return nodesv2, nil
 }
 
 func CheckHealth(c *targon.Core, client *http.Client, n *runtime.NeuronInfo, cvmIP string) bool {

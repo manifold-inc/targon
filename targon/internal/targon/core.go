@@ -8,13 +8,18 @@ import (
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 
+type MinerNode struct {
+	Ip    string `json:"ip"`
+	Price int    `json:"price"`
+}
+
 type Core struct {
 	Neurons map[string]runtime.NeuronInfo `bson:"-"`
 	Deps    *setup.Dependencies           `bson:"-"`
 	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
-	MinerNodes map[string][]string `bson:"miner_nodes,omitempty"`
-	Hpmu       sync.Mutex          `bson:"-"`
+	MinerNodes map[string][]MinerNode `bson:"miner_nodes,omitempty"`
+	Hpmu       sync.Mutex             `bson:"-"`
 	// uid -> nodes -> []passed
 	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
@@ -37,7 +42,7 @@ func CreateCore(d *setup.Dependencies) *Core {
 	// TODO init maps
 	return &Core{
 		Deps:              d,
-		MinerNodes:        map[string][]string{},
+		MinerNodes:        map[string][]MinerNode{},
 		HealthcheckPasses: map[string]map[string][]bool{},
 		PassedAttestation: map[string]map[string][]string{},
 		ICONS:             map[string]map[string]string{},
