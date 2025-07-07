@@ -50,6 +50,9 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		}
 		c.TaoPrice = &auctionData.TaoPrice
 		c.MaxBid = auctionData.MaxBid
+		c.Auctions = auctionData.Auctions
+		c.Deps.Log.Infof("Auctions: %+v", c.Auctions)
+		c.Deps.Log.Infof("Max Bid: %d", c.MaxBid)
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
 		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), &h.ParentHash)
 		if err != nil {

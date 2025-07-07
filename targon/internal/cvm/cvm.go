@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -77,6 +78,8 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 	var nodesv1 []string
 	err = json.Unmarshal(body, &nodesv2)
 	if err != nil {
+		// reset this encase it got accidentally populated by the previous unmarshal
+		nodesv2 = []targon.MinerNode{}
 		err = json.Unmarshal(body, &nodesv1)
 		if err != nil {
 			Log.Debugw("Failed reading miner response", "error", err)
@@ -85,7 +88,7 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, targon.MinerNode{
 				Ip:    node,
-				Price: 120,
+				Price: rand.Intn(260),
 			})
 		}
 	}
@@ -94,7 +97,7 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 	for _, v := range nodesv2 {
 		v.Price = max(min(v.Price, c.MaxBid), 1)
 	}
-
+	Log.Debugf("%s nodes: %v", uid, nodesv2)
 	return nodesv2, nil
 }
 

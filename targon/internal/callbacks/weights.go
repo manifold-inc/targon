@@ -121,8 +121,9 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 		sort.Slice(auction[auctiontype], func(i, j int) bool {
 			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
 		})
-		// need to get max % of the pool for this auction
-		maxEmission := *c.EmissionPool * (float64(pool) / 100)
+		c.Deps.Log.Debugf("Sorted Auction entries: %v", auction[auctiontype])
+		// max % of the pool for this auction
+		maxEmission := float64(pool) / 100
 		emissionSum := 0.0
 		for _, bid := range auction[auctiontype] {
 			// GPUs * the bid price/h * interval duration approx / emission pool
@@ -159,6 +160,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 	finalScores = append(finalScores, types.NewU16(setup.U16MAX-sumScores))
 	finalUids = append(finalUids, types.NewU16(uint16(burnKey)))
 
+	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts))
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))
 
 	return finalUids, finalScores, nil
