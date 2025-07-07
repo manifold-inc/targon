@@ -10,8 +10,10 @@
 #### Hardware Requirements
 
 - NVIDIA H100 or H200 GPU with Confidential Compute support
-- 500GB storage
-- Intel CPU
+- 3 TB Storage
+- Intel CPU Requirements:
+  - 5th Gen Intel® Xeon® Scalable Processor
+  - Intel® Xeon® 6 Processors
 
 #### Software Requirements
 
