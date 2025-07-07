@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -88,7 +87,7 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, targon.MinerNode{
 				Ip:    node,
-				Price: rand.Intn(260),
+				Price: 240,
 			})
 		}
 	}

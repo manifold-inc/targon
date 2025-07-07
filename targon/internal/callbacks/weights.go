@@ -115,12 +115,15 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 	// uid -> % of emission
 	payouts := map[string]float64{}
 
+	paidnodes := map[string]int{}
+
 	// For each auction, sort the bids in ascending order and accept bids untill
 	// we have hit the cap for this auction
 	for auctiontype, pool := range c.Auctions {
 		sort.Slice(auction[auctiontype], func(i, j int) bool {
 			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
 		})
+		paidnodes[auctiontype] = 0
 		c.Deps.Log.Debugf("Sorted Auction entries: %v", auction[auctiontype])
 		// max % of the pool for this auction
 		maxEmission := float64(pool) / 100
@@ -138,6 +141,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 			if _, ok := payouts[bid.uid]; !ok {
 				payouts[bid.uid] = 0
 			}
+			paidnodes[auctiontype] += bid.gpus
 			payouts[bid.uid] += thisEmission
 		}
 	}
@@ -160,7 +164,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 	finalScores = append(finalScores, types.NewU16(setup.U16MAX-sumScores))
 	finalUids = append(finalUids, types.NewU16(uint16(burnKey)))
 
-	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts))
+	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts), "gpus", fmt.Sprintf("%+v", paidnodes))
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))
 
 	return finalUids, finalScores, nil
