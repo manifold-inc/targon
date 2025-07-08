@@ -15,7 +15,7 @@ import (
 func GetAndRegNodes(deps *setup.Dependencies) []string {
 	newNodes := []string{}
 	for _, node := range deps.Config.Nodes {
-		deps.Log.Infof("Checking node registration %s", node)
+		deps.Log.Infof("Checking node registration %s", node.Ip)
 		tr := &http.Transport{
 			TLSHandshakeTimeout: 5 * time.Second,
 			MaxConnsPerHost:     1,
