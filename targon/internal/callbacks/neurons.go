@@ -11,8 +11,6 @@ import (
 )
 
 func getNeuronsCallback(v *boilerplate.BaseChainSubscriber, c *targon.Core, h types.Header) {
-	c.Mu.Lock()
-	defer c.Mu.Unlock()
 	c.Deps.Log.Info("Updating neurons")
 	blockHash, err := c.Deps.Client.Api.RPC.Chain.GetBlockHash(uint64(h.Number))
 	if err != nil {

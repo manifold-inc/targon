@@ -102,7 +102,7 @@ func Init(opts ...any) *Dependencies {
 		TIMEOUT_MULT = 1
 	}
 	ATTEST_RATE = min(ATTEST_RATE, .95)
-	sugar.Infof("Running with ATTEST_RATE=%d", ATTEST_RATE)
+	sugar.Infof("Running with ATTEST_RATE=%f", ATTEST_RATE)
 
 	mongoClient, err := InitMongo()
 	if err != nil {

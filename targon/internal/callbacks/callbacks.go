@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"time"
 
-	"targon/internal/discord"
 	"targon/internal/targon"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -25,7 +24,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 
 	// Logging blocks
 	v.AddBlockCallback(func(h types.Header) {
-		go logBlockCallback(c, h)
+		logBlockCallback(c, h)
 	})
 
 	// get neurons
@@ -67,7 +66,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// get miner nodes
 	// Every 30 blocks off the internval tempo untill 180 left in block
 	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%30 != 1 && h.Number%360 > 180 {
+		if (h.Number%30 != 1 || h.Number%360 > 180) && len(c.MinerNodes) != 0 {
 			return
 		}
 		getMinerNodes(c)
@@ -107,14 +106,6 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		logWeights(c)
 	})
 
-	// Discord Notifications
-	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%720 != 0 {
-			return
-		}
-		sendDailyGPUSummary(c, h)
-	})
-
 	// Set Weights
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
@@ -126,13 +117,10 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 			return
 		}
 
-		go func() {
-			err := discord.LogWeightsToDiscord(c.Deps.Env.DISCORD_URL, uids, scores, h)
-			if err != nil {
-				c.Deps.Log.Warnw("Failed logging to discord", "error", err)
-			}
-		}()
-
+		err = sendIntervalSummary(c, h, uids, scores)
+		if err != nil {
+			c.Deps.Log.Warnw("Failed logging to discord", "error", err)
+		}
 		if c.Deps.Mongo != nil {
 			syncErr := targon.SyncMongo(c, uids, scores, h)
 			if syncErr != nil {

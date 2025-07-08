@@ -23,9 +23,14 @@ func getMinerNodes(c *targon.Core) {
 	totalNodes := 0
 	for _, n := range c.Neurons {
 		uid := fmt.Sprintf("%d", n.UID.Int64())
+		c.Mnmu.Lock()
 		if val, ok := c.MinerNodes[uid]; ok && val != nil {
-			return
+			c.Mnmu.Unlock()
+			wg.Done()
+			continue
 		}
+		c.Mnmu.Unlock()
+
 		go func() {
 			defer wg.Done()
 			nodes, err := cvm.GetNodes(c, client, &n)
@@ -34,7 +39,8 @@ func getMinerNodes(c *targon.Core) {
 			// This can be nil if there is an error
 			c.MinerNodes[uid] = nodes
 			if err != nil {
-				c.Deps.Log.Warnw("error getting miner nodes", "uid", uid, "error", err)
+				// supress this in prod; we can always check mongo for errors
+				c.Deps.Log.Debugw("error getting miner nodes", "uid", uid, "error", err)
 				c.MinerNodesErrors[uid] = err.Error()
 				return
 			}

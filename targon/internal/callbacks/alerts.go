@@ -2,28 +2,35 @@ package callbacks
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	"targon/internal/discord"
+	"targon/internal/setup"
 	"targon/internal/targon"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
 type minerStats struct {
-	gpuCount int
-	gpuTypes map[string]int
+	gpuCount  int
+	gpuTypes  map[string]int
+	uid       int
+	incentive float64
 }
 
-func sendDailyGPUSummary(c *targon.Core, h types.Header) {
-	stats := make(map[string]*minerStats)
+func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U16) error {
+	stats := make(map[int]*minerStats)
 	totalGPUs := 0
 	activeNodes := 0
 
-	for uid, nodes := range c.PassedAttestation {
+	for uidstr, nodes := range c.PassedAttestation {
+		uid, _ := strconv.Atoi(uidstr)
 		if stats[uid] == nil {
 			stats[uid] = &minerStats{
 				gpuTypes: make(map[string]int),
+				uid:      uid,
 			}
 		}
 
@@ -38,12 +45,32 @@ func sendDailyGPUSummary(c *targon.Core, h types.Header) {
 		}
 	}
 
+	for i, uid := range uids {
+		c.Deps.Log.Infof("%d", uid)
+		if val, ok := stats[int(uid)]; ok {
+			val.incentive = float64(scores[i]) / float64(setup.U16MAX)
+		}
+	}
+	c.Deps.Log.Infof("%+v", stats)
+
 	// Aggregate GPU types across all miners
 	gpuTypes := make(map[string]int)
+	statsarr := []*minerStats{}
 	for _, miner := range stats {
+		statsarr = append(statsarr, miner)
 		for gpu, count := range miner.gpuTypes {
 			gpuTypes[gpu] += count
 		}
+	}
+
+	sort.Slice(statsarr, func(i, j int) bool {
+		return statsarr[i].uid < statsarr[j].uid
+	})
+
+	burned := 0.0
+	lastuid := uids[len(uids)-1]
+	if int(lastuid) == 28 {
+		burned = float64(scores[len(scores)-1]) / float64(setup.U16MAX)
 	}
 
 	color := "5763719"
@@ -51,12 +78,14 @@ func sendDailyGPUSummary(c *targon.Core, h types.Header) {
 	desc := fmt.Sprintf(
 		"Total Attested GPUs: %d\n"+
 			"Active CVM Nodes: %d\n"+
+			"Burned:%.2f%%\n"+
 			"GPU Type Breakdown:\n%s\n"+
 			"Per Miner Breakdown:\n%s",
 		totalGPUs,
 		activeNodes,
+		burned,
 		formatGPUBreakdown(gpuTypes),
-		formatMinerBreakdown(stats),
+		formatMinerBreakdown(statsarr),
 	)
 
 	uname := "GPU Monitor"
@@ -74,9 +103,7 @@ func sendDailyGPUSummary(c *targon.Core, h types.Header) {
 		"active_nodes", activeNodes,
 		"gpu_types", gpuTypes,
 	)
-	if err != nil {
-		c.Deps.Log.Warnw("Failed sending discord webhook", "error", err)
-	}
+	return err
 }
 
 func formatGPUBreakdown(gpuTypes map[string]int) string {
@@ -87,10 +114,13 @@ func formatGPUBreakdown(gpuTypes map[string]int) string {
 	return sb.String()
 }
 
-func formatMinerBreakdown(stats map[string]*minerStats) string {
+func formatMinerBreakdown(stats []*minerStats) string {
 	var sb strings.Builder
-	for uid, miner := range stats {
-		sb.WriteString(fmt.Sprintf("- Miner %s: %d GPUs\n", uid, miner.gpuCount))
+	for _, miner := range stats {
+		if miner.gpuCount == 0 {
+			continue
+		}
+		sb.WriteString(fmt.Sprintf("- Miner %d: %d GPUs, %.2f%%\n", miner.uid, miner.gpuCount, miner.incentive*100))
 	}
 	return sb.String()
 }
