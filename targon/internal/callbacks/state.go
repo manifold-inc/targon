@@ -21,4 +21,5 @@ func resetState(c *targon.Core) {
 	c.Auctions = make(map[string]int)
 	c.MaxBid = 0
 	c.TaoPrice = nil
+	c.MinerNodesErrors = map[string]string{}
 }

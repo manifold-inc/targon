@@ -12,6 +12,7 @@ import (
 
 	"targon/internal/subtensor/utils"
 	"targon/internal/targon"
+	errutil "targon/internal/utils"
 
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
@@ -19,11 +20,8 @@ import (
 )
 
 func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]targon.MinerNode, error) {
-	uid := fmt.Sprintf("%d", n.UID.Int64())
-	Log := c.Deps.Log.With("uid", uid)
 	if n.AxonInfo.IP.String() == "0" {
 		err := errors.New("inactive miner")
-		Log.Debug(err.Error())
 		return nil, err
 	}
 	var neuronIpAddr net.IP = n.AxonInfo.IP.Bytes()
@@ -33,8 +31,7 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 		nil,
 	)
 	if err != nil {
-		Log.Warnw("Failed to generate request to miner", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed to generate request to miner", err)
 	}
 	headers, err := boilerplate.GetEpistulaHeaders(
 		c.Deps.Hotkey,
@@ -42,8 +39,7 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 		[]byte{},
 	)
 	if err != nil {
-		Log.Warnw("Failed generating epistula headers", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed generating epistula headers", err)
 	}
 	for key, value := range headers {
 		req.Header.Set(key, value)
@@ -51,25 +47,18 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
-		Log.Debugw("Failed sending request to miner", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed sending request to miner", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		Log.Debugw(
-			"Miner sent back unexpected status",
-			"status",
-			fmt.Sprintf("%d", resp.StatusCode),
-		)
 		return nil, fmt.Errorf("bad status code %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		Log.Debugw("Failed reading miner response", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed reading miner response", err)
 	}
 
 	// Backwards compat; remove later on
@@ -81,8 +70,7 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 		nodesv2 = []targon.MinerNode{}
 		err = json.Unmarshal(body, &nodesv1)
 		if err != nil {
-			Log.Debugw("Failed reading miner response", "error", err)
-			return nil, err
+			return nil, errutil.Wrap("failed reading miner response", err)
 		}
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, targon.MinerNode{
@@ -96,7 +84,6 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 	for _, v := range nodesv2 {
 		v.Price = max(min(v.Price, c.MaxBid), 1)
 	}
-	Log.Debugf("%s nodes: %v", uid, nodesv2)
 	return nodesv2, nil
 }
 

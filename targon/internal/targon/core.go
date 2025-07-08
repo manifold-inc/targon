@@ -18,8 +18,9 @@ type Core struct {
 	Deps    *setup.Dependencies           `bson:"-"`
 	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
-	MinerNodes map[string][]MinerNode `bson:"miner_nodes,omitempty"`
-	Hpmu       sync.Mutex             `bson:"-"`
+	MinerNodes       map[string][]MinerNode `bson:"miner_nodes,omitempty"`
+	MinerNodesErrors map[string]string      `bson:"miner_nodes_errors,omitempty"`
+	Hpmu             sync.Mutex             `bson:"-"`
 	// uid -> nodes -> []passed
 	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
@@ -48,5 +49,6 @@ func CreateCore(d *setup.Dependencies) *Core {
 		ICONS:             map[string]map[string]string{},
 		Neurons:           map[string]runtime.NeuronInfo{},
 		GPUids:            map[string]bool{},
+		MinerNodesErrors:  map[string]string{},
 	}
 }
