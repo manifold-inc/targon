@@ -83,16 +83,14 @@ var ipsCmd = &cobra.Command{
 		if len(ipflag) != 0 {
 
 			// Mock Neuron, use self hotkey
-			uid := fmt.Sprintf("%d", neuron.UID.Int64())
-			log := core.Deps.Log.With("uid", uid)
 			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
 			cvmIP := strings.TrimPrefix(ipflag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-			attestPayload, err := cvm.GetAttestFromNode(log, core, client, neuron, cvmIP, nonce)
+			attestPayload, err := cvm.GetAttestFromNode(core.Deps.Hotkey, core.Deps.Env.TIMEOUT_MULT, neuron, cvmIP, nonce)
 			if err != nil {
 				return
 			}
-			gpus, _, err := cvm.CheckAttest(log, core, client, attestPayload.Attest, nonce)
+			gpus, _, err := cvm.CheckAttest(core.Deps.Env.NVIDIA_ATTEST_ENDPOINT, client, attestPayload.Attest, nonce)
 			if err != nil {
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
@@ -110,16 +108,14 @@ var ipsCmd = &cobra.Command{
 		fmt.Printf("Nodes: %v\n", nodes)
 		fmt.Println("CVM attest results")
 		for _, n := range nodes {
-			uid := fmt.Sprintf("%d", neuron.UID.Int64())
-			log := core.Deps.Log.With("uid", uid)
 			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
 			cvmIP := strings.TrimPrefix(n.Ip, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-			attestPayload, err := cvm.GetAttestFromNode(log, core, client, neuron, cvmIP, nonce)
+			attestPayload, err := cvm.GetAttestFromNode(core.Deps.Hotkey, core.Deps.Env.TIMEOUT_MULT, neuron, cvmIP, nonce)
 			if err != nil {
 				return
 			}
-			gpus, _, err := cvm.CheckAttest(log, core, client, attestPayload.Attest, nonce)
+			gpus, _, err := cvm.CheckAttest(core.Deps.Env.NVIDIA_ATTEST_ENDPOINT, client, attestPayload.Attest, nonce)
 			if err != nil {
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				continue

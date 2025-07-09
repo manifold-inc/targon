@@ -9,14 +9,15 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"targon/internal/subtensor/utils"
 	"targon/internal/targon"
 	errutil "targon/internal/utils"
 
+	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
-	"go.uber.org/zap"
 )
 
 func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]*targon.MinerNode, error) {
@@ -128,13 +129,17 @@ type AttestBody struct {
 }
 
 func GetAttestFromNode(
-	log *zap.SugaredLogger,
-	c *targon.Core,
-	client *http.Client,
+	hotkey signature.KeyringPair,
+	timeout_mult time.Duration,
 	n *runtime.NeuronInfo,
 	cvmIP string,
 	nonce string,
 ) (*targon.AttestPayload, error) {
+	client := &http.Client{Transport: &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second * timeout_mult,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+	}, Timeout: 5 * time.Minute * timeout_mult}
 	data := AttestBody{Nonce: nonce}
 	body, _ := json.Marshal(data)
 	req, err := http.NewRequest(
@@ -143,17 +148,15 @@ func GetAttestFromNode(
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
-		log.Debugw("Failed to generate request to miner", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed to generate request to miner", err)
 	}
 	headers, err := boilerplate.GetEpistulaHeaders(
-		c.Deps.Hotkey,
+		hotkey,
 		utils.AccountIDToSS58(n.Hotkey),
 		body,
 	)
 	if err != nil {
-		log.Debugw("Failed generating epistula headers", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed generating epistula headers", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -163,40 +166,31 @@ func GetAttestFromNode(
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Debugw("Failed sending request to miner", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed sending request to miner", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode != http.StatusOK {
-		log.Debugw(
-			"Bad status code from miner attest",
-			"status",
-			fmt.Sprintf("%d", resp.StatusCode),
-		)
-		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
+		return nil, fmt.Errorf("bad status code from miner attest: %d", resp.StatusCode)
 	}
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Debugw("Failed reading response", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed reading response", err)
 	}
 	var attestRes targon.AttestResponse
 	err = json.Unmarshal(resBody, &attestRes)
 	if err != nil {
-		log.Debugw("Failed unmarshaling response", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed unmarshaling response", err)
 	}
 	return &targon.AttestPayload{Attest: &attestRes}, nil
 }
 
 func verifyAttestResponse(
-	c *targon.Core,
+	attestEndpoint string,
 	client *http.Client,
 	attestRes *targon.AttestResponse,
 	nonce string,
-	log *zap.SugaredLogger,
 ) (*targon.GPUAttestationResponse, error) {
 	// Validate Attestation
 	body, err := json.Marshal(map[string]any{
@@ -212,111 +206,69 @@ func verifyAttestResponse(
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/attest", c.Deps.Env.NVIDIA_ATTEST_ENDPOINT),
+		fmt.Sprintf("%s/attest", attestEndpoint),
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
-		log.Warnw("Failed to generate request to nvidia-attest", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed to generate request to nvidia-attest", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Warnw("Failed sending request to nvidia-attest", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed sending request to nvidia-attest", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode != http.StatusOK {
-		log.Warnw(
-			"Bad status code from nvidia-attest",
-			"status",
-			fmt.Sprintf("%d", resp.StatusCode),
-		)
-		return nil, errors.New("Bad status code from miner attest: " + resp.Status)
+		return nil, fmt.Errorf("bad status code from miner attest: %d", resp.StatusCode)
 	}
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Warnw("Failed reading response body from nvidia-attest", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed reading response body from nvidia-attest", err)
 	}
 
 	var attestResponse targon.GPUAttestationResponse
 	err = json.Unmarshal(resBody, &attestResponse)
 	if err != nil {
-		log.Debugw("Failed decoding json response from nvidia-attest", "error", err)
-		return nil, err
+		return nil, errutil.Wrap("failed decoding json response from nvidia-attest", err)
 	}
 
 	if !attestResponse.GPUAttestationSuccess || !attestResponse.SwitchAttestationSuccess {
-		log.Debugw("GPU or switch attestation failed",
-			"gpu_success", attestResponse.GPUAttestationSuccess,
-			"switch_success", attestResponse.SwitchAttestationSuccess)
-		return nil, errors.New("GPU or switch attestation failed")
+		return nil, fmt.Errorf("GPU={%t} or switch attestation={%t} failed", attestResponse.GPUAttestationSuccess, attestResponse.SwitchAttestationSuccess)
 	}
 	return &attestResponse, nil
 }
 
 func CheckAttest(
-	log *zap.SugaredLogger,
-	c *targon.Core,
+	attestEndpoint string,
 	client *http.Client,
 	attestation *targon.AttestResponse,
 	nonce string,
 ) ([]string, []string, error) {
-	var err error
-	if !attestation.GPULocal.AttestationResult {
-		err = errors.New("local gpu attestation failed")
-		log.Debug(err.Error())
-		return nil, nil, err
+	switch false {
+	case attestation.GPULocal.AttestationResult:
+		return nil, nil, errors.New("local gpu attestation failed")
+	case attestation.GPULocal.Valid:
+		return nil, nil, errors.New("local gpu attestation invalid")
+	case attestation.GPURemote.AttestationResult:
+		return nil, nil, errors.New("remote gpu attestation failed")
+	case attestation.GPURemote.Valid:
+		return nil, nil, errors.New("remote gpu attestation invalid")
+	case attestation.SwitchLocal.AttestationResult:
+		return nil, nil, errors.New("local switch attestation failed")
+	case attestation.SwitchLocal.Valid:
+		return nil, nil, errors.New("local switch attestation invalid")
+	case attestation.SwitchRemote.AttestationResult:
+		return nil, nil, errors.New("remote switch attestation failed")
+	case attestation.SwitchRemote.Valid:
+		return nil, nil, errors.New("remote switch attestation invalid")
 	}
 
-	if !attestation.GPULocal.Valid {
-		err = errors.New("local gpu attestation invalid")
-		log.Debug(err.Error())
-		return nil, nil, err
-	}
-
-	if !attestation.GPURemote.AttestationResult {
-		err = errors.New("remote gpu attestation failed")
-		log.Debug(err.Error())
-		return nil, nil, err
-	}
-
-	if !attestation.GPURemote.Valid {
-		err = errors.New("remote gpu attestation invalid")
-		log.Debug(err.Error())
-		return nil, nil, err
-	}
-
-	if !attestation.SwitchLocal.AttestationResult {
-		err = errors.New("local switch attestation failed")
-		log.Debug(err.Error())
-		return nil, nil, err
-	}
-
-	if !attestation.SwitchLocal.Valid {
-		err = errors.New("local switch attestation invalid")
-		log.Debug(err.Error())
-		return nil, nil, err
-	}
-	if !attestation.SwitchRemote.AttestationResult {
-		err = errors.New("remote switch attestation failed")
-		log.Debug(err.Error())
-		return nil, nil, err
-	}
-
-	if !attestation.SwitchRemote.Valid {
-		err = errors.New("remote switch attestation invalid")
-		log.Debug(err.Error())
-		return nil, nil, err
-	}
-
-	attestResponse, err := verifyAttestResponse(c, client, attestation, nonce, log)
+	attestResponse, err := verifyAttestResponse(attestEndpoint, client, attestation, nonce)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errutil.Wrap("couldnt verify attestation", err)
 	}
 
 	// Extract GPU types from the claims
@@ -332,9 +284,5 @@ func CheckAttest(
 			ueids = append(ueids, claims.SwitchID)
 		}
 	}
-	log.Infow("GPU attestation successful",
-		"gpu_types", fmt.Sprintf("%v", gpuTypes),
-	)
-
 	return gpuTypes, ueids, nil
 }
