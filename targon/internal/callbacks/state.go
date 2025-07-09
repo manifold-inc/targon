@@ -16,6 +16,7 @@ func resetState(c *targon.Core) {
 	c.EmissionPool = nil
 	// TODO maybe keep this alive longer than an interval
 	c.HealthcheckPasses = make(map[string]map[string][]bool)
+	c.AttestErrors = make(map[string]map[string]string)
 	c.PassedAttestation = make(map[string]map[string][]string)
 	c.Auctions = make(map[string]int)
 	c.MaxBid = 0

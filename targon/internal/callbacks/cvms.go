@@ -88,30 +88,6 @@ func getPassingAttestations(c *targon.Core) {
 			}()
 		}
 	}
-
-	// TODO make this more robust, dont want to blast cvm IPs though
-	var beersData []targon.GPUData
-	for uid, nodes := range c.PassedAttestation {
-		if nodes == nil {
-			continue
-		}
-		ns := []string{}
-		for _, gpus := range nodes {
-			ns = append(ns, gpus...)
-		}
-		beersData = append(
-			beersData,
-			targon.GPUData{Uid: uid, Data: map[string][]string{"nodes": ns}},
-		)
-	}
-	client := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
-		MaxConnsPerHost:     1,
-		DisableKeepAlives:   true,
-	}, Timeout: 1 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
-	if err := targon.SendGPUDataToBeers(c, client, beersData); err != nil {
-		c.Deps.Log.Warnw("Failed to send GPU data to beers", "error", err)
-	}
 	wg.Wait()
 }
 

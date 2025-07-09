@@ -19,12 +19,13 @@ type Core struct {
 	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
 	MinerNodes       map[string][]*MinerNode `bson:"miner_nodes,omitempty"`
-	MinerNodesErrors map[string]string      `bson:"miner_nodes_errors,omitempty"`
-	Hpmu             sync.Mutex             `bson:"-"`
+	MinerNodesErrors map[string]string       `bson:"miner_nodes_errors,omitempty"`
+	Hpmu             sync.Mutex              `bson:"-"`
 	// uid -> nodes -> []passed
 	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
 	PassedAttestation map[string]map[string][]string `bson:"passed_attestation,omitempty"`
+	AttestErrors      map[string]map[string]string   `bson:"attest_errors,omitempty"`
 	// gpu id -> seen
 	GPUids map[string]bool `bson:"gp_uids,omitempty"`
 	// Total tao emission pool for mieners
@@ -47,5 +48,6 @@ func CreateCore(d *setup.Dependencies) *Core {
 		Neurons:           map[string]runtime.NeuronInfo{},
 		GPUids:            map[string]bool{},
 		MinerNodesErrors:  map[string]string{},
+		AttestErrors:      map[string]map[string]string{},
 	}
 }
