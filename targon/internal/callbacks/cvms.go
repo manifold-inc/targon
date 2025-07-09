@@ -51,6 +51,7 @@ func getPassingAttestations(c *targon.Core) {
 					c.AttestErrors[uid] = map[string]string{}
 				}
 				c.AttestErrors[uid][node.Ip] = err.Error()
+				c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err)
 			}()
 		}
 	}
