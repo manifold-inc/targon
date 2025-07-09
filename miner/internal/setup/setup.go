@@ -18,7 +18,7 @@ type Dependencies struct {
 	Hotkey signature.KeyringPair
 	Config *Config
 	NodeMu sync.Mutex
-	Nodes  []string
+	Nodes  []NodeItem
 }
 
 func Init() *Dependencies {
@@ -57,7 +57,7 @@ func Init() *Dependencies {
 		Client: client,
 		Config: c,
 		Hotkey: kp,
-		Nodes:  []string{},
+		Nodes:  []NodeItem{},
 	}
 }
 

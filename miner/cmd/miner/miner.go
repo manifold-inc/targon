@@ -192,11 +192,6 @@ func main() {
 
 			deps.Log.Infof("Responding to request from request from [%s]", signed_by)
 
-			// Backwards compact
-			// Enabling later
-			if len(core.Deps.Nodes) != 0 {
-				return c.JSON(http.StatusOK, core.Deps.Nodes)
-			}
 			return c.JSON(http.StatusOK, core.Deps.Config.Nodes)
 		})
 		e.GET("/", func(c echo.Context) error {

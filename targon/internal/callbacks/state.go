@@ -10,7 +10,7 @@ func resetState(c *targon.Core) {
 	c.Mu.Lock()
 	defer c.Mu.Unlock()
 	c.Neurons = make(map[string]runtime.NeuronInfo)
-	c.MinerNodes = make(map[string][]targon.MinerNode)
+	c.MinerNodes = make(map[string][]*targon.MinerNode)
 	c.GPUids = make(map[string]bool)
 	// Dont really need to wipe tao price
 	c.EmissionPool = nil

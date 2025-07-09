@@ -18,7 +18,7 @@ type Core struct {
 	Deps    *setup.Dependencies           `bson:"-"`
 	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
-	MinerNodes       map[string][]MinerNode `bson:"miner_nodes,omitempty"`
+	MinerNodes       map[string][]*MinerNode `bson:"miner_nodes,omitempty"`
 	MinerNodesErrors map[string]string      `bson:"miner_nodes_errors,omitempty"`
 	Hpmu             sync.Mutex             `bson:"-"`
 	// uid -> nodes -> []passed
@@ -43,7 +43,7 @@ func CreateCore(d *setup.Dependencies) *Core {
 	// TODO init maps
 	return &Core{
 		Deps:              d,
-		MinerNodes:        map[string][]MinerNode{},
+		MinerNodes:        map[string][]*MinerNode{},
 		HealthcheckPasses: map[string]map[string][]bool{},
 		PassedAttestation: map[string]map[string][]string{},
 		ICONS:             map[string]map[string]string{},

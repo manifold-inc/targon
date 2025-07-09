@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]targon.MinerNode, error) {
+func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]*targon.MinerNode, error) {
 	if n.AxonInfo.IP.String() == "0" {
 		err := errors.New("inactive miner")
 		return nil, err
@@ -62,18 +62,18 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 	}
 
 	// Backwards compat; remove later on
-	var nodesv2 []targon.MinerNode
+	var nodesv2 []*targon.MinerNode
 	var nodesv1 []string
 	err = json.Unmarshal(body, &nodesv2)
 	if err != nil {
 		// reset this encase it got accidentally populated by the previous unmarshal
-		nodesv2 = []targon.MinerNode{}
+		nodesv2 = []*targon.MinerNode{}
 		err = json.Unmarshal(body, &nodesv1)
 		if err != nil {
 			return nil, errutil.Wrap("failed reading miner response", err)
 		}
 		for _, node := range nodesv1 {
-			nodesv2 = append(nodesv2, targon.MinerNode{
+			nodesv2 = append(nodesv2, &targon.MinerNode{
 				Ip:    node,
 				Price: 240,
 			})
@@ -82,7 +82,9 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]tar
 
 	// Max price is max bid, min price is 1
 	for _, v := range nodesv2 {
-		v.Price = max(min(v.Price, c.MaxBid), 1)
+		// TODO swap these lines to enable auctions
+		v.Price = 300
+		// v.Price = max(min(v.Price, c.MaxBid), 1)
 	}
 	return nodesv2, nil
 }

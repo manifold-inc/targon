@@ -12,8 +12,8 @@ import (
 	"miner/internal/setup"
 )
 
-func GetAndRegNodes(deps *setup.Dependencies) []string {
-	newNodes := []string{}
+func GetAndRegNodes(deps *setup.Dependencies) []setup.NodeItem {
+	newNodes := []setup.NodeItem{}
 	for _, node := range deps.Config.Nodes {
 		deps.Log.Infof("Checking node registration %s", node.Ip)
 		tr := &http.Transport{
@@ -45,7 +45,7 @@ func GetAndRegNodes(deps *setup.Dependencies) []string {
 			deps.Log.Errorf("CVM Hotkey is not self hotkey: %s", respBody)
 			continue
 		}
-		newNodes = append(newNodes, nodeip)
+		newNodes = append(newNodes, node)
 	}
 	return newNodes
 }
