@@ -34,7 +34,6 @@ func getPassingAttestations(c *targon.Core) {
 			if c.PassedAttestation[uid] == nil {
 				c.Mu.Lock()
 				c.PassedAttestation[uid] = map[string][]string{}
-				c.ICONS[uid] = map[string]string{}
 				c.Mu.Unlock()
 			}
 			if c.PassedAttestation[uid][node.Ip] != nil {
@@ -53,7 +52,6 @@ func getPassingAttestations(c *targon.Core) {
 				if err != nil {
 					return
 				}
-				icon := attestPayload.ICON
 				gpus, ueids, err := cvm.CheckAttest(
 					log,
 					c,
@@ -75,7 +73,6 @@ func getPassingAttestations(c *targon.Core) {
 				// ensure no duplicate nodes
 				c.Mu.Lock()
 				defer c.Mu.Unlock()
-				c.ICONS[uid][node.Ip] = icon
 				for _, v := range ueids {
 					if c.GPUids[v] {
 						c.Deps.Log.Infow("Found duplicate GPU ID", "uid", uid)

@@ -25,8 +25,6 @@ type Core struct {
 	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
 	// uid -> nodes -> gpus
 	PassedAttestation map[string]map[string][]string `bson:"passed_attestation,omitempty"`
-	// uid -> nodes -> icons
-	ICONS map[string]map[string]string `bson:"icons,omitempty"`
 	// gpu id -> seen
 	GPUids map[string]bool `bson:"gp_uids,omitempty"`
 	// Total tao emission pool for mieners
@@ -46,7 +44,6 @@ func CreateCore(d *setup.Dependencies) *Core {
 		MinerNodes:        map[string][]*MinerNode{},
 		HealthcheckPasses: map[string]map[string][]bool{},
 		PassedAttestation: map[string]map[string][]string{},
-		ICONS:             map[string]map[string]string{},
 		Neurons:           map[string]runtime.NeuronInfo{},
 		GPUids:            map[string]bool{},
 		MinerNodesErrors:  map[string]string{},

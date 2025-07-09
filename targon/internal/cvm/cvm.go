@@ -182,17 +182,13 @@ func GetAttestFromNode(
 		log.Debugw("Failed reading response", "error", err)
 		return nil, err
 	}
-	icon := resp.Header.Get("X-Targon-ICON")
-	if len(icon) == 0 {
-		icon = "false"
-	}
 	var attestRes targon.AttestResponse
 	err = json.Unmarshal(resBody, &attestRes)
 	if err != nil {
 		log.Debugw("Failed unmarshaling response", "error", err)
 		return nil, err
 	}
-	return &targon.AttestPayload{Attest: &attestRes, ICON: icon}, nil
+	return &targon.AttestPayload{Attest: &attestRes}, nil
 }
 
 func verifyAttestResponse(

@@ -2,7 +2,6 @@ package targon
 
 type AttestPayload struct {
 	Attest *AttestResponse
-	ICON   string
 }
 
 type MinerInfo struct {
