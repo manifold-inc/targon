@@ -21,11 +21,16 @@ Create a `.env` file in the project directory:
 ```bash
 ### Required
 HOTKEY_PHRASE="your hotkey phrase"
+MONGO_USERNAME=
+MONGO_PASSWORD=
 
 ### Optional
 
 # Sets a multiplier on all http connection timeouts
 TIMEOUT_MULT=1
+
+## Sends discord notifications for things like setting weights
+# DISCORD_URL=
 
 ### Dev Variables (dont set unless needed)
 
@@ -38,10 +43,14 @@ TIMEOUT_MULT=1
 ## Chain to connect to
 # CHAIN_ENDPOINT=wss://entrypoint-finney.opentensor.ai:443
 
-## Sends discord notifications for things like setting weights
-# DISCORD_URL=
 
 ```
+
+> **Note** both mongo environment keys are keys **you define** and can be
+> whatever you want. We suggest using the outpout of
+> `tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo`. Run twice, and use one as
+> the password and one as the username. These **do not** need to be double
+> quoted in the .env file
 
 #### 3. Build and Run Services
 
