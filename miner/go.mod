@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.2-0.20240919131012-e3b938563803
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/subtrahend-labs/gobt v0.0.4
+	github.com/subtrahend-labs/gobt v0.0.4-beta.1
 	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/zap v1.27.0
 )
