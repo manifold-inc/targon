@@ -4,6 +4,14 @@ type AttestPayload struct {
 	Attest *AttestResponse
 }
 
+type MinerBid struct {
+	Ip     string  `bson:"ip"`
+	Price  int     `bson:"price"`
+	UID    string  `bson:"uid"`
+	Gpus   int     `bson:"gpus"`
+	Payout float64 `bson:"payout"`
+}
+
 type MinerInfo struct {
 	Core         *Core    `bson:"inline"`
 	Block        int      `bson:"block"`

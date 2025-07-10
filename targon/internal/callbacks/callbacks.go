@@ -111,11 +111,12 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
-		uids, scores, err := getWeights(c)
+		uids, scores, results, err := getWeights(c)
 		if err != nil {
 			c.Deps.Log.Errorw("Failed getting weights", "error", err)
 			return
 		}
+		c.AuctionResults = results
 
 		err = sendIntervalSummary(c, h, uids, scores)
 		if err != nil {

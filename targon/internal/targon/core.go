@@ -29,13 +29,14 @@ type Core struct {
 	// gpu id -> seen
 	GPUids map[string]bool `bson:"gp_uids,omitempty"`
 	// Total tao emission pool for mieners
-	EmissionPool *float64       `bson:"emission_pool,omitempty"`
-	Auctions     map[string]int `bson:"auctions"`
-	MaxBid       int            `bson:"max_bid,omitempty"`
-	TaoPrice     *float64       `bson:"tao_price,omitempty"`
+	EmissionPool   *float64               `bson:"emission_pool,omitempty"`
+	Auctions       map[string]int         `bson:"auctions"`
+	AuctionResults map[string][]*MinerBid `bson:"auction_results"`
+	MaxBid         int                    `bson:"max_bid,omitempty"`
+	TaoPrice       *float64               `bson:"tao_price,omitempty"`
 
 	// Global core locks
-	Mu         sync.Mutex `bson:"-"`
+	Mu sync.Mutex `bson:"-"`
 }
 
 func CreateCore(d *setup.Dependencies) *Core {

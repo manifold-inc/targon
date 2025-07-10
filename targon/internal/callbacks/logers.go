@@ -9,7 +9,7 @@ import (
 )
 
 func logWeights(c *targon.Core) {
-	uids, scores, _ := getWeights(c)
+	uids, scores, _, _ := getWeights(c)
 	c.Deps.Log.Infow(
 		"Current Weights",
 		"uids",

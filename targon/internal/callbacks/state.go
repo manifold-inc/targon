@@ -19,6 +19,7 @@ func resetState(c *targon.Core) {
 	c.AttestErrors = make(map[string]map[string]string)
 	c.PassedAttestation = make(map[string]map[string][]string)
 	c.Auctions = make(map[string]int)
+	c.AuctionResults = make(map[string][]*targon.MinerBid)
 	c.MaxBid = 0
 	c.TaoPrice = nil
 	c.MinerNodesErrors = map[string]string{}

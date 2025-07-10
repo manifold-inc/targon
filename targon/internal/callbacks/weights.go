@@ -71,19 +71,13 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, uids []types
 	c.Deps.Log.Infow("Set weights on chain successfully", "hash", hash.Hex())
 }
 
-type MinerBid struct {
-	targon.MinerNode
-	uid  string
-	gpus int
-}
-
-func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
+func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.MinerBid, error) {
 	if c.EmissionPool == nil {
-		return []types.U16{}, []types.U16{}, errors.New("emission pool is not set")
+		return nil, nil, nil, errors.New("emission pool is not set")
 	}
 
 	// auction => miner nodes
-	auction := map[string][]MinerBid{}
+	auction := map[string][]*targon.MinerBid{}
 
 	bidcounts := map[string]map[int]int{}
 
@@ -106,10 +100,11 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 					bidcounts[auctionBucket] = map[int]int{}
 				}
 				if strings.Contains(gpu, auctionBucket) {
-					auction[auctionBucket] = append(auction[auctionBucket], MinerBid{
-						MinerNode: *n,
-						uid:       uid,
-						gpus:      len(c.PassedAttestation[uid][n.Ip]),
+					auction[auctionBucket] = append(auction[auctionBucket], &targon.MinerBid{
+						Ip:    n.Ip,
+						Price: n.Price,
+						UID:   uid,
+						Gpus:  len(c.PassedAttestation[uid][n.Ip]),
 					})
 
 					bidcounts[auctionBucket][n.Price] += len(c.PassedAttestation[uid][n.Ip])
@@ -141,25 +136,28 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 		for _, bid := range auction[auctiontype] {
 			// GPUs * the bid price/h * interval duration approx / emission pool
 			// 	== percent of emission pool for this node for this interval
-			thisEmission := (float64(bid.gpus) * ((float64(bid.Price) / 100) * 1.233)) / *c.EmissionPool
+			thisEmission := (float64(bid.Gpus) * ((float64(bid.Price) / 100) * 1.233)) / *c.EmissionPool
 			if thisEmission+emissionSum > maxEmission && bid.Price != lastPrice {
 				c.Deps.Log.Infof("Auction ending at ring: %d", bid.Price)
 				break
 			}
-			paidnodes[auctiontype] += bid.gpus
+			paidnodes[auctiontype] += bid.Gpus
 			if bid.Price != lastPrice {
-				isRingOverMax = ((thisEmission/float64(bid.gpus))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
+				isRingOverMax = ((thisEmission/float64(bid.Gpus))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
 			}
 			if isRingOverMax {
-				c.Deps.Log.Infof("UID %s bid diluted in last ring: %d", bid.uid, bid.Price)
-				tiedPayouts[bid.uid] += thisEmission
+				c.Deps.Log.Infof("UID %s bid diluted in last ring: %d", bid.UID, bid.Price)
+				tiedPayouts[bid.UID] += thisEmission
 				tiedSum += thisEmission
+
+				bid.Payout = ((*c.EmissionPool*maxEmission - emissionSum) / float64(bidcounts[auctiontype][bid.Price])) * float64(bid.Gpus)
 				continue
 			}
-			c.Deps.Log.Infof("UID %s bid fully included: %d", bid.uid, bid.Price)
+			c.Deps.Log.Infof("UID %s bid fully included: %d", bid.UID, bid.Price)
 			emissionSum += thisEmission
-			payouts[bid.uid] += thisEmission
+			payouts[bid.UID] += thisEmission
 			lastPrice = bid.Price
+			bid.Payout = float64(bid.Price) / 100.0
 		}
 
 		// If the last ring ties, normalize that ring to the remaning emission
@@ -194,5 +192,5 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts), "gpus", fmt.Sprintf("%+v", paidnodes))
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))
 
-	return finalUids, finalScores, nil
+	return finalUids, finalScores, auction, nil
 }
