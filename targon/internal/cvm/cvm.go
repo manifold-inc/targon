@@ -172,7 +172,8 @@ func GetAttestFromNode(
 		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bad status code from miner attest: %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("bad status code from miner attest: %d: %s", resp.StatusCode, string(body))
 	}
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
