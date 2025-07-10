@@ -112,12 +112,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 						gpus:      len(c.PassedAttestation[uid][n.Ip]),
 					})
 
-					// NOTE::TODO
-					// This assumes all prices for nodes are nodes of the same cluster
-					// size, might need to rework for actual release.
-					// Best method might be to calculate this rungs price sum right here,
-					// including gpu count. TBD
-					bidcounts[auctionBucket][n.Price] += 1
+					bidcounts[auctionBucket][n.Price] += len(c.PassedAttestation[uid][n.Ip])
 					break
 				}
 			}
@@ -153,7 +148,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, error) {
 			}
 			paidnodes[auctiontype] += bid.gpus
 			if bid.Price != lastPrice {
-				isRingOverMax = (thisEmission*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
+				isRingOverMax = ((thisEmission/float64(bid.gpus))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
 			}
 			if isRingOverMax {
 				c.Deps.Log.Infof("UID %s bid diluted in last ring: %d", bid.uid, bid.Price)
