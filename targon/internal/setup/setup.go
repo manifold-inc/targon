@@ -106,7 +106,7 @@ func Init(opts ...any) *Dependencies {
 
 	mongoClient, err := InitMongo()
 	if err != nil {
-		sugar.Warn(utils.Wrap("mongo error", err))
+		sugar.Fatal(utils.Wrap("failed connecting to mongo error", err))
 	}
 
 	netuid, err := strconv.Atoi(GetEnv("NETUID", "4"))

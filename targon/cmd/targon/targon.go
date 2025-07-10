@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"targon/internal/callbacks"
 	"targon/internal/setup"
 	"targon/internal/targon"
@@ -39,5 +40,12 @@ func main() {
 	validator.SetOnSubscriptionError(func(e error) {
 		deps.Log.Infow("Subscription Error", "error", e)
 	})
+	err := targon.LoadMongoBackup(core)
+	if err != nil {
+		core.Deps.Log.Warn("Failed to load last checkpoint")
+	}
+	if err == nil {
+		core.Deps.Log.Info("Loaded checkpoint from mongo")
+	}
 	validator.Start(deps.Client)
 }

@@ -8,10 +8,13 @@ func SetMainFunc(v *boilerplate.BaseChainSubscriber, c *Core) {
 	})
 }
 
+// This always runs sync with log callbacks, so it is thread safe
 func mainFunc(c *Core, i <-chan bool, o chan<- bool) {
-	for range i {
-		c.Deps.Log.Info("Shuting down...")
-		o <- true
-		return
+	<-i
+	c.Deps.Log.Info("Shuting down...")
+	err := SaveMongoBackup(c)
+	if err != nil {
+		c.Deps.Log.Errorw("Failed saving backup of state", "error", err)
 	}
+	o <- true
 }

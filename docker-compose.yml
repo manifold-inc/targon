@@ -9,6 +9,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: always
+    stop_grace_period: 15m
+    depends_on:
+      nvidia-attest:
+        condition: service_started
+      mongo:
+        condition: service_healthy
     build:
       dockerfile: Dockerfile
       context: ./targon

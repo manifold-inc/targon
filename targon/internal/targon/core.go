@@ -34,8 +34,8 @@ type Core struct {
 	MaxBid       int            `bson:"max_bid,omitempty"`
 	TaoPrice     *float64       `bson:"tao_price,omitempty"`
 
-	// Global core lock
-	Mu sync.Mutex `bson:"-"`
+	// Global core locks
+	Mu         sync.Mutex `bson:"-"`
 }
 
 func CreateCore(d *setup.Dependencies) *Core {

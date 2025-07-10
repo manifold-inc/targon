@@ -8,8 +8,6 @@ type MinerInfo struct {
 	Core         *Core    `bson:"inline"`
 	Block        int      `bson:"block"`
 	Scores       []uint16 `bson:"scores,omitempty"`
-	EmissionPool float64  `bson:"emission_pool,omitempty"`
-	TaoPrice     float64  `bson:"tao_price,omitempty"`
 	Timestamp    int64    `bson:"timestamp,omitempty"`
 	Weights      Weights  `bson:"weights,omitempty"`
 }

@@ -8,6 +8,8 @@ import (
 	"targon/internal/setup"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func SyncMongo(c *Core, uids, scores []types.U16, h types.Header) error {
@@ -22,11 +24,9 @@ func SyncMongo(c *Core, uids, scores []types.U16, h types.Header) error {
 	}
 
 	minerInfo := MinerInfo{
-		Core:         c,
-		Block:        int(h.Number),
-		EmissionPool: *c.EmissionPool,
-		TaoPrice:     *c.TaoPrice,
-		Timestamp:    time.Now().Unix(),
+		Core:      c,
+		Block:     int(h.Number),
+		Timestamp: time.Now().Unix(),
 		Weights: Weights{
 			UIDs:       uidsInt,
 			Incentives: incentives,
@@ -44,4 +44,48 @@ func SyncMongo(c *Core, uids, scores []types.U16, h types.Header) error {
 	minerInfoCol := c.Deps.Mongo.Database("targon").Collection("miner_info")
 	_, err := minerInfoCol.InsertOne(ctx, minerInfo)
 	return err
+}
+
+type Backup struct {
+	Core      *Core `bson:"inline"`
+	Timestamp int64 `bson:"timestamp,omitempty"`
+}
+
+func SaveMongoBackup(c *Core) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	backup := Backup{Core: c, Timestamp: time.Now().Unix()}
+
+	// Store miner info with emissions data
+	minerInfoCol := c.Deps.Mongo.Database("targon").Collection("miner_info_backup")
+	_, err := minerInfoCol.InsertOne(ctx, backup)
+	return err
+}
+
+func LoadMongoBackup(c *Core) error {
+	minerCol := c.Deps.Mongo.Database("targon").Collection("miner_info_backup")
+	opts := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: -1}})
+
+	// Find the record with the max value
+	var r Backup
+	err := minerCol.FindOne(context.TODO(), bson.D{}, opts).Decode(&r)
+	if err != nil {
+		return err
+	}
+	then := time.Unix(r.Timestamp, 0)
+	if time.Since(then) > 30*time.Minute {
+		return errors.New("Backup is too stale")
+	}
+	c.MinerNodes = r.Core.MinerNodes
+	c.MinerNodesErrors = r.Core.MinerNodesErrors
+	c.HealthcheckPasses = r.Core.HealthcheckPasses
+	c.PassedAttestation = r.Core.PassedAttestation
+	c.AttestErrors = r.Core.AttestErrors
+	c.GPUids = r.Core.GPUids
+	c.EmissionPool = r.Core.EmissionPool
+	c.Auctions = r.Core.Auctions
+	c.MaxBid = r.Core.MaxBid
+	c.TaoPrice = r.Core.TaoPrice
+	return nil
 }
