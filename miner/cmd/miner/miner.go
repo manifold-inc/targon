@@ -122,7 +122,7 @@ func main() {
 
 	// Update validator and neurons list
 	validator.AddBlockCallback(func(h types.Header) {
-		if h.Number%360 != 1 && core.ValidatorPermits != nil {
+		if h.Number%360 != 15 && core.ValidatorPermits != nil {
 			return
 		}
 		core.Deps.Log.Infow("Fetching validator list", "block", fmt.Sprintf("%v", h.Number))
