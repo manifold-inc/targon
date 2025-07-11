@@ -75,6 +75,10 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 
 	color := "5763719"
 	title := fmt.Sprintf("Daily GPU Summary at block %v", h.Number)
+	if c.Deps.Env.DEBUG {
+		title = fmt.Sprintf("[DEBUG] %s", title)
+		color = "15105570"
+	}
 	desc := fmt.Sprintf(
 		"Total Attested GPUs: %d\n"+
 			"Active CVM Nodes: %d\n"+

@@ -42,11 +42,15 @@ func getPassingAttestations(c *targon.Core) {
 			go func() {
 				defer wg.Done()
 				err := attest(c, uid, node, verifyAttestClient)
-				if err == nil {
-					return
-				}
 				c.Mu.Lock()
 				defer c.Mu.Unlock()
+				if err == nil {
+					if c.AttestErrors[uid] == nil {
+						return
+					}
+					delete(c.AttestErrors[uid], node.Ip)
+					return
+				}
 				if c.AttestErrors[uid] == nil {
 					c.AttestErrors[uid] = map[string]string{}
 				}

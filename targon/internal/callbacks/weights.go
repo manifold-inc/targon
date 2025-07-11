@@ -79,6 +79,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 	// auction => miner nodes
 	auction := map[string][]*targon.MinerBid{}
 
+	// auction -> bid -> total gpus
 	bidcounts := map[string]map[int]int{}
 
 	// For each uid, for each node, add any passing nodes to the auction map
@@ -117,6 +118,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 	// uid -> % of emission
 	payouts := map[string]float64{}
 
+	// auction -> gpu count
 	paidnodes := map[string]int{}
 
 	// For each auction, sort the bids in ascending order and accept bids untill
@@ -132,23 +134,21 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		maxEmission := float64(pool) / 100
 		emissionSum := 0.0
 		tiedSum := 0.0
+		tiedGPUs := 0
 		isRingOverMax := false
 		for _, bid := range auction[auctiontype] {
 			// GPUs * the bid price/h * interval duration approx / emission pool
 			// 	== percent of emission pool for this node for this interval
 			thisEmission := (float64(bid.Gpus) * ((float64(bid.Price) / 100) * 1.233)) / *c.EmissionPool
-			if thisEmission+emissionSum > maxEmission && bid.Price != lastPrice {
-				c.Deps.Log.Infof("Auction ending at ring: %d", bid.Price)
-				break
-			}
 			paidnodes[auctiontype] += bid.Gpus
-			if bid.Price != lastPrice {
+			if bid.Price != lastPrice && !isRingOverMax {
 				isRingOverMax = ((thisEmission/float64(bid.Gpus))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
 			}
 			if isRingOverMax {
 				c.Deps.Log.Infof("UID %s bid diluted in last ring: %d", bid.UID, bid.Price)
 				tiedPayouts[bid.UID] += thisEmission
 				tiedSum += thisEmission
+				tiedGPUs += bid.Gpus
 
 				bid.Payout = ((*c.EmissionPool*maxEmission - emissionSum) / float64(bidcounts[auctiontype][bid.Price])) * float64(bid.Gpus)
 				continue
@@ -160,11 +160,19 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			bid.Payout = float64(bid.Price) / 100.0
 		}
 
-		// If the last ring ties, normalize that ring to the remaning emission
+		// Just skip if there is not much emission left to split
+		if maxEmission-emissionSum < .1 {
+			continue
+		}
+		// If not all rings get paid their bids, normalize that ring to the remaning emission
 		// and add that to the payouts. This greatly increases downward price pressure
 		// by highly rewarding people that underbid the last paid ring if it ties.
+		maxTiedEmissionBidPool := (float64(tiedGPUs) * (float64(c.MaxBid) / 100)) / *c.EmissionPool
+		remainingEmission := maxEmission - emissionSum
 		for uid, payout := range tiedPayouts {
-			diluted := (payout / tiedSum) * (maxEmission - emissionSum)
+			// Normalize to either remaining emission or the capped emission for max
+			// bid for remaining gpus
+			diluted := (payout / tiedSum) * min(remainingEmission, maxTiedEmissionBidPool)
 			c.Deps.Log.Infof("UID %s diluted to: %.2f%%", uid, diluted*100)
 			payouts[uid] += diluted
 		}
