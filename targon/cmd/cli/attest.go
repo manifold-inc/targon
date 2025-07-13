@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"math/big"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"targon/internal/cvm"
@@ -88,6 +90,7 @@ var ipsCmd = &cobra.Command{
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 			attestPayload, err := cvm.GetAttestFromNode(core.Deps.Hotkey, core.Deps.Env.TIMEOUT_MULT, neuron, cvmIP, nonce)
 			if err != nil {
+				fmt.Println(err.Error())
 				return
 			}
 			gpus, _, err := cvm.CheckAttest(core.Deps.Env.NVIDIA_ATTEST_ENDPOINT, client, attestPayload.Attest, nonce)
@@ -100,28 +103,49 @@ var ipsCmd = &cobra.Command{
 			return
 		}
 
-		nodes, err := cvm.GetNodes(core, client, neuron)
-		if err != nil {
-			fmt.Println(utils.Wrap("Failed to get nodes", err))
-			return
+		nodes := GetNodesFromStdin(cmd)
+		if len(nodes) == 0 {
+			n, err := cvm.GetNodes(core, client, neuron)
+			if err != nil {
+				panic(err)
+			}
+			nodes = n
 		}
 		fmt.Printf("Nodes: %v\n", nodes)
 		fmt.Println("CVM attest results")
+		wg := sync.WaitGroup{}
+		wg.Add(len(nodes))
+
 		for _, n := range nodes {
-			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
-			cvmIP := strings.TrimPrefix(n.Ip, "http://")
-			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-			attestPayload, err := cvm.GetAttestFromNode(core.Deps.Hotkey, core.Deps.Env.TIMEOUT_MULT, neuron, cvmIP, nonce)
-			if err != nil {
-				return
-			}
-			gpus, _, err := cvm.CheckAttest(core.Deps.Env.NVIDIA_ATTEST_ENDPOINT, client, attestPayload.Attest, nonce)
-			if err != nil {
-				fmt.Println(utils.Wrap("CVM attest error", err))
-				continue
-			}
-			fmt.Printf("node: %s \n", n.Ip)
-			fmt.Printf("gpus: %v\n\n", gpus)
+			go func() {
+				defer wg.Done()
+				nonce := targon.NewNonce(core.Deps.Hotkey.Address)
+				cvmIP := strings.TrimPrefix(n.Ip, "http://")
+				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+				attestPayload, err := cvm.GetAttestFromNode(core.Deps.Hotkey, core.Deps.Env.TIMEOUT_MULT, neuron, cvmIP, nonce)
+				if err != nil {
+					fmt.Printf("%s: %s\n", n.Ip, err.Error())
+					return
+				}
+				gpus, _, err := cvm.CheckAttest(core.Deps.Env.NVIDIA_ATTEST_ENDPOINT, client, attestPayload.Attest, nonce)
+				if err != nil {
+					fmt.Printf("%s: %s\n", n.Ip, err.Error())
+					return
+				}
+				fmt.Printf("%s: gpus: %v\n", n.Ip, gpus)
+			}()
 		}
+		wg.Wait()
 	},
+}
+
+func GetNodesFromStdin(cmd *cobra.Command) []*targon.MinerNode {
+	inputReader := cmd.InOrStdin()
+	scanner := bufio.NewScanner(inputReader)
+	nodes := []*targon.MinerNode{}
+	for scanner.Scan() {
+		line := scanner.Text()
+		nodes = append(nodes, &targon.MinerNode{Ip: line, Price: 300})
+	}
+	return nodes
 }
