@@ -102,8 +102,11 @@ var ipsCmd = &cobra.Command{
 			fmt.Printf("gpus: %v\n\n", gpus)
 			return
 		}
-
-		nodes := GetNodesFromStdin(cmd)
+		fileInfo, _ := os.Stdin.Stat()
+		var nodes []*targon.MinerNode
+		if isPipe := (fileInfo.Mode() & os.ModeNamedPipe) != 0; isPipe {
+			nodes = GetNodesFromStdin(cmd)
+		}
 		if len(nodes) == 0 {
 			n, err := cvm.GetNodes(core, client, neuron)
 			if err != nil {
