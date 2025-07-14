@@ -157,7 +157,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			emissionSum += thisEmission
 			payouts[bid.UID] += thisEmission
 			lastPrice = bid.Price
-			bid.Payout = float64(bid.Price) / 100.0
+			bid.Payout = (float64(bid.Price) / 100.0) * float64(bid.Gpus)
 		}
 
 		// Just skip if there is not much emission left to split
