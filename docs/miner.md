@@ -540,7 +540,7 @@ report the IP addresses of each CVM you are running.
 
    ```json
     {
-    // ONLY include pure IP address of each node and its bid (in cents per hour)
+    // ONLY include pure IP address of each node and its bid (in cents per hour per gpu)
     "nodes": [{"ip":"0.0.0.0", "price": 120}, {"ip":"0.0.1.1", "price": 220}],
     "hotkey_phrase": "one one one one one three one one one one one two",
     // External ip of your miner, used to register axon on bittensor
