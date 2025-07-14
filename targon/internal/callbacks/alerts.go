@@ -46,12 +46,10 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 	}
 
 	for i, uid := range uids {
-		c.Deps.Log.Infof("%d", uid)
 		if val, ok := stats[int(uid)]; ok {
 			val.incentive = float64(scores[i]) / float64(setup.U16MAX)
 		}
 	}
-	c.Deps.Log.Infof("%+v", stats)
 
 	// Aggregate GPU types across all miners
 	gpuTypes := make(map[string]int)

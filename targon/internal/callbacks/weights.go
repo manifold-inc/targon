@@ -162,6 +162,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 
 		// Just skip if there is not much emission left to split
 		if maxEmission-emissionSum < .01 {
+			c.Deps.Log.Info("Too little emission left to pay out miners")
 			continue
 		}
 		// If not all rings get paid their bids, normalize that ring to the remaning emission
