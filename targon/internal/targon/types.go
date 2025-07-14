@@ -5,19 +5,20 @@ type AttestPayload struct {
 }
 
 type MinerBid struct {
-	Ip     string  `bson:"ip"`
-	Price  int     `bson:"price"`
-	UID    string  `bson:"uid"`
-	Gpus   int     `bson:"gpus"`
-	Payout float64 `bson:"payout"`
+	Ip      string  `bson:"ip"`
+	Price   int     `bson:"price"`
+	UID     string  `bson:"uid"`
+	Gpus    int     `bson:"gpus"`
+	Payout  float64 `bson:"payout"`
+	Diluted bool    `bson:"diluted"`
 }
 
 type MinerInfo struct {
-	Core         *Core    `bson:"inline"`
-	Block        int      `bson:"block"`
-	Scores       []uint16 `bson:"scores,omitempty"`
-	Timestamp    int64    `bson:"timestamp,omitempty"`
-	Weights      Weights  `bson:"weights,omitempty"`
+	Core      *Core    `bson:"inline"`
+	Block     int      `bson:"block"`
+	Scores    []uint16 `bson:"scores,omitempty"`
+	Timestamp int64    `bson:"timestamp,omitempty"`
+	Weights   Weights  `bson:"weights,omitempty"`
 }
 type Weights struct {
 	UIDs       []uint16  `bson:"uids"`

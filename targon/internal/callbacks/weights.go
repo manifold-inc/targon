@@ -151,8 +151,10 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 				tiedGPUs += bid.Gpus
 
 				bid.Payout = ((*c.EmissionPool*maxEmission - emissionSum) / float64(bidcounts[auctiontype][bid.Price])) * float64(bid.Gpus)
+				bid.Diluted = true
 				continue
 			}
+			bid.Diluted = false
 			c.Deps.Log.Infof("UID %s bid fully included: %d", bid.UID, bid.Price)
 			emissionSum += thisEmission
 			payouts[bid.UID] += thisEmission
