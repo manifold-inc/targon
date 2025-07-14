@@ -18,22 +18,22 @@ type Core struct {
 	Deps    *setup.Dependencies           `bson:"-"`
 	Mnmu    sync.Mutex                    `bson:"-"`
 	// uid -> nodes
-	MinerNodes       map[string][]*MinerNode `bson:"miner_nodes,omitempty"`
-	MinerNodesErrors map[string]string       `bson:"miner_nodes_errors,omitempty"`
+	MinerNodes       map[string][]*MinerNode `bson:"miner_nodes"`
+	MinerNodesErrors map[string]string       `bson:"miner_nodes_errors"`
 	Hpmu             sync.Mutex              `bson:"-"`
 	// uid -> nodes -> []passed
-	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes,omitempty"`
+	HealthcheckPasses map[string]map[string][]bool `bson:"healthcheck_passes"`
 	// uid -> nodes -> gpus
-	PassedAttestation map[string]map[string][]string `bson:"passed_attestation,omitempty"`
-	AttestErrors      map[string]map[string]string   `bson:"attest_errors,omitempty"`
+	PassedAttestation map[string]map[string][]string `bson:"passed_attestation"`
+	AttestErrors      map[string]map[string]string   `bson:"attest_errors"`
 	// gpu id -> seen
-	GPUids map[string]bool `bson:"gp_uids,omitempty"`
+	GPUids map[string]bool `bson:"gp_uids"`
 	// Total tao emission pool for mieners
-	EmissionPool   *float64               `bson:"emission_pool,omitempty"`
+	EmissionPool   *float64               `bson:"emission_pool"`
 	Auctions       map[string]int         `bson:"auctions"`
 	AuctionResults map[string][]*MinerBid `bson:"auction_results"`
-	MaxBid         int                    `bson:"max_bid,omitempty"`
-	TaoPrice       *float64               `bson:"tao_price,omitempty"`
+	MaxBid         int                    `bson:"max_bid"`
+	TaoPrice       *float64               `bson:"tao_price"`
 
 	// Global core locks
 	Mu sync.Mutex `bson:"-"`

@@ -77,14 +77,30 @@ func LoadMongoBackup(c *Core) error {
 	if time.Since(then) > 30*time.Minute {
 		return errors.New("Backup is too stale")
 	}
-	c.MinerNodes = r.Core.MinerNodes
-	c.MinerNodesErrors = r.Core.MinerNodesErrors
-	c.HealthcheckPasses = r.Core.HealthcheckPasses
-	c.PassedAttestation = r.Core.PassedAttestation
-	c.AttestErrors = r.Core.AttestErrors
-	c.GPUids = r.Core.GPUids
-	c.EmissionPool = r.Core.EmissionPool
-	c.Auctions = r.Core.Auctions
+	if r.Core.MinerNodes != nil {
+		c.MinerNodes = r.Core.MinerNodes
+	}
+	if r.Core.MinerNodesErrors != nil {
+		c.MinerNodesErrors = r.Core.MinerNodesErrors
+	}
+	if r.Core.HealthcheckPasses != nil {
+		c.HealthcheckPasses = r.Core.HealthcheckPasses
+	}
+	if r.Core.PassedAttestation != nil {
+		c.PassedAttestation = r.Core.PassedAttestation
+	}
+	if r.Core.AttestErrors != nil {
+		c.AttestErrors = r.Core.AttestErrors
+	}
+	if r.Core.GPUids != nil {
+		c.GPUids = r.Core.GPUids
+	}
+	if r.Core.EmissionPool != nil {
+		c.EmissionPool = r.Core.EmissionPool
+	}
+	if r.Core.Auctions != nil {
+		c.Auctions = r.Core.Auctions
+	}
 	c.MaxBid = r.Core.MaxBid
 	c.TaoPrice = r.Core.TaoPrice
 	return nil
