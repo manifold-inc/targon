@@ -181,7 +181,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		dilutedPayout := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedGPUs)
 		for _, bid := range auction[auctiontype] {
 			if bid.Diluted {
-				bid.Payout = dilutedPayout * float64(bid.Gpus)
+				bid.Payout = (dilutedPayout * float64(bid.Gpus)) / 1.233
 			}
 		}
 	}
