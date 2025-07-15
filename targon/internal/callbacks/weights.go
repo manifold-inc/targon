@@ -125,7 +125,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 	// we have hit the cap for this auction
 	lastPrice := 0
 	for auctiontype, pool := range c.Auctions {
-		tiedPayouts := map[string]float64{}
+		tiedPayouts := map[string]int{}
 		sort.Slice(auction[auctiontype], func(i, j int) bool {
 			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
 		})
@@ -133,7 +133,6 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		// max % of the pool for this auction
 		maxEmission := float64(pool) / 100
 		emissionSum := 0.0
-		tiedSum := 0.0
 		tiedGPUs := 0
 		isRingOverMax := false
 		for _, bid := range auction[auctiontype] {
@@ -146,8 +145,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			}
 			if isRingOverMax {
 				c.Deps.Log.Infof("UID %s bid diluted in last ring: %d", bid.UID, bid.Price)
-				tiedPayouts[bid.UID] += thisEmission
-				tiedSum += thisEmission
+				tiedPayouts[bid.UID] += bid.Gpus
 				tiedGPUs += bid.Gpus
 				bid.Diluted = true
 				continue
@@ -165,23 +163,16 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			c.Deps.Log.Info("Too little emission left to pay remaining miners")
 			continue
 		}
-		// If not all rings get paid their bids, normalize that ring to the remaning emission
+		// If not all rings get paid their bids, normalize all other rings to the remaning emission
 		// and add that to the payouts. This greatly increases downward price pressure
 		// by highly rewarding people that underbid the last paid ring if it ties.
 		maxTiedEmissionBidPool := (float64(tiedGPUs) * (float64(c.MaxBid) / 100)) / *c.EmissionPool
 		remainingEmission := maxEmission - emissionSum
-		for uid, payout := range tiedPayouts {
-			// Normalize to either remaining emission or the capped emission for max
-			// bid for remaining gpus
-			diluted := (payout / tiedSum) * min(remainingEmission, maxTiedEmissionBidPool)
-			c.Deps.Log.Infof("UID %s diluted to: %.2f%%", uid, diluted*100)
-			payouts[uid] += diluted
-		}
-
-		dilutedPayout := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedGPUs)
+		dilutedPayoutPerGPU := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedGPUs)
 		for _, bid := range auction[auctiontype] {
 			if bid.Diluted {
-				bid.Payout = (dilutedPayout * float64(bid.Gpus)) / 1.233
+				bid.Payout = (dilutedPayoutPerGPU * float64(bid.Gpus)) / 1.233
+				payouts[bid.UID] += (dilutedPayoutPerGPU * float64(bid.Gpus)) / *c.EmissionPool
 			}
 		}
 	}
