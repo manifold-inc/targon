@@ -80,11 +80,13 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 	desc := fmt.Sprintf(
 		"Total Attested GPUs: %d\n"+
 			"Active CVM Nodes: %d\n"+
-			"Burned:%.2f%%\n"+
+			"Emission Pool: $%.2f"+
+			"Burned: %.2f%%\n"+
 			"GPU Type Breakdown:\n%s\n"+
 			"Per Miner Breakdown:\n%s",
 		totalGPUs,
 		activeNodes,
+		*c.EmissionPool,
 		burned,
 		formatGPUBreakdown(gpuTypes),
 		formatMinerBreakdown(statsarr),
