@@ -138,7 +138,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		for _, bid := range auction[auctiontype] {
 			// GPUs * the bid price/h * interval duration approx / emission pool
 			// 	== percent of emission pool for this node for this interval
-			thisEmission := (float64(bid.Gpus) * ((float64(bid.Price) / 100) * 1.233)) / *c.EmissionPool
+			thisEmission := (float64(bid.Gpus) * ((float64(bid.Price) / 100) * 1.2)) / *c.EmissionPool
 			paidnodes[auctiontype] += bid.Gpus
 			if bid.Price != lastPrice && !isRingOverMax {
 				isRingOverMax = ((thisEmission/float64(bid.Gpus))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
@@ -171,7 +171,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		dilutedPayoutPerGPU := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedGPUs)
 		for _, bid := range auction[auctiontype] {
 			if bid.Diluted {
-				bid.Payout = (dilutedPayoutPerGPU * float64(bid.Gpus)) / 1.233
+				bid.Payout = (dilutedPayoutPerGPU * float64(bid.Gpus)) / 1.2
 				payouts[bid.UID] += (dilutedPayoutPerGPU * float64(bid.Gpus)) / *c.EmissionPool
 			}
 		}
