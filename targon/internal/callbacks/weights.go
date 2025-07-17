@@ -129,7 +129,6 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		sort.Slice(auction[auctiontype], func(i, j int) bool {
 			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
 		})
-		c.Deps.Log.Debugf("Sorted Auction entries: %v", auction[auctiontype])
 		// max % of the pool for this auction
 		maxEmission := float64(pool) / 100
 		emissionSum := 0.0
