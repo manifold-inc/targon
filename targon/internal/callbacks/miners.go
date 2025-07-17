@@ -31,13 +31,13 @@ func getMinerNodes(c *targon.Core) {
 			defer c.Mnmu.Unlock()
 			if err == nil {
 				c.MinerNodes[uid] = nodes
-			} else {
-				// suppress this in prod; we can always check mongo for errors
-				c.Deps.Log.Debugw("error getting miner nodes", "uid", uid, "error", err)
-				c.MinerNodesErrors[uid] = err.Error()
+				totalNodes += len(nodes)
+				delete(c.MinerNodesErrors, uid)
 				return
 			}
-			totalNodes += len(nodes)
+			// suppress this in prod; we can always check mongo for errors
+			c.Deps.Log.Debugw("error getting miner nodes", "uid", uid, "error", err)
+			c.MinerNodesErrors[uid] = err.Error()
 		}()
 	}
 	wg.Wait()
