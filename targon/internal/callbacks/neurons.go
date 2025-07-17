@@ -17,7 +17,7 @@ func getNeuronsCallback(v *boilerplate.BaseChainSubscriber, c *targon.Core, h ty
 		c.Deps.Log.Errorw("Failed getting blockhash for neurons", "error", err)
 		return
 	}
-	neurons, err := runtime.GetNeurons(c.Deps.Client, uint16(v.NetUID), &blockHash)
+	neurons, err := runtime.GetNeurons(c.Deps.Client, uint16(c.Deps.Env.NETUID), &blockHash)
 	if err != nil {
 		c.Deps.Log.Errorw("Failed getting neurons", "error", err)
 		return

@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"targon/internal/callbacks"
 	"targon/internal/setup"
@@ -27,18 +31,13 @@ func main() {
 	}
 
 	core := targon.CreateCore(deps)
-	validator := boilerplate.NewChainSubscriber(deps.Env.NETUID)
-	deps.Log.Infof("Creating validator on netuid [%d]", validator.NetUID)
+	validator := boilerplate.NewChainSubscriber()
+	deps.Log.Infof("Creating validator on netuid [%d]", deps.Env.NETUID)
 
 	callbacks.AddBlockCallbacks(validator, core)
-	targon.SetMainFunc(validator, core)
 
-	validator.SetOnSubscriptionCreationError(func(e error) {
-		deps.Log.Infow("Failed to connect to chain", "error", e)
-		panic(e)
-	})
 	validator.SetOnSubscriptionError(func(e error) {
-		deps.Log.Infow("Subscription Error", "error", e)
+		deps.Log.Errorw("Subscription Error", "error", e)
 	})
 	err := targon.LoadMongoBackup(core)
 	if err != nil {
@@ -47,5 +46,25 @@ func main() {
 	if err == nil {
 		core.Deps.Log.Info("Loaded checkpoint from mongo")
 	}
-	validator.Start(deps.Client)
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		<-sigChan
+		validator.Stop()
+	}()
+
+	for {
+		err := validator.Start(deps.Client)
+		if err != nil {
+			deps.Log.Errorw("Subscription Error", "error", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		break
+	}
+	core.Deps.Log.Info("Shutting down validator")
+	err = targon.SaveMongoBackup(core)
+	if err != nil {
+		core.Deps.Log.Errorw("Failed saving backup of state", "error", err)
+	}
 }

@@ -39,7 +39,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, uids []types
 	// Actually set weights
 	ext, err := extrinsics.SetWeightsExt(
 		c.Deps.Client,
-		types.U16(v.NetUID),
+		types.U16(c.Deps.Env.NETUID),
 		uids,
 		scores,
 		c.Deps.Env.VERSION,
