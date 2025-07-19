@@ -133,5 +133,8 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 			}
 		}
 		setWeights(c, uids, scores)
+
+		// catches up to live block time
+		v.Restart()
 	})
 }
