@@ -26,14 +26,6 @@ func getNodesAll(c *targon.Core) {
 	totalNodes := 0
 	for _, n := range c.Neurons {
 		uid := fmt.Sprintf("%d", n.UID.Int64())
-		c.Mnmu.Lock()
-		if val, ok := c.MinerNodes[uid]; ok && val != nil {
-			c.Mnmu.Unlock()
-			wg.Done()
-			continue
-		}
-		c.Mnmu.Unlock()
-
 		go func() {
 			defer wg.Done()
 			nodes, err := getNodes(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, &n)
@@ -55,6 +47,7 @@ func getNodesAll(c *targon.Core) {
 				v.Price = max(min(v.Price, c.MaxBid), 1)
 			}
 			c.MinerNodes[uid] = nodes
+			delete(c.MinerNodesErrors, uid)
 			totalNodes += len(nodes)
 		}()
 	}
