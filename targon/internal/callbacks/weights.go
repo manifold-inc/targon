@@ -12,12 +12,11 @@ import (
 	"targon/internal/targon"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/sigtools"
 )
 
-func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, uids []types.U16, scores []types.U16) {
+func setWeights(c *targon.Core, uids []types.U16, scores []types.U16) {
 	c.Mu.Lock()
 	defer func() {
 		c.Mu.Unlock()
@@ -39,7 +38,7 @@ func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, uids []types
 	// Actually set weights
 	ext, err := extrinsics.SetWeightsExt(
 		c.Deps.Client,
-		types.U16(v.NetUID),
+		types.U16(c.Deps.Env.NETUID),
 		uids,
 		scores,
 		c.Deps.Env.VERSION,

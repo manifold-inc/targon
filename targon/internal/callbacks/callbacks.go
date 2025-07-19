@@ -33,7 +33,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		if h.Number%360 != 1 && len(c.Neurons) != 0 {
 			return
 		}
-		getNeuronsCallback(v, c, h)
+		getNeuronsCallback(c, h)
 	})
 
 	// get emission and auction data for this interval
@@ -55,8 +55,11 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
 		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), &h.ParentHash)
 		if err != nil {
-			c.Deps.Log.Errorw("Failed getting sn tao emissions", "error", err)
-			return
+			p, err = storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), nil)
+			if err != nil {
+				c.Deps.Log.Errorw("Failed getting sn tao emissions", "error", err)
+				return
+			}
 		}
 		emi := (float64(*p) / 1e9) * .41 * 360 * *c.TaoPrice
 		c.EmissionPool = &emi
@@ -69,7 +72,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		if (h.Number%30 != 1 || h.Number%360 > 180) && len(c.MinerNodes) != 0 {
 			return
 		}
-		getMinerNodes(c)
+		getNodesAll(c)
 	})
 
 	// get passing attestations
@@ -88,14 +91,6 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 			return
 		}
 		getPassingAttestations(c)
-	})
-
-	// Ping miner healthchecks
-	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%10 != 0 || len(c.MinerNodes) == 0 {
-			return
-		}
-		pingHealthChecks(c)
 	})
 
 	// Log weights
@@ -136,6 +131,6 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 					"miners", len(uids))
 			}
 		}
-		setWeights(v, c, uids, scores)
+		setWeights(c, uids, scores)
 	})
 }
