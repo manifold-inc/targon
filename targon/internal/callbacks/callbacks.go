@@ -55,6 +55,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
 		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), &h.ParentHash)
 		if err != nil {
+			c.Deps.Log.Errorw("Validator is falling behind current block time")
 			p, err = storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), nil)
 			if err != nil {
 				c.Deps.Log.Errorw("Failed getting sn tao emissions", "error", err)
