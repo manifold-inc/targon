@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"targon/internal/subtensor/utils"
@@ -20,11 +19,17 @@ import (
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 
-func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]*targon.MinerNode, error) {
+func GetNodes(timeout_mult time.Duration, hotkey signature.KeyringPair, n *runtime.NeuronInfo) ([]*targon.MinerNode, error) {
 	if n.AxonInfo.IP.String() == "0" {
 		err := errors.New("inactive miner")
 		return nil, err
 	}
+	tr := &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second * timeout_mult,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+	}
+	client := &http.Client{Transport: tr, Timeout: 5 * time.Second * timeout_mult}
 	var neuronIpAddr net.IP = n.AxonInfo.IP.Bytes()
 	req, err := http.NewRequest(
 		"GET",
@@ -35,7 +40,7 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]*ta
 		return nil, errutil.Wrap("failed to generate request to miner", err)
 	}
 	headers, err := boilerplate.GetEpistulaHeaders(
-		c.Deps.Hotkey,
+		hotkey,
 		utils.AccountIDToSS58(n.Hotkey),
 		[]byte{},
 	)
@@ -76,50 +81,11 @@ func GetNodes(c *targon.Core, client *http.Client, n *runtime.NeuronInfo) ([]*ta
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, &targon.MinerNode{
 				Ip:    node,
-				Price: c.MaxBid,
+				Price: 0,
 			})
 		}
 	}
-
-	// Max price is max bid, min price is 1
-	for _, v := range nodesv2 {
-		v.Price = max(min(v.Price, c.MaxBid), 1)
-	}
 	return nodesv2, nil
-}
-
-func CheckHealth(c *targon.Core, client *http.Client, n *runtime.NeuronInfo, cvmIP string) bool {
-	uid := fmt.Sprintf("%d", n.UID.Int64())
-	Log := c.Deps.Log.With("uid", uid)
-	cvmIP = strings.TrimPrefix(cvmIP, "http://")
-	cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/health", cvmIP), nil)
-	if err != nil {
-		Log.Debugw("Failed to generate request to miner", "error", err)
-		return false
-	}
-	headers, err := boilerplate.GetEpistulaHeaders(
-		c.Deps.Hotkey,
-		utils.AccountIDToSS58(n.Hotkey),
-		[]byte{},
-	)
-	if err != nil {
-		Log.Debugw("Failed generating epistula headers", "error", err)
-		return false
-	}
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
-	req.Close = true
-	resp, err := client.Do(req)
-	if err != nil {
-		Log.Debugw("Failed sending request to miner", "error", err)
-		return false
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	return resp.StatusCode == http.StatusOK
 }
 
 type AttestBody struct {
@@ -137,6 +103,9 @@ func GetAttestFromNode(
 		TLSHandshakeTimeout: 5 * time.Second * timeout_mult,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
+		Dial: (&net.Dialer{
+			Timeout: 15 * time.Second * timeout_mult,
+		}).Dial,
 	}, Timeout: 5 * time.Minute * timeout_mult}
 	data := AttestBody{Nonce: nonce}
 	body, _ := json.Marshal(data)

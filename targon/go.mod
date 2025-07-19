@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.9.1
-	github.com/subtrahend-labs/gobt v0.0.4-beta.4
+	github.com/subtrahend-labs/gobt v0.0.4-beta.5
 	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.mongodb.org/mongo-driver/v2 v2.2.1
 	go.uber.org/zap v1.27.0

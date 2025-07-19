@@ -108,7 +108,7 @@ var ipsCmd = &cobra.Command{
 			nodes = GetNodesFromStdin(cmd)
 		}
 		if len(nodes) == 0 {
-			n, err := cvm.GetNodes(core, client, neuron)
+			n, err := cvm.GetNodes(core.Deps.Env.TIMEOUT_MULT, core.Deps.Hotkey, neuron)
 			if err != nil {
 				panic(err)
 			}
