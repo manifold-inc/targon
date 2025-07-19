@@ -14,8 +14,6 @@ func resetState(c *targon.Core) {
 	c.GPUids = make(map[string]bool)
 	// Dont really need to wipe tao price
 	c.EmissionPool = nil
-	// TODO maybe keep this alive longer than an interval
-	c.HealthcheckPasses = make(map[string]map[string][]bool)
 	c.AttestErrors = make(map[string]map[string]string)
 	c.PassedAttestation = make(map[string]map[string][]string)
 	c.Auctions = make(map[string]int)

@@ -83,9 +83,6 @@ func LoadMongoBackup(c *Core) error {
 	if r.Core.MinerNodesErrors != nil {
 		c.MinerNodesErrors = r.Core.MinerNodesErrors
 	}
-	if r.Core.HealthcheckPasses != nil {
-		c.HealthcheckPasses = r.Core.HealthcheckPasses
-	}
 	if r.Core.PassedAttestation != nil {
 		c.PassedAttestation = r.Core.PassedAttestation
 	}

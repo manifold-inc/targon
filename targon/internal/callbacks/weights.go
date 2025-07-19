@@ -12,12 +12,11 @@ import (
 	"targon/internal/targon"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/extrinsics"
 	"github.com/subtrahend-labs/gobt/sigtools"
 )
 
-func setWeights(v *boilerplate.BaseChainSubscriber, c *targon.Core, uids []types.U16, scores []types.U16) {
+func setWeights(c *targon.Core, uids []types.U16, scores []types.U16) {
 	c.Mu.Lock()
 	defer func() {
 		c.Mu.Unlock()
@@ -129,7 +128,6 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		sort.Slice(auction[auctiontype], func(i, j int) bool {
 			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
 		})
-		c.Deps.Log.Debugf("Sorted Auction entries: %v", auction[auctiontype])
 		// max % of the pool for this auction
 		maxEmission := float64(pool) / 100
 		emissionSum := 0.0
