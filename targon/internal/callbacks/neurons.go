@@ -11,18 +11,18 @@ import (
 
 func getNeuronsCallback(c *targon.Core, h types.Header) {
 	c.Deps.Log.Info("Updating neurons")
-	blockHash, err := c.Deps.Client.Api.RPC.Chain.GetBlockHash(uint64(h.Number))
+	neurons, err := runtime.GetNeurons(c.Deps.Client, uint16(c.Deps.Env.NETUID), &h.ParentHash)
 	if err != nil {
-		blockHash, err = c.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
+		blockHash, err := c.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
 		if err != nil {
 			c.Deps.Log.Errorw("Failed getting blockhash for neurons", "error", err)
+			return
 		}
-		return
-	}
-	neurons, err := runtime.GetNeurons(c.Deps.Client, uint16(c.Deps.Env.NETUID), &blockHash)
-	if err != nil {
-		c.Deps.Log.Errorw("Failed getting neurons", "error", err)
-		return
+		neurons, err = runtime.GetNeurons(c.Deps.Client, uint16(c.Deps.Env.NETUID), &blockHash)
+		if err != nil {
+			c.Deps.Log.Errorw("Failed getting neurons", "error", err)
+			return
+		}
 	}
 	for _, n := range neurons {
 		uid := fmt.Sprintf("%d", n.UID.Int64())
