@@ -26,13 +26,22 @@ func getPassingAttestations(c *targon.Core) {
 		if nodes == nil {
 			continue
 		}
+		c.Mu.Lock()
+		if c.PassedAttestation[uid] == nil {
+			c.PassedAttestation[uid] = map[string][]string{}
+		}
+		if c.AttestErrors[uid] == nil {
+			c.AttestErrors[uid] = map[string]string{}
+		}
+		c.Mu.Unlock()
 		for _, node := range nodes {
 			// Dont check nodes that have already passed this interval
 			c.Mu.Lock()
-			if c.PassedAttestation[uid] == nil {
-				c.PassedAttestation[uid] = map[string][]string{}
-			}
 			if c.PassedAttestation[uid][node.Ip] != nil {
+				c.Mu.Unlock()
+				continue
+			}
+			if _, ok := c.AttestErrors[uid][node.Ip]; ok {
 				c.Mu.Unlock()
 				continue
 			}
@@ -42,12 +51,14 @@ func getPassingAttestations(c *targon.Core) {
 			go func() {
 				defer wg.Done()
 				err := attest(c, uid, node, verifyAttestClient)
+				var berr *cvm.BusyError
+				if errors.As(err, &berr) {
+					return
+				}
+
 				c.Mu.Lock()
 				defer c.Mu.Unlock()
 				if err == nil {
-					if c.AttestErrors[uid] == nil {
-						return
-					}
 					delete(c.AttestErrors[uid], node.Ip)
 					return
 				}

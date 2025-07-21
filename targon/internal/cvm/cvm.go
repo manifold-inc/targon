@@ -92,6 +92,12 @@ type AttestBody struct {
 	Nonce string `json:"nonce"`
 }
 
+type BusyError struct{}
+
+func (b *BusyError) Error() string {
+	return "node is busy"
+}
+
 func GetAttestFromNode(
 	hotkey signature.KeyringPair,
 	timeout_mult time.Duration,
@@ -138,6 +144,9 @@ func GetAttestFromNode(
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, &BusyError{}
+	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("bad status code from miner attest: %d: %s", resp.StatusCode, string(body))

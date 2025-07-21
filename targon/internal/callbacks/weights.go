@@ -142,14 +142,14 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 				isRingOverMax = ((thisEmission/float64(bid.Gpus))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
 			}
 			if isRingOverMax {
-				c.Deps.Log.Infof("UID %s bid diluted in last ring: %d", bid.UID, bid.Price)
+				c.Deps.Log.Debugf("UID %s bid diluted in last ring: %d", bid.UID, bid.Price)
 				tiedPayouts[bid.UID] += bid.Gpus
 				tiedGPUs += bid.Gpus
 				bid.Diluted = true
 				continue
 			}
 			bid.Diluted = false
-			c.Deps.Log.Infof("UID %s bid fully included: %d", bid.UID, bid.Price)
+			c.Deps.Log.Debugf("UID %s bid fully included: %d", bid.UID, bid.Price)
 			emissionSum += thisEmission
 			payouts[bid.UID] += thisEmission
 			lastPrice = bid.Price
@@ -158,7 +158,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 
 		// Just skip if there is not much emission left to split
 		if maxEmission-emissionSum < .01 {
-			c.Deps.Log.Info("Too little emission left to pay remaining miners")
+			c.Deps.Log.Debug("Too little emission left to pay remaining miners")
 			continue
 		}
 		// If not all rings get paid their bids, normalize all other rings to the remaning emission
