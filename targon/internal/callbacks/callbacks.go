@@ -135,6 +135,14 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		setWeights(c, uids, scores)
 
 		// catches up to live block time
-		v.Restart()
+		block, err := c.Deps.Client.Api.RPC.Chain.GetBlockLatest()
+		if err != nil {
+			c.Deps.Log.Infow("Failed getting latest block, restarting")
+			v.Restart()
+		}
+		if block.Block.Header.Number-h.Number > 15 {
+			c.Deps.Log.Warnw("Blocks drifting, resetting to live blocktime")
+			v.Restart()
+		}
 	})
 }
