@@ -41,11 +41,11 @@ func getPassingAttestations(c *targon.Core) {
 				c.Mu.Unlock()
 				continue
 			}
-			if val, ok := c.AttestErrors[uid][node.Ip]; ok {
-				c.Mu.Unlock()
-				c.Deps.Log.Infof("%s skipping for reason: %s", uid, val)
-				continue
-			}
+			//if val, ok := c.AttestErrors[uid][node.Ip]; ok {
+			//	c.Mu.Unlock()
+			//	c.Deps.Log.Infof("%s skipping for reason: %s", uid, val)
+			//	continue
+			//}
 			c.Mu.Unlock()
 
 			wg.Add(1)
