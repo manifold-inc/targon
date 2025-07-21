@@ -17,6 +17,9 @@ type Core struct {
 	Neurons map[string]runtime.NeuronInfo `bson:"-"`
 	Deps    *setup.Dependencies           `bson:"-"`
 	Mnmu    sync.Mutex                    `bson:"-"`
+
+	HotkeyToUid map[string]string `bson:"hotkey_to_uid"`
+
 	// uid -> nodes
 	MinerNodes       map[string][]*MinerNode `bson:"miner_nodes"`
 	MinerNodesErrors map[string]string       `bson:"miner_nodes_errors"`
