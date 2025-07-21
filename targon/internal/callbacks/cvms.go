@@ -41,10 +41,10 @@ func getPassingAttestations(c *targon.Core) {
 				c.Mu.Unlock()
 				continue
 			}
-			if _, ok := c.AttestErrors[uid][node.Ip]; ok {
-				c.Mu.Unlock()
-				continue
-			}
+			//if _, ok := c.AttestErrors[uid][node.Ip]; ok {
+			//	c.Mu.Unlock()
+			//	continue
+			//}
 			c.Mu.Unlock()
 
 			wg.Add(1)
