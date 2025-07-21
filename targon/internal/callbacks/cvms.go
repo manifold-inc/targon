@@ -43,7 +43,7 @@ func getPassingAttestations(c *targon.Core) {
 			}
 			if val, ok := c.AttestErrors[uid][node.Ip]; ok {
 				c.Mu.Unlock()
-				c.Deps.Log.Debugf("%s skipping for reason: %s", uid, val)
+				c.Deps.Log.Infof("%s skipping for reason: %s", uid, val)
 				continue
 			}
 			c.Mu.Unlock()
@@ -54,7 +54,7 @@ func getPassingAttestations(c *targon.Core) {
 				err := attest(c, uid, node, verifyAttestClient)
 				var berr *cvm.BusyError
 				if errors.As(err, &berr) {
-					c.Deps.Log.Debugf("%s overloaded", uid)
+					c.Deps.Log.Infof("%s overloaded", uid)
 					return
 				}
 
