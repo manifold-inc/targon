@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"targon/cli/root"
 	"targon/internal/cvm"
 	"targon/internal/setup"
 	"targon/internal/targon"
@@ -31,7 +32,7 @@ func init() {
 	ipsCmd.Flags().IntVar(&uidflag, "uid", -1, "Specific uid to grab GPU info for")
 	ipsCmd.Flags().StringVar(&ipflag, "ip", "", "Specific ip address for off chain testing")
 
-	RootCmd.AddCommand(ipsCmd)
+	root.RootCmd.AddCommand(ipsCmd)
 }
 
 var ipsCmd = &cobra.Command{

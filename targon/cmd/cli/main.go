@@ -1,10 +1,11 @@
 package main
 
 import (
-	"targon/cli"
 	_ "targon/cli/get"
+	"targon/cli/root"
+	_ "targon/cli/update"
 )
 
 func main() {
-	cli.Execute()
+	root.Execute()
 }
