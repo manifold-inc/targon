@@ -104,7 +104,7 @@ func getPassingAttestations(c *targon.Core) {
 
 				// Add gpus to passed gpus, and delete any error marks
 				// Only add gpus if not duplicates
-				c.Deps.Log.Info("%s passed attestation: %s", uid, gpus)
+				c.Deps.Log.Infof("%s passed attestation: %s", uid, gpus)
 				c.PassedAttestation[uid][node.Ip] = gpus
 				delete(c.AttestErrors[uid], node.Ip)
 			}()
