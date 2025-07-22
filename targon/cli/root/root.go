@@ -16,7 +16,7 @@ func init() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Println("No config file found, please init config file at ~/.config/.targon.json")
+			fmt.Println("No config file found, please create config file at ~/.config/.targon.json")
 			os.Exit(1)
 		} else {
 			panic(fmt.Errorf("fatal error config file: %w", err))
