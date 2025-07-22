@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"math/big"
 	"net"
-	"net/http"
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"targon/internal/callbacks"
 	"targon/internal/cvm"
 	"targon/internal/setup"
+	sutils "targon/internal/subtensor/utils"
 	"targon/internal/targon"
 	"targon/internal/utils"
 
@@ -78,24 +77,19 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
-		tr := &http.Transport{
-			TLSHandshakeTimeout: 5 * time.Second,
-			MaxConnsPerHost:     1,
-			DisableKeepAlives:   true,
-		}
-		client := &http.Client{Transport: tr, Timeout: 5 * time.Minute * core.Deps.Env.TIMEOUT_MULT}
+		attester := cvm.NewAttester(1, core.Deps.Hotkey, core.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
 		if len(ipflag) != 0 {
 
 			// Mock Neuron, use self hotkey
 			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
 			cvmIP := strings.TrimPrefix(ipflag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-			attestPayload, err := cvm.GetAttestFromNode(core.Deps.Hotkey, core.Deps.Env.TIMEOUT_MULT, neuron, cvmIP, nonce)
+			attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
 			if err != nil {
 				fmt.Println(err.Error())
 				return
 			}
-			gpus, _, err := cvm.CheckAttest(core.Deps.Env.NVIDIA_ATTEST_ENDPOINT, client, attestPayload.Attest, nonce)
+			gpus, _, err := attester.CheckAttest(attestPayload, nonce)
 			if err != nil {
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
@@ -131,12 +125,12 @@ var ipsCmd = &cobra.Command{
 				nonce := targon.NewNonce(core.Deps.Hotkey.Address)
 				cvmIP := strings.TrimPrefix(n.Ip, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-				attestPayload, err := cvm.GetAttestFromNode(core.Deps.Hotkey, core.Deps.Env.TIMEOUT_MULT, neuron, cvmIP, nonce)
+				attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
 				if err != nil {
 					fmt.Printf("%s: %s\n", n.Ip, err.Error())
 					return
 				}
-				gpus, _, err := cvm.CheckAttest(core.Deps.Env.NVIDIA_ATTEST_ENDPOINT, client, attestPayload.Attest, nonce)
+				gpus, _, err := attester.CheckAttest(attestPayload, nonce)
 				if err != nil {
 					fmt.Printf("%s: %s\n", n.Ip, err.Error())
 					return
