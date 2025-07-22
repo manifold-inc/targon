@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -22,8 +21,6 @@ func init() {
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
 	}
-
-	_ = godotenv.Load()
 }
 
 var RootCmd = &cobra.Command{
