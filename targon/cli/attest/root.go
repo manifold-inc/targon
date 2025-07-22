@@ -19,6 +19,7 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"go.uber.org/zap"
 )
@@ -66,7 +67,7 @@ var ipsCmd = &cobra.Command{
 				UID:    types.NewUCompact(big.NewInt(444)),
 				Hotkey: types.AccountID(deps.Hotkey.PublicKey),
 			}
-			HOTKEY_PHRASE := os.Getenv("MINER_HOTKEY_PHRASE")
+			HOTKEY_PHRASE := viper.GetString("hotkey_phrase")
 			kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, 42)
 			if err == nil {
 				fmt.Println("Using MINER_HOTKEY_PHRASE")
