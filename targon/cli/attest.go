@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"targon/internal/callbacks"
 	"targon/internal/cvm"
 	"targon/internal/setup"
 	sutils "targon/internal/subtensor/utils"
@@ -105,10 +104,7 @@ var ipsCmd = &cobra.Command{
 		}
 		if len(nodes) == 0 {
 			var neuronIpAddr net.IP = neuron.AxonInfo.IP.Bytes()
-			n, err := callbacks.GetNodes(core.Deps.Env.TIMEOUT_MULT, core.Deps.Hotkey, &callbacks.ProxyAddress{
-				Hotkey: neuron.Hotkey,
-				Ip:     fmt.Sprintf("%s:%d", neuronIpAddr.String(), neuron.AxonInfo.Port),
-			})
+			n, err := attester.GetNodes(sutils.AccountIDToSS58(neuron.Hotkey), fmt.Sprintf("%s:%d", neuronIpAddr.String(), neuron.AxonInfo.Port))
 			if err != nil {
 				panic(err)
 			}
