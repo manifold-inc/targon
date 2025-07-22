@@ -1,8 +1,10 @@
 package root
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,12 +17,40 @@ func init() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Println("No config file found, please create config file at ~/.config/.targon.json")
-			os.Exit(1)
+			fmt.Println("Config file not found, creating new one at ~/.config/.targon.json")
+			initConfig()
 		} else {
-			panic(fmt.Errorf("fatal error config file: %w", err))
+			panic(fmt.Errorf("Fatal error config file: %w", err))
 		}
 	}
+}
+
+func initConfig() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("Failed to get home directory: %w", err)
+	}
+	
+	config := filepath.Join(home, ".config")
+	path := filepath.Join(config, ".targon.json")
+	
+	// 0755: Default permissions for directory rwx-rx-rx for owner-group-others
+	if err := os.MkdirAll(config, 0755); err != nil {
+		return fmt.Errorf("Failed to create config directory: %w", err)
+	}
+	
+	fmt.Print("Enter your HOTKEY PHRASE: ")
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	HOTKEY_PHRASE := scanner.Text()
+	
+	viper.Set("HOTKEY_PHRASE", HOTKEY_PHRASE)
+	if err := viper.WriteConfigAs(path); err != nil {
+		return fmt.Errorf("Failed to write config file: %w", err)
+	}
+	
+	fmt.Printf("Config file created successfully at %s\n", path)
+	return nil
 }
 
 var RootCmd = &cobra.Command{

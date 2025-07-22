@@ -25,7 +25,7 @@ var updateCmd = &cobra.Command{
 			return
 		}
 
-		viper.Set("hotkey_phrase", hotkeyflag)
+		viper.Set("HOTKEY_PHRASE", hotkeyflag)
 		err := viper.WriteConfig()
 		if err != nil {
 			fmt.Printf("Failed to write config: %v\n", err)
