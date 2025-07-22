@@ -2,6 +2,7 @@ package update
 
 import (
 	"fmt"
+
 	"targon/cli/root"
 
 	"github.com/spf13/cobra"
@@ -16,9 +17,9 @@ func init() {
 }
 
 var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Update miner config",
-	Long:  `Update miner config`,
+	Use:   "config",
+	Short: "Update config",
+	Long:  `Update config`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if hotkeyflag == "" {
 			fmt.Println("No hotkey phrase provided")
@@ -35,3 +36,4 @@ var updateCmd = &cobra.Command{
 		fmt.Printf("Hotkey phrase successfully updated to %s\n", hotkeyflag)
 	},
 }
+
