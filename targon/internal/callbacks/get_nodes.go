@@ -2,7 +2,6 @@ package callbacks
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -15,10 +14,11 @@ import (
 	errutil "targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/subtrahend-labs/gobt/boilerplate"
-	"github.com/subtrahend-labs/gobt/runtime"
 )
 
+// Gets all nodes and adds them to the core
 func getNodesAll(c *targon.Core) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.Neurons))
@@ -28,10 +28,16 @@ func getNodesAll(c *targon.Core) {
 		uid := fmt.Sprintf("%d", n.UID.Int64())
 		go func() {
 			defer wg.Done()
-			nodes, err := getNodes(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, &n)
+
+			// Inactive miner check
+			var neuronIpAddr net.IP = n.AxonInfo.IP.Bytes()
+			if n.AxonInfo.IP.String() == "0" {
+				return
+			}
+			nodes, err := GetNodes(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, &ProxyAddress{Ip: fmt.Sprintf("%s:%d", neuronIpAddr.String(), n.AxonInfo.Port)})
+
 			c.Mnmu.Lock()
 			defer c.Mnmu.Unlock()
-
 			if err != nil {
 				// supress this in prod; we can always check mongo for errors
 				c.Deps.Log.Debugw("error getting miner nodes", "uid", uid, "error", err)
@@ -55,21 +61,22 @@ func getNodesAll(c *targon.Core) {
 	c.Deps.Log.Infof("Found %d miners with a total of %d nodes", len(c.MinerNodes), totalNodes)
 }
 
-func getNodes(timeout_mult time.Duration, hotkey signature.KeyringPair, n *runtime.NeuronInfo) ([]*targon.MinerNode, error) {
-	if n.AxonInfo.IP.String() == "0" {
-		err := errors.New("inactive miner")
-		return nil, err
-	}
+type ProxyAddress struct {
+	Hotkey types.AccountID
+	Ip     string
+}
+
+// Gets a single miners cvm bids
+func GetNodes(timeout_mult time.Duration, hotkey signature.KeyringPair, proxy *ProxyAddress) ([]*targon.MinerNode, error) {
 	tr := &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * timeout_mult,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
 	}
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Second * timeout_mult}
-	var neuronIpAddr net.IP = n.AxonInfo.IP.Bytes()
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("http://%s:%d/cvm", neuronIpAddr, n.AxonInfo.Port),
+		fmt.Sprintf("http://%s/cvm", proxy.Ip),
 		nil,
 	)
 	if err != nil {
@@ -77,7 +84,7 @@ func getNodes(timeout_mult time.Duration, hotkey signature.KeyringPair, n *runti
 	}
 	headers, err := boilerplate.GetEpistulaHeaders(
 		hotkey,
-		utils.AccountIDToSS58(n.Hotkey),
+		utils.AccountIDToSS58(proxy.Hotkey),
 		[]byte{},
 	)
 	if err != nil {

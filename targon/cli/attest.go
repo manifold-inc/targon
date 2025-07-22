@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"math/big"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"targon/internal/callbacks"
 	"targon/internal/cvm"
 	"targon/internal/setup"
 	"targon/internal/targon"
@@ -108,7 +110,11 @@ var ipsCmd = &cobra.Command{
 			nodes = GetNodesFromStdin(cmd)
 		}
 		if len(nodes) == 0 {
-			n, err := cvm.GetNodes(core.Deps.Env.TIMEOUT_MULT, core.Deps.Hotkey, neuron)
+			var neuronIpAddr net.IP = neuron.AxonInfo.IP.Bytes()
+			n, err := callbacks.GetNodes(core.Deps.Env.TIMEOUT_MULT, core.Deps.Hotkey, &callbacks.ProxyAddress{
+				Hotkey: neuron.Hotkey,
+				Ip:     fmt.Sprintf("%s:%d", neuronIpAddr.String(), neuron.AxonInfo.Port),
+			})
 			if err != nil {
 				panic(err)
 			}
