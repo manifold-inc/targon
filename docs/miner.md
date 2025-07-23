@@ -550,7 +550,9 @@ report the IP addresses of each CVM you are running.
     // Chain endpoint for your miner to connect to
     "chain_endpoint": "wss://test.finney.opentensor.ai:443",
     // Netuid to use, only change when running testnet miner on 337
-    "netuid": 4
+    "netuid": 4,
+    // Min stake in alpha required for validators to get nodes
+    "min_stake": 1000
     }
    ```
 
