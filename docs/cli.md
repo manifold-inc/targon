@@ -27,17 +27,15 @@ targon-cli [command] [flags]
 2. **First-time setup (creates config file):**
 
    ```bash
-   targon-cli --help
+   targon-cli
    # This will prompt for hotkey phrase and create ~/.config/.targon.json
    ```
 
 ## Commands
 
-### Main Commands
+### `targon-cli attest`
 
-#### `targon-cli attest`
-
-Manually attest a miner or IP address for GPU verification.
+Command for validators instead of miners. Manually attest a miner or IP address for GPU verification.
 
 **Usage:**
 
@@ -61,7 +59,7 @@ targon-cli attest --ip http://192.168.1.100:8080
 
 ```
 
-#### `targon-cli config`
+### `targon-cli config`
 
 Update configuration settings.
 
@@ -82,7 +80,7 @@ targon-cli config [flags]
 targon-cli config --hotkey "your-hotkey-phrase-here"
 ```
 
-#### `targon-cli get`
+### `targon-cli get`
 
 Fetch data from MongoDB or the blockchain and display it in various formats.
 
@@ -94,7 +92,7 @@ targon-cli get [command]
 
 **Subcommands:**
 
-##### `targon-cli get errors`
+#### `targon-cli get errors`
 
 Get attestation errors for a specific UID.
 
