@@ -26,7 +26,7 @@ type AttestError struct {
 }
 
 func (b *AttestError) Error() string {
-	return b.Msg
+	return fmt.Sprintf("%s: retry %t", b.Msg, b.ShouldRetry)
 }
 
 type Attester struct {
@@ -104,12 +104,12 @@ func (a *Attester) GetAttestFromNode(
 	}
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, &AttestError{ShouldRetry: false, Msg: errutil.Wrap("failed reading response", err).Error()}
+		return nil, &AttestError{ShouldRetry: true, Msg: errutil.Wrap("failed reading response", err).Error()}
 	}
 	var attestRes targon.AttestResponse
 	err = json.Unmarshal(resBody, &attestRes)
 	if err != nil {
-		return nil, &AttestError{ShouldRetry: false, Msg: errutil.Wrap("failed unmarshaling response", err).Error()}
+		return nil, &AttestError{ShouldRetry: true, Msg: errutil.Wrap("failed unmarshaling response", err).Error()}
 	}
 	return &attestRes, nil
 }
@@ -120,21 +120,21 @@ func (a *Attester) CheckAttest(
 ) ([]string, []string, error) {
 	switch false {
 	case attestation.GPULocal.AttestationResult:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "local gpu attestation failed"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "local gpu attestation failed"}
 	case attestation.GPULocal.Valid:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "local gpu attestation invalid"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "local gpu attestation invalid"}
 	case attestation.GPURemote.AttestationResult:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "remote gpu attestation failed"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "remote gpu attestation failed"}
 	case attestation.GPURemote.Valid:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "remote gpu attestation invalid"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "remote gpu attestation invalid"}
 	case attestation.SwitchLocal.AttestationResult:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "local switch attestation failed"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "local switch attestation failed"}
 	case attestation.SwitchLocal.Valid:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "local switch attestation invalid"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "local switch attestation invalid"}
 	case attestation.SwitchRemote.AttestationResult:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "remote switch attestation failed"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "remote switch attestation failed"}
 	case attestation.SwitchRemote.Valid:
-		return nil, nil, &AttestError{ShouldRetry: false, Msg: "remote switch attestation invalid"}
+		return nil, nil, &AttestError{ShouldRetry: true, Msg: "remote switch attestation invalid"}
 	}
 
 	attestResponse, err := a.verifyAttestResponse(attestation, nonce)
