@@ -2,14 +2,13 @@ package get
 
 import (
 	"fmt"
-
-	"targon/cli"
+	"targon/cli/root"
 
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	cli.RootCmd.AddCommand(getCmd)
+	root.RootCmd.AddCommand(getCmd)
 }
 
 var getCmd = &cobra.Command{

@@ -183,10 +183,10 @@ func main() {
 			}
 
 			stake := neuron.Stake[0].Amount.Int64()
-			stakeInTao := stake / 1e9
+			stakeInAlpha := stake / 1e9
 			// Check if stake is below min stake, default 1000
-			if stakeInTao < int64(deps.Config.MinStake) {
-				deps.Log.Warnf("Stake is too low: %dt", stakeInTao)
+			if stakeInAlpha < int64(deps.Config.MinStake) {
+				deps.Log.Warnf("Stake is too low: %dt", stakeInAlpha)
 				return c.String(http.StatusForbidden, "Stake too low")
 			}
 
