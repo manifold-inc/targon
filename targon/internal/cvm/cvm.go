@@ -139,7 +139,7 @@ func (a *Attester) CheckAttest(
 
 	attestResponse, err := a.verifyAttestResponse(attestation, nonce)
 	if err != nil {
-		return nil, nil, &AttestError{ShouldRetry: err.ShouldRetry, Msg: errutil.Wrap("couldnt verify attestation", err).Error()}
+		return nil, nil, &AttestError{ShouldRetry: err.ShouldRetry, Msg: "couldnt verify attestation: " + err.Msg}
 	}
 
 	// Extract GPU types from the claims

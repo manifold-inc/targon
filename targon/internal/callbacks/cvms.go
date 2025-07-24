@@ -88,12 +88,12 @@ func getPassingAttestations(c *targon.Core) {
 				// Mark error if found; all errors here are non-retryable
 				if err != nil {
 					c.AttestErrors[uid][node.Ip] = err.Error()
-					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err)
+					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err.Error())
 
 					// Check if its a retryable error
 					var aerr *cvm.AttestError
 					if errors.As(err, &aerr) {
-						c.Deps.Log.Debugf("%s: attest error: retry: %t, msg: %s", uid, aerr.ShouldRetry, aerr.Msg)
+						c.Deps.Log.Debugf("%s: attest error: %s", uid, aerr.Error())
 						if !aerr.ShouldRetry {
 							c.PassedAttestation[uid][node.Ip] = []string{}
 						}
