@@ -1,7 +1,9 @@
 package callbacks
 
 import (
+	"fmt"
 	"math/rand"
+	"net"
 	"time"
 
 	"targon/internal/targon"
@@ -10,6 +12,17 @@ import (
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/storage"
 )
+
+func CheckAlreadyRegistered(core *targon.Core) bool {
+	n, found := core.Neurons[core.Deps.Hotkey.Address]
+	if !found {
+		return false
+	}
+	var netip net.IP = n.AxonInfo.IP.Bytes()
+	currentIp := fmt.Sprintf("%s:", netip)
+	configIp := core.Deps.Env.VALI_IP
+	return currentIp == configIp
+}
 
 // TODO
 // Confrim set weight hash success
@@ -27,13 +40,27 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		logBlockCallback(c, h)
 	})
 
-	// get neurons
+	// get neurons and set weights if needed
+	// dont check reg if debug is true
+	hasCheckedReg := c.Deps.Env.DEBUG
 	v.AddBlockCallback(func(h types.Header) {
 		// Run after first block of interval
 		if h.Number%360 != 1 && len(c.Neurons) != 0 {
 			return
 		}
 		getNeuronsCallback(c, h)
+		if !hasCheckedReg {
+			if !CheckAlreadyRegistered(c) {
+				c.Deps.Log.Info("Setting miner info, differs from config")
+				err := ServeToChain(c.Deps)
+				if err != nil {
+					c.Deps.Log.Errorw("Failed serving extrinsic", "error", err)
+				}
+			} else {
+				c.Deps.Log.Info("Skipping set miner info, already set to config settings")
+			}
+		}
+		hasCheckedReg = true
 	})
 
 	// get emission and auction data for this interval
