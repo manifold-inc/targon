@@ -6,8 +6,6 @@ services:
     restart: always
 
   targon:
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     restart: always
     stop_grace_period: 15m
     depends_on:
