@@ -59,10 +59,6 @@ func getPassingAttestations(c *targon.Core) {
 					)
 				}
 
-				// Lock for core map updates
-				c.Mu.Lock()
-				defer c.Mu.Unlock()
-
 				// Check with tower for this ip
 				if err == nil {
 					passed := c.Deps.Tower.Check(node.Ip)
@@ -70,6 +66,10 @@ func getPassingAttestations(c *targon.Core) {
 						err = errors.New("failed tower check")
 					}
 				}
+
+				// Lock for core map updates
+				c.Mu.Lock()
+				defer c.Mu.Unlock()
 
 				// Check for duplicate GPUS
 				if err == nil {

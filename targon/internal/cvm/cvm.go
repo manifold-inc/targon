@@ -48,7 +48,7 @@ func NewAttester(
 	client := &http.Client{Transport: &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * timeoutMult,
 		DisableKeepAlives:   true,
-	}, Timeout: 3 * time.Minute * timeoutMult}
+	}, Timeout: 1 * time.Minute * timeoutMult}
 	return &Attester{client: client, timeoutMult: timeoutMult, Hotkey: hotkey, attestEndpoint: attestEndpoint}
 }
 
