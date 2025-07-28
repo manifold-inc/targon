@@ -56,7 +56,8 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
 				return
 			}
-			neuron, err = runtime.GetNeuron(core.Deps.Client, uint16(core.Deps.Env.NETUID), uint16(uidflag), &blockHash)
+			NETUID := viper.GetInt("netuid")
+			neuron, err = runtime.GetNeuron(core.Deps.Client, uint16(NETUID), uint16(uidflag), &blockHash)
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting neurons", err))
 				return
@@ -78,7 +79,8 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
-		attester := cvm.NewAttester(1, core.Deps.Hotkey, core.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
+		NVIDIA_ATTEST_ENDPOINT := viper.GetString("nvidia_attest_endpoint")
+		attester := cvm.NewAttester(1, core.Deps.Hotkey, NVIDIA_ATTEST_ENDPOINT)
 		if len(ipflag) != 0 {
 
 			// Mock Neuron, use self hotkey
