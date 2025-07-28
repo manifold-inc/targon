@@ -51,7 +51,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		getNeuronsCallback(c, h)
 		if !hasCheckedReg {
 			if !CheckAlreadyRegistered(c) {
-				c.Deps.Log.Info("Setting miner info, differs from config")
+				c.Deps.Log.Info("Setting validator info, differs from config")
 				err := ServeToChain(c.Deps)
 				if err != nil {
 					c.Deps.Log.Errorw("Failed serving extrinsic", "error", err)
