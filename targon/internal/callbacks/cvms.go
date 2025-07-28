@@ -63,6 +63,14 @@ func getPassingAttestations(c *targon.Core) {
 				c.Mu.Lock()
 				defer c.Mu.Unlock()
 
+				// Check with tower for this ip
+				if err == nil {
+					passed := c.Deps.Tower.Check(node.Ip)
+					if !passed {
+						err = errors.New("failed tower check")
+					}
+				}
+
 				// Check for duplicate GPUS
 				if err == nil {
 					for _, v := range ueids {
@@ -74,14 +82,6 @@ func getPassingAttestations(c *targon.Core) {
 							break
 						}
 						c.GPUids[v] = true
-					}
-				}
-
-				// Check with tower for this ip
-				if err == nil {
-					passed := c.Deps.Tower.Check(node.Ip)
-					if !passed {
-						err = errors.New("failed tower check")
 					}
 				}
 
