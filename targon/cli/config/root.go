@@ -59,4 +59,3 @@ var configCmd = &cobra.Command{
 		}
 	},
 }
-
