@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"targon/cli/root"
+	"targon/cli/shared"
 	"targon/internal/cvm"
 	sutils "targon/internal/subtensor/utils"
 	"targon/internal/targon"
@@ -45,22 +46,31 @@ var ipsCmd = &cobra.Command{
 			return
 		}
 
-		// Get all needed config from viper
-		// If any dont exist, prompt to add
-		// getOrPromptConf("chain.endpoint") (string, error)
-		// 		get chain.endpoint
-		//  	prompt and save if doesnt exist
+		config_strings := []string{
+			"chain.endpoint",
+			"chain.validator.hotkey_phrase",
+			"chain.miner.hotkey_phrase",
+			"nvidia_attest.endpoint",
+		}
+		
+		// TODO: Revisit this
+		for _, key := range config_strings {
+			if viper.GetString(key) == "" {
+				shared.PromptConfigString(key)
+			}
+		}
 
-		// TODO add chain endpoint to config, use default of finney if not set
+		if viper.GetInt("chain.netuid") == -1 {
+			shared.PromptConfigInt("chain.netuid")
+		}
+
 		client, err := client.NewClient(viper.GetString("chain.endpoint"))
 		if err != nil {
 			fmt.Printf("Error creating client: %s\n", err)
 			os.Exit(1)
 		}
-		hotkey_phrase_vali := viper.GetString("chain.validator.hotkey_phrase")
-		hotkey_phrase_miner := viper.GetString("chain.miner.hotkey_phrase")
 
-		kp, err := signature.KeyringPairFromSecret(hotkey_phrase_vali, 42)
+		kp, err := signature.KeyringPairFromSecret(viper.GetString("chain.validator.hotkey_phrase"), 42)
 		if err != nil {
 			fmt.Println("Error parsing hotkey phrase: " + err.Error())
 			os.Exit(1)
@@ -73,8 +83,7 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
 				return
 			}
-			NETUID := viper.GetInt("netuid")
-			neuron, err = runtime.GetNeuron(client, uint16(NETUID), uint16(uidflag), &blockHash)
+			neuron, err = runtime.GetNeuron(client, uint16(viper.GetInt("chain.netuid")), uint16(uidflag), &blockHash)
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting neurons", err))
 				return
@@ -85,7 +94,7 @@ var ipsCmd = &cobra.Command{
 				UID:    types.NewUCompact(big.NewInt(444)),
 				Hotkey: types.AccountID(kp.PublicKey),
 			}
-			kp, err := signature.KeyringPairFromSecret(hotkey_phrase_miner, 42)
+			kp, err := signature.KeyringPairFromSecret(viper.GetString("chain.miner.hotkey_phrase"), 42)
 			if err == nil {
 				fmt.Println("Using MINER_HOTKEY_PHRASE")
 				neuron.Hotkey = types.AccountID(kp.PublicKey)
@@ -95,8 +104,7 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
-		NVIDIA_ATTEST_ENDPOINT := viper.GetString("nvidia_attest_endpoint")
-		attester := cvm.NewAttester(1, kp, NVIDIA_ATTEST_ENDPOINT)
+		attester := cvm.NewAttester(1, kp, viper.GetString("nvidia_attest.endpoint"))
 		if len(ipflag) != 0 {
 
 			// Mock Neuron, use self hotkey
