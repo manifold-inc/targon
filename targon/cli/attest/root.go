@@ -113,6 +113,7 @@ var ipsCmd = &cobra.Command{
 			fmt.Printf("gpus: %v\n\n", gpus)
 			return
 		}
+
 		fileInfo, _ := os.Stdin.Stat()
 		var nodes []*targon.MinerNode
 		if isPipe := (fileInfo.Mode() & os.ModeNamedPipe) != 0; isPipe {
@@ -166,21 +167,21 @@ func GetNodesFromStdin(cmd *cobra.Command) []*targon.MinerNode {
 }
 
 type AttestConfig struct {
-	ChainNetuid int
-	ChainEndpoint string
+	ChainNetuid           int
+	ChainEndpoint         string
 	ValidatorHotkeyPhrase string
-	MinerHotkeyPhrase string
-	NvidiaAttestEndpoint string
+	MinerHotkeyPhrase     string
+	NvidiaAttestEndpoint  string
 }
 
 func loadConfig() (*AttestConfig, error) {
 	config := &AttestConfig{}
 
-  config_strings := map[string]*string{
-		"chain.endpoint": &config.ChainEndpoint,
+	config_strings := map[string]*string{
+		"chain.endpoint":                &config.ChainEndpoint,
 		"chain.validator.hotkey_phrase": &config.ValidatorHotkeyPhrase,
-		"chain.miner.hotkey_phrase": &config.MinerHotkeyPhrase,
-		"nvidia_attest.endpoint": &config.NvidiaAttestEndpoint,
+		"chain.miner.hotkey_phrase":     &config.MinerHotkeyPhrase,
+		"nvidia_attest.endpoint":        &config.NvidiaAttestEndpoint,
 	}
 
 	for key, value := range config_strings {
