@@ -5,7 +5,7 @@ default:
   @just --list
 
 up:
-  docker compose up -d --build --force-recreate targon nvidia-attest mongo-wrapper
+  docker compose up -d --build --force-recreate targon nvidia-attest
 
 up-miner:
   docker compose -f docker-compose.miner.yml up -d --build --force-recreate
@@ -27,5 +27,5 @@ down:
 update:
   git pull
   docker compose pull
-  docker compose up -d --build --force-recreate targon nvidia-attest mongo-wrapper
+  docker compose up -d --build --force-recreate targon nvidia-attest
 
