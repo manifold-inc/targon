@@ -46,30 +46,19 @@ var ipsCmd = &cobra.Command{
 			return
 		}
 
-		config_strings := []string{
-			"chain.endpoint",
-			"chain.validator.hotkey_phrase",
-			"chain.miner.hotkey_phrase",
-			"nvidia_attest.endpoint",
-		}
-		
-		for _, key := range config_strings {
-			if viper.GetString(key) == "" {
-				shared.PromptConfigString(key)
-			}
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("Error loading config: " + err.Error())
+			os.Exit(1)
 		}
 
-		if viper.GetInt("chain.netuid") == -1 {
-			shared.PromptConfigInt("chain.netuid")
-		}
-
-		client, err := client.NewClient(viper.GetString("chain.endpoint"))
+		client, err := client.NewClient(config.ChainEndpoint)
 		if err != nil {
 			fmt.Printf("Error creating client: %s\n", err)
 			os.Exit(1)
 		}
 
-		kp, err := signature.KeyringPairFromSecret(viper.GetString("chain.validator.hotkey_phrase"), 42)
+		kp, err := signature.KeyringPairFromSecret(config.ValidatorHotkeyPhrase, 42)
 		if err != nil {
 			fmt.Println("Error parsing hotkey phrase: " + err.Error())
 			os.Exit(1)
@@ -82,7 +71,7 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
 				return
 			}
-			neuron, err = runtime.GetNeuron(client, uint16(viper.GetInt("chain.netuid")), uint16(uidflag), &blockHash)
+			neuron, err = runtime.GetNeuron(client, uint16(config.ChainNetuid), uint16(uidflag), &blockHash)
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting neurons", err))
 				return
@@ -93,7 +82,7 @@ var ipsCmd = &cobra.Command{
 				UID:    types.NewUCompact(big.NewInt(444)),
 				Hotkey: types.AccountID(kp.PublicKey),
 			}
-			kp, err := signature.KeyringPairFromSecret(viper.GetString("chain.miner.hotkey_phrase"), 42)
+			kp, err := signature.KeyringPairFromSecret(config.MinerHotkeyPhrase, 42)
 			if err == nil {
 				fmt.Println("Using MINER_HOTKEY_PHRASE")
 				neuron.Hotkey = types.AccountID(kp.PublicKey)
@@ -103,7 +92,7 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
-		attester := cvm.NewAttester(1, kp, viper.GetString("nvidia_attest.endpoint"))
+		attester := cvm.NewAttester(1, kp, config.NvidiaAttestEndpoint)
 		if len(ipflag) != 0 {
 
 			// Mock Neuron, use self hotkey
@@ -174,4 +163,37 @@ func GetNodesFromStdin(cmd *cobra.Command) []*targon.MinerNode {
 		nodes = append(nodes, &targon.MinerNode{Ip: line, Price: 300})
 	}
 	return nodes
+}
+
+type AttestConfig struct {
+	ChainNetuid int
+	ChainEndpoint string
+	ValidatorHotkeyPhrase string
+	MinerHotkeyPhrase string
+	NvidiaAttestEndpoint string
+}
+
+func loadConfig() (*AttestConfig, error) {
+	config := &AttestConfig{}
+
+  config_strings := map[string]*string{
+		"chain.endpoint": &config.ChainEndpoint,
+		"chain.validator.hotkey_phrase": &config.ValidatorHotkeyPhrase,
+		"chain.miner.hotkey_phrase": &config.MinerHotkeyPhrase,
+		"nvidia_attest.endpoint": &config.NvidiaAttestEndpoint,
+	}
+
+	for key, value := range config_strings {
+		if viper.GetString(key) == "" {
+			shared.PromptConfigString(key)
+		}
+		*value = viper.GetString(key)
+	}
+
+	if viper.GetInt("chain.netuid") == -1 {
+		shared.PromptConfigInt("chain.netuid")
+	}
+	config.ChainNetuid = viper.GetInt("chain.netuid")
+
+	return config, nil
 }
