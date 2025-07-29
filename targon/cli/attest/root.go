@@ -53,7 +53,6 @@ var ipsCmd = &cobra.Command{
 			"nvidia_attest.endpoint",
 		}
 		
-		// TODO: Revisit this
 		for _, key := range config_strings {
 			if viper.GetString(key) == "" {
 				shared.PromptConfigString(key)
