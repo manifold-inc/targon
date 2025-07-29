@@ -179,8 +179,8 @@ func loadConfig() (*AttestConfig, error) {
 
 	config_strings := map[string]*string{
 		"chain.endpoint":                &config.ChainEndpoint,
-		"chain.validator.hotkey_phrase": &config.ValidatorHotkeyPhrase,
-		"chain.miner.hotkey_phrase":     &config.MinerHotkeyPhrase,
+		"validator.hotkey_phrase":       &config.ValidatorHotkeyPhrase,
+		"miner.hotkey_phrase":           &config.MinerHotkeyPhrase,
 		"nvidia_attest.endpoint":        &config.NvidiaAttestEndpoint,
 	}
 
