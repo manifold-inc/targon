@@ -21,6 +21,8 @@ For validators, see [validator docs](/docs/validator.md)
 
 For miners, see [miner docs](/docs/miner.md)
 
+For mongo-wrapper service, see [mongo-wrapper docs](/docs/mongo-wrapper.md)
+
 ______________________________________________________________________
 
 ### Core Security Features
