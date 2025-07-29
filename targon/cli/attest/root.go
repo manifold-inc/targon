@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	"targon/cli/root"
+	"targon/cli/shared"
 	"targon/internal/cvm"
-	"targon/internal/setup"
 	sutils "targon/internal/subtensor/utils"
 	"targon/internal/targon"
 	"targon/internal/utils"
@@ -20,18 +20,18 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/subtrahend-labs/gobt/client"
 	"github.com/subtrahend-labs/gobt/runtime"
-	"go.uber.org/zap"
 )
 
 var (
-	uidflag int
-	ipflag  string
+	uidFlag int
+	ipFlag  string
 )
 
 func init() {
-	ipsCmd.Flags().IntVar(&uidflag, "uid", -1, "Specific uid to grab GPU info for")
-	ipsCmd.Flags().StringVar(&ipflag, "ip", "", "Specific ip address for off chain testing")
+	ipsCmd.Flags().IntVar(&uidFlag, "uid", -1, "Specific uid to grab GPU info for")
+	ipsCmd.Flags().StringVar(&ipFlag, "ip", "", "Specific ip address for off chain testing")
 
 	root.RootCmd.AddCommand(ipsCmd)
 }
@@ -41,34 +41,48 @@ var ipsCmd = &cobra.Command{
 	Short: "Manually attest a miner or ip address",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		deps := setup.Init(zap.FatalLevel)
-		core := targon.CreateCore(deps)
-
-		if uidflag == -1 && ipflag == "" {
+		if uidFlag == -1 && ipFlag == "" {
 			fmt.Println("Please specify uid or ip")
 			return
 		}
 
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("Error loading config: " + err.Error())
+			os.Exit(1)
+		}
+
+		client, err := client.NewClient(config.ChainEndpoint)
+		if err != nil {
+			fmt.Printf("Error creating client: %s\n", err)
+			os.Exit(1)
+		}
+
+		kp, err := signature.KeyringPairFromSecret(config.ValidatorHotkeyPhrase, 42)
+		if err != nil {
+			fmt.Println("Error parsing hotkey phrase: " + err.Error())
+			os.Exit(1)
+		}
+
 		var neuron *runtime.NeuronInfo
-		if uidflag != -1 {
-			blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
+		if uidFlag != -1 {
+			blockHash, err := client.Api.RPC.Chain.GetBlockHashLatest()
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
 				return
 			}
-			neuron, err = runtime.GetNeuron(core.Deps.Client, uint16(core.Deps.Env.NETUID), uint16(uidflag), &blockHash)
+			neuron, err = runtime.GetNeuron(client, uint16(config.ChainNetuid), uint16(uidFlag), &blockHash)
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting neurons", err))
 				return
 			}
 		}
-		if uidflag == -1 {
+		if uidFlag == -1 {
 			neuron = &runtime.NeuronInfo{
 				UID:    types.NewUCompact(big.NewInt(444)),
-				Hotkey: types.AccountID(deps.Hotkey.PublicKey),
+				Hotkey: types.AccountID(kp.PublicKey),
 			}
-			HOTKEY_PHRASE := viper.GetString("hotkey_phrase")
-			kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, 42)
+			kp, err := signature.KeyringPairFromSecret(config.MinerHotkeyPhrase, 42)
 			if err == nil {
 				fmt.Println("Using MINER_HOTKEY_PHRASE")
 				neuron.Hotkey = types.AccountID(kp.PublicKey)
@@ -78,12 +92,12 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
-		attester := cvm.NewAttester(1, core.Deps.Hotkey, core.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
-		if len(ipflag) != 0 {
+		attester := cvm.NewAttester(1, kp, config.NvidiaAttestEndpoint)
+		if len(ipFlag) != 0 {
 
 			// Mock Neuron, use self hotkey
-			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
-			cvmIP := strings.TrimPrefix(ipflag, "http://")
+			nonce := targon.NewNonce(kp.Address)
+			cvmIP := strings.TrimPrefix(ipFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 			attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
 			if err != nil {
@@ -95,10 +109,11 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
 			}
-			fmt.Printf("node: %s \n", ipflag)
+			fmt.Printf("node: %s \n", ipFlag)
 			fmt.Printf("gpus: %v\n\n", gpus)
 			return
 		}
+
 		fileInfo, _ := os.Stdin.Stat()
 		var nodes []*targon.MinerNode
 		if isPipe := (fileInfo.Mode() & os.ModeNamedPipe) != 0; isPipe {
@@ -120,7 +135,7 @@ var ipsCmd = &cobra.Command{
 		for _, n := range nodes {
 			go func() {
 				defer wg.Done()
-				nonce := targon.NewNonce(core.Deps.Hotkey.Address)
+				nonce := targon.NewNonce(kp.Address)
 				cvmIP := strings.TrimPrefix(n.Ip, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 				attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
@@ -149,4 +164,37 @@ func GetNodesFromStdin(cmd *cobra.Command) []*targon.MinerNode {
 		nodes = append(nodes, &targon.MinerNode{Ip: line, Price: 300})
 	}
 	return nodes
+}
+
+type AttestConfig struct {
+	ChainNetuid           int
+	ChainEndpoint         string
+	ValidatorHotkeyPhrase string
+	MinerHotkeyPhrase     string
+	NvidiaAttestEndpoint  string
+}
+
+func loadConfig() (*AttestConfig, error) {
+	config := &AttestConfig{}
+
+	config_strings := map[string]*string{
+		"chain.endpoint":                &config.ChainEndpoint,
+		"validator.hotkey_phrase":       &config.ValidatorHotkeyPhrase,
+		"miner.hotkey_phrase":           &config.MinerHotkeyPhrase,
+		"nvidia_attest.endpoint":        &config.NvidiaAttestEndpoint,
+	}
+
+	for key, value := range config_strings {
+		if viper.GetString(key) == "" {
+			shared.PromptConfigString(key)
+		}
+		*value = viper.GetString(key)
+	}
+
+	if viper.GetInt("chain.netuid") == -1 {
+		shared.PromptConfigInt("chain.netuid")
+	}
+	config.ChainNetuid = viper.GetInt("chain.netuid")
+
+	return config, nil
 }

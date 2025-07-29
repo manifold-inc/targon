@@ -1,7 +1,6 @@
 package root
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,16 +37,15 @@ func initConfig() error {
 	path := filepath.Join(config, ".targon.json")
 
 	// 0755: Default permissions for directory rwx-rx-rx for owner-group-others
-	if err := os.MkdirAll(config, 0o755); err != nil {
+	if err := os.MkdirAll(config, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	fmt.Print("Enter your HOTKEY PHRASE: ")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	HOTKEY_PHRASE := scanner.Text()
+	// Set default values
+	viper.Set("chain.endpoint", "wss://entrypoint-finney.opentensor.ai:443")
+	viper.Set("nvidia_attest.endpoint", "http://nvidia-attest")
+	viper.Set("chain.netuid", 4)
 
-	viper.Set("HOTKEY_PHRASE", HOTKEY_PHRASE)
 	if err := viper.WriteConfigAs(path); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
@@ -71,4 +69,3 @@ func Execute() {
 		os.Exit(1)
 	}
 }
-
