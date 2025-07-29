@@ -23,6 +23,7 @@ Create a `.env` file in the project directory:
 HOTKEY_PHRASE="your hotkey phrase"
 MONGO_USERNAME=
 MONGO_PASSWORD=
+VALIDATOR_IP="ipv4 address of the vali"
 
 ### Optional
 

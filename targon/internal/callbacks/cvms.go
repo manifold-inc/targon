@@ -59,6 +59,14 @@ func getPassingAttestations(c *targon.Core) {
 					)
 				}
 
+				// Check with tower for this ip
+				if err == nil {
+					passed := c.Deps.Tower.Check(node.Ip)
+					if !passed {
+						err = errors.New("failed tower check")
+					}
+				}
+
 				// Lock for core map updates
 				c.Mu.Lock()
 				defer c.Mu.Unlock()
@@ -77,23 +85,15 @@ func getPassingAttestations(c *targon.Core) {
 					}
 				}
 
-				// Check with tower for this ip
-				if err == nil {
-					passed := c.Deps.Tower.Check(node.Ip)
-					if !passed {
-						err = errors.New("failed tower check")
-					}
-				}
-
 				// Mark error if found; all errors here are non-retryable
 				if err != nil {
 					c.AttestErrors[uid][node.Ip] = err.Error()
-					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err)
+					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err.Error())
 
 					// Check if its a retryable error
 					var aerr *cvm.AttestError
 					if errors.As(err, &aerr) {
-						c.Deps.Log.Debugf("%s: attest error: retry: %t, msg: %s", uid, aerr.ShouldRetry, aerr.Msg)
+						c.Deps.Log.Debugf("%s: attest error: %s", uid, aerr.Error())
 						if !aerr.ShouldRetry {
 							c.PassedAttestation[uid][node.Ip] = []string{}
 						}
