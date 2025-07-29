@@ -9,14 +9,16 @@ import (
 	"github.com/spf13/viper"
 )
 
-var netuidflag int
-var hotkeyflag string
-var nvidia_attest_endpoint_flag string
+var netuidFlag int
+var minerHotkeyPhraseFlag string
+var validatorHotkeyPhraseFlag string
+var nvidiaAttestEndpointFlag string
 
 func init() {
-	configCmd.Flags().StringVar(&hotkeyflag, "hotkey", "", "Hotkey phrase to update to")
-	configCmd.Flags().IntVar(&netuidflag, "netuid", -1, "Netuid to update to")
-	configCmd.Flags().StringVar(&nvidia_attest_endpoint_flag, "nvidia_attest_endpoint", "", "NVIDIA attest endpoint to update to")
+	configCmd.Flags().StringVar(&minerHotkeyPhraseFlag, "miner_hotkey_phrase", "", "Miner hotkey phrase to update to")
+	configCmd.Flags().StringVar(&validatorHotkeyPhraseFlag, "validator_hotkey_phrase", "", "Validator hotkey phrase to update to")
+	configCmd.Flags().IntVar(&netuidFlag, "netuid", -1, "Netuid to update to")
+	configCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia_attest_endpoint", "", "NVIDIA attest endpoint to update to")
 	root.RootCmd.AddCommand(configCmd)
 }
 
@@ -27,21 +29,27 @@ var configCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		updated := false
 
-		if hotkeyflag != "" {
-			viper.Set("HOTKEY_PHRASE", hotkeyflag)
-			fmt.Printf("Hotkey phrase updated to: %s\n", hotkeyflag)
+		if minerHotkeyPhraseFlag != "" {
+			viper.Set("miner.hotkey_phrase", minerHotkeyPhraseFlag)
+			fmt.Printf("Miner hotkey phrase updated to: %s\n", minerHotkeyPhraseFlag)
 			updated = true
 		}
 
-		if netuidflag != 0 {
-			viper.Set("netuid", netuidflag)
-			fmt.Printf("Netuid updated to: %d\n", netuidflag)
+		if validatorHotkeyPhraseFlag != "" {
+			viper.Set("validator.hotkey_phrase", validatorHotkeyPhraseFlag)
+			fmt.Printf("Validator hotkey phrase updated to: %s\n", validatorHotkeyPhraseFlag)
 			updated = true
 		}
 
-		if nvidia_attest_endpoint_flag != "" {
-			viper.Set("nvidia_attest_endpoint", nvidia_attest_endpoint_flag)
-			fmt.Printf("NVIDIA attest endpoint updated to: %s\n", nvidia_attest_endpoint_flag)
+		if netuidFlag != 0 {
+			viper.Set("netuid", netuidFlag)
+			fmt.Printf("Netuid updated to: %d\n", netuidFlag)
+			updated = true
+		}
+
+		if nvidiaAttestEndpointFlag != "" {
+			viper.Set("nvidia_attest_endpoint", nvidiaAttestEndpointFlag)
+			fmt.Printf("NVIDIA attest endpoint updated to: %s\n", nvidiaAttestEndpointFlag)
 			updated = true
 		}
 
