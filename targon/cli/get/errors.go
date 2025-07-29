@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"targon/cli/shared"
 	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
@@ -32,12 +33,12 @@ var ipsCMD = &cobra.Command{
 	Short: "Get attestation errors for UID",
 	Long:  `Get attestation errors for UID`,
 	Run: func(cmd *cobra.Command, args []string) {
-		HOTKEY_PHRASE := viper.GetString("hotkey_phrase")
-		if len(HOTKEY_PHRASE) == 0 {
-			fmt.Println("Failed loading miner hotkey, missing hotkey phrase in config file")
-			return
+
+		hotkey_phrase := viper.GetString("miner.hotkey_phrase")
+		if len(hotkey_phrase) == 0 {
+			hotkey_phrase = shared.PromptConfigString("miner.hotkey_phrase")
 		}
-		kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, 42)
+		kp, err := signature.KeyringPairFromSecret(hotkey_phrase, 42)
 		if err != nil {
 			fmt.Println("Failed loading miner hotkey")
 			return
