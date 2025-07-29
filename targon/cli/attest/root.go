@@ -25,13 +25,13 @@ import (
 )
 
 var (
-	uidflag int
-	ipflag  string
+	uidFlag int
+	ipFlag  string
 )
 
 func init() {
-	ipsCmd.Flags().IntVar(&uidflag, "uid", -1, "Specific uid to grab GPU info for")
-	ipsCmd.Flags().StringVar(&ipflag, "ip", "", "Specific ip address for off chain testing")
+	ipsCmd.Flags().IntVar(&uidFlag, "uid", -1, "Specific uid to grab GPU info for")
+	ipsCmd.Flags().StringVar(&ipFlag, "ip", "", "Specific ip address for off chain testing")
 
 	root.RootCmd.AddCommand(ipsCmd)
 }
@@ -41,7 +41,7 @@ var ipsCmd = &cobra.Command{
 	Short: "Manually attest a miner or ip address",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		if uidflag == -1 && ipflag == "" {
+		if uidFlag == -1 && ipFlag == "" {
 			fmt.Println("Please specify uid or ip")
 			return
 		}
@@ -65,19 +65,19 @@ var ipsCmd = &cobra.Command{
 		}
 
 		var neuron *runtime.NeuronInfo
-		if uidflag != -1 {
+		if uidFlag != -1 {
 			blockHash, err := client.Api.RPC.Chain.GetBlockHashLatest()
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
 				return
 			}
-			neuron, err = runtime.GetNeuron(client, uint16(config.ChainNetuid), uint16(uidflag), &blockHash)
+			neuron, err = runtime.GetNeuron(client, uint16(config.ChainNetuid), uint16(uidFlag), &blockHash)
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting neurons", err))
 				return
 			}
 		}
-		if uidflag == -1 {
+		if uidFlag == -1 {
 			neuron = &runtime.NeuronInfo{
 				UID:    types.NewUCompact(big.NewInt(444)),
 				Hotkey: types.AccountID(kp.PublicKey),
@@ -93,11 +93,11 @@ var ipsCmd = &cobra.Command{
 		}
 
 		attester := cvm.NewAttester(1, kp, config.NvidiaAttestEndpoint)
-		if len(ipflag) != 0 {
+		if len(ipFlag) != 0 {
 
 			// Mock Neuron, use self hotkey
 			nonce := targon.NewNonce(kp.Address)
-			cvmIP := strings.TrimPrefix(ipflag, "http://")
+			cvmIP := strings.TrimPrefix(ipFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 			attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
 			if err != nil {
@@ -109,7 +109,7 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
 			}
-			fmt.Printf("node: %s \n", ipflag)
+			fmt.Printf("node: %s \n", ipFlag)
 			fmt.Printf("gpus: %v\n\n", gpus)
 			return
 		}

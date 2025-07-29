@@ -34,11 +34,11 @@ var ipsCMD = &cobra.Command{
 	Long:  `Get attestation errors for UID`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		hotkey_phrase := viper.GetString("miner.hotkey_phrase")
-		if len(hotkey_phrase) == 0 {
-			hotkey_phrase = shared.PromptConfigString("miner.hotkey_phrase")
+		hotkeyPhrase := viper.GetString("miner.hotkey_phrase")
+		if len(hotkeyPhrase) == 0 {
+			hotkeyPhrase = shared.PromptConfigString("miner.hotkey_phrase")
 		}
-		kp, err := signature.KeyringPairFromSecret(hotkey_phrase, 42)
+		kp, err := signature.KeyringPairFromSecret(hotkeyPhrase, 42)
 		if err != nil {
 			fmt.Println("Failed loading miner hotkey")
 			return

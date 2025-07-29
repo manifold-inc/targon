@@ -15,10 +15,10 @@ var validatorHotkeyPhraseFlag string
 var nvidiaAttestEndpointFlag string
 
 func init() {
-	configCmd.Flags().StringVar(&minerHotkeyPhraseFlag, "miner_hotkey_phrase", "", "Miner hotkey phrase to update to")
-	configCmd.Flags().StringVar(&validatorHotkeyPhraseFlag, "validator_hotkey_phrase", "", "Validator hotkey phrase to update to")
+	configCmd.Flags().StringVar(&minerHotkeyPhraseFlag, "miner.hotkey_phrase", "", "Miner hotkey phrase to update to")
+	configCmd.Flags().StringVar(&validatorHotkeyPhraseFlag, "validator.hotkey_phrase", "", "Validator hotkey phrase to update to")
 	configCmd.Flags().IntVar(&netuidFlag, "netuid", -1, "Netuid to update to")
-	configCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia_attest_endpoint", "", "NVIDIA attest endpoint to update to")
+	configCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia.attest_endpoint", "", "NVIDIA attest endpoint to update to")
 	root.RootCmd.AddCommand(configCmd)
 }
 
@@ -48,7 +48,7 @@ var configCmd = &cobra.Command{
 		}
 
 		if nvidiaAttestEndpointFlag != "" {
-			viper.Set("nvidia_attest_endpoint", nvidiaAttestEndpointFlag)
+			viper.Set("nvidia.attest_endpoint", nvidiaAttestEndpointFlag)
 			fmt.Printf("NVIDIA attest endpoint updated to: %s\n", nvidiaAttestEndpointFlag)
 			updated = true
 		}
