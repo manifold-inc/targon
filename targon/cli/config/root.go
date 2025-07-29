@@ -15,7 +15,7 @@ var nvidia_attest_endpoint_flag string
 
 func init() {
 	configCmd.Flags().StringVar(&hotkeyflag, "hotkey", "", "Hotkey phrase to update to")
-	configCmd.Flags().IntVar(&netuidflag, "netuid", 0, "Netuid to update to")
+	configCmd.Flags().IntVar(&netuidflag, "netuid", -1, "Netuid to update to")
 	configCmd.Flags().StringVar(&nvidia_attest_endpoint_flag, "nvidia_attest_endpoint", "", "NVIDIA attest endpoint to update to")
 	root.RootCmd.AddCommand(configCmd)
 }
