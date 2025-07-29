@@ -11,7 +11,6 @@ import (
 
 	"targon/cli/root"
 	"targon/internal/cvm"
-	"targon/internal/setup"
 	sutils "targon/internal/subtensor/utils"
 	"targon/internal/targon"
 	"targon/internal/utils"
@@ -20,8 +19,8 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/subtrahend-labs/gobt/client"
 	"github.com/subtrahend-labs/gobt/runtime"
-	"go.uber.org/zap"
 )
 
 var (
@@ -41,23 +40,41 @@ var ipsCmd = &cobra.Command{
 	Short: "Manually attest a miner or ip address",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		deps := setup.Init(zap.FatalLevel)
-		core := targon.CreateCore(deps)
-
 		if uidflag == -1 && ipflag == "" {
 			fmt.Println("Please specify uid or ip")
 			return
 		}
 
+		// Get all needed config from viper
+		// If any dont exist, prompt to add
+		// getOrPromptConf("chain.endpoint") (string, error)
+		// 		get chain.endpoint
+		//  	prompt and save if doesnt exist
+
+		// TODO add chain endpoint to config, use default of finney if not set
+		client, err := client.NewClient(viper.GetString("chain.endpoint"))
+		if err != nil {
+			fmt.Printf("Error creating client: %s\n", err)
+			os.Exit(1)
+		}
+		hotkey_phrase_vali := viper.GetString("chain.validator.hotkey_phrase")
+		hotkey_phrase_miner := viper.GetString("chain.miner.hotkey_phrase")
+
+		kp, err := signature.KeyringPairFromSecret(hotkey_phrase_vali, 42)
+		if err != nil {
+			fmt.Println("Error parsing hotkey phrase: " + err.Error())
+			os.Exit(1)
+		}
+
 		var neuron *runtime.NeuronInfo
 		if uidflag != -1 {
-			blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
+			blockHash, err := client.Api.RPC.Chain.GetBlockHashLatest()
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
 				return
 			}
 			NETUID := viper.GetInt("netuid")
-			neuron, err = runtime.GetNeuron(core.Deps.Client, uint16(NETUID), uint16(uidflag), &blockHash)
+			neuron, err = runtime.GetNeuron(client, uint16(NETUID), uint16(uidflag), &blockHash)
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting neurons", err))
 				return
@@ -66,10 +83,9 @@ var ipsCmd = &cobra.Command{
 		if uidflag == -1 {
 			neuron = &runtime.NeuronInfo{
 				UID:    types.NewUCompact(big.NewInt(444)),
-				Hotkey: types.AccountID(deps.Hotkey.PublicKey),
+				Hotkey: types.AccountID(kp.PublicKey),
 			}
-			HOTKEY_PHRASE := viper.GetString("hotkey_phrase")
-			kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, 42)
+			kp, err := signature.KeyringPairFromSecret(hotkey_phrase_miner, 42)
 			if err == nil {
 				fmt.Println("Using MINER_HOTKEY_PHRASE")
 				neuron.Hotkey = types.AccountID(kp.PublicKey)
@@ -80,11 +96,11 @@ var ipsCmd = &cobra.Command{
 		}
 
 		NVIDIA_ATTEST_ENDPOINT := viper.GetString("nvidia_attest_endpoint")
-		attester := cvm.NewAttester(1, core.Deps.Hotkey, NVIDIA_ATTEST_ENDPOINT)
+		attester := cvm.NewAttester(1, kp, NVIDIA_ATTEST_ENDPOINT)
 		if len(ipflag) != 0 {
 
 			// Mock Neuron, use self hotkey
-			nonce := targon.NewNonce(core.Deps.Hotkey.Address)
+			nonce := targon.NewNonce(kp.Address)
 			cvmIP := strings.TrimPrefix(ipflag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 			attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
@@ -122,7 +138,7 @@ var ipsCmd = &cobra.Command{
 		for _, n := range nodes {
 			go func() {
 				defer wg.Done()
-				nonce := targon.NewNonce(core.Deps.Hotkey.Address)
+				nonce := targon.NewNonce(kp.Address)
 				cvmIP := strings.TrimPrefix(n.Ip, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 				attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
