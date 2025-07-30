@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mongo-wrapper/internal/setup"
 	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/subtrahend-labs/gobt/boilerplate"
@@ -12,11 +13,13 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-type AuctionResult struct {
-	Timestamp   int64          `bson:"timestamp" json:"timestamp"`
-	AuctionData map[string]any `bson:"auction_results,omitempty" json:"auction_data"`
-	Block       int            `bson:"block,omitempty" json:"block,omitempty"`
-	Weights     *Weights       `bson:"weights,omitempty" json:"weights,omitempty"`
+type MinerBid struct {
+	Ip      string  `bson:"ip" json:"ip"`
+	Price   int     `bson:"price" json:"price"`
+	UID     string  `bson:"uid" json:"uid"`
+	Gpus    int     `bson:"gpus" json:"gpus"`
+	Payout  float64 `bson:"payout" json:"payout"`
+	Diluted bool    `bson:"diluted" json:"diluted"`
 }
 
 type Weights struct {
@@ -24,9 +27,25 @@ type Weights struct {
 	Incentives []float64 `bson:"incentives" json:"incentives"`
 }
 
+type AuctionResult struct {
+	Timestamp   int64                  `bson:"timestamp" json:"timestamp"`
+	AuctionData map[string][]*MinerBid `bson:"auction_results,omitempty" json:"auction_data"`
+	Block       int                    `bson:"block,omitempty" json:"block,omitempty"`
+	Weights     *Weights               `bson:"weights,omitempty" json:"weights,omitempty"`
+}
+
 type AttestationReport struct {
-	Failed      map[string]string `bson:"attest_errors" json:"failed"`
-	HotkeyToUID map[string]string `bson:"hotkey_to_uid" json:"hotkey_to_uid"`
+	AttestErrors map[string]map[string]string `bson:"attest_errors" json:"attest_errors"`
+	HotkeyToUID  map[string]string            `bson:"hotkey_to_uid" json:"hotkey_to_uid"`
+}
+
+type MinerInfoDocument struct {
+	Block          int                          `bson:"block,omitempty" json:"block,omitempty"`
+	Timestamp      int64                        `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
+	AttestErrors   map[string]map[string]string `bson:"attest_errors,omitempty" json:"attest_errors,omitempty"`
+	HotkeyToUID    map[string]string            `bson:"hotkey_to_uid,omitempty" json:"hotkey_to_uid,omitempty"`
+	AuctionResults map[string][]*MinerBid       `bson:"auction_results,omitempty" json:"auction_results,omitempty"`
+	Weights        *Weights                     `bson:"weights,omitempty" json:"weights,omitempty"`
 }
 
 type Server struct {
@@ -74,33 +93,24 @@ func (s *Server) getAuctionResults(c echo.Context) error {
 		}
 	}
 
-	opts := options.Find().SetLimit(limit).SetSort(bson.D{{Key: "timestamp", Value: -1}})
+	opts := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: -1}})
 
-	cursor, err := collection.Find(context.Background(), bson.M{}, opts)
+	var result MinerInfoDocument
+	err := collection.FindOne(context.Background(), bson.M{}, opts).Decode(&result)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
-	defer cursor.Close(context.Background())
 
-	var auctionResults []AuctionResult
-	for cursor.Next(context.Background()) {
-		var result AuctionResult
-		err := cursor.Decode(&result)
-		if err != nil {
-			continue
-		}
-		auctionResults = append(auctionResults, result)
+	auctionResult := AuctionResult{
+		Timestamp:   result.Timestamp,
+		AuctionData: result.AuctionResults,
+		Block:       result.Block,
+		Weights:     result.Weights,
 	}
 
-	if err := cursor.Err(); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
-	return c.JSON(http.StatusOK, auctionResults)
+	return c.JSON(http.StatusOK, []AuctionResult{auctionResult})
 }
 
 func (s *Server) getAttestationErrors(c echo.Context) error {
@@ -140,49 +150,22 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 
 	collection := s.deps.Mongo.Database("targon").Collection("miner_info")
 
-	opts := options.Find().SetLimit(1).SetSort(bson.D{{Key: "block", Value: -1}})
+	opts := options.FindOne().SetSort(bson.D{{Key: "block", Value: -1}})
 
-	cursor, err := collection.Find(context.Background(), bson.M{}, opts)
+	var result MinerInfoDocument
+	err = collection.FindOne(context.Background(), bson.M{}, opts).Decode(&result)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to get attestation report",
 		})
 	}
-	defer cursor.Close(context.Background())
-
-	var results []bson.M
-	if err := cursor.All(context.Background(), &results); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to decode attestation report",
-		})
-	}
-
-	if len(results) == 0 {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to get attestation report",
-		})
-	}
-
-	attestErrors, _ := results[0]["attest_errors"].(map[string]interface{})
-	hotkeyToUID, _ := results[0]["hotkey_to_uid"].(map[string]interface{})
 
 	failed := make(map[string]string)
-	if uidErrors, ok := attestErrors[uid].(map[string]interface{}); ok {
-		for k, v := range uidErrors {
-			if str, ok := v.(string); ok {
-				failed[k] = str
-			}
-		}
+	if uidErrors, ok := result.AttestErrors[uid]; ok {
+		failed = uidErrors
 	}
 
-	hotkeyToUIDStr := make(map[string]string)
-	for k, v := range hotkeyToUID {
-		if str, ok := v.(string); ok {
-			hotkeyToUIDStr[k] = str
-		}
-	}
-
-	if hotkeyToUIDStr[signedBy] != uid && hotkeyToUIDStr[signedBy] != "28" {
+	if result.HotkeyToUID[signedBy] != uid && result.HotkeyToUID[signedBy] != "28" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "unauthorized",
 		})
