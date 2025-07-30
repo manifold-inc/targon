@@ -19,7 +19,7 @@ services:
     env_file: .env
 
   traefik:
-    image: traefik:v2.10.4
+    image: traefik:v3.5.0
     ports:
       - "80:80"
       - "443:443"
