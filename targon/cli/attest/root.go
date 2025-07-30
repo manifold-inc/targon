@@ -106,7 +106,7 @@ var ipsCmd = &cobra.Command{
 
 		contID, err := createNewContainer("ghcr.io/manifold-inc/targon-nvidia-attest:latest")
 		if err != nil {
-			fmt.Println("Error creating container: " + err.Error())
+			fmt.Printf("Error creating container: %s\n", err.Error())
 			return
 		}
 
@@ -173,7 +173,7 @@ var ipsCmd = &cobra.Command{
 
 		err = stopContainer(contID)
 		if err != nil {
-			fmt.Println("Error stopping container: " + err.Error())
+			fmt.Printf("Error stopping container: %s\n", err.Error())
 			return
 		}
 	},
