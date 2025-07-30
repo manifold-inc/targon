@@ -35,7 +35,7 @@ type AuctionResult struct {
 	Weights     *Weights               `bson:"weights,omitempty" json:"weights,omitempty"`
 }
 
-type AttestationResult struct {
+type AttestErrorsResult struct {
 	AttestErrors map[string]map[string]string `bson:"attest_errors,omitempty" json:"attest_errors,omitempty"`
 	HotkeyToUID  map[string]string            `bson:"hotkey_to_uid,omitempty" json:"hotkey_to_uid,omitempty"`
 }
@@ -144,7 +144,7 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 
 	opts := options.FindOne().SetSort(bson.D{{Key: "block", Value: -1}})
 
-	var result AttestationResult
+	var result AttestErrorsResult
 	err = collection.FindOne(context.Background(), bson.M{}, opts).Decode(&result)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
