@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -78,7 +77,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) getAuctionResults(c echo.Context) error {
 	collection := s.deps.Mongo.Database("targon").Collection("miner_info")
 
-	limit := int64(10)
+	limit := int64(1)
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		if l, err := fmt.Sscanf(limitStr, "%d", &limit); err != nil || l != 1 {
 			limit = 10
@@ -158,17 +157,10 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 		})
 	}
 
-	var failed map[string]string
-	if uidErrors, ok := result.AttestErrors[uid]; ok {
-		failed = uidErrors
+	aerrs, ok := result.AttestErrors[uid]
+	if !ok {
+		aerrs = map[string]string{}
 	}
 
-	jsonData, err := json.Marshal(failed)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to marshal attestation errors",
-		})
-	}
-
-	return c.String(http.StatusOK, string(jsonData))
+	return c.JSON(http.StatusOK, aerrs)
 }
