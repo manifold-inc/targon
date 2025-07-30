@@ -35,6 +35,7 @@ The service is configured via environment variables:
 - `MONGO_USERNAME` - MongoDB username
 - `MONGO_PASSWORD` - MongoDB password
 - `ENABLE_MONGO_WRAPPER` - `true` or `false`
+- `MONGO_WRAPPER_HOST` - your hostname
 
 > NOTE: you must also set your letsencrypt email in traefik/traefik.https.toml.
 > Just copy the template file and add your email to configure.
