@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
+	"targon/cli/shared"
 	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
@@ -32,13 +33,12 @@ var ipsCMD = &cobra.Command{
 	Short: "Get attestation errors for UID",
 	Long:  `Get attestation errors for UID`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO Use viper conifg
-		secret := os.Getenv("HOTKEY_PHRASE")
-		if len(secret) == 0 {
-			fmt.Println("Failed loading miner hotkey, missing env variable `HOTKEY_PHRASE`")
-			return
+
+		hotkeyPhrase := viper.GetString("miner.hotkey_phrase")
+		if len(hotkeyPhrase) == 0 {
+			hotkeyPhrase = shared.PromptConfigString("miner.hotkey_phrase")
 		}
-		kp, err := signature.KeyringPairFromSecret(secret, 42)
+		kp, err := signature.KeyringPairFromSecret(hotkeyPhrase, 42)
 		if err != nil {
 			fmt.Println("Failed loading miner hotkey")
 			return

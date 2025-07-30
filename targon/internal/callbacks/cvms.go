@@ -2,25 +2,20 @@ package callbacks
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"targon/internal/cvm"
+	"targon/internal/subtensor/utils"
 	"targon/internal/targon"
 )
 
 // Collects attestations across all miners and all nodes, skipping nodes
 // its already found
 func getPassingAttestations(c *targon.Core) {
-	verifyAttestClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second * c.Deps.Env.TIMEOUT_MULT,
-		DisableKeepAlives:   true,
-	}, Timeout: 3 * time.Minute * c.Deps.Env.TIMEOUT_MULT}
 	wg := sync.WaitGroup{}
 	c.Deps.Log.Infof("Getting Attestations for %d miners", len(c.Neurons))
+	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
 
 	for uid, nodes := range c.MinerNodes {
 		if nodes == nil {
@@ -34,6 +29,7 @@ func getPassingAttestations(c *targon.Core) {
 			c.AttestErrors[uid] = map[string]string{}
 		}
 		c.Mu.Unlock()
+
 		for _, node := range nodes {
 			// Dont check nodes that have already passed this interval
 			c.Mu.Lock()
@@ -41,82 +37,78 @@ func getPassingAttestations(c *targon.Core) {
 				c.Mu.Unlock()
 				continue
 			}
-			//if val, ok := c.AttestErrors[uid][node.Ip]; ok {
-			//	c.Mu.Unlock()
-			//	c.Deps.Log.Infof("%s skipping for reason: %s", uid, val)
-			//	continue
-			//}
 			c.Mu.Unlock()
 
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err := attest(c, uid, node, verifyAttestClient)
-				var berr *cvm.BusyError
-				if errors.As(err, &berr) {
-					c.Deps.Log.Infof("%s overloaded", uid)
+
+				// Get attestation
+				n := c.Neurons[uid]
+				nonce := targon.NewNonce(attester.Hotkey.Address)
+				cvmIP := strings.TrimPrefix(node.Ip, "http://")
+				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(n.Hotkey), cvmIP, nonce)
+
+				// Verify attestation
+				var gpus, ueids []string
+				if err == nil {
+					gpus, ueids, err = attester.CheckAttest(
+						attestPayload,
+						nonce,
+					)
+				}
+
+				// Check with tower for this ip
+				if err == nil {
+					passed := c.Deps.Tower.Check(node.Ip)
+					if !passed {
+						err = errors.New("failed tower check")
+					}
+				}
+
+				// Lock for core map updates
+				c.Mu.Lock()
+				defer c.Mu.Unlock()
+
+				// Check for duplicate GPUS
+				if err == nil {
+					for _, v := range ueids {
+						if c.GPUids[v] {
+							// Add empty string so that we dont ping this node again,
+							// but dont pass any actual gpus
+							c.PassedAttestation[uid][node.Ip] = []string{}
+							err = errors.New("duplicate gpu id found")
+							break
+						}
+						c.GPUids[v] = true
+					}
+				}
+
+				// Mark error if found; all errors here are non-retryable
+				if err != nil {
+					c.AttestErrors[uid][node.Ip] = err.Error()
+					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err.Error())
+
+					// Check if its a retryable error
+					var aerr *cvm.AttestError
+					if errors.As(err, &aerr) {
+						c.Deps.Log.Debugf("%s: attest error: %s", uid, aerr.Error())
+						if !aerr.ShouldRetry {
+							c.PassedAttestation[uid][node.Ip] = []string{}
+						}
+						return
+					}
 					return
 				}
 
-				c.Mu.Lock()
-				defer c.Mu.Unlock()
-				if err == nil {
-					delete(c.AttestErrors[uid], node.Ip)
-					return
-				}
-				if c.AttestErrors[uid] == nil {
-					c.AttestErrors[uid] = map[string]string{}
-				}
-				c.AttestErrors[uid][node.Ip] = err.Error()
-				c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err)
+				// Add gpus to passed gpus, and delete any error marks
+				// Only add gpus if not duplicates
+				c.Deps.Log.Infof("%s passed attestation: %s", uid, gpus)
+				c.PassedAttestation[uid][node.Ip] = gpus
+				delete(c.AttestErrors[uid], node.Ip)
 			}()
 		}
 	}
 	wg.Wait()
-}
-
-// Gets attestation result from a specific node. no error means passing node.
-func attest(c *targon.Core, uid string, node *targon.MinerNode, attestClient *http.Client) error {
-	n := c.Neurons[uid]
-	nonce := targon.NewNonce(c.Deps.Hotkey.Address)
-	cvmIP := strings.TrimPrefix(node.Ip, "http://")
-	cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-	log := c.Deps.Log.With("uid", uid, "ip", cvmIP)
-	attestPayload, err := cvm.GetAttestFromNode(c.Deps.Hotkey, c.Deps.Env.TIMEOUT_MULT, &n, cvmIP, nonce)
-	if err != nil {
-		return err
-	}
-	gpus, ueids, err := cvm.CheckAttest(
-		c.Deps.Env.NVIDIA_ATTEST_ENDPOINT,
-		attestClient,
-		attestPayload.Attest,
-		nonce,
-	)
-	if err != nil {
-		return err
-	}
-
-	passed := c.Deps.Tower.Check(cvmIP)
-	if !passed {
-		return errors.New("failed tower check")
-	}
-	log.Infow("Node successfully verified",
-		"gpu_types", fmt.Sprintf("%v", gpus),
-	)
-
-	// ensure no duplicate nodes
-	c.Mu.Lock()
-	defer c.Mu.Unlock()
-	for _, v := range ueids {
-		if c.GPUids[v] {
-			// Add empty string so that we dont ping this node again,
-			// but dont pass any actual gpus
-			c.PassedAttestation[uid][node.Ip] = []string{}
-			return errors.New("duplicate gpu id found")
-		}
-		c.GPUids[v] = true
-	}
-	// Only add gpus if not duplicates
-	c.PassedAttestation[uid][node.Ip] = gpus
-	return nil
 }

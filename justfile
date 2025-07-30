@@ -29,3 +29,5 @@ update:
   docker compose pull
   docker compose up -d --build --force-recreate targon nvidia-attest
 
+install-cli:
+  cd targon && go install ./cmd/targon-cli

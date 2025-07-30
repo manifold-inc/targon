@@ -39,6 +39,7 @@ type Env struct {
 	NETUID                 int
 	DISCORD_URL            string
 	TIMEOUT_MULT           time.Duration
+	VALI_IP                string
 }
 
 func GetEnv(key, fallback string) string {
@@ -84,6 +85,7 @@ func Init(opts ...any) *Dependencies {
 	CHAIN_ENDPOINT := GetEnv("CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443")
 	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
 	VERSION := GetEnvOrPanic("VERSION", sugar)
+	VALI_IP := GetEnvOrPanic("VALIDATOR_IP", sugar)
 	DEBUG := GetEnv("DEBUG", "0")
 	TOWER_URL := GetEnv("TOWER_URL", "https://tower.targon.com")
 	TIMEOUT_MULT_STR := GetEnv("TIMEOUT_MULT", "1")
@@ -186,6 +188,7 @@ func Init(opts ...any) *Dependencies {
 			DISCORD_URL:            DISCORD_URL,
 			TIMEOUT_MULT:           time.Duration(TIMEOUT_MULT),
 			ATTEST_RATE:            ATTEST_RATE,
+			VALI_IP:                VALI_IP,
 		},
 	}
 }

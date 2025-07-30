@@ -13,7 +13,7 @@ COPY . .
 
 RUN GOOS=linux go build -v ./cmd/miner/miner.go
 
-FROM alpine:3.9 
+FROM alpine:3.22.1 
 WORKDIR /app
 RUN touch .env
 RUN apk add ca-certificates
