@@ -162,5 +162,7 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 		aerrs = map[string]string{}
 	}
 
-	return c.JSON(http.StatusOK, aerrs)
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": aerrs,
+	})
 }
