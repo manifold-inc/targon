@@ -34,50 +34,10 @@ The service is configured via environment variables:
 
 - `MONGO_USERNAME` - MongoDB username
 - `MONGO_PASSWORD` - MongoDB password
+- `ENABLE_MONGO_WRAPPER` - `true` or `false`
 
-## Running the Service
-
-### Using Docker
-
-```bash
-# Build the image
-docker build -t mongo-wrapper .
-
-# Run the container
-docker run -p 8080:8080 \
-  -e MONGO_USERNAME=your_username \
-  -e MONGO_PASSWORD=your_password \
-  mongo-wrapper
-```
-
-### Using Docker Compose
-
-Add the following service to your `docker-compose.yml`:
-
-```yaml
-mongo-wrapper:
-  build:
-    context: ./mongo-wrapper
-    dockerfile: Dockerfile
-  ports:
-    - "8080:8080"
-  environment:
-    - MONGO_USERNAME=${MONGO_USERNAME}
-    - MONGO_PASSWORD=${MONGO_PASSWORD}
-  restart: unless-stopped
-```
-
-### Local Development
-
-```bash
-# Install dependencies
-go mod download
-
-# Run the service
-go run cmd/mongo-wrapper/main.go
-```
-
-## Query Parameters
+> NOTE: you must also set your letsencrypt email in traefik/traefik.https.toml.
+> Just copy the template file and add your email to configure.
 
 ### Pagination
 
@@ -98,7 +58,7 @@ All endpoints return JSON responses with the following structure:
 
 ```json
 {
-  "auction_results": [
+  "data": [
     {
       "timestamp": 1234567890,
       "block": 12345,
@@ -114,15 +74,6 @@ All endpoints return JSON responses with the following structure:
         ]
       }
     }
-  ],
-  "count": 1
-}
-```
-
-### Error Response
-
-```json
-{
-  "error": "Error message"
+  ]
 }
 ```

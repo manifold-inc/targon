@@ -18,16 +18,30 @@ services:
       context: ./targon
     env_file: .env
 
+  traefik:
+    image: traefik:v2.10.4
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.https.toml:/etc/traefik/traefik.toml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-public-certificates:/certificates
+
   mongo-wrapper:
     build:
       context: ./mongo-wrapper
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
     environment:
       - MONGO_USERNAME=${MONGO_USERNAME}
       - MONGO_PASSWORD=${MONGO_PASSWORD}
     restart: unless-stopped
+    labels:
+      - traefik.enable=${ENABLE_MONGO_WRAPPER:-false}
+      - traefik.http.routers.api.rule=Host(`ekko.targon.com`)
+      - traefik.http.routers.api.tls=true
+      - traefik.http.routers.api.tls.certresolver=letsencrypt
+      - traefik.http.services.api.loadbalancer.server.port=80
 
   mongo:
     image: mongo:latest
@@ -49,3 +63,4 @@ services:
 
 volumes:
   mongo_data:
+  traefik-public-certificates:

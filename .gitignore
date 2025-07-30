@@ -20,3 +20,5 @@ config.json
 *.log
 !gpu_remote_policy.json
 !switch_remote_policy.json
+
+traefik.https.toml
