@@ -27,11 +27,17 @@ import (
 var (
 	uidFlag int
 	ipFlag  string
+	chainEndpointFlag string
+	chainNetuidFlag int
+	nvidiaAttestEndpointFlag string
 )
 
 func init() {
 	ipsCmd.Flags().IntVar(&uidFlag, "uid", -1, "Specific uid to grab GPU info for")
 	ipsCmd.Flags().StringVar(&ipFlag, "ip", "", "Specific ip address for off chain testing")
+	ipsCmd.Flags().StringVar(&chainEndpointFlag, "chain", "wss://entrypoint-finney.opentensor.ai:443", "Set chain endpoint")
+	ipsCmd.Flags().IntVar(&chainNetuidFlag, "netuid", 4, "Set chain netuid")
+	ipsCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia", "http://nvidia-attest", "Set nvidia attest endpoint")
 
 	root.RootCmd.AddCommand(ipsCmd)
 }
@@ -52,7 +58,7 @@ var ipsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		client, err := client.NewClient(config.ChainEndpoint)
+		client, err := client.NewClient(chainEndpointFlag)
 		if err != nil {
 			fmt.Printf("Error creating client: %s\n", err)
 			os.Exit(1)
@@ -71,7 +77,7 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(utils.Wrap("Failed getting blockhash for neurons", err))
 				return
 			}
-			neuron, err = runtime.GetNeuron(client, uint16(config.ChainNetuid), uint16(uidFlag), &blockHash)
+			neuron, err = runtime.GetNeuron(client, uint16(chainNetuidFlag), uint16(uidFlag), &blockHash)
 			if err != nil {
 				fmt.Println(utils.Wrap("Failed getting neurons", err))
 				return
@@ -92,7 +98,7 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
-		attester := cvm.NewAttester(1, kp, config.NvidiaAttestEndpoint)
+		attester := cvm.NewAttester(1, kp, nvidiaAttestEndpointFlag)
 		if len(ipFlag) != 0 {
 
 			// Mock Neuron, use self hotkey
@@ -167,21 +173,16 @@ func GetNodesFromStdin(cmd *cobra.Command) []*targon.MinerNode {
 }
 
 type AttestConfig struct {
-	ChainNetuid           int
-	ChainEndpoint         string
 	ValidatorHotkeyPhrase string
 	MinerHotkeyPhrase     string
-	NvidiaAttestEndpoint  string
 }
 
 func loadConfig() (*AttestConfig, error) {
 	config := &AttestConfig{}
 
 	config_strings := map[string]*string{
-		"chain.endpoint":                &config.ChainEndpoint,
 		"validator.hotkey_phrase":       &config.ValidatorHotkeyPhrase,
 		"miner.hotkey_phrase":           &config.MinerHotkeyPhrase,
-		"nvidia_attest.endpoint":        &config.NvidiaAttestEndpoint,
 	}
 
 	for key, value := range config_strings {
@@ -190,11 +191,6 @@ func loadConfig() (*AttestConfig, error) {
 		}
 		*value = viper.GetString(key)
 	}
-
-	if viper.GetInt("chain.netuid") == -1 {
-		shared.PromptConfigInt("chain.netuid")
-	}
-	config.ChainNetuid = viper.GetInt("chain.netuid")
 
 	return config, nil
 }
