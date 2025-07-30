@@ -41,11 +41,6 @@ func initConfig() error {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	// Set default values
-	viper.Set("chain.endpoint", "wss://entrypoint-finney.opentensor.ai:443")
-	viper.Set("nvidia_attest.endpoint", "http://nvidia-attest")
-	viper.Set("chain.netuid", 4)
-
 	if err := viper.WriteConfigAs(path); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}

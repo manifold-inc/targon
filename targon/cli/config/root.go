@@ -9,16 +9,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-var netuidFlag int
 var minerHotkeyPhraseFlag string
 var validatorHotkeyPhraseFlag string
-var nvidiaAttestEndpointFlag string
 
 func init() {
 	configCmd.Flags().StringVar(&minerHotkeyPhraseFlag, "miner.hotkey_phrase", "", "Miner hotkey phrase to update to")
 	configCmd.Flags().StringVar(&validatorHotkeyPhraseFlag, "validator.hotkey_phrase", "", "Validator hotkey phrase to update to")
-	configCmd.Flags().IntVar(&netuidFlag, "netuid", -1, "Netuid to update to")
-	configCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia.attest_endpoint", "", "NVIDIA attest endpoint to update to")
 	root.RootCmd.AddCommand(configCmd)
 }
 
@@ -38,18 +34,6 @@ var configCmd = &cobra.Command{
 		if validatorHotkeyPhraseFlag != "" {
 			viper.Set("validator.hotkey_phrase", validatorHotkeyPhraseFlag)
 			fmt.Printf("Validator hotkey phrase updated to: %s\n", validatorHotkeyPhraseFlag)
-			updated = true
-		}
-
-		if netuidFlag != 0 {
-			viper.Set("netuid", netuidFlag)
-			fmt.Printf("Netuid updated to: %d\n", netuidFlag)
-			updated = true
-		}
-
-		if nvidiaAttestEndpointFlag != "" {
-			viper.Set("nvidia.attest_endpoint", nvidiaAttestEndpointFlag)
-			fmt.Printf("NVIDIA attest endpoint updated to: %s\n", nvidiaAttestEndpointFlag)
 			updated = true
 		}
 
