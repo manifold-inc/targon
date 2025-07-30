@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"mongo-wrapper/internal/setup"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -11,6 +10,7 @@ import (
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"mongo-wrapper/internal/setup"
 )
 
 type MinerBid struct {
@@ -171,7 +171,7 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": failed,
 	})
 }

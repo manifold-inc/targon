@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -11,19 +12,15 @@ import (
 func InitMongo() (*mongo.Client, error) {
 	mongoUsername := os.Getenv("MONGO_USERNAME")
 	mongoPassword := os.Getenv("MONGO_PASSWORD")
-	mongoHost := os.Getenv("MONGO_HOST")
-	mongoPort := os.Getenv("MONGO_PORT")
 
 	var mongoClient *mongo.Client
 
 	var connectionString string
-	if mongoUsername != "" && mongoPassword != "" {
-		connectionString = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s?authSource=admin&authMechanism=SCRAM-SHA-256",
-			mongoUsername, mongoPassword, mongoHost, mongoPort, "targon")
-	} else {
-		connectionString = fmt.Sprintf("mongodb://%s:%s/%s",
-			mongoHost, mongoPort, "targon")
+	if mongoUsername == "" || mongoPassword == "" {
+		panic("No mongo credentials")
 	}
+	connectionString = fmt.Sprintf("mongodb://%s:%s@%s:%s/%s?authSource=admin&authMechanism=SCRAM-SHA-256",
+		mongoUsername, mongoPassword, "mongo", "27017", "targon")
 
 	clientOpts := options.Client().ApplyURI(connectionString)
 	client, err := mongo.Connect(clientOpts)
