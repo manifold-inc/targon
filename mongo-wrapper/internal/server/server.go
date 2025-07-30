@@ -34,11 +34,6 @@ type AuctionResult struct {
 	Weights     *Weights               `bson:"weights,omitempty" json:"weights,omitempty"`
 }
 
-type AttestationReport struct {
-	AttestErrors map[string]map[string]string `bson:"attest_errors" json:"attest_errors"`
-	HotkeyToUID  map[string]string            `bson:"hotkey_to_uid" json:"hotkey_to_uid"`
-}
-
 type MinerInfoDocument struct {
 	Block          int                          `bson:"block,omitempty" json:"block,omitempty"`
 	Timestamp      int64                        `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
