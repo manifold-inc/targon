@@ -118,7 +118,7 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 	timestamp := c.Request().Header.Get("Epistula-Timestamp")
 	signedFor := c.Request().Header.Get("Epistula-Signed-For")
 
-	if signedBy == "" || signature == "" || uuid == "" || timestamp == "" || signedFor == "" {
+	if signedBy == "" || signature == "" || uuid == "" || timestamp == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "unauthorized",
 		})
