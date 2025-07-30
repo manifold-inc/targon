@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -15,7 +16,6 @@ import (
 )
 
 type MinerBid struct {
-	Ip      string  `bson:"ip" json:"ip"`
 	Price   int     `bson:"price" json:"price"`
 	UID     string  `bson:"uid" json:"uid"`
 	Gpus    int     `bson:"gpus" json:"gpus"`
@@ -35,13 +35,9 @@ type AuctionResult struct {
 	Weights     *Weights               `bson:"weights,omitempty" json:"weights,omitempty"`
 }
 
-type MinerInfoDocument struct {
-	Block          int                          `bson:"block,omitempty" json:"block,omitempty"`
-	Timestamp      int64                        `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
-	AttestErrors   map[string]map[string]string `bson:"attest_errors,omitempty" json:"attest_errors,omitempty"`
-	HotkeyToUID    map[string]string            `bson:"hotkey_to_uid,omitempty" json:"hotkey_to_uid,omitempty"`
-	AuctionResults map[string][]*MinerBid       `bson:"auction_results,omitempty" json:"auction_results,omitempty"`
-	Weights        *Weights                     `bson:"weights,omitempty" json:"weights,omitempty"`
+type AttestationResult struct {
+	AttestErrors map[string]map[string]string `bson:"attest_errors,omitempty" json:"attest_errors,omitempty"`
+	HotkeyToUID  map[string]string            `bson:"hotkey_to_uid,omitempty" json:"hotkey_to_uid,omitempty"`
 }
 
 type Server struct {
@@ -89,7 +85,7 @@ func (s *Server) getAuctionResults(c echo.Context) error {
 		}
 	}
 
-	opts := options.Find().SetLimit(limit).SetSort(bson.D{{Key: "timestamp", Value: -1}})
+	opts := options.Find().SetLimit(limit).SetSort(bson.D{{Key: "block", Value: -1}})
 
 	cursor, err := collection.Find(context.Background(), bson.M{}, opts)
 	if err != nil {
@@ -148,17 +144,12 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 
 	opts := options.FindOne().SetSort(bson.D{{Key: "block", Value: -1}})
 
-	var result MinerInfoDocument
+	var result AttestationResult
 	err = collection.FindOne(context.Background(), bson.M{}, opts).Decode(&result)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to get attestation report",
 		})
-	}
-
-	failed := make(map[string]string)
-	if uidErrors, ok := result.AttestErrors[uid]; ok {
-		failed = uidErrors
 	}
 
 	if result.HotkeyToUID[signedBy] != uid && result.HotkeyToUID[signedBy] != "28" {
@@ -167,7 +158,17 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": failed,
-	})
+	var failed map[string]string
+	if uidErrors, ok := result.AttestErrors[uid]; ok {
+		failed = uidErrors
+	}
+
+	jsonData, err := json.Marshal(failed)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to marshal attestation errors",
+		})
+	}
+
+	return c.String(http.StatusOK, string(jsonData))
 }
