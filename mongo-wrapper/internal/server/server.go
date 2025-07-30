@@ -101,7 +101,9 @@ func (s *Server) getAuctionResults(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, results)
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": results,
+	})
 }
 
 func (s *Server) getAttestationErrors(c echo.Context) error {
