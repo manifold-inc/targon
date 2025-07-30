@@ -3,10 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"mongo-wrapper/internal/setup"
+	"net/http"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/subtrahend-labs/gobt/boilerplate"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -21,6 +22,11 @@ type AuctionResult struct {
 type Weights struct {
 	UIDs       []uint16  `bson:"uids" json:"uids"`
 	Incentives []float64 `bson:"incentives" json:"incentives"`
+}
+
+type AttestationReport struct {
+	Failed      map[string]string `bson:"attest_errors" json:"failed"`
+	HotkeyToUID map[string]string `bson:"hotkey_to_uid" json:"hotkey_to_uid"`
 }
 
 type Server struct {
@@ -47,6 +53,7 @@ func NewServer(deps *setup.Dependencies) *Server {
 
 func (s *Server) setupRoutes() {
 	s.echo.GET("/api/v1/auction-results", s.getAuctionResults)
+	s.echo.GET("/api/v1/attestation-errors/:uid", s.getAttestationErrors)
 }
 
 func (s *Server) Start(addr string) error {
@@ -94,4 +101,94 @@ func (s *Server) getAuctionResults(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, auctionResults)
+}
+
+func (s *Server) getAttestationErrors(c echo.Context) error {
+	uid := c.Param("uid")
+	if uid == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "No UID provided",
+		})
+	}
+
+	signedBy := c.Request().Header.Get("Epistula-Signed-By")
+	signature := c.Request().Header.Get("Epistula-Request-Signature")
+	uuid := c.Request().Header.Get("Epistula-Uuid")
+	timestamp := c.Request().Header.Get("Epistula-Timestamp")
+	signedFor := c.Request().Header.Get("Epistula-Signed-For")
+
+	if signedBy == "" || signature == "" || uuid == "" || timestamp == "" || signedFor == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+		})
+	}
+
+	err := boilerplate.VerifyEpistulaHeaders(
+		"",
+		signature,
+		[]byte{},
+		timestamp,
+		uuid,
+		signedFor,
+		signedBy,
+	)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+		})
+	}
+
+	collection := s.deps.Mongo.Database("targon").Collection("miner_info")
+
+	opts := options.Find().SetLimit(1).SetSort(bson.D{{Key: "block", Value: -1}})
+
+	cursor, err := collection.Find(context.Background(), bson.M{}, opts)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to get attestation report",
+		})
+	}
+	defer cursor.Close(context.Background())
+
+	var results []bson.M
+	if err := cursor.All(context.Background(), &results); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to decode attestation report",
+		})
+	}
+
+	if len(results) == 0 {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to get attestation report",
+		})
+	}
+
+	attestErrors, _ := results[0]["attest_errors"].(map[string]interface{})
+	hotkeyToUID, _ := results[0]["hotkey_to_uid"].(map[string]interface{})
+
+	failed := make(map[string]string)
+	if uidErrors, ok := attestErrors[uid].(map[string]interface{}); ok {
+		for k, v := range uidErrors {
+			if str, ok := v.(string); ok {
+				failed[k] = str
+			}
+		}
+	}
+
+	hotkeyToUIDStr := make(map[string]string)
+	for k, v := range hotkeyToUID {
+		if str, ok := v.(string); ok {
+			hotkeyToUIDStr[k] = str
+		}
+	}
+
+	if hotkeyToUIDStr[signedBy] != uid && hotkeyToUIDStr[signedBy] != "28" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"data": failed,
+	})
 }
