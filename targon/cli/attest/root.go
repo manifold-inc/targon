@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"math/big"
+	"context"
 	"net"
 	"os"
 	"strings"
@@ -22,6 +23,11 @@ import (
 	"github.com/spf13/viper"
 	"github.com/subtrahend-labs/gobt/client"
 	"github.com/subtrahend-labs/gobt/runtime"
+
+	"github.com/docker/docker/api/types/container"
+	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
+
 )
 
 var (
@@ -98,6 +104,12 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
+		contID, err := createNewContainer("ghcr.io/manifold-inc/targon-nvidia-attest:latest")
+		if err != nil {
+			fmt.Println("Error creating container: " + err.Error())
+			return
+		}
+
 		attester := cvm.NewAttester(1, kp, nvidiaAttestEndpointFlag)
 		if len(ipFlag) != 0 {
 
@@ -158,6 +170,12 @@ var ipsCmd = &cobra.Command{
 			}()
 		}
 		wg.Wait()
+
+		err = stopContainer(contID)
+		if err != nil {
+			fmt.Println("Error stopping container: " + err.Error())
+			return
+		}
 	},
 }
 
@@ -193,4 +211,55 @@ func loadConfig() (*AttestConfig, error) {
 	}
 
 	return config, nil
+}
+
+func createNewContainer(image string) (string, error) {
+	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", err
+	}
+
+	hostBinding := nat.PortBinding{
+		HostIP:   "0.0.0.0",
+		HostPort: "3344",
+	}
+	containerPort, err := nat.NewPort("tcp", "80")
+	if err != nil {
+		panic("Unable to get the port")
+	}
+
+	portBinding := nat.PortMap{containerPort: []nat.PortBinding{hostBinding}}
+	cont, err := cli.ContainerCreate(
+		context.Background(),
+		&container.Config{
+			Image: image,
+		},
+		&container.HostConfig{
+			PortBindings: portBinding,
+			RestartPolicy: container.RestartPolicy{
+				Name: "always",
+			},
+		}, nil, nil, "nvidia-attest")
+	if err != nil {
+		panic(err)
+	}
+
+	cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
+	fmt.Printf("Container %s started\n", cont.ID)
+	return cont.ID, nil
+}
+
+func stopContainer(containerID string) error {
+	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+
+	err = cli.ContainerStop(context.Background(), containerID, container.StopOptions{})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Container %s stopped\n", containerID)
+	return nil
 }
