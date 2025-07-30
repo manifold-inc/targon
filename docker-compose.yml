@@ -19,13 +19,13 @@ services:
     env_file: .env
 
   traefik:
-    image: traefik:v3.5.0
+    image: traefik:v2.3
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./traefik/traefik.https.toml:/etc/traefik/traefik.toml
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.https.toml:/etc/traefik/traefik.toml
       - traefik-public-certificates:/certificates
 
   mongo-wrapper:
@@ -38,10 +38,10 @@ services:
     restart: unless-stopped
     labels:
       - traefik.enable=${ENABLE_MONGO_WRAPPER:-false}
-      - traefik.http.routers.api.rule=Host(`${MONGO_WRAPPER_HOST}`)
-      - traefik.http.routers.api.tls=true
-      - traefik.http.routers.api.tls.certresolver=letsencrypt
-      - traefik.http.services.api.loadbalancer.server.port=8080
+      - traefik.http.routers.mongowrapper.rule=Host(`${MONGO_WRAPPER_HOST}`)
+      - traefik.http.routers.mongowrapper.tls=true
+      - traefik.http.routers.mongowrapper.tls.certresolver=letsencrypt
+      - traefik.http.services.mongowrapper.loadbalancer.server.port=8080
 
   mongo:
     image: mongo:latest
