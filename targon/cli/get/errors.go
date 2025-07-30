@@ -17,23 +17,26 @@ import (
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
-var uidflag int
+var (
+	uidflag  int
+	endpoint string
+)
 
 func init() {
-	ipsCMD.Flags().IntVar(&uidflag, "uid", -1, "Specific uid to grab GPU info for")
-	getCmd.AddCommand(ipsCMD)
+	errsCMD.Flags().IntVar(&uidflag, "uid", -1, "Specific uid to grab GPU info for")
+	errsCMD.Flags().StringVar(&endpoint, "endpoint", "https://stats.targon.com/api/miners/attest/error", "Endpoint to get errors from")
+	getCmd.AddCommand(errsCMD)
 }
 
 type AttestErrors struct {
 	Data map[string]string `json:"data"`
 }
 
-var ipsCMD = &cobra.Command{
+var errsCMD = &cobra.Command{
 	Use:   "errors",
 	Short: "Get attestation errors for UID",
 	Long:  `Get attestation errors for UID`,
 	Run: func(cmd *cobra.Command, args []string) {
-
 		hotkeyPhrase := viper.GetString("miner.hotkey_phrase")
 		if len(hotkeyPhrase) == 0 {
 			hotkeyPhrase = shared.PromptConfigString("miner.hotkey_phrase")
@@ -43,7 +46,7 @@ var ipsCMD = &cobra.Command{
 			fmt.Println("Failed loading miner hotkey")
 			return
 		}
-		req, err := http.NewRequest("GET", "https://stats.targon.com/api/miners/attest/error/"+fmt.Sprintf("%d", uidflag), nil)
+		req, err := http.NewRequest("GET", endpoint+"/"+fmt.Sprintf("%d", uidflag), nil)
 		if err != nil {
 			err := utils.Wrap("Failed to generate request", err)
 			fmt.Println(err)
