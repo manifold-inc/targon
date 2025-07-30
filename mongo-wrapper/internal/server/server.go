@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"mongo-wrapper/internal/setup"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"mongo-wrapper/internal/setup"
 )
 
 type MinerBid struct {
@@ -88,24 +89,24 @@ func (s *Server) getAuctionResults(c echo.Context) error {
 		}
 	}
 
-	opts := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: -1}})
+	opts := options.Find().SetLimit(limit).SetSort(bson.D{{Key: "timestamp", Value: -1}})
 
-	var result MinerInfoDocument
-	err := collection.FindOne(context.Background(), bson.M{}, opts).Decode(&result)
+	cursor, err := collection.Find(context.Background(), bson.M{}, opts)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
-	auctionResult := AuctionResult{
-		Timestamp:   result.Timestamp,
-		AuctionData: result.AuctionResults,
-		Block:       result.Block,
-		Weights:     result.Weights,
+	var results []AuctionResult
+	err = cursor.All(context.Background(), &results)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
-	return c.JSON(http.StatusOK, []AuctionResult{auctionResult})
+	return c.JSON(http.StatusOK, results)
 }
 
 func (s *Server) getAttestationErrors(c echo.Context) error {
