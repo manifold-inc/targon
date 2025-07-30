@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 	"fmt"
-	"mongo-wrapper/internal/setup"
 	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"mongo-wrapper/internal/setup"
 )
 
 type AuctionResult struct {
@@ -74,7 +75,7 @@ func (s *Server) getAuctionResults(c echo.Context) error {
 		}
 	}
 
-	opts := options.Find().SetLimit(limit).SetSort(bson.D{{Key: "timestamp", Value: -1}})
+	opts := options.Find().SetLimit(limit).SetSort(bson.D{{Key: "block", Value: -1}})
 
 	cursor, err := collection.Find(context.Background(), bson.M{}, opts)
 	if err != nil {
@@ -82,7 +83,9 @@ func (s *Server) getAuctionResults(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
-	defer cursor.Close(context.Background())
+	defer func() {
+		_ = cursor.Close(context.Background())
+	}()
 
 	var auctionResults []AuctionResult
 	for cursor.Next(context.Background()) {
@@ -148,7 +151,9 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 			"error": "Failed to get attestation report",
 		})
 	}
-	defer cursor.Close(context.Background())
+	defer func() {
+		_ = cursor.Close(context.Background())
+	}()
 
 	var results []bson.M
 	if err := cursor.All(context.Background(), &results); err != nil {
@@ -163,11 +168,11 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 		})
 	}
 
-	attestErrors, _ := results[0]["attest_errors"].(map[string]interface{})
-	hotkeyToUID, _ := results[0]["hotkey_to_uid"].(map[string]interface{})
+	attestErrors, _ := results[0]["attest_errors"].(map[string]any)
+	hotkeyToUID, _ := results[0]["hotkey_to_uid"].(map[string]any)
 
 	failed := make(map[string]string)
-	if uidErrors, ok := attestErrors[uid].(map[string]interface{}); ok {
+	if uidErrors, ok := attestErrors[uid].(map[string]any); ok {
 		for k, v := range uidErrors {
 			if str, ok := v.(string); ok {
 				failed[k] = str
@@ -188,7 +193,7 @@ func (s *Server) getAttestationErrors(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"data": failed,
 	})
 }
