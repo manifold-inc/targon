@@ -43,7 +43,7 @@ func init() {
 	ipsCmd.Flags().StringVar(&ipFlag, "ip", "", "Specific ip address for off chain testing")
 	ipsCmd.Flags().StringVar(&chainEndpointFlag, "chain", "wss://entrypoint-finney.opentensor.ai:443", "Set chain endpoint")
 	ipsCmd.Flags().IntVar(&chainNetuidFlag, "netuid", 4, "Set chain netuid")
-	ipsCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia", "http://nvidia-attest", "Set nvidia attest endpoint")
+	ipsCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia", "http://localhost:3344", "Set nvidia attest endpoint")
 
 	root.RootCmd.AddCommand(ipsCmd)
 }
