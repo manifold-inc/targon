@@ -54,7 +54,6 @@ var ipsCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		if uidFlag == -1 && ipFlag == "" {
-			fmt.Println("Please specify uid or ip")
 			cmd.Help()
 			return
 		}
