@@ -39,7 +39,7 @@ var configCmd = &cobra.Command{
 
 		if !updated {
 			fmt.Println("No configuration values specified to update.")
-			fmt.Println("Use --help to see available options.")
+			cmd.Help()
 			return
 		}
 

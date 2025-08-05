@@ -29,6 +29,7 @@ var towerCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if ipflag == "" {
 			fmt.Println("requires --ip")
+			cmd.Help()
 			return
 		}
 		deps := setup.Init(zap.FatalLevel)

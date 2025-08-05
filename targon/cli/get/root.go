@@ -1,7 +1,7 @@
 package get
 
 import (
-	"fmt"
+	"os"
 	"targon/cli/root"
 
 	"github.com/spf13/cobra"
@@ -16,6 +16,9 @@ var getCmd = &cobra.Command{
 	Short: "Fetch data from mongo / chain",
 	Long:  `Fetch data from mongo or chain and display it in various formats`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Get targon info")
+		if len(args) == 0 {
+			cmd.Help()
+			os.Exit(0)
+		}
 	},
 }
