@@ -2,6 +2,8 @@ package attest
 
 import (
 	"bufio"
+	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net"
@@ -22,13 +24,17 @@ import (
 	"github.com/spf13/viper"
 	"github.com/subtrahend-labs/gobt/client"
 	"github.com/subtrahend-labs/gobt/runtime"
+
+	"github.com/docker/docker/api/types/container"
+	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 )
 
 var (
-	uidFlag int
-	ipFlag  string
-	chainEndpointFlag string
-	chainNetuidFlag int
+	uidFlag                  int
+	ipFlag                   string
+	chainEndpointFlag        string
+	chainNetuidFlag          int
 	nvidiaAttestEndpointFlag string
 )
 
@@ -37,7 +43,7 @@ func init() {
 	ipsCmd.Flags().StringVar(&ipFlag, "ip", "", "Specific ip address for off chain testing")
 	ipsCmd.Flags().StringVar(&chainEndpointFlag, "chain", "wss://entrypoint-finney.opentensor.ai:443", "Set chain endpoint")
 	ipsCmd.Flags().IntVar(&chainNetuidFlag, "netuid", 4, "Set chain netuid")
-	ipsCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia", "http://nvidia-attest", "Set nvidia attest endpoint")
+	ipsCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia", "http://localhost:3344", "Set nvidia attest endpoint")
 
 	root.RootCmd.AddCommand(ipsCmd)
 }
@@ -98,6 +104,19 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
+		contID, err := createNewContainer("ghcr.io/manifold-inc/targon-nvidia-attest:latest")
+		if err != nil {
+			fmt.Printf("Error creating container: %s\n", err.Error())
+			return
+		}
+		defer func() {
+			err = stopContainer(contID)
+			if err != nil {
+				fmt.Printf("Error stopping container: %s\n", err.Error())
+				return
+			}
+		}()
+
 		attester := cvm.NewAttester(1, kp, nvidiaAttestEndpointFlag)
 		if len(ipFlag) != 0 {
 
@@ -149,6 +168,8 @@ var ipsCmd = &cobra.Command{
 					fmt.Printf("%s: %s\n", n.Ip, err.Error())
 					return
 				}
+				attprint, _ := json.MarshalIndent(attestPayload, "", "  ")
+				fmt.Println(string(attprint))
 				gpus, _, err := attester.CheckAttest(attestPayload, nonce)
 				if err != nil {
 					fmt.Printf("%s: %s\n", n.Ip, err.Error())
@@ -181,8 +202,8 @@ func loadConfig() (*AttestConfig, error) {
 	config := &AttestConfig{}
 
 	config_strings := map[string]*string{
-		"validator.hotkey_phrase":       &config.ValidatorHotkeyPhrase,
-		"miner.hotkey_phrase":           &config.MinerHotkeyPhrase,
+		"validator.hotkey_phrase": &config.ValidatorHotkeyPhrase,
+		"miner.hotkey_phrase":     &config.MinerHotkeyPhrase,
 	}
 
 	for key, value := range config_strings {
@@ -193,4 +214,57 @@ func loadConfig() (*AttestConfig, error) {
 	}
 
 	return config, nil
+}
+
+func createNewContainer(image string) (string, error) {
+	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", err
+	}
+
+	hostBinding := nat.PortBinding{
+		HostIP:   "0.0.0.0",
+		HostPort: "3344",
+	}
+	containerPort, err := nat.NewPort("tcp", "80")
+	if err != nil {
+		panic("Unable to get the port")
+	}
+
+	portBinding := nat.PortMap{containerPort: []nat.PortBinding{hostBinding}}
+
+	cont, err := cli.ContainerCreate(
+		context.Background(),
+		&container.Config{
+			Image: image,
+			ExposedPorts: map[nat.Port]struct{}{
+				containerPort: {},
+			},
+		},
+		&container.HostConfig{
+			PortBindings: portBinding,
+			AutoRemove:   true,
+		}, nil, nil, "nvidia-attest")
+	if err != nil {
+		panic(err)
+	}
+
+	_ = cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
+	fmt.Printf("Container %s started\n", cont.ID)
+	return cont.ID, nil
+}
+
+func stopContainer(containerID string) error {
+	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+
+	err = cli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{Force: true})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Container %s stopped\n", containerID)
+	return nil
 }
