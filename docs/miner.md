@@ -534,7 +534,7 @@ report the IP addresses of each CVM you are running.
 
 1. **Update/Create the Configuration File** Edit `config.json` file to include
    the IP addresses of your TVM nodes. Add them to the list of endpoints that
-   your miner reports to the network, along with any other desired paramaters.
+   your miner reports to the network, along with any other desired parameters.
 
    Example `config.json`
 
