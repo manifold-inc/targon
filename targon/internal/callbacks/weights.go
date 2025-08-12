@@ -83,39 +83,49 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 	// under the respective auction
 	for uid, nodes := range c.MinerNodes {
 		for _, n := range nodes {
-			if c.PassedAttestation[uid] == nil {
+			if c.VerifiedNodes[uid] == nil {
 				continue
 			}
-			if c.PassedAttestation[uid][n.Ip] == nil {
+			if c.VerifiedNodes[uid][n.Ip] == nil {
 				continue
 			}
-			if len(c.PassedAttestation[uid][n.Ip]) == 0 {
+			auctionName := c.VerifiedNodes[uid][n.Ip].AuctionName
+			auc, ok := c.Auctions[auctionName]
+			if !ok {
 				continue
 			}
-			gpu := strings.ToLower(c.PassedAttestation[uid][n.Ip][0])
-			for auctionBucket := range c.Auctions {
-				if _, ok := bidcounts[auctionBucket]; !ok {
-					bidcounts[auctionBucket] = map[int]int{}
-				}
-				if strings.Contains(gpu, auctionBucket) {
-					auction[auctionBucket] = append(auction[auctionBucket], &targon.MinerBid{
-						Ip:    n.Ip,
-						Price: n.Price,
-						UID:   uid,
-						Gpus:  len(c.PassedAttestation[uid][n.Ip]),
-					})
+			if _, ok := bidcounts[auctionName]; !ok {
+				bidcounts[auctionName] = map[int]int{}
+			}
 
-					bidcounts[auctionBucket][n.Price] += len(c.PassedAttestation[uid][n.Ip])
-					break
-				}
+			// Node does not have enough GPUS. cpus will have zero min cluser size
+			if auc.MinClusterSize != 0 && auc.MinClusterSize > len(*c.VerifiedNodes[uid][n.Ip].GPUCards) {
+				continue
 			}
+
+			// ensure price is between 1 and max bid
+			price := max(min(n.Price, auc.MaxBid), 1)
+
+			bidCount := 1
+			if auc.MinClusterSize != 0 {
+				bidCount = len(*c.VerifiedNodes[uid][n.Ip].GPUCards)
+			}
+
+			auction[auctionName] = append(auction[auctionName], &targon.MinerBid{
+				Ip:    n.Ip,
+				Price: price,
+				UID:   uid,
+				Count: bidCount,
+			})
+
+			bidcounts[auctionName][price] += bidCount
 		}
 	}
 
 	// uid -> % of emission
 	payouts := map[string]float64{}
 
-	// auction -> gpu count
+	// auction -> bid count (i.e gpus are counted per gpu in a node)
 	paidnodes := map[string]int{}
 
 	// For each auction, sort the bids in ascending order and accept bids untill
@@ -134,14 +144,14 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		for _, bid := range auction[auctiontype] {
 			// GPUs * the bid price/h * interval duration approx / emission pool
 			// 	== percent of emission pool for this node for this interval
-			thisEmission := (float64(bid.Gpus) * ((float64(bid.Price) / 100) * 1.2)) / *c.EmissionPool
-			paidnodes[auctiontype] += bid.Gpus
+			thisEmission := (float64(bid.Count) * ((float64(bid.Price) / 100) * 1.2)) / *c.EmissionPool
+			paidnodes[auctiontype] += bid.Count
 			if bid.Price != lastPrice && !isRingOverMax {
-				isRingOverMax = ((thisEmission/float64(bid.Gpus))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
+				isRingOverMax = ((thisEmission/float64(bid.Count))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
 			}
 			if isRingOverMax {
-				tiedPayouts[bid.UID] += bid.Gpus
-				tiedGPUs += bid.Gpus
+				tiedPayouts[bid.UID] += bid.Count
+				tiedGPUs += bid.Count
 				bid.Diluted = true
 				continue
 			}
@@ -149,7 +159,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			emissionSum += thisEmission
 			payouts[bid.UID] += thisEmission
 			lastPrice = bid.Price
-			bid.Payout = (float64(bid.Price) / 100.0) * float64(bid.Gpus)
+			bid.Payout = (float64(bid.Price) / 100.0) * float64(bid.Count)
 		}
 
 		// Just skip if there is not much emission left to split
@@ -164,8 +174,8 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		dilutedPayoutPerGPU := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedGPUs)
 		for _, bid := range auction[auctiontype] {
 			if bid.Diluted {
-				bid.Payout = (dilutedPayoutPerGPU * float64(bid.Gpus)) / 1.2
-				payouts[bid.UID] += (dilutedPayoutPerGPU * float64(bid.Gpus)) / *c.EmissionPool
+				bid.Payout = (dilutedPayoutPerGPU * float64(bid.Count)) / 1.2
+				payouts[bid.UID] += (dilutedPayoutPerGPU * float64(bid.Count)) / *c.EmissionPool
 			}
 		}
 	}

@@ -1,12 +1,12 @@
 package targon
 
 type MinerBid struct {
-	Ip       string   `bson:"ip"`
-	Price    int      `bson:"price"`
-	UID      string   `bson:"uid"`
-	Payout   float64  `bson:"payout"`
-	Diluted  bool     `bson:"diluted"`
-	UserData UserData `bson:"user_data"`
+	Ip      string  `bson:"ip"`
+	Price   int     `bson:"price"`
+	UID     string  `bson:"uid"`
+	Payout  float64 `bson:"payout"`
+	Diluted bool    `bson:"diluted"`
+	Count   int     `bson:"count"`
 }
 
 type MinerInfo struct {
@@ -36,6 +36,7 @@ type UserData struct {
 	GPUCards     *Cards        `json:"gpu_cards,omitempty"`
 	CPUCards     *Cards        `json:"cpu_cards,omitempty"`
 	NodeType     string        `json:"node_type"`
+	AuctionName  string        `json:"auction_type"`
 	NVCCResponse *NVCCResponse `json:"attestation,omitempty"`
 
 	// Added in handler
