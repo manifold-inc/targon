@@ -22,6 +22,15 @@ type Weights struct {
 	Incentives []float64 `bson:"incentives"`
 }
 
+type AttestationResponse struct {
+	TDXQuote string   `json:"tdx_quote"`
+	UserData UserData `json:"user_data"`
+}
+type GPUAttestationResponse struct {
+	Valid bool  `json:"valid"`
+	Error error `json:"error,omitempty"`
+}
+
 type UserData struct {
 	// Added in attester
 	GPUCards     *Cards        `json:"gpu_cards,omitempty"`
@@ -45,6 +54,15 @@ type NVCCResponse struct {
 		Token             string `json:"token"`
 		Valid             bool   `json:"valid"`
 	} `json:"switch_remote"`
+}
+
+type NVCCVerifyBody struct {
+	NVCCResponse  `json:"inline"`
+	ExpectedNonce string `json:"expected_nonce"`
+}
+type NVCCVerifyResponse struct {
+	GpuAttestationSuccess    bool `json:"gpu_attestation_success"`
+	SwitchAttestationSuccess bool `json:"switch_attestation_success"`
 }
 
 type Cards []string

@@ -30,6 +30,7 @@ type Dependencies struct {
 	Tower  *tower.Tower
 }
 type Env struct {
+	TOWER_URL              string
 	HOTKEY_PHRASE          string
 	ATTEST_RATE            float64
 	CHAIN_ENDPOINT         string
@@ -180,6 +181,7 @@ func Init(opts ...any) *Dependencies {
 		Mongo:  mongoClient,
 		Tower:  t,
 		Env: Env{
+			TOWER_URL:              TOWER_URL,
 			DEBUG:                  debug,
 			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
 			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,

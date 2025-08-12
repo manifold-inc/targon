@@ -16,7 +16,7 @@ func getNodesAll(c *targon.Core) {
 	wg.Add(len(c.Neurons))
 	mu := sync.Mutex{}
 	c.Deps.Log.Infof("Checking CVM nodes for %d miners", len(c.Neurons))
-	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
+	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.NVIDIA_ATTEST_ENDPOINT, c.Deps.Env.TOWER_URL)
 	totalNodes := 0
 	for _, n := range c.Neurons {
 		uid := fmt.Sprintf("%d", n.UID.Int64())

@@ -17,9 +17,7 @@ import (
 )
 
 func setWeights(c *targon.Core, uids []types.U16, scores []types.U16) {
-	c.Mu.Lock()
 	defer func() {
-		c.Mu.Unlock()
 		resetState(c)
 	}()
 

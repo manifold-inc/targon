@@ -16,7 +16,7 @@ func getPassingAttestations(c *targon.Core) {
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
 	c.Deps.Log.Infof("Getting Attestations for %d miners", len(c.Neurons))
-	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
+	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.NVIDIA_ATTEST_ENDPOINT, c.Deps.Env.TOWER_URL)
 
 	for uid, nodes := range c.MinerNodes {
 		if nodes == nil {
@@ -52,20 +52,13 @@ func getPassingAttestations(c *targon.Core) {
 				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(n.Hotkey), cvmIP, nonce)
 
 				// Verify attestation
-				var gpus, nodeids []string
+				var userData *targon.UserData
 				if err == nil {
-					gpus, nodeids, err = attester.CheckAttest(
+					userData, err = attester.VerifyAttestation(
 						attestPayload,
 						nonce,
+						node.Ip,
 					)
-				}
-
-				// Check with tower for this ip
-				if err == nil {
-					passed := c.Deps.Tower.Check(node.Ip)
-					if !passed {
-						err = errors.New("failed tower check")
-					}
 				}
 
 				// Lock for core map updates
@@ -74,35 +67,23 @@ func getPassingAttestations(c *targon.Core) {
 
 				// Check for duplicate GPUS
 				if err == nil {
-					for _, v := range nodeids {
-						if c.NodeIds[v] {
-							err = errors.New("duplicate node id found")
-							break
-						}
-						c.NodeIds[v] = true
+					if c.NodeIds[userData.CVMID] {
+						err = errors.New("duplicate node id found")
 					}
+					c.NodeIds[userData.CVMID] = true
 				}
 
 				// Mark error if found; all errors here are non-retryable
 				if err != nil {
 					c.MinerErrors[uid][node.Ip] = err.Error()
 					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err.Error())
-
-					// Check if its a retryable error
-					var aerr *cvm.AttestError
-					if errors.As(err, &aerr) {
-						c.Deps.Log.Debugf("%s: attest error: %s", uid, aerr.Error())
-						return
-					}
 					return
 				}
 
 				// Add gpus to passed gpus, and delete any error marks
 				// Only add gpus if not duplicates
-				c.Deps.Log.Infof("%s passed attestation: %s", uid, gpus)
-
-				// TODO add user data
-				c.VerifiedNodes[uid][node.Ip] = &targon.UserData{}
+				c.Deps.Log.Infof("%s passed attestation: %+v", *userData)
+				c.VerifiedNodes[uid][node.Ip] = userData
 				delete(c.MinerErrors[uid], node.Ip)
 			}()
 		}
