@@ -14,6 +14,7 @@ import (
 // its already found
 func getPassingAttestations(c *targon.Core) {
 	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
 	c.Deps.Log.Infof("Getting Attestations for %d miners", len(c.Neurons))
 	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
 
@@ -21,23 +22,23 @@ func getPassingAttestations(c *targon.Core) {
 		if nodes == nil {
 			continue
 		}
-		c.Mu.Lock()
-		if c.PassedAttestation[uid] == nil {
-			c.PassedAttestation[uid] = map[string][]string{}
+		mu.Lock()
+		if c.VerifiedNodes[uid] == nil {
+			c.VerifiedNodes[uid] = map[string]*targon.UserData{}
 		}
-		if c.AttestErrors[uid] == nil {
-			c.AttestErrors[uid] = map[string]string{}
+		if c.VerifiedNodes[uid] == nil {
+			c.VerifiedNodes[uid] = map[string]*targon.UserData{}
 		}
-		c.Mu.Unlock()
+		mu.Unlock()
 
 		for _, node := range nodes {
 			// Dont check nodes that have already passed this interval
-			c.Mu.Lock()
-			if c.PassedAttestation[uid][node.Ip] != nil {
-				c.Mu.Unlock()
+			mu.Lock()
+			if c.VerifiedNodes[uid][node.Ip] != nil {
+				mu.Unlock()
 				continue
 			}
-			c.Mu.Unlock()
+			mu.Unlock()
 
 			wg.Add(1)
 			go func() {
@@ -51,9 +52,9 @@ func getPassingAttestations(c *targon.Core) {
 				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(n.Hotkey), cvmIP, nonce)
 
 				// Verify attestation
-				var gpus, ueids []string
+				var gpus, nodeids []string
 				if err == nil {
-					gpus, ueids, err = attester.CheckAttest(
+					gpus, nodeids, err = attester.CheckAttest(
 						attestPayload,
 						nonce,
 					)
@@ -68,35 +69,29 @@ func getPassingAttestations(c *targon.Core) {
 				}
 
 				// Lock for core map updates
-				c.Mu.Lock()
-				defer c.Mu.Unlock()
+				mu.Lock()
+				defer mu.Unlock()
 
 				// Check for duplicate GPUS
 				if err == nil {
-					for _, v := range ueids {
-						if c.GPUids[v] {
-							// Add empty string so that we dont ping this node again,
-							// but dont pass any actual gpus
-							c.PassedAttestation[uid][node.Ip] = []string{}
-							err = errors.New("duplicate gpu id found")
+					for _, v := range nodeids {
+						if c.NodeIds[v] {
+							err = errors.New("duplicate node id found")
 							break
 						}
-						c.GPUids[v] = true
+						c.NodeIds[v] = true
 					}
 				}
 
 				// Mark error if found; all errors here are non-retryable
 				if err != nil {
-					c.AttestErrors[uid][node.Ip] = err.Error()
+					c.MinerErrors[uid][node.Ip] = err.Error()
 					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err.Error())
 
 					// Check if its a retryable error
 					var aerr *cvm.AttestError
 					if errors.As(err, &aerr) {
 						c.Deps.Log.Debugf("%s: attest error: %s", uid, aerr.Error())
-						if !aerr.ShouldRetry {
-							c.PassedAttestation[uid][node.Ip] = []string{}
-						}
 						return
 					}
 					return
@@ -105,8 +100,10 @@ func getPassingAttestations(c *targon.Core) {
 				// Add gpus to passed gpus, and delete any error marks
 				// Only add gpus if not duplicates
 				c.Deps.Log.Infof("%s passed attestation: %s", uid, gpus)
-				c.PassedAttestation[uid][node.Ip] = gpus
-				delete(c.AttestErrors[uid], node.Ip)
+
+				// TODO add user data
+				c.VerifiedNodes[uid][node.Ip] = &targon.UserData{}
+				delete(c.MinerErrors[uid], node.Ip)
 			}()
 		}
 	}

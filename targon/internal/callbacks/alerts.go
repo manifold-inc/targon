@@ -25,7 +25,7 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 	totalGPUs := 0
 	activeNodes := 0
 
-	for uidstr, nodes := range c.PassedAttestation {
+	for uidstr, nodes := range c.VerifiedNodes {
 		uid, _ := strconv.Atoi(uidstr)
 		if stats[uid] == nil {
 			stats[uid] = &minerStats{
@@ -34,9 +34,12 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 			}
 		}
 
-		for _, gpus := range nodes {
+		for _, node := range nodes {
+			if node == nil {
+				continue
+			}
 			activeNodes++
-			for _, gpu := range gpus {
+			for _, gpu := range *node.GPUCards {
 				gpuLower := strings.ToLower(gpu)
 				totalGPUs++
 				stats[uid].gpuCount++

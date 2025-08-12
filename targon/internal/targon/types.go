@@ -1,16 +1,12 @@
 package targon
 
-type AttestPayload struct {
-	Attest *AttestResponse
-}
-
 type MinerBid struct {
-	Ip      string  `bson:"ip"`
-	Price   int     `bson:"price"`
-	UID     string  `bson:"uid"`
-	Gpus    int     `bson:"gpus"`
-	Payout  float64 `bson:"payout"`
-	Diluted bool    `bson:"diluted"`
+	Ip       string   `bson:"ip"`
+	Price    int      `bson:"price"`
+	UID      string   `bson:"uid"`
+	Payout   float64  `bson:"payout"`
+	Diluted  bool     `bson:"diluted"`
+	UserData UserData `bson:"user_data"`
 }
 
 type MinerInfo struct {
@@ -20,22 +16,25 @@ type MinerInfo struct {
 	Timestamp int64    `bson:"timestamp,omitempty"`
 	Weights   Weights  `bson:"weights,omitempty"`
 }
+
 type Weights struct {
 	UIDs       []uint16  `bson:"uids"`
 	Incentives []float64 `bson:"incentives"`
 }
 
-type AttestResponse struct {
-	GPULocal struct {
-		AttestationResult bool   `json:"attestation_result"`
-		Token             string `json:"token"`
-		Valid             bool   `json:"valid"`
-	} `json:"gpu_local"`
-	SwitchLocal struct {
-		AttestationResult bool   `json:"attestation_result"`
-		Token             string `json:"token"`
-		Valid             bool   `json:"valid"`
-	} `json:"switch_local"`
+type UserData struct {
+	// Added in attester
+	GPUCards     *Cards        `json:"gpu_cards,omitempty"`
+	CPUCards     *Cards        `json:"cpu_cards,omitempty"`
+	NodeType     string        `json:"node_type"`
+	NVCCResponse *NVCCResponse `json:"attestation,omitempty"`
+
+	// Added in handler
+	Nonce string `json:"nonce"`
+	CVMID string `json:"cvm_id"`
+}
+
+type NVCCResponse struct {
 	GPURemote struct {
 		AttestationResult bool   `json:"attestation_result"`
 		Token             string `json:"token"`
@@ -48,23 +47,4 @@ type AttestResponse struct {
 	} `json:"switch_remote"`
 }
 
-type AttestClaim struct {
-	HWModel            string `json:"hw_model,omitempty"`
-	DriverVersion      string `json:"driver_version,omitempty"`
-	VBiosVersion       string `json:"vbios_version,omitempty"`
-	Measres            string `json:"measres,omitempty"`
-	AttestationSuccess bool   `json:"attestation_success,omitempty"`
-}
-
-type GPUAttestationResponse struct {
-	GPUIds                   []string `json:"gpu_ids"`
-	GPUAttestationSuccess    bool     `json:"gpu_attestation_success"`
-	SwitchAttestationSuccess bool     `json:"switch_attestation_success"`
-	GPUClaims                map[string]struct {
-		GPUType string `json:"gpu_type"`
-	} `json:"gpu_claims,omitempty"`
-	SwitchClaims map[string]struct {
-		SwitchType string `json:"switch_type"`
-		SwitchID   string `json:"switch_id"`
-	} `json:"switch_claims,omitempty"`
-}
+type Cards []string

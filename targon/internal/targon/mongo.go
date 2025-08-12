@@ -80,17 +80,14 @@ func LoadMongoBackup(c *Core) error {
 	if r.Core.MinerNodes != nil {
 		c.MinerNodes = r.Core.MinerNodes
 	}
-	if r.Core.MinerNodesErrors != nil {
-		c.MinerNodesErrors = r.Core.MinerNodesErrors
+	if r.Core.VerifiedNodes != nil {
+		c.VerifiedNodes = r.Core.VerifiedNodes
 	}
-	if r.Core.PassedAttestation != nil {
-		c.PassedAttestation = r.Core.PassedAttestation
+	if r.Core.MinerErrors != nil {
+		c.MinerErrors = r.Core.MinerErrors
 	}
-	if r.Core.AttestErrors != nil {
-		c.AttestErrors = r.Core.AttestErrors
-	}
-	if r.Core.GPUids != nil {
-		c.GPUids = r.Core.GPUids
+	if r.Core.NodeIds != nil {
+		c.NodeIds = r.Core.NodeIds
 	}
 	if r.Core.EmissionPool != nil {
 		c.EmissionPool = r.Core.EmissionPool

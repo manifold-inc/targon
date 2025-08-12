@@ -1,8 +1,6 @@
 package targon
 
 import (
-	"sync"
-
 	"targon/internal/setup"
 	"targon/internal/tower"
 
@@ -15,41 +13,38 @@ type MinerNode struct {
 }
 
 type Core struct {
-	Neurons map[string]runtime.NeuronInfo `bson:"-"`
-	Deps    *setup.Dependencies           `bson:"-"`
-	Mnmu    sync.Mutex                    `bson:"-"`
-
-	HotkeyToUid map[string]string `bson:"hotkey_to_uid"`
+	Neurons     map[string]runtime.NeuronInfo `bson:"-"`
+	Deps        *setup.Dependencies           `bson:"-"`
+	HotkeyToUid map[string]string             `bson:"hotkey_to_uid"`
 
 	// uid -> nodes
-	MinerNodes       map[string][]*MinerNode `bson:"miner_nodes"`
-	MinerNodesErrors map[string]string       `bson:"miner_nodes_errors"`
-	Hpmu             sync.Mutex              `bson:"-"`
+	MinerNodes map[string][]*MinerNode `bson:"miner_nodes"`
+
+	// uid -> ip/location -> error
+	MinerErrors map[string]map[string]string `bson:"miner_errors"`
+
 	// uid -> nodes -> gpus
-	PassedAttestation map[string]map[string][]string `bson:"passed_attestation"`
-	AttestErrors      map[string]map[string]string   `bson:"attest_errors"`
-	// gpu id -> seen
-	GPUids map[string]bool `bson:"gp_uids"`
-	// Total tao emission pool for mieners
+	VerifiedNodes map[string]map[string]*UserData `bson:"verified_nodes"`
+
+	// node id -> seen
+	NodeIds map[string]bool `bson:"node_ids"`
+
+	// Total tao emission pool for mieners (in usd)
 	EmissionPool   *float64                 `bson:"emission_pool"`
 	Auctions       map[string]tower.Auction `bson:"auctions"`
 	AuctionResults map[string][]*MinerBid   `bson:"auction_results"`
 	TaoPrice       *float64                 `bson:"tao_price"`
 	StartupBlock   int                      `bson:"startup_block"`
-
-	// Global core locks
-	Mu sync.Mutex `bson:"-"`
 }
 
 func CreateCore(d *setup.Dependencies) *Core {
 	// TODO init maps
 	return &Core{
-		Deps:              d,
-		MinerNodes:        map[string][]*MinerNode{},
-		PassedAttestation: map[string]map[string][]string{},
-		Neurons:           map[string]runtime.NeuronInfo{},
-		GPUids:            map[string]bool{},
-		MinerNodesErrors:  map[string]string{},
-		AttestErrors:      map[string]map[string]string{},
+		Deps:          d,
+		MinerNodes:    map[string][]*MinerNode{},
+		VerifiedNodes: map[string]map[string]*UserData{},
+		Neurons:       map[string]runtime.NeuronInfo{},
+		NodeIds:       map[string]bool{},
+		MinerErrors:   map[string]map[string]string{},
 	}
 }

@@ -14,6 +14,7 @@ import (
 func getNodesAll(c *targon.Core) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.Neurons))
+	mu := sync.Mutex{}
 	c.Deps.Log.Infof("Checking CVM nodes for %d miners", len(c.Neurons))
 	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.NVIDIA_ATTEST_ENDPOINT)
 	totalNodes := 0
@@ -29,17 +30,17 @@ func getNodesAll(c *targon.Core) {
 			}
 			nodes, err := attester.GetNodes(utils.AccountIDToSS58(n.Hotkey), fmt.Sprintf("%s:%d", neuronIpAddr.String(), n.AxonInfo.Port))
 
-			c.Mnmu.Lock()
-			defer c.Mnmu.Unlock()
+			mu.Lock()
+			defer mu.Unlock()
 			if err != nil {
 				// supress this in prod; we can always check mongo for errors
 				c.Deps.Log.Debugw("error getting miner nodes", "uid", uid, "error", err)
-				c.MinerNodesErrors[uid] = err.Error()
+				c.MinerErrors[uid][n.AxonInfo.IP.String()] = err.Error()
 				return
 			}
 
 			c.MinerNodes[uid] = nodes
-			delete(c.MinerNodesErrors, uid)
+			delete(c.MinerErrors[uid], n.AxonInfo.IP.String())
 			totalNodes += len(nodes)
 		}()
 	}

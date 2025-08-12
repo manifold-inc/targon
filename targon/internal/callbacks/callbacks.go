@@ -116,7 +116,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		// Not on specific tempo;
 		// helps reduce stress on cvm nodes from number of pings
 		chance := rand.Float64()
-		if chance < c.Deps.Env.ATTEST_RATE && len(c.PassedAttestation) != 0 {
+		if chance < c.Deps.Env.ATTEST_RATE && len(c.VerifiedNodes) != 0 {
 			return
 		}
 		getPassingAttestations(c)
