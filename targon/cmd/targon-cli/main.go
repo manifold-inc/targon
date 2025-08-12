@@ -5,7 +5,6 @@ import (
 	_ "targon/cli/config"
 	_ "targon/cli/get"
 	"targon/cli/root"
-	_ "targon/cli/tower"
 )
 
 func main() {

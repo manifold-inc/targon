@@ -117,7 +117,7 @@ var ipsCmd = &cobra.Command{
 			}
 		}()
 
-		attester := cvm.NewAttester(1, kp, nvidiaAttestEndpointFlag)
+		attester := cvm.NewAttester(1, kp, nvidiaAttestEndpointFlag, "https://tower.targon.com")
 		if len(ipFlag) != 0 {
 
 			// Mock Neuron, use self hotkey
@@ -129,7 +129,7 @@ var ipsCmd = &cobra.Command{
 				fmt.Println(err.Error())
 				return
 			}
-			gpus, _, err := attester.CheckAttest(attestPayload, nonce)
+			gpus, err := attester.VerifyAttestation(attestPayload, nonce, ipFlag)
 			if err != nil {
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
@@ -170,7 +170,7 @@ var ipsCmd = &cobra.Command{
 				}
 				attprint, _ := json.MarshalIndent(attestPayload, "", "  ")
 				fmt.Println(string(attprint))
-				gpus, _, err := attester.CheckAttest(attestPayload, nonce)
+				gpus, err := attester.VerifyAttestation(attestPayload, nonce, ipFlag)
 				if err != nil {
 					fmt.Printf("%s: %s\n", n.Ip, err.Error())
 					return
