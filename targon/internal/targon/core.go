@@ -35,6 +35,7 @@ type Core struct {
 	AuctionResults map[string][]*MinerBid `bson:"auction_results"`
 	MaxBid         int                    `bson:"max_bid"`
 	TaoPrice       *float64               `bson:"tao_price"`
+	StartupBlock   int                    `bson:"startup_block"`
 
 	// Global core locks
 	Mu sync.Mutex `bson:"-"`

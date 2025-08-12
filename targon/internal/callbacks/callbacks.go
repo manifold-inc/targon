@@ -37,6 +37,9 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 
 	// Logging blocks
 	v.AddBlockCallback(func(h types.Header) {
+		if c.StartupBlock == 0 {
+			c.StartupBlock = int(h.Number)
+		}
 		logBlockCallback(c, h)
 	})
 
@@ -132,6 +135,10 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// Set Weights
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
+			return
+		}
+		if int(h.Number)-c.StartupBlock < 180 {
+			c.Deps.Log.Warn("Skipping weightset from recent startup block")
 			return
 		}
 		uids, scores, results, err := getWeights(c)
