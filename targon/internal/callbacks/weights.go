@@ -6,7 +6,6 @@ import (
 	"math"
 	"sort"
 	"strconv"
-	"strings"
 
 	"targon/internal/setup"
 	"targon/internal/targon"
