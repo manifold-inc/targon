@@ -58,7 +58,7 @@ func SaveMongoBackup(c *Core) error {
 	backup := Backup{Core: c, Timestamp: time.Now().Unix()}
 
 	// Store miner info with emissions data
-	minerInfoCol := c.Deps.Mongo.Database("targon").Collection("miner_info_backup")
+	minerInfoCol := c.Deps.Mongo.Database("targon").Collection("miner_info_backup_v2")
 	_, err := minerInfoCol.InsertOne(ctx, backup)
 	return err
 }
@@ -98,7 +98,6 @@ func LoadMongoBackup(c *Core) error {
 	if r.Core.Auctions != nil {
 		c.Auctions = r.Core.Auctions
 	}
-	c.MaxBid = r.Core.MaxBid
 	c.TaoPrice = r.Core.TaoPrice
 	return nil
 }

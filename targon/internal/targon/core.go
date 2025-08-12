@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"targon/internal/setup"
+	"targon/internal/tower"
 
 	"github.com/subtrahend-labs/gobt/runtime"
 )
@@ -30,12 +31,11 @@ type Core struct {
 	// gpu id -> seen
 	GPUids map[string]bool `bson:"gp_uids"`
 	// Total tao emission pool for mieners
-	EmissionPool   *float64               `bson:"emission_pool"`
-	Auctions       map[string]int         `bson:"auctions"`
-	AuctionResults map[string][]*MinerBid `bson:"auction_results"`
-	MaxBid         int                    `bson:"max_bid"`
-	TaoPrice       *float64               `bson:"tao_price"`
-	StartupBlock   int                    `bson:"startup_block"`
+	EmissionPool   *float64                 `bson:"emission_pool"`
+	Auctions       map[string]tower.Auction `bson:"auctions"`
+	AuctionResults map[string][]*MinerBid   `bson:"auction_results"`
+	TaoPrice       *float64                 `bson:"tao_price"`
+	StartupBlock   int                      `bson:"startup_block"`
 
 	// Global core locks
 	Mu sync.Mutex `bson:"-"`

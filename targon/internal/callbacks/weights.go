@@ -129,7 +129,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
 		})
 		// max % of the pool for this auction
-		maxEmission := float64(pool) / 100
+		maxEmission := float64(pool.Emission) / 100
 		emissionSum := 0.0
 		tiedGPUs := 0
 		isRingOverMax := false
@@ -161,7 +161,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		// If not all rings get paid their bids, normalize all other rings to the remaning emission
 		// and add that to the payouts. This greatly increases downward price pressure
 		// by highly rewarding people that underbid the last paid ring if it ties.
-		maxTiedEmissionBidPool := (float64(tiedGPUs) * (float64(c.MaxBid) / 100)) / *c.EmissionPool
+		maxTiedEmissionBidPool := (float64(tiedGPUs) * (float64(pool.MaxBid) / 100)) / *c.EmissionPool
 		remainingEmission := maxEmission - emissionSum
 		dilutedPayoutPerGPU := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedGPUs)
 		for _, bid := range auction[auctiontype] {

@@ -22,10 +22,16 @@ type Tower struct {
 	url    string
 }
 
-type AuctionDetails struct {
-	TaoPrice float64        `json:"tao_price"`
-	Auctions map[string]int `json:"auctions"`
-	MaxBid   int            `json:"max_bid"`
+type Auctions struct {
+	TaoPrice float64            `json,bson:"tao_price"`
+	Auctions map[string]Auction `json,bson:"auctions"`
+}
+
+type Auction struct {
+	MaxBid         int    `json,bson:"max_bid" yaml:"MaxBid"`
+	Emission       int    `json,bson:"emission" yaml:"Emission"`
+	MinClusterSize int    `json,bson:"min_cluster_size" yaml:"MinClusterSize"`
+	NodeType       string `json,bson:"node_type" yaml:"NodeType"`
 }
 
 func NewTower(client *http.Client, url string, hotkey *signature.KeyringPair, log *zap.SugaredLogger) *Tower {
@@ -37,8 +43,8 @@ func NewTower(client *http.Client, url string, hotkey *signature.KeyringPair, lo
 	}
 }
 
-func (t *Tower) AuctionDetails() (*AuctionDetails, error) {
-	res, err := t.client.Get(t.url + "/auction-details")
+func (t *Tower) AuctionDetails() (*Auctions, error) {
+	res, err := t.client.Get(t.url + "/api/v1/auctions")
 	if err != nil {
 		return nil, utils.Wrap("failed to generate request to tower", err)
 	}
@@ -52,7 +58,7 @@ func (t *Tower) AuctionDetails() (*AuctionDetails, error) {
 	if err != nil {
 		return nil, utils.Wrap("failed reading body", err)
 	}
-	var aucDetails AuctionDetails
+	var aucDetails Auctions
 	err = json.Unmarshal(body, &aucDetails)
 	if err != nil {
 		return nil, utils.Wrap("failed to unmarshal body", err)

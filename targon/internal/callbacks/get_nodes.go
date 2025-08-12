@@ -38,13 +38,6 @@ func getNodesAll(c *targon.Core) {
 				return
 			}
 
-			// Max price is max bid, min price is 1
-			for _, v := range nodes {
-				if v.Price == 0 {
-					v.Price = c.MaxBid
-				}
-				v.Price = max(min(v.Price, c.MaxBid), 1)
-			}
 			c.MinerNodes[uid] = nodes
 			delete(c.MinerNodesErrors, uid)
 			totalNodes += len(nodes)
