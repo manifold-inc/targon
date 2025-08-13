@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"miner/internal/monitor"
 	"miner/internal/setup"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -56,11 +55,6 @@ func UpdateCore(core *Core) error {
 	core.Deps.Log.Info("Updating and registering nodes from config")
 	core.Deps.NodeMu.Lock()
 	core.Deps.Config = setup.LoadConfig()
-	core.Deps.NodeMu.Unlock()
-
-	newNodes := monitor.GetAndRegNodes(core.Deps)
-	core.Deps.NodeMu.Lock()
-	core.Deps.Nodes = newNodes
 	core.Deps.NodeMu.Unlock()
 
 	// Grab vpermits
