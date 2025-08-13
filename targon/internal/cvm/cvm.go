@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"targon/internal/targon"
@@ -23,28 +22,26 @@ type AttestBody struct {
 }
 
 type Attester struct {
-	client         *http.Client
-	timeoutMult    time.Duration
-	Hotkey         signature.KeyringPair
-	attestEndpoint string
-	towerUrl       string
+	client      *http.Client
+	timeoutMult time.Duration
+	Hotkey      signature.KeyringPair
+	towerUrl    string
 }
 
 // Creates a new Attester
-// client is used for hitting nvidia-attestation verification endpoint (reuseable)
+// client is used for hitting tower (reuseable)
 // timeoutMult is used to scale all client timeouts
 // hotkey is the senders hotkey for generating epistula headers
 func NewAttester(
 	timeoutMult time.Duration,
 	hotkey signature.KeyringPair,
-	attestEndpoint string,
 	towerUrl string,
 ) *Attester {
 	client := &http.Client{Transport: &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * timeoutMult,
 		DisableKeepAlives:   true,
 	}, Timeout: 1 * time.Minute * timeoutMult}
-	return &Attester{client: client, towerUrl: towerUrl, timeoutMult: timeoutMult, Hotkey: hotkey, attestEndpoint: attestEndpoint}
+	return &Attester{client: client, towerUrl: towerUrl, timeoutMult: timeoutMult, Hotkey: hotkey}
 }
 
 func (a *Attester) GetAttestFromNode(
@@ -166,61 +163,7 @@ func (a *Attester) VerifyAttestation(
 			"attestation invalid", attestResponse.Error,
 		)
 	}
-	if strings.ToLower(attestRes.UserData.NodeType) == "nvcc" {
-		err = a.VerifyNVCCAttestation(attestRes.UserData.NVCCResponse, nonce)
-		if err != nil {
-			return nil, errutil.Wrap("failed nvcc attestation", err)
-		}
-	}
 	return &attestRes.UserData, nil
-}
-
-func (a *Attester) VerifyNVCCAttestation(nvccRes *targon.NVCCResponse, nonce string) error {
-	body, err := json.Marshal(targon.NVCCVerifyBody{
-		NVCCResponse:  *nvccRes,
-		ExpectedNonce: nonce,
-	})
-	if err != nil {
-		return errutil.Wrap("failed marshaling miner attest response", err)
-	}
-
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/attest", a.attestEndpoint),
-		bytes.NewBuffer(body),
-	)
-	if err != nil {
-		return errutil.Wrap("failed to generate request to tower", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Close = true
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return errutil.Wrap("failed sending request to tower", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	resBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return errutil.Wrap("failed reading response body from tower", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return errutil.Wrap("bad status code from tower", errors.New(string(resBody)))
-	}
-
-	var attestResponse targon.NVCCVerifyResponse
-	err = json.Unmarshal(resBody, &attestResponse)
-	if err != nil {
-		return errutil.Wrap("failed decoding json response from tower")
-	}
-
-	if !attestResponse.GpuAttestationSuccess || !attestResponse.SwitchAttestationSuccess {
-		return fmt.Errorf(
-			"attestation invalid: switch: %t, gpu: %t", attestResponse.GpuAttestationSuccess, attestResponse.SwitchAttestationSuccess,
-		)
-	}
-	return nil
 }
 
 // Gets a single miners cvm bids

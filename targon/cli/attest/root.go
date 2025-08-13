@@ -54,7 +54,7 @@ var ipsCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		if uidFlag == -1 && ipFlag == "" {
-			cmd.Help()
+			_ = cmd.Help()
 			return
 		}
 
@@ -117,7 +117,7 @@ var ipsCmd = &cobra.Command{
 			}
 		}()
 
-		attester := cvm.NewAttester(1, kp, nvidiaAttestEndpointFlag, "https://tower.targon.com")
+		attester := cvm.NewAttester(1, kp, "https://tower.targon.com")
 		if len(ipFlag) != 0 {
 
 			// Mock Neuron, use self hotkey

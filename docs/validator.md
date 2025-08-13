@@ -35,9 +35,6 @@ TIMEOUT_MULT=1
 
 ### Dev Variables (dont set unless needed)
 
-## Attest endpoint, if running go code outside docker compose
-# NVIDIA_ATTEST_ENDPOINT=http://nvidia-attest:3344
-
 ## Netuid validator is running on. Useful for testnet
 # NETUID=4
 

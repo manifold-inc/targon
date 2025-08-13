@@ -1,16 +1,8 @@
 services:
-  nvidia-attest: 
-    deploy:
-      replicas: 3
-    image: ghcr.io/manifold-inc/targon-nvidia-attest:latest
-    restart: always
-
   targon:
     restart: always
     stop_grace_period: 15m
     depends_on:
-      nvidia-attest:
-        condition: service_started
       mongo:
         condition: service_healthy
     build:
