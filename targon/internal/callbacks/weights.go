@@ -77,9 +77,13 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 
 	// auction -> bid -> total gpus
 	bidcounts := map[string]map[int]int{}
+	for a := range c.Auctions {
+		bidcounts[a] = map[int]int{}
+	}
 
 	// For each uid, for each node, add any passing nodes to the auction map
 	// under the respective auction
+
 	for uid, nodes := range c.MinerNodes {
 		for _, n := range nodes {
 			if c.VerifiedNodes[uid] == nil {
@@ -92,9 +96,6 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			auc, ok := c.Auctions[auctionName]
 			if !ok {
 				continue
-			}
-			if _, ok := bidcounts[auctionName]; !ok {
-				bidcounts[auctionName] = map[int]int{}
 			}
 
 			// Node does not have enough GPUS. cpus will have zero min cluser size
