@@ -349,11 +349,11 @@ sudo reboot
 > ⚠️ **IMPORTANT WARNING** ⚠️
 >
 > Ubuntu 24.04's kernel may not boot if TDX is pre-enabled in the BIOS/UEFI.
-> After rebooting, verify you're running kernel 6.0.9:
+> After rebooting, verify you're running kernel 6.9.0-rc7+:
 >
 > ```bash
 > uname -r
-> 6.0.9
+> 6.9.0-rc7+
 > ```
 
 #### Enable TDX in BIOS
@@ -381,7 +381,7 @@ sudo reboot
 
 # After reboot, verify kernel version
 uname -r
-# Should show: 6.0.9
+# Should show: 6.9.0
 
 # Verify TDX is enabled
 sudo dmesg | grep -i tdx
