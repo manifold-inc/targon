@@ -23,7 +23,7 @@ type Weights struct {
 }
 
 type AttestationResponse struct {
-	TDXQuote string   `json:"tdx_quote"`
+	Quote    string   `json:"quote"`
 	UserData UserData `json:"user_data"`
 }
 type GPUAttestationResponse struct {
