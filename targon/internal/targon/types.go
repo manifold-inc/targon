@@ -40,8 +40,9 @@ type UserData struct {
 	AuctionName  string        `json:"auction_type"`
 
 	// Added in handler
-	Nonce string `json:"nonce"`
-	CVMID string `json:"cvm_id"`
+	Nonce     string `json:"nonce"`
+	CVMID     string `json:"cvm_id"`
+	QuoteType string `json:"quote_type"`
 }
 
 type NVCCResponse struct {
