@@ -45,7 +45,7 @@ TIMEOUT_MULT=1
 ```
 
 > **Note** both mongo environment keys are keys **you define** and can be
-> whatever you want. We suggest using the outpout of
+> whatever you want. We suggest using the output of
 > `tr -dc A-Za-z0-9 </dev/urandom | head -c 24; echo`. Run twice, and use one as
 > the password and one as the username. These **do not** need to be double
 > quoted in the .env file
