@@ -113,8 +113,8 @@ func (a *Attester) VerifyAttestation(
 ) (*targon.UserData, error) {
 	// Validate Attestation
 	body, err := json.Marshal(map[string]any{
-		"tdx_attestation": attestRes,
-		"ip_address":      ip,
+		"attestation": attestRes,
+		"ip_address":  ip,
 	})
 	if err != nil {
 		return nil, errutil.Wrap("failed marshaling miner attest response", err)
