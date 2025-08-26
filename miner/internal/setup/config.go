@@ -1,3 +1,4 @@
+// Package setup
 package setup
 
 import (
@@ -13,12 +14,12 @@ type Config struct {
 	ChainEndpoint string     `json:"chain_endpoint,omitempty"`
 	Debug         bool       `json:"debug,omitempty"`
 	Netuid        *int       `json:"netuid,omitempty"`
-	DiscordUrl    string     `json:"discord_url,omitempty"`
-	Ip            string     `json:"ip,omitempty"`
+	DiscordURL    string     `json:"discord_url,omitempty"`
+	IP            string     `json:"ip,omitempty"`
 	MinStake      int        `json:"min_stake"`
 }
 type NodeItem struct {
-	Ip    string `json:"ip"`
+	IP    string `json:"ip"`
 	Price int    `json:"price"`
 }
 
@@ -53,7 +54,7 @@ func LoadConfig() *Config {
 	if config.HotkeyPhrase == "" {
 		panic("No hotkey specified")
 	}
-	if config.Ip == "" {
+	if config.IP == "" {
 		panic("No ip specified")
 	}
 	if config.MinStake == 0 {

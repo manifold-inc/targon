@@ -18,7 +18,7 @@ func ServeMiner(d *Dependencies) error {
 	// Not sure what this is used for, just setting this to targon ver
 	version := types.NewU32(601030)
 
-	netip := net.ParseIP(d.Config.Ip)
+	netip := net.ParseIP(d.Config.IP)
 	if netip == nil {
 		return errors.New("could not parse ip")
 	}

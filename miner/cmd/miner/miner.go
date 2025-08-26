@@ -121,16 +121,16 @@ func main() {
 		sig := c.Request().Header.Get("Epistula-Request-Signature")
 		timestamp := c.Request().Header.Get("Epistula-Timestamp")
 		uuid := c.Request().Header.Get("Epistula-Uuid")
-		signed_for := c.Request().Header.Get("Epistula-Signed-For")
-		signed_by := c.Request().Header.Get("Epistula-Signed-By")
+		signedFor := c.Request().Header.Get("Epistula-Signed-For")
+		signedBy := c.Request().Header.Get("Epistula-Signed-By")
 		err := boilerplate.VerifyEpistulaHeaders(
 			core.Deps.Hotkey.Address,
 			sig,
 			[]byte{},
 			timestamp,
 			uuid,
-			signed_for,
-			signed_by,
+			signedFor,
+			signedBy,
 		)
 		// Failed signature
 		if err != nil {
@@ -147,15 +147,15 @@ func main() {
 		}
 
 		// Neuron hotkey not found
-		neuron, ok := core.Neurons[signed_by]
+		neuron, ok := core.Neurons[signedBy]
 		if !ok {
-			deps.Log.Warnf("Signed_by not found in neurons: %s", signed_by)
+			deps.Log.Warnf("Signed_by not found in neurons: %s", signedBy)
 			return c.String(http.StatusForbidden, "Not valid signer")
 		}
 
 		// No vpermit found for validator
 		if !(*core.ValidatorPermits)[int(neuron.UID.Int64())] {
-			deps.Log.Warnf("No vpermit for %s", signed_by)
+			deps.Log.Warnf("No vpermit for %s", signedBy)
 			return c.String(http.StatusForbidden, "No VPermit")
 		}
 
@@ -167,7 +167,7 @@ func main() {
 			return c.String(http.StatusForbidden, "Stake too low")
 		}
 
-		deps.Log.Infof("Responding to request from request from [%s]", signed_by)
+		deps.Log.Infof("Responding to request from request from [%s]", signedBy)
 
 		return c.JSON(http.StatusOK, core.Deps.Config.Nodes)
 	})
@@ -216,7 +216,7 @@ func CheckAlreadyRegistered(core *Core) bool {
 		return false
 	}
 	var netip net.IP = n.AxonInfo.IP.Bytes()
-	currentIp := fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
-	configIp := fmt.Sprintf("http://%s:%d", core.Deps.Config.Ip, core.Deps.Config.Port)
-	return currentIp == configIp
+	currentIP := fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
+	configIP := fmt.Sprintf("http://%s:%d", core.Deps.Config.IP, core.Deps.Config.Port)
+	return currentIP == configIP
 }

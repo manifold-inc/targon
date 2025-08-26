@@ -1,3 +1,4 @@
+// Package monitor
 package monitor
 
 import (
@@ -17,7 +18,7 @@ func MonitorNodes(deps *setup.Dependencies) {
 		for range ticker.C {
 			deps.Log.Info("Checking nodes")
 			for _, n := range deps.Config.Nodes {
-				ok := CheckCVMHealth(deps, n.Ip)
+				ok := CheckCVMHealth(deps, n.IP)
 				if !ok {
 					deps.Log.Errorf("Failed checking health of node at ip %s", n)
 				}
