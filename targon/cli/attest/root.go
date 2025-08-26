@@ -1,3 +1,4 @@
+// Package attest
 package attest
 
 import (
@@ -14,7 +15,6 @@ import (
 	"targon/cli/root"
 	"targon/cli/shared"
 	"targon/internal/cvm"
-	sutils "targon/internal/subtensor/utils"
 	"targon/internal/targon"
 	"targon/internal/utils"
 
@@ -124,7 +124,7 @@ var ipsCmd = &cobra.Command{
 			nonce := targon.NewNonce(kp.Address)
 			cvmIP := strings.TrimPrefix(ipFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-			attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
+			attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
 			if err != nil {
 				fmt.Println(err.Error())
 				return
@@ -145,8 +145,8 @@ var ipsCmd = &cobra.Command{
 			nodes = GetNodesFromStdin(cmd)
 		}
 		if len(nodes) == 0 {
-			var neuronIpAddr net.IP = neuron.AxonInfo.IP.Bytes()
-			n, err := attester.GetNodes(sutils.AccountIDToSS58(neuron.Hotkey), fmt.Sprintf("%s:%d", neuronIpAddr.String(), neuron.AxonInfo.Port))
+			var neuronIPAddr net.IP = neuron.AxonInfo.IP.Bytes()
+			n, err := attester.GetNodes(utils.AccountIDToSS58(neuron.Hotkey), fmt.Sprintf("%s:%d", neuronIPAddr.String(), neuron.AxonInfo.Port))
 			if err != nil {
 				panic(err)
 			}
@@ -161,21 +161,21 @@ var ipsCmd = &cobra.Command{
 			go func() {
 				defer wg.Done()
 				nonce := targon.NewNonce(kp.Address)
-				cvmIP := strings.TrimPrefix(n.Ip, "http://")
+				cvmIP := strings.TrimPrefix(n.IP, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-				attestPayload, err := attester.GetAttestFromNode(sutils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
+				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
 				if err != nil {
-					fmt.Printf("%s: %s\n", n.Ip, err.Error())
+					fmt.Printf("%s: %s\n", n.IP, err.Error())
 					return
 				}
 				attprint, _ := json.MarshalIndent(attestPayload, "", "  ")
 				fmt.Println(string(attprint))
 				gpus, err := attester.VerifyAttestation(attestPayload, nonce, ipFlag)
 				if err != nil {
-					fmt.Printf("%s: %s\n", n.Ip, err.Error())
+					fmt.Printf("%s: %s\n", n.IP, err.Error())
 					return
 				}
-				fmt.Printf("%s: gpus: %v\n", n.Ip, gpus)
+				fmt.Printf("%s: gpus: %v\n", n.IP, gpus)
 			}()
 		}
 		wg.Wait()
@@ -188,7 +188,7 @@ func GetNodesFromStdin(cmd *cobra.Command) []*targon.MinerNode {
 	nodes := []*targon.MinerNode{}
 	for scanner.Scan() {
 		line := scanner.Text()
-		nodes = append(nodes, &targon.MinerNode{Ip: line, Price: 300})
+		nodes = append(nodes, &targon.MinerNode{IP: line, Price: 300})
 	}
 	return nodes
 }
@@ -201,12 +201,12 @@ type AttestConfig struct {
 func loadConfig() (*AttestConfig, error) {
 	config := &AttestConfig{}
 
-	config_strings := map[string]*string{
+	configStrings := map[string]*string{
 		"validator.hotkey_phrase": &config.ValidatorHotkeyPhrase,
 		"miner.hotkey_phrase":     &config.MinerHotkeyPhrase,
 	}
 
-	for key, value := range config_strings {
+	for key, value := range configStrings {
 		if viper.GetString(key) == "" {
 			shared.PromptConfigString(key)
 		}

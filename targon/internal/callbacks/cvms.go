@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"targon/internal/cvm"
-	"targon/internal/subtensor/utils"
 	"targon/internal/targon"
+	"targon/internal/utils"
 )
 
 // Collects attestations across all miners and all nodes, skipping nodes
@@ -34,7 +34,7 @@ func getPassingAttestations(c *targon.Core) {
 		for _, node := range nodes {
 			// Dont check nodes that have already passed this interval
 			mu.Lock()
-			if c.VerifiedNodes[uid][node.Ip] != nil {
+			if c.VerifiedNodes[uid][node.IP] != nil {
 				mu.Unlock()
 				continue
 			}
@@ -47,7 +47,7 @@ func getPassingAttestations(c *targon.Core) {
 				// Get attestation
 				n := c.Neurons[uid]
 				nonce := targon.NewNonce(attester.Hotkey.Address)
-				cvmIP := strings.TrimPrefix(node.Ip, "http://")
+				cvmIP := strings.TrimPrefix(node.IP, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(n.Hotkey), cvmIP, nonce)
 
@@ -57,7 +57,7 @@ func getPassingAttestations(c *targon.Core) {
 					userData, err = attester.VerifyAttestation(
 						attestPayload,
 						nonce,
-						node.Ip,
+						node.IP,
 					)
 				}
 
@@ -75,16 +75,16 @@ func getPassingAttestations(c *targon.Core) {
 
 				// Mark error if found; all errors here are non-retryable
 				if err != nil {
-					c.MinerErrors[uid][node.Ip] = err.Error()
-					c.Deps.Log.Debugw("failed attestation", "ip", node.Ip, "uid", uid, "error", err.Error())
+					c.MinerErrors[uid][node.IP] = err.Error()
+					c.Deps.Log.Debugw("failed attestation", "ip", node.IP, "uid", uid, "error", err.Error())
 					return
 				}
 
 				// Add gpus to passed gpus, and delete any error marks
 				// Only add gpus if not duplicates
 				c.Deps.Log.Infof("%s passed attestation: %+v", *userData)
-				c.VerifiedNodes[uid][node.Ip] = userData
-				delete(c.MinerErrors[uid], node.Ip)
+				c.VerifiedNodes[uid][node.IP] = userData
+				delete(c.MinerErrors[uid], node.IP)
 			}()
 		}
 	}

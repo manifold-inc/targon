@@ -11,14 +11,14 @@ import (
 )
 
 func InitMongo() (*mongo.Client, error) {
-	MONGO_USERNAME := GetEnv("MONGO_USERNAME", "")
-	MONGO_PASSWORD := GetEnv("MONGO_PASSWORD", "")
-	MONGO_HOST := GetEnv("MONGO_HOST", "mongo")
+	MongoUsername := GetEnv("MONGO_USERNAME", "")
+	MongoPassword := GetEnv("MONGO_PASSWORD", "")
+	MongoHost := GetEnv("MONGO_HOST", "mongo")
 	var mongoClient *mongo.Client
-	if MONGO_USERNAME == "" || MONGO_PASSWORD == "" {
+	if MongoUsername == "" || MongoPassword == "" {
 		return nil, errors.New("no env keys found")
 	}
-	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s@%s:27017/targon?authSource=admin&authMechanism=SCRAM-SHA-256", MONGO_USERNAME, MONGO_PASSWORD, MONGO_HOST))
+	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s@%s:27017/targon?authSource=admin&authMechanism=SCRAM-SHA-256", MongoUsername, MongoPassword, MongoHost))
 
 	client, err := mongo.Connect(clientOpts)
 	if err == nil {

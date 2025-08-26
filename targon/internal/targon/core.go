@@ -1,3 +1,4 @@
+// Package targon
 package targon
 
 import (
@@ -8,14 +9,14 @@ import (
 )
 
 type MinerNode struct {
-	Ip    string `json:"ip"`
+	IP    string `json:"ip"`
 	Price int    `json:"price"`
 }
 
 type Core struct {
 	Neurons     map[string]runtime.NeuronInfo `bson:"-"`
 	Deps        *setup.Dependencies           `bson:"-"`
-	HotkeyToUid map[string]string             `bson:"hotkey_to_uid"`
+	HotkeyToUID map[string]string             `bson:"hotkey_to_uid"`
 
 	// uid -> nodes
 	MinerNodes map[string][]*MinerNode `bson:"miner_nodes"`

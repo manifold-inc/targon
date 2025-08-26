@@ -1,7 +1,7 @@
 package targon
 
 type MinerBid struct {
-	Ip      string  `bson:"ip"`
+	IP      string  `bson:"ip"`
 	Price   int     `bson:"price"`
 	UID     string  `bson:"uid"`
 	Payout  float64 `bson:"payout"`

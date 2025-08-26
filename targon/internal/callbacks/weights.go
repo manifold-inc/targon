@@ -89,17 +89,17 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			if c.VerifiedNodes[uid] == nil {
 				continue
 			}
-			if c.VerifiedNodes[uid][n.Ip] == nil {
+			if c.VerifiedNodes[uid][n.IP] == nil {
 				continue
 			}
-			auctionName := c.VerifiedNodes[uid][n.Ip].AuctionName
+			auctionName := c.VerifiedNodes[uid][n.IP].AuctionName
 			auc, ok := c.Auctions[auctionName]
 			if !ok {
 				continue
 			}
 
 			// Node does not have enough GPUS. cpus will have zero min cluser size
-			if auc.MinClusterSize != 0 && auc.MinClusterSize > len(*c.VerifiedNodes[uid][n.Ip].GPUCards) {
+			if auc.MinClusterSize != 0 && auc.MinClusterSize > len(*c.VerifiedNodes[uid][n.IP].GPUCards) {
 				continue
 			}
 
@@ -108,11 +108,11 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 
 			bidCount := 1
 			if auc.MinClusterSize != 0 {
-				bidCount = len(*c.VerifiedNodes[uid][n.Ip].GPUCards)
+				bidCount = len(*c.VerifiedNodes[uid][n.IP].GPUCards)
 			}
 
 			auction[auctionName] = append(auction[auctionName], &targon.MinerBid{
-				Ip:    n.Ip,
+				IP:    n.IP,
 				Price: price,
 				UID:   uid,
 				Count: bidCount,

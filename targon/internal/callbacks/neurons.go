@@ -3,8 +3,8 @@ package callbacks
 import (
 	"fmt"
 
-	"targon/internal/subtensor/utils"
 	"targon/internal/targon"
+	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/subtrahend-labs/gobt/runtime"
@@ -25,11 +25,11 @@ func getNeuronsCallback(c *targon.Core, h types.Header) {
 			return
 		}
 	}
-	c.HotkeyToUid = make(map[string]string)
+	c.HotkeyToUID = make(map[string]string)
 	for _, n := range neurons {
 		uid := fmt.Sprintf("%d", n.UID.Int64())
 		c.Neurons[uid] = n
-		c.HotkeyToUid[utils.AccountIDToSS58(n.Hotkey)] = uid
+		c.HotkeyToUID[utils.AccountIDToSS58(n.Hotkey)] = uid
 	}
 	c.Deps.Log.Info("Neurons Updated")
 }

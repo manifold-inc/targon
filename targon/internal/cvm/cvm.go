@@ -1,3 +1,4 @@
+// Package cvm
 package cvm
 
 import (
@@ -25,23 +26,23 @@ type Attester struct {
 	client      *http.Client
 	timeoutMult time.Duration
 	Hotkey      signature.KeyringPair
-	towerUrl    string
+	towerURL    string
 }
 
-// Creates a new Attester
+// NewAttester Creates a new Attester
 // client is used for hitting tower (reuseable)
 // timeoutMult is used to scale all client timeouts
 // hotkey is the senders hotkey for generating epistula headers
 func NewAttester(
 	timeoutMult time.Duration,
 	hotkey signature.KeyringPair,
-	towerUrl string,
+	towerURL string,
 ) *Attester {
 	client := &http.Client{Transport: &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * timeoutMult,
 		DisableKeepAlives:   true,
 	}, Timeout: 1 * time.Minute * timeoutMult}
-	return &Attester{client: client, towerUrl: towerUrl, timeoutMult: timeoutMult, Hotkey: hotkey}
+	return &Attester{client: client, towerURL: towerURL, timeoutMult: timeoutMult, Hotkey: hotkey}
 }
 
 func (a *Attester) GetAttestFromNode(
@@ -122,7 +123,7 @@ func (a *Attester) VerifyAttestation(
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/api/v1/verify-attestation", a.towerUrl),
+		fmt.Sprintf("%s/api/v1/verify-attestation", a.towerURL),
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
@@ -166,7 +167,7 @@ func (a *Attester) VerifyAttestation(
 	return &attestRes.UserData, nil
 }
 
-// Gets a single miners cvm bids
+// GetNodes Gets a single miners cvm bids
 func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, error) {
 	tr := &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
@@ -223,7 +224,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		}
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, &targon.MinerNode{
-				Ip:    node,
+				IP:    node,
 				Price: 0,
 			})
 		}

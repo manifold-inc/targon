@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"targon/internal/cvm"
-	"targon/internal/subtensor/utils"
 	"targon/internal/targon"
+	"targon/internal/utils"
 )
 
 // Gets all nodes and adds them to the core
@@ -24,11 +24,11 @@ func getNodesAll(c *targon.Core) {
 			defer wg.Done()
 
 			// Inactive miner check
-			var neuronIpAddr net.IP = n.AxonInfo.IP.Bytes()
+			var neuronIPAddr net.IP = n.AxonInfo.IP.Bytes()
 			if n.AxonInfo.IP.String() == "0" {
 				return
 			}
-			nodes, err := attester.GetNodes(utils.AccountIDToSS58(n.Hotkey), fmt.Sprintf("%s:%d", neuronIpAddr.String(), n.AxonInfo.Port))
+			nodes, err := attester.GetNodes(utils.AccountIDToSS58(n.Hotkey), fmt.Sprintf("%s:%d", neuronIPAddr.String(), n.AxonInfo.Port))
 
 			mu.Lock()
 			defer mu.Unlock()

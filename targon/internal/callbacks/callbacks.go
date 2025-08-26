@@ -1,3 +1,4 @@
+// Package callbacks
 package callbacks
 
 import (
@@ -19,13 +20,11 @@ func CheckAlreadyRegistered(core *targon.Core) bool {
 		return false
 	}
 	var netip net.IP = n.AxonInfo.IP.Bytes()
-	currentIp := fmt.Sprintf("%s:", netip)
-	configIp := core.Deps.Env.VALI_IP
-	return currentIp == configIp
+	currentIP := fmt.Sprintf("%s:", netip)
+	configIP := core.Deps.Env.VALI_IP
+	return currentIP == configIP
 }
 
-// TODO
-// Confrim set weight hash success
 func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// block timer for catching hangs
 	t := time.AfterFunc(1*time.Hour, func() {
