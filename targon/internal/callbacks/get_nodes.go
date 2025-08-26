@@ -20,6 +20,11 @@ func getNodesAll(c *targon.Core) {
 	totalNodes := 0
 	for _, n := range c.Neurons {
 		uid := fmt.Sprintf("%d", n.UID.Int64())
+		mu.Lock()
+		if c.MinerErrors[uid] == nil {
+			c.MinerErrors[uid] = make(map[string]string)
+		}
+		mu.Unlock()
 		go func() {
 			defer wg.Done()
 

@@ -29,6 +29,9 @@ func getPassingAttestations(c *targon.Core) {
 		if c.VerifiedNodes[uid] == nil {
 			c.VerifiedNodes[uid] = map[string]*targon.UserData{}
 		}
+		if c.MinerErrors[uid] == nil {
+			c.MinerErrors[uid] = make(map[string]string)
+		}
 		mu.Unlock()
 
 		for _, node := range nodes {

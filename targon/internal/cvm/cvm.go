@@ -121,6 +121,10 @@ func (a *Attester) VerifyAttestation(
 		return nil, errutil.Wrap("failed marshaling miner attest response", err)
 	}
 
+	if nonce != attestRes.UserData.Nonce {
+		return nil, errors.New("invalid nonce")
+	}
+
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf("%s/api/v1/verify-attestation", a.towerURL),

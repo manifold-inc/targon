@@ -67,6 +67,8 @@ func setWeights(c *targon.Core, uids []types.U16, scores []types.U16) {
 	c.Deps.Log.Infow("Set weights on chain successfully", "hash", hash.Hex())
 }
 
+// getWeights returns
+// uid array, weights array, auction results, error
 func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.MinerBid, error) {
 	if c.EmissionPool == nil {
 		return nil, nil, nil, errors.New("emission pool is not set")
@@ -85,10 +87,10 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 	// under the respective auction
 
 	for uid, nodes := range c.MinerNodes {
+		if c.VerifiedNodes[uid] == nil {
+			continue
+		}
 		for _, n := range nodes {
-			if c.VerifiedNodes[uid] == nil {
-				continue
-			}
 			if c.VerifiedNodes[uid][n.IP] == nil {
 				continue
 			}
@@ -99,11 +101,13 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 			}
 
 			// Node does not have enough GPUS. cpus will have zero min cluser size
+			// forces certian number of gpus per node
 			if auc.MinClusterSize != 0 && auc.MinClusterSize > len(*c.VerifiedNodes[uid][n.IP].GPUCards) {
 				continue
 			}
 
 			// ensure price is between 1 and max bid
+			// price is cents per hour per gpu
 			price := max(min(n.Price, auc.MaxBid), 1)
 
 			bidCount := 1
@@ -118,6 +122,7 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 				Count: bidCount,
 			})
 
+			// This is used to calcualte each ring in the next steps
 			bidcounts[auctionName][price] += bidCount
 		}
 	}
@@ -130,8 +135,8 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 
 	// For each auction, sort the bids in ascending order and accept bids untill
 	// we have hit the cap for this auction
-	lastPrice := 0
 	for auctiontype, pool := range c.Auctions {
+		lastPrice := 0
 		tiedPayouts := map[string]int{}
 		sort.Slice(auction[auctiontype], func(i, j int) bool {
 			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
@@ -139,19 +144,21 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		// max % of the pool for this auction
 		maxEmission := float64(pool.Emission) / 100
 		emissionSum := 0.0
-		tiedGPUs := 0
+		tiedBids := 0
 		isRingOverMax := false
 		for _, bid := range auction[auctiontype] {
 			// GPUs * the bid price/h * interval duration approx / emission pool
 			// 	== percent of emission pool for this node for this interval
 			thisEmission := (float64(bid.Count) * ((float64(bid.Price) / 100) * 1.2)) / *c.EmissionPool
 			paidnodes[auctiontype] += bid.Count
+
+			// On each bid increase, check if ring is over max
 			if bid.Price != lastPrice && !isRingOverMax {
 				isRingOverMax = ((thisEmission/float64(bid.Count))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
 			}
 			if isRingOverMax {
 				tiedPayouts[bid.UID] += bid.Count
-				tiedGPUs += bid.Count
+				tiedBids += bid.Count
 				bid.Diluted = true
 				continue
 			}
@@ -169,9 +176,9 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		// If not all rings get paid their bids, normalize all other rings to the remaning emission
 		// and add that to the payouts. This greatly increases downward price pressure
 		// by highly rewarding people that underbid the last paid ring if it ties.
-		maxTiedEmissionBidPool := (float64(tiedGPUs) * (float64(pool.MaxBid) / 100)) / *c.EmissionPool
+		maxTiedEmissionBidPool := (float64(tiedBids) * (float64(pool.MaxBid) / 100)) / *c.EmissionPool
 		remainingEmission := maxEmission - emissionSum
-		dilutedPayoutPerGPU := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedGPUs)
+		dilutedPayoutPerGPU := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedBids)
 		for _, bid := range auction[auctiontype] {
 			if bid.Diluted {
 				bid.Payout = (dilutedPayoutPerGPU * float64(bid.Count)) / 1.2
