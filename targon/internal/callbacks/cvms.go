@@ -82,7 +82,7 @@ func getPassingAttestations(c *targon.Core) {
 
 				// Add gpus to passed gpus, and delete any error marks
 				// Only add gpus if not duplicates
-				c.Deps.Log.Infof("%s passed attestation: %+v", *userData)
+				c.Deps.Log.Infof("%s passed attestation: %+v", uid, userData.AuctionName)
 				c.VerifiedNodes[uid][node.IP] = userData
 				delete(c.MinerErrors[uid], node.IP)
 			}()
