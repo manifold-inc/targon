@@ -21,15 +21,14 @@ type Tower struct {
 }
 
 type Auctions struct {
-	TaoPrice float64            `json,bson:"tao_price"`
-	Auctions map[string]Auction `json,bson:"auctions"`
+	Auctions map[string]Auction `json:"auctions" bson:"auctions"`
+	TaoPrice float64            `json:"tao_price" bson:"tao_price"`
 }
 
 type Auction struct {
-	MaxBid         int    `json,bson:"max_bid" yaml:"MaxBid"`
-	Emission       int    `json,bson:"emission" yaml:"Emission"`
-	MinClusterSize int    `json,bson:"min_cluster_size" yaml:"MinClusterSize"`
-	NodeType       string `json,bson:"node_type" yaml:"NodeType"`
+	MaxBid         int `json:"max_bid" bson:"max_bid"`
+	Emission       int `json:"emission" bson:"emission"`
+	MinClusterSize int `json:"min_cluster_size" bson:"min_cluster_size"`
 }
 
 func NewTower(client *http.Client, url string, hotkey *signature.KeyringPair, log *zap.SugaredLogger) *Tower {

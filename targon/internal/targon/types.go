@@ -37,7 +37,7 @@ type UserData struct {
 	CPUCards     *Cards        `json:"cpu_cards,omitempty"`
 	NodeType     string        `json:"node_type"`
 	NVCCResponse *NVCCResponse `json:"attestation,omitempty"`
-	AuctionName  string        `json:"auction_type"`
+	AuctionName  string        `json:"auction_name"`
 
 	// Added in handler
 	Nonce     string `json:"nonce"`
