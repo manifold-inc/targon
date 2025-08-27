@@ -465,16 +465,13 @@ hardware configuration according to the guidelines in the previous sections.
 
 #### TVM Configuration
 
-Before installing TVM, you'll need to gather the following information:
-
 1. **Required Arguments**
 
-   - `--miner-hot-key`: Your miner SS58 address that is **REGISTERED** on SN4
-   - `--private-key`: The corresponding private key for your hotkey (without 0x
-     prefix)
-   - `--public-key`: Your corresponding public key (without 0x prefix)
-   - `--validator-hot-key`: Validator hotkey for Epistula headers (always the
-     Manifold Validator hotkey 5Hp18g9P8hLGKp9W3ZDr4bvJwba6b6bY3P2u3VdYf8yMR8FM)
+   - `--hotkey-phrase`: Your miner Hotkey Phrase
+   - `--node-type`: currently, only "nvcc"
+   - `--submit`: Wether to actually submit and download image
+   - `--service-url`: http://tvm.targon.com/
+   - `--vm-download-dir`: location you want to download vm
 
 1. **Accessing Your Keys**
 
@@ -513,7 +510,7 @@ Before installing TVM, you'll need to gather the following information:
 
    ```bash
    # Run the TVM installer with network submission
-   ./tvm/install --submit --service-url http://tvm.targon.com:8080 --miner-hot-key MINER_HOT_KEY --private-key PRIVATE_KEY --public-key PUBLIC_KEY --validator-hot-key 5Hp18g9P8hLGKp9W3ZDr4bvJwba6b6bY3P2u3VdYf8yMR8FM
+   sudo ./tvm/install --service-url http://tvm.targon.com/ --vm-download-dir ./ --submit --hotkey-phrase "your phrase" -node-type nvcc
    ```
 
    > **Note**: To test without submitting to the network, remove the

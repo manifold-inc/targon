@@ -56,22 +56,6 @@ TIMEOUT_MULT=1
 docker compose up -d --force-recreate --build
 ```
 
-### Validator Service Architecture
-
-#### NVIDIA Attest Service
-
-- Handles GPU attestation
-- Runs on port 3344
-- Required for validator operations
-- Provides hardware-level security verification
-
-#### Targon Service
-
-- Main application service
-- Handles validator operations
-- Communicates with Bittensor network
-- Built from Go source code
-
 ### Validator Monitoring and Maintenance
 
 #### Logs
