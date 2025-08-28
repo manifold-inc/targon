@@ -470,7 +470,7 @@ hardware configuration according to the guidelines in the previous sections.
    - `--hotkey-phrase`: Your miner Hotkey Phrase
    - `--node-type`: currently, only "nvcc"
    - `--submit`: Wether to actually submit and download image
-   - `--service-url`: http://tvm.targon.com/
+   - `--service-url`: http://tvm.targon.com
    - `--vm-download-dir`: location you want to download vm
 
 1. **Accessing Your Keys**
@@ -510,7 +510,7 @@ hardware configuration according to the guidelines in the previous sections.
 
    ```bash
    # Run the TVM installer with network submission
-   sudo ./tvm/install --service-url http://tvm.targon.com/ --vm-download-dir ./ --submit --hotkey-phrase "your phrase" -node-type nvcc
+   sudo ./tvm/install --service-url http://tvm.targon.com --vm-download-dir ./ --submit --hotkey-phrase "your phrase" -node-type nvcc
    ```
 
    > **Note**: To test without submitting to the network, remove the
