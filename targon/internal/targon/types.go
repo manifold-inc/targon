@@ -36,7 +36,7 @@ type GPUAttestationResponse struct {
 	Error error `json:"error,omitempty"`
 }
 
-func (g *GPUAttestationResponse) StringToError(data []byte) error {
+func (g *GPUAttestationResponse) UnmarshalJSON(data []byte) error {
 	var aux struct {
 		Valid bool   `json:"valid"`
 		Error string `json:"error,omitempty"`

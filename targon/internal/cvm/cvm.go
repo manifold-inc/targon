@@ -158,9 +158,9 @@ func (a *Attester) VerifyAttestation(
 	}
 
 	var attestResponse targon.GPUAttestationResponse
-	err = attestResponse.StringToError(resBody)
+	err = attestResponse.UnmarshalJSON(resBody)
 	if err != nil {
-		return nil, errutil.Wrap("failed decoding json response from tower", err)
+		return nil, errutil.Wrap("failed decoding json response from tower")
 	}
 
 	if !attestResponse.Valid {
