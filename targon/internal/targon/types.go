@@ -1,5 +1,10 @@
 package targon
 
+import (
+	"encoding/json"
+	"errors"
+)
+
 type MinerBid struct {
 	IP      string  `bson:"ip"`
 	Price   int     `bson:"price"`
@@ -29,6 +34,23 @@ type AttestationResponse struct {
 type GPUAttestationResponse struct {
 	Valid bool  `json:"valid"`
 	Error error `json:"error,omitempty"`
+}
+
+func (g *GPUAttestationResponse) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		Valid bool   `json:"valid"`
+		Error string `json:"error,omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	g.Valid = aux.Valid
+	if aux.Error != "" {
+		g.Error = errors.New(aux.Error)
+	}
+	return nil
 }
 
 type UserData struct {
