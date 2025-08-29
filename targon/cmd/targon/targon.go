@@ -11,13 +11,10 @@ import (
 	"targon/internal/setup"
 	"targon/internal/targon"
 
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types/extrinsic"
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types/extrinsic/extensions"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
 func main() {
-	extrinsic.PayloadMutatorFns[extensions.SignedExtensionName("DrandPriority")] = func(payload *extrinsic.Payload) {}
 	deps := setup.Init()
 	deps.Log.Infof(
 		"Starting validator with key [%s] on chain [%s] version [%d]",
