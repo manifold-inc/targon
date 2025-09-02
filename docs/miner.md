@@ -469,7 +469,7 @@ hardware configuration according to the guidelines in the previous sections.
 
    - `--hotkey-phrase`: Your miner Hotkey Phrase
    - `--node-type`: currently, only "nvcc"
-   - `--submit`: Wether to actually submit and download image
+   - `--submit`: Whether to actually submit and download image
    - `--service-url`: http://tvm.targon.com
    - `--vm-download-dir`: location you want to download vm
 
