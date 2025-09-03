@@ -1,13 +1,194 @@
-## Running a Miner
-
+# Confidential GPU Mining Setup
 ### Miner Prerequisites
-
-> ⚠️ **IMPORTANT WARNING** ⚠️ It is **HIGHLY RECOMMENDED** that you have BIOS
+> ⚠️ **IMPORTANT WARNING** ⚠️  
+> It is **HIGHLY RECOMMENDED** that you have BIOS
 > access to your machines. You will be adjusting the configurations throughout
 > the process and delays from providers are expected. Without BIOS access, you
 > may face significant delays or be unable to complete the setup process.
 
-#### Hardware Requirements
+
+This doc provides setup scripts and instructions for running miners in **confidential computing environments** with both **CPU (AMD SEV-SNP)** and **GPU passthrough (NVIDIA Hopper series)**.
+
+## Table of Contents
+
+* [Supported Platforms](#-supported-platforms)
+* [AMD EPYC 4th Gen 9xx4 Series SEV-SNP Setup](#amd-epyc-4th-gen-9xx4-series-sev-snp-setup)
+
+    1. [Hardware Requirements (AMD)](#hardware-requirements-amd)
+    2. [Software Requirements (AMD)](#software-requirements-amd)
+    3. [BIOS Configuration (AMD SEV-SNP)](#bios-configuration-amd-sev-snp)
+    4. [Host OS Preparation (AMD)](#host-os-preparation-amd)
+
+* [Intel TDX + Hopper GPU Setup](#-intel-tdx--hopper-gpu-setup)
+    1. [Hardware Requirements (Intel)](#hardware-requirements-intel)
+    2. [Software Requirements (Intel)](#software-requirements-intel)
+    3. [BIOS Configuration (Intel TDX)](#bios-configuration-intel-tdx)
+    4. [Host OS Preparation (Intel)](#host-os-preparation-intel)
+
+
+* [Launching TVM](#launching-tvm)
+    1. [TVM Configuration](#tvm-configuration)
+    2. [TVM Installation](#tvm-installation)
+* [Updating/Running Miner](#updatingrunning-miner)
+* [Troubleshooting](#-troubleshooting)
+
+
+# Supported Platforms
+1. **AMD EPYC v4 (4th Gen 9xx4 series: Genoa/Bergamo) with SEV-SNP**  
+   - Supports **CPU confidential workloads** inside SEV-SNP encrypted VMs  
+2. **Intel TDX + NVIDIA Hopper GPUs (H100s, H200s)**
+    - Supports **GPU passthrough** inside TDX confidential VMs
+
+# AMD EPYC 4th Gen 9xx4 series SEV-SNP Setup
+
+### Hardware Requirements (AMD)
+
+* **Processor:** AMD EPYC™ 9xx4 Series (Genoa, Bergamo) with **SEV-SNP** support
+* **Storage:** 1 TB
+
+Verify your CPU details using the following command:
+
+```bash
+lscpu | grep -E 'Model name|Architecture|Vendor|Flags'
+```
+Key Things to Check
+
+**1. Vendor ID:** Should display: `AuthenticAMD`
+
+**2. Model Name:** Must indicate a 9xx4 series EPYC processor, for example: `EPYC 9354`, `EPYC 9454`, `EPYC 9654`, `EPYC 9754`.
+
+**3. Flags:** Must include the following for SEV-SNP support:
+  * `sev` → Secure Encrypted Virtualization
+  * `sev_es` → Encrypted State
+  * `sev_snp` → Secure Nested Paging (**required for SNP**)
+
+---
+### Software Requirements (AMD)
+- **Host OS:** Ubuntu 25.04 Server
+- **HGX Firmware Bundle:** Version 1.7.0 or higher (also known as Vulcan 1.7)
+
+
+---
+
+### BIOS Configuration (AMD SEV-SNP)
+
+Enter your system **BIOS/UEFI** and configure the following settings:
+
+```markdown
+# Advanced → CPU Configuration
+SMEE → Enabled  
+SEV ASID Count → 509 ASIDs  
+SEV-ES ASID Space Limit Control → Manual  
+SEV-ES ASID Space Limit → 100  
+SNP Memory Coverage → Enabled  
+
+# Advanced → NB Configuration
+IOMMU → Enabled  
+SEV-SNP support → Enabled  
+```
+---
+
+### Host OS Preparation (AMD)
+
+> ⚠️ **Important:** AMD currently supports **SecureAI solutions** out of the box starting with **Ubuntu 25.04 Server**. Ensure your system is installed and fully updated.
+
+**1. Check your Ubuntu version**
+
+```bash
+lsb_release -a
+```
+
+Verify that you have the correct version (**Ubuntu 25.04 “plucky”**):
+
+```
+No LSB modules are available.
+Distributor ID: Ubuntu
+Description:    Ubuntu 25.04
+Release:        25.04
+Codename:       plucky
+```
+
+**2. Update package lists and upgrade the system**
+<!-- For the host, this will update packages and install QEMU along with required virtualization components. -->
+
+Update package lists and upgrade installed packages
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+Install QEMU along with required virtualization components
+```bash
+sudo apt install -y libvirt-daemon-system libvirt-clients libvirt-daemon
+```
+Verify libvirt installation
+```bash
+libvirtd --version
+```
+Reboot if required
+```bash
+sudo reboot
+```
+
+**3. Validating the Host Detects SEV-SNP**
+
+**3.1. After the host reboots, check that your kernel is **SNP-aware** and the configuration options were correctly applied**
+
+```bash
+# Check kernel version
+uname -a
+```
+Example output:
+
+Linux ubuntu-server 6.14.0-28-generic #28-Ubuntu SMP PREEMPT_DYNAMIC Wed Jul 23 12:05:14 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+> **Note:** Dates and hashes may vary. The key is to ensure your kernel is **6.14+**.
+
+**3.2. Validate the kernel was configured with the proper Confidential Compute (CC) crypto options**
+
+
+```bash
+grep CONFIG_CRYPTO_EC /boot/config-$(uname -r)
+```
+Example output:
+```
+CONFIG_CRYPTO_ECC=y
+CONFIG_CRYPTO_ECDH=y
+CONFIG_CRYPTO_ECDSA=m
+CONFIG_CRYPTO_ECRDSA=m
+CONFIG_CRYPTO_ECB=y
+CONFIG_CRYPTO_ECHAINIV=m
+```
+
+**3.3. Verifying SEV-SNP Detection***
+
+Ensure that the kernel actually detects the **SEV-SNP processor**.  
+
+> ⚠️ **Important:**  
+> If you do not see the correct output below, please review the **Bios Configuration** section above, to verify the BIOS and hardware configuration.
+
+Check SEV-SNP detection in kernel messages
+```bash
+sudo dmesg | grep -i -e rmp -e sev
+```
+
+**Expected output example:**
+```
+[ 0.000000] SEV-SNP: RMP table physical range [0x0000000088900000 - 0x00000000a8efffff]
+[ 6.072556] ccp 0000:45:00.1: sev enabled
+[ 6.195348] ccp 0000:45:00.1: SEV firmware updated from 1.49.3 to 1.55.21
+[ 7.793012] ccp 0000:45:00.1: SEV API:1.55 build:21
+[ 7.793024] ccp 0000:45:00.1: SEV-SNP API:1.55 build:21
+[ 7.806923] kvm_amd: SEV enabled (ASIDs 100 - 509)
+[ 7.806926] kvm_amd: SEV-ES enabled (ASIDs 1 - 99)
+[ 7.806929] kvm_amd: SEV-SNP enabled (ASIDs 1 - 99)
+```
+
+> ✅ **Tip:**  
+>Look for lines mentioning **SEV-SNP enabled** and the correct ASID ranges. This confirms your AMD EPYC v4 processor is correctly detected and SEV-SNP is active.
+
+
+# Intel TDX + Hopper GPU Setup
+### Hardware Requirements (Intel)
 
 - NVIDIA H100 or H200 GPU with Confidential Compute support
 - 3 TB Storage
@@ -15,12 +196,12 @@
   - 5th Gen Intel® Xeon® Scalable Processor
   - Intel® Xeon® 6 Processors
 
-#### Software Requirements
+### Software Requirements (Intel)
 
 - Ubuntu 22.04 LTS or later
 - HGX FW Bundle 1.7 (Known as Vulcan 1.7)
 
-#### BIOS Configuration
+## BIOS Configuration (Intel TDX)
 
 The following BIOS settings must be configured correctly for Confidential
 Compute to work:
@@ -52,9 +233,9 @@ Compute to work:
 > functionality. Incorrect settings may prevent the system from booting or cause
 > security features to fail.
 
-### Preparing the Host
+## Host OS Preparation (Intel)
 
-#### Install Prerequisite Packages
+**Install Prerequisite Packages**
 
 ```bash
 # Update package lists
@@ -85,7 +266,7 @@ debhelper-compat=12 meson ninja-build libglib2.0-dev python3-pip nasm iasl
 dpkg -l | grep -E 'build-essential|libncurses-dev|bison|flex|libssl-dev|libelf-dev|debhelper-compat|meson|ninja-build|libglib2.0-dev|python3-pip|nasm|iasl'
 ```
 
-#### Setup Working Directory
+**Setup Working Directory**
 
 ```bash
 # Create and set permissions for shared directory
@@ -108,7 +289,7 @@ ls -la /shared
 # Should show: drwxrwxrwx
 ```
 
-#### Download and Patch GitHub Packages
+**Download and Patch GitHub Packages**
 
 ```bash
 # Clone required repositories
@@ -165,7 +346,7 @@ cd /shared/tdx-linux/qemu
 git log --oneline | head -n 5
 ```
 
-#### Build the Kernel
+**Build the Kernel**
 
 ```bash
 # Navigate to kernel directory
@@ -223,7 +404,7 @@ ls -la arch/x86/boot/bzImage
 ls -la modules.builtin
 ```
 
-#### Install and Configure Host OS
+**Install and Configure Host OS**
 
 ```bash
 # Install kernel modules
@@ -264,7 +445,7 @@ cat /etc/modprobe.d/tdx.conf
 grep "GRUB_CMDLINE_LINUX_DEFAULT" /etc/default/grub
 ```
 
-#### Build QEMU
+**Build QEMU**
 
 ```bash
 # Navigate to QEMU directory
@@ -303,7 +484,7 @@ ls -l /lib/x86_64-linux-gnu/libslirp.so.0
 qemu-system-x86_64 --version
 ```
 
-#### Build OVMF
+**Build OVMF**
 
 ```bash
 # Navigate to EDK2 directory
@@ -356,7 +537,7 @@ sudo reboot
 > 6.9.0-rc7+
 > ```
 
-#### Enable TDX in BIOS
+**Enable TDX in BIOS**
 
 At this point, you need to adjust the BIOS settings for Intel TDX. **Intel TME,
 Intel TME-MT, Intel TDX Settings**
@@ -411,7 +592,7 @@ sudo dmesg | grep -i tdx
 > sudo reboot
 > ```
 
-#### Configure GPU for Confidential Compute
+**Configure GPU for Confidential Compute**
 
 The NVIDIA H100 can be toggled into and out of CC modes only with a privileged
 call from the host. Here are the main flags:
@@ -451,8 +632,7 @@ done
 > and power cycles. To revert these changes, run the previous commands again
 > with `--set-<mode>-mode=off`.
 
-### Launching TVM
-
+## Launching TVM
 After completing all the prerequisite steps above, you are ready to run TVM.
 This process will:
 
@@ -463,7 +643,7 @@ This process will:
 If you encounter any errors during this process, please review and correct your
 hardware configuration according to the guidelines in the previous sections.
 
-#### TVM Configuration
+### TVM Configuration
 
 1. **Required Arguments**
 
@@ -496,25 +676,41 @@ hardware configuration according to the guidelines in the previous sections.
    }
    ```
 
-#### TVM Installation
+---
+
+### TVM Installation
 
 1. **Clone Repository**
+    ```bash
+    git clone https://github.com/manifold-inc/targon.git
+    cd targon
+    ```
 
-   ```bash
-   # Clone the repository
-   git clone https://github.com/manifold-inc/targon.git
-   cd targon
-   ```
+2. **Run TVM Installer**
 
-1. **Run TVM Installer**
+    **For AMD CPU Servers:**
 
-   ```bash
-   # Run the TVM installer with network submission
-   sudo ./tvm/install --service-url http://tvm.targon.com --vm-download-dir ./ --submit --hotkey-phrase "your phrase" -node-type nvcc
-   ```
+    ```bash
+    sudo ./tvm/install --service-url http://tvm.targon.com \
+                    --vm-download-dir ./ \
+                    --submit \
+                    --hotkey-phrase "your phrase" \
+                    --node-type cpu
+    ```
 
-   > **Note**: To test without submitting to the network, remove the
-   > `--submit --service-url` flags.
+    **For Intel TDX + Hopper GPUs:**
+
+    ```bash
+    sudo ./tvm/install --service-url http://tvm.targon.com \
+                    --vm-download-dir ./ \
+                    --submit \
+                    --hotkey-phrase "your phrase" \
+                    --node-type nvcc
+    ```
+
+    > ✅ **Tip:** To test without submitting to the network, remove the `--submit --service-url` flags.
+
+---
 
 If you encounter any issues during verification, ensure that:
 
@@ -524,7 +720,7 @@ If you encounter any issues during verification, ensure that:
 
 At this point, all setup on your TVM nodes is complete.
 
-### Updating/Running Miner
+## Updating/Running Miner
 
 After setting up your TVM nodes, you need to update your miner configuration to
 report the IP addresses of each CVM you are running.
@@ -558,3 +754,4 @@ report the IP addresses of each CVM you are running.
 
 1. **Start Miner** Run
    `docker compose -f docker-compose.miner.yml up -d --build`
+
