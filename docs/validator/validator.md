@@ -1,20 +1,20 @@
-## Running a Validator
+# Running a Validator
 
-### Validator Prerequisites
+**Validator Prerequisites**
 
 - Docker installed (see docs/docker.md)
 - Basic compute resources (any cpu server)
 
-### Validator Installation
+## Validator Installation
 
-#### 1. Clone Repository
+**1. Clone Repository**
 
 ```bash
 git clone https://github.com/manifold-inc/targon.git
 cd targon
 ```
 
-#### 2. Environment Setup
+**2. Environment Setup**
 
 Create a `.env` file in the project directory:
 
@@ -40,8 +40,6 @@ TIMEOUT_MULT=1
 
 ## Chain to connect to
 # CHAIN_ENDPOINT=wss://entrypoint-finney.opentensor.ai:443
-
-
 ```
 
 > **Note** both mongo environment keys are keys **you define** and can be
@@ -50,15 +48,15 @@ TIMEOUT_MULT=1
 > the password and one as the username. These **do not** need to be double
 > quoted in the .env file
 
-#### 3. Build and Run Services
+**3. Build and Run Services**
 
 ```bash
 docker compose up -d --force-recreate --build
 ```
 
-### Validator Monitoring and Maintenance
+## Validator Monitoring and Maintenance
 
-#### Logs
+**Logs**
 
 ```bash
 # View all logs
@@ -68,7 +66,7 @@ docker compose logs -f
 docker compose logs -f targon
 ```
 
-#### Updates
+**Updates**
 
 ```bash
 # Pull latest code
@@ -79,7 +77,7 @@ docker compose pull
 docker compose up -d --build --force-recreate
 ```
 
-#### Troubleshooting
+**Troubleshooting**
 
 ```bash
 # Check service status
