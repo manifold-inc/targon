@@ -17,9 +17,9 @@ technology:
 
 ## Docs
 
-For validators, see [validator docs](/docs/validator.md)
+For validators, see [validator docs](/docs/validator/validator.md)
 
-For miners, see [miner docs](/docs/miner.md)
+For miners, see [miner docs](/docs/miner/miner.md)
 
 For mongo-wrapper service, see [mongo-wrapper docs](/docs/mongo-wrapper.md)
 
