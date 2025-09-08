@@ -19,7 +19,7 @@ This doc provides setup scripts and instructions for running miners in **confide
     3. [BIOS Configuration (AMD SEV-SNP)](amd-cpus.md#bios-configuration-amd-sev-snp)
     4. [Host OS Preparation (AMD)](amd-cpus.md#host-os-preparation-amd)
 
-* [Intel TDX + Hopper GPU Setup](intel-hopper-gpus)
+* [Intel TDX + Hopper GPU Setup](intel-hopper-gpus.md)
     1. [Hardware Requirements (Intel)](intel-hopper-gpus#hardware-requirements-intel)
     2. [Software Requirements (Intel)](intel-hopper-gpus#software-requirements-intel)
     3. [BIOS Configuration (Intel TDX)](intel-hopper-gpus#bios-configuration-intel-tdx)
