@@ -16,6 +16,8 @@ import (
 type minerStats struct {
 	gpuCount  int
 	gpuTypes  map[string]int
+	cpuTypes  map[string]int
+	cpuCount  int
 	uid       int
 	incentive float64
 }
@@ -23,6 +25,7 @@ type minerStats struct {
 func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U16) error {
 	stats := make(map[int]*minerStats)
 	totalGPUs := 0
+	totalCPUs := 0
 	activeNodes := 0
 
 	for uidstr, nodes := range c.VerifiedNodes {
@@ -30,6 +33,7 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 		if stats[uid] == nil {
 			stats[uid] = &minerStats{
 				gpuTypes: make(map[string]int),
+				cpuTypes: make(map[string]int),
 				uid:      uid,
 			}
 		}
@@ -45,6 +49,12 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 				stats[uid].gpuCount++
 				stats[uid].gpuTypes[gpuLower]++
 			}
+			for _, cpu := range *node.CPUCards {
+				cpuLower := strings.ToLower(cpu)
+				totalCPUs++
+				stats[uid].cpuCount++
+				stats[uid].cpuTypes[cpuLower]++
+			}
 		}
 	}
 
@@ -56,11 +66,15 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 
 	// Aggregate GPU types across all miners
 	gpuTypes := make(map[string]int)
+	cpuTypes := make(map[string]int)
 	statsarr := []*minerStats{}
 	for _, miner := range stats {
 		statsarr = append(statsarr, miner)
 		for gpu, count := range miner.gpuTypes {
 			gpuTypes[gpu] += count
+		}
+		for cpu, count := range miner.cpuTypes {
+			cpuTypes[cpu] += count
 		}
 	}
 
@@ -82,16 +96,20 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 	}
 	desc := fmt.Sprintf(
 		"Total Attested GPUs: %d\n"+
+			"Total Attested CPUs: %d\n"+
 			"Active CVM Nodes: %d\n"+
 			"Emission Pool: $%.2f\n"+
 			"Burned: %.2f%%\n"+
 			"GPU Type Breakdown:\n%s\n"+
+			"CPU Type Breakdown:\n%s\n"+
 			"Per Miner Breakdown:\n%s",
 		totalGPUs,
+		totalCPUs,
 		activeNodes,
 		*c.EmissionPool,
 		burned,
 		formatGPUBreakdown(gpuTypes),
+		formatCPUBreakdown(cpuTypes),
 		formatMinerBreakdown(statsarr),
 	)
 
@@ -107,8 +125,10 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 	err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
 	c.Deps.Log.Infow("Sent daily GPU summary",
 		"total_gpus", totalGPUs,
+		"total_cpus", totalCPUs,
 		"active_nodes", activeNodes,
 		"gpu_types", gpuTypes,
+		"cpu_types", cpuTypes,
 	)
 	return err
 }
@@ -117,6 +137,14 @@ func formatGPUBreakdown(gpuTypes map[string]int) string {
 	var sb strings.Builder
 	for gpu, count := range gpuTypes {
 		sb.WriteString(fmt.Sprintf("- %s: %d\n", gpu, count))
+	}
+	return sb.String()
+}
+
+func formatCPUBreakdown(cpuTypes map[string]int) string {
+	var sb strings.Builder
+	for cpu, count := range cpuTypes {
+		sb.WriteString(fmt.Sprintf("- %s: %d\n", cpu, count))
 	}
 	return sb.String()
 }
