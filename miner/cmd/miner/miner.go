@@ -74,10 +74,19 @@ func UpdateCore(core *Core) error {
 	if err != nil {
 		return Wrap("Failed getting neurons", err)
 	}
+	metagraph, err := runtime.GetMetagraph(core.Deps.Client, uint16(*core.Deps.Config.Netuid), &blockHash)
+	if err != nil {
+		return Wrap("Failed getting metagraph", err)
+	}
 
 	// we need to make sure the map is reset
 	core.Neurons = map[string]runtime.NeuronInfo{}
 	for _, n := range neurons {
+		// all entries in metagraph come indexed by uid
+		var stakeEntryInMetagraph types.UCompact = metagraph.TotalStake[int(n.UID.Int64())]
+		// we need to use TotalStake because it includes the parent stake(s)
+		n.Stake[0].Amount = stakeEntryInMetagraph
+
 		core.Neurons[setup.AccountIDToSS58(n.Hotkey)] = n
 	}
 	core.Deps.Log.Info("Neurons Updated")
