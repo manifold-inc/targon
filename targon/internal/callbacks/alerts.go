@@ -152,10 +152,20 @@ func formatCPUBreakdown(cpuTypes map[string]int) string {
 func formatMinerBreakdown(stats []*minerStats) string {
 	var sb strings.Builder
 	for _, miner := range stats {
-		if miner.gpuCount == 0 {
+		if miner.gpuCount == 0 && miner.cpuCount == 0 {
 			continue
 		}
-		sb.WriteString(fmt.Sprintf("- Miner %d: %d GPUs, %.2f%%\n", miner.uid, miner.gpuCount, miner.incentive*100))
+		details := ""
+		if miner.gpuCount > 0 {
+			details += fmt.Sprintf("%d GPUs", miner.gpuCount)
+		}
+		if miner.cpuCount > 0 {
+			if details != "" {
+				details += ", "
+			}
+			details += fmt.Sprintf("%d CPUs", miner.cpuCount)
+		}
+		sb.WriteString(fmt.Sprintf("- Miner %d: %s, %.2f%%\n", miner.uid, details, miner.incentive*100))
 	}
 	return sb.String()
 }
