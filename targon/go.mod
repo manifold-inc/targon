@@ -10,7 +10,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
-	github.com/subtrahend-labs/gobt v0.0.5
+	github.com/subtrahend-labs/gobt v0.0.6
 	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.mongodb.org/mongo-driver/v2 v2.2.1
 	go.uber.org/zap v1.27.0
