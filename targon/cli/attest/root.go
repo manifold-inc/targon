@@ -104,19 +104,6 @@ var ipsCmd = &cobra.Command{
 			}
 		}
 
-		contID, err := createNewContainer("ghcr.io/manifold-inc/targon-nvidia-attest:latest")
-		if err != nil {
-			fmt.Printf("Error creating container: %s\n", err.Error())
-			return
-		}
-		defer func() {
-			err = stopContainer(contID)
-			if err != nil {
-				fmt.Printf("Error stopping container: %s\n", err.Error())
-				return
-			}
-		}()
-
 		attester := cvm.NewAttester(1, kp, "https://tower.targon.com")
 		if len(ipFlag) != 0 {
 
