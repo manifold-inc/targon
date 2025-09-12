@@ -64,6 +64,7 @@ func NewServer(deps *setup.Dependencies) *Server {
 func (s *Server) setupRoutes() {
 	s.echo.GET("/api/v1/auction-results", s.getAuctionResults)
 	s.echo.GET("/api/v1/attestation-errors/:uid", s.getAttestationErrors)
+	s.echo.GET("/api/v1/ips", s.getIPs)
 }
 
 func (s *Server) Start(addr string) error {
@@ -72,6 +73,10 @@ func (s *Server) Start(addr string) error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.echo.Shutdown(ctx)
+}
+
+func (s *Server) getIPs(c echo.Context) error {
+	return c.JSON(200, s.deps.IPs)
 }
 
 func (s *Server) getAuctionResults(c echo.Context) error {

@@ -83,7 +83,7 @@ func UpdateCore(core *Core) error {
 	core.Neurons = map[string]runtime.NeuronInfo{}
 	for _, n := range neurons {
 		// all entries in metagraph come indexed by uid
-		var stakeEntryInMetagraph types.UCompact = metagraph.TotalStake[int(n.UID.Int64())]
+		stakeEntryInMetagraph := metagraph.TotalStake[int(n.UID.Int64())]
 		// we need to use TotalStake because it includes the parent stake(s)
 		n.Stake[0].Amount = stakeEntryInMetagraph
 
@@ -163,7 +163,7 @@ func main() {
 		}
 
 		// No vpermit found for validator
-		if !(*core.ValidatorPermits)[int(neuron.UID.Int64())] {
+		if !(*core.ValidatorPermits)[neuron.UID.Int64()] {
 			deps.Log.Warnf("No vpermit for %s", signedBy)
 			return c.String(http.StatusForbidden, "No VPermit")
 		}

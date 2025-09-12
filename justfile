@@ -4,8 +4,8 @@ set dotenv-load
 default:
   @just --list
 
-up:
-  docker compose up -d --build --force-recreate targon
+up extra="":
+  docker compose up -d --build --force-recreate targon {{extra}}
 
 up-miner:
   docker compose -f docker-compose.miner.yml up -d --build --force-recreate

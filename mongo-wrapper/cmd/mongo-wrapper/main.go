@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
 	"mongo-wrapper/internal/server"
 	"mongo-wrapper/internal/setup"
 )
@@ -28,6 +29,7 @@ func main() {
 				deps.Log.Errorw("Error disconnecting from MongoDB", "error", err)
 			}
 		}
+		deps.Shutdown()
 	}()
 
 	if err := srv.Start(fmt.Sprintf(":%s", "8080")); err != nil {

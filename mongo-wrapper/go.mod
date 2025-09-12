@@ -3,15 +3,16 @@ module mongo-wrapper
 go 1.24.2
 
 require (
+	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.2-0.20240919131012-e3b938563803
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/subtrahend-labs/gobt v0.0.4-beta.7
+	github.com/subtrahend-labs/gobt v0.0.7
+	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.mongodb.org/mongo-driver/v2 v2.2.1
 	go.uber.org/zap v1.27.0
 )
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
-	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.2-0.20240919131012-e3b938563803 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
@@ -36,7 +37,6 @@ require (
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

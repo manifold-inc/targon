@@ -28,6 +28,10 @@ services:
       - MONGO_USERNAME=${MONGO_USERNAME}
       - MONGO_PASSWORD=${MONGO_PASSWORD}
     restart: unless-stopped
+    ports:
+      - "80:8080"
+    volumes:
+      - ./targon-ips.json:/targon-ips.json
     labels:
       - traefik.enable=${ENABLE_MONGO_WRAPPER:-false}
       - traefik.http.routers.mongowrapper.rule=Host(`${MONGO_WRAPPER_HOST}`)

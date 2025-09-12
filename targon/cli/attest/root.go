@@ -3,7 +3,6 @@ package attest
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -25,9 +24,6 @@ import (
 	"github.com/subtrahend-labs/gobt/client"
 	"github.com/subtrahend-labs/gobt/runtime"
 
-	"github.com/docker/docker/api/types/container"
-	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 )
 
 var (
@@ -157,7 +153,7 @@ var ipsCmd = &cobra.Command{
 				}
 				attprint, _ := json.MarshalIndent(attestPayload, "", "  ")
 				fmt.Println(string(attprint))
-				gpus, err := attester.VerifyAttestation(attestPayload, nonce, ipFlag)
+				gpus, err := attester.VerifyAttestation(attestPayload, nonce, cvmIP)
 				if err != nil {
 					fmt.Printf("%s: %s\n", n.IP, err.Error())
 					return
@@ -201,57 +197,4 @@ func loadConfig() (*AttestConfig, error) {
 	}
 
 	return config, nil
-}
-
-func createNewContainer(image string) (string, error) {
-	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", err
-	}
-
-	hostBinding := nat.PortBinding{
-		HostIP:   "0.0.0.0",
-		HostPort: "3344",
-	}
-	containerPort, err := nat.NewPort("tcp", "80")
-	if err != nil {
-		panic("Unable to get the port")
-	}
-
-	portBinding := nat.PortMap{containerPort: []nat.PortBinding{hostBinding}}
-
-	cont, err := cli.ContainerCreate(
-		context.Background(),
-		&container.Config{
-			Image: image,
-			ExposedPorts: map[nat.Port]struct{}{
-				containerPort: {},
-			},
-		},
-		&container.HostConfig{
-			PortBindings: portBinding,
-			AutoRemove:   true,
-		}, nil, nil, "nvidia-attest")
-	if err != nil {
-		panic(err)
-	}
-
-	_ = cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
-	fmt.Printf("Container %s started\n", cont.ID)
-	return cont.ID, nil
-}
-
-func stopContainer(containerID string) error {
-	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-
-	err = cli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{Force: true})
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Container %s stopped\n", containerID)
-	return nil
 }
