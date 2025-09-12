@@ -155,16 +155,14 @@ func formatMinerBreakdown(stats []*minerStats) string {
 		if miner.gpuCount == 0 && miner.cpuCount == 0 {
 			continue
 		}
-		details := ""
+		var parts []string
 		if miner.gpuCount > 0 {
-			details += fmt.Sprintf("%d GPUs", miner.gpuCount)
+			parts = append(parts, fmt.Sprintf("%d GPUs", miner.gpuCount))
 		}
 		if miner.cpuCount > 0 {
-			if details != "" {
-				details += ", "
-			}
-			details += fmt.Sprintf("%d CPUs", miner.cpuCount)
+			parts = append(parts, fmt.Sprintf("%d CPUs", miner.cpuCount))
 		}
+		details := strings.Join(parts, ", ")
 		sb.WriteString(fmt.Sprintf("- Miner %d: %s, %.2f%%\n", miner.uid, details, miner.incentive*100))
 	}
 	return sb.String()
