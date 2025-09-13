@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/subtrahend-labs/gobt/client"
 	"github.com/subtrahend-labs/gobt/runtime"
-
 )
 
 var (
@@ -32,11 +31,13 @@ var (
 	chainEndpointFlag        string
 	chainNetuidFlag          int
 	nvidiaAttestEndpointFlag string
+	minerHotkeyFlag          string
 )
 
 func init() {
 	ipsCmd.Flags().IntVar(&uidFlag, "uid", -1, "Specific uid to grab GPU info for")
 	ipsCmd.Flags().StringVar(&ipFlag, "ip", "", "Specific ip address for off chain testing")
+	ipsCmd.Flags().StringVar(&minerHotkeyFlag, "miner-hotkey", "", "Specific miner hotkey")
 	ipsCmd.Flags().StringVar(&chainEndpointFlag, "chain", "wss://entrypoint-finney.opentensor.ai:443", "Set chain endpoint")
 	ipsCmd.Flags().IntVar(&chainNetuidFlag, "netuid", 4, "Set chain netuid")
 	ipsCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia", "http://localhost:3344", "Set nvidia attest endpoint")
@@ -107,7 +108,13 @@ var ipsCmd = &cobra.Command{
 			nonce := targon.NewNonce(kp.Address)
 			cvmIP := strings.TrimPrefix(ipFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
-			attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
+
+			key := utils.AccountIDToSS58(neuron.Hotkey)
+			if minerHotkeyFlag != "" {
+				key = minerHotkeyFlag
+			}
+
+			attestPayload, err := attester.GetAttestFromNode(key, cvmIP, nonce)
 			if err != nil {
 				fmt.Println(err.Error())
 				return
