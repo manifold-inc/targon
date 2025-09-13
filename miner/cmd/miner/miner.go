@@ -190,7 +190,7 @@ func main() {
 		close(shutdown)
 		return
 	}
-	if !CheckAlreadyRegistered(core) {
+	if !CheckAlreadyRegistered(core) && !core.Deps.Config.Debug {
 		core.Deps.Log.Info("Setting miner info, differs from config")
 		err := setup.ServeMiner(deps)
 		if err != nil {
