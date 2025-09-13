@@ -86,7 +86,9 @@ var getCMD = &cobra.Command{
 			fmt.Println(err.Error())
 			return
 		}
-		fmt.Printf("%+v", nodes)
+		for _, n := range nodes {
+			fmt.Printf("%+v", *n)
+		}
 	},
 }
 
