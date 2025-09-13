@@ -33,7 +33,7 @@ func init() {
 }
 
 var getCMD = &cobra.Command{
-	Use:   "errors",
+	Use:   "nodes",
 	Short: "Get nodes from miner",
 	Long:  `Get nodes from miner`,
 	Run: func(cmd *cobra.Command, args []string) {
