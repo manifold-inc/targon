@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,23 +13,13 @@ import (
 
 	"miner/internal/setup"
 
+	"github.com/manifold-inc/targon-lib/lib/utils"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/labstack/echo/v4"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"github.com/subtrahend-labs/gobt/storage"
 )
-
-func Wrap(msg string, errs ...error) error {
-	fullerr := msg
-	for _, err := range errs {
-		if err == nil {
-			continue
-		}
-		fullerr = fmt.Sprintf("%s: %s", fullerr, err)
-	}
-	return errors.New(fullerr)
-}
 
 type Core struct {
 	Deps             *setup.Dependencies
@@ -68,15 +57,15 @@ func UpdateCore(core *Core) error {
 	// grab neurons
 	blockHash, err := core.Deps.Client.Api.RPC.Chain.GetBlockHashLatest()
 	if err != nil {
-		return Wrap("failed getting blockhash for neurons", err)
+		return utils.Wrap("failed getting blockhash for neurons", err)
 	}
 	neurons, err := runtime.GetNeurons(core.Deps.Client, uint16(*core.Deps.Config.Netuid), &blockHash)
 	if err != nil {
-		return Wrap("Failed getting neurons", err)
+		return utils.Wrap("Failed getting neurons", err)
 	}
 	metagraph, err := runtime.GetMetagraph(core.Deps.Client, uint16(*core.Deps.Config.Netuid), &blockHash)
 	if err != nil {
-		return Wrap("Failed getting metagraph", err)
+		return utils.Wrap("Failed getting metagraph", err)
 	}
 
 	// we need to make sure the map is reset
@@ -87,7 +76,7 @@ func UpdateCore(core *Core) error {
 		// we need to use TotalStake because it includes the parent stake(s)
 		n.Stake[0].Amount = stakeEntryInMetagraph
 
-		core.Neurons[setup.AccountIDToSS58(n.Hotkey)] = n
+		core.Neurons[utils.AccountIDToSS58(n.Hotkey)] = n
 	}
 	core.Deps.Log.Info("Neurons Updated")
 	return nil
@@ -186,7 +175,7 @@ func main() {
 
 	err := UpdateCore(core)
 	if err != nil {
-		core.Deps.Log.Error(Wrap("failed updating core", err))
+		core.Deps.Log.Error(utils.Wrap("failed updating core", err))
 		close(shutdown)
 		return
 	}

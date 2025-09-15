@@ -1,12 +1,12 @@
 module miner
 
-go 1.24.2
+go 1.25.1
 
 require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.2-0.20240919131012-e3b938563803
 	github.com/labstack/echo/v4 v4.13.3
+	github.com/manifold-inc/targon-lib v0.0.2
 	github.com/subtrahend-labs/gobt v0.0.7
-	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/zap v1.27.0
 )
 
@@ -34,6 +34,7 @@ require (
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
+	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/net v0.34.0 // indirect

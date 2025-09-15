@@ -7,9 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"targon/internal/utils"
-
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
+	"github.com/manifold-inc/targon-lib/lib/utils"
 	"go.uber.org/zap"
 )
 

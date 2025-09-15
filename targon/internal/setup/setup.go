@@ -10,11 +10,11 @@ import (
 
 	"targon/internal/discord"
 	"targon/internal/tower"
-	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/joho/godotenv"
+	"github.com/manifold-inc/targon-lib/lib/utils"
 	"github.com/subtrahend-labs/gobt/client"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
@@ -212,6 +212,7 @@ func ParseVersion(v string) (*types.U64, error) {
 	if err != nil {
 		return nil, fmt.Errorf("not a valid version string: %v", v)
 	}
+	// Needs fixed but need to confirm current min ver
 	ver := (major * 100000) + (minor * 100) + patch
 	typedVer := types.NewU64(uint64(ver))
 	return &typedVer, nil

@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"targon/internal/targon"
-	errutil "targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
+	"github.com/manifold-inc/targon-lib/lib/utils"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
@@ -66,7 +66,7 @@ func (a *Attester) GetAttestFromNode(
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
-		return nil, errutil.Wrap("failed to generate request to miner", err)
+		return nil, utils.Wrap("failed to generate request to miner", err)
 	}
 	headers, err := boilerplate.GetEpistulaHeaders(
 		a.Hotkey,
@@ -74,7 +74,7 @@ func (a *Attester) GetAttestFromNode(
 		body,
 	)
 	if err != nil {
-		return nil, errutil.Wrap("failed generating epistula headers", err)
+		return nil, utils.Wrap("failed generating epistula headers", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	for key, value := range headers {
@@ -83,7 +83,7 @@ func (a *Attester) GetAttestFromNode(
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errutil.Wrap("failed sending request to miner", err)
+		return nil, utils.Wrap("failed sending request to miner", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
@@ -97,12 +97,12 @@ func (a *Attester) GetAttestFromNode(
 	}
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errutil.Wrap("failed reading response", err)
+		return nil, utils.Wrap("failed reading response", err)
 	}
 	var attestRes targon.AttestationResponse
 	err = json.Unmarshal(resBody, &attestRes)
 	if err != nil {
-		return nil, errutil.Wrap("failed unmarshaling response", err)
+		return nil, utils.Wrap("failed unmarshaling response", err)
 	}
 	return &attestRes, nil
 }
@@ -118,7 +118,7 @@ func (a *Attester) VerifyAttestation(
 		"ip_address":  ip,
 	})
 	if err != nil {
-		return nil, errutil.Wrap("failed marshaling miner attest response", err)
+		return nil, utils.Wrap("failed marshaling miner attest response", err)
 	}
 
 	if nonce != attestRes.UserData.Nonce {
@@ -131,11 +131,11 @@ func (a *Attester) VerifyAttestation(
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
-		return nil, errutil.Wrap("failed to generate request to tower", err)
+		return nil, utils.Wrap("failed to generate request to tower", err)
 	}
 	headers, err := boilerplate.GetEpistulaHeaders(a.Hotkey, "", body)
 	if err != nil {
-		return nil, errutil.Wrap("failed creating epistula headers", err)
+		return nil, utils.Wrap("failed creating epistula headers", err)
 	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
@@ -144,27 +144,27 @@ func (a *Attester) VerifyAttestation(
 	req.Close = true
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return nil, errutil.Wrap("failed sending request to tower", err)
+		return nil, utils.Wrap("failed sending request to tower", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errutil.Wrap("failed reading response body from tower", err)
+		return nil, utils.Wrap("failed reading response body from tower", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errutil.Wrap("bad status code from tower", errors.New(string(resBody)))
+		return nil, utils.Wrap("bad status code from tower", errors.New(string(resBody)))
 	}
 
 	var attestResponse targon.GPUAttestationResponse
 	err = attestResponse.UnmarshalJSON(resBody)
 	if err != nil {
-		return nil, errutil.Wrap("failed decoding json response from tower")
+		return nil, utils.Wrap("failed decoding json response from tower")
 	}
 
 	if !attestResponse.Valid {
-		return nil, errutil.Wrap(
+		return nil, utils.Wrap(
 			"attestation invalid", attestResponse.Error,
 		)
 	}
@@ -185,7 +185,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		nil,
 	)
 	if err != nil {
-		return nil, errutil.Wrap("failed to generate request to miner", err)
+		return nil, utils.Wrap("failed to generate request to miner", err)
 	}
 	headers, err := boilerplate.GetEpistulaHeaders(
 		a.Hotkey,
@@ -193,7 +193,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		[]byte{},
 	)
 	if err != nil {
-		return nil, errutil.Wrap("failed generating epistula headers", err)
+		return nil, utils.Wrap("failed generating epistula headers", err)
 	}
 	for key, value := range headers {
 		req.Header.Set(key, value)
@@ -201,7 +201,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errutil.Wrap("failed sending request to miner", err)
+		return nil, utils.Wrap("failed sending request to miner", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
@@ -212,7 +212,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errutil.Wrap("failed reading miner response", err)
+		return nil, utils.Wrap("failed reading miner response", err)
 	}
 
 	// Backwards compat; remove later on
@@ -224,7 +224,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		nodesv2 = []*targon.MinerNode{}
 		err = json.Unmarshal(body, &nodesv1)
 		if err != nil {
-			return nil, errutil.Wrap("failed reading miner response", err)
+			return nil, utils.Wrap("failed reading miner response", err)
 		}
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, &targon.MinerNode{

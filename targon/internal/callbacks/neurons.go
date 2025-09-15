@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"targon/internal/targon"
-	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/manifold-inc/targon-lib/lib/utils"
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 

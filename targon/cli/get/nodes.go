@@ -7,10 +7,10 @@ import (
 
 	"targon/cli/shared"
 	"targon/internal/cvm"
-	"targon/internal/utils"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/manifold-inc/targon-lib/lib/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/subtrahend-labs/gobt/client"
