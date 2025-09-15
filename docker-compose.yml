@@ -29,7 +29,7 @@ services:
       - MONGO_PASSWORD=${MONGO_PASSWORD}
     restart: unless-stopped
     volumes:
-      - ./targon-ips.json:/targon-ips.json
+      - ./targon-ips.txt:/targon-ips.txt
     labels:
       - traefik.enable=${ENABLE_MONGO_WRAPPER:-false}
       - traefik.http.routers.mongowrapper.rule=Host(`${MONGO_WRAPPER_HOST}`)
