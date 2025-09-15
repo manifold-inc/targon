@@ -2,9 +2,7 @@ package setup
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"go/scanner"
 	"net"
 	"os"
 	"strings"
