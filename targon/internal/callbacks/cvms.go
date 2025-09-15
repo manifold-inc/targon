@@ -8,7 +8,7 @@ import (
 	"targon/internal/cvm"
 	"targon/internal/targon"
 
-	"github.com/manifold-inc/targon-lib/lib/utils"
+	"github.com/manifold-inc/manifold-sdk/lib/utils"
 )
 
 // Collects attestations across all miners and all nodes, skipping nodes

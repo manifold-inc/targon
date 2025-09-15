@@ -5,7 +5,7 @@ go 1.25.1
 require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.2-0.20240919131012-e3b938563803
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/manifold-inc/targon-lib v0.0.2
+	github.com/manifold-inc/manifold-sdk v0.0.1
 	github.com/subtrahend-labs/gobt v0.0.7
 	go.uber.org/zap v1.27.0
 )

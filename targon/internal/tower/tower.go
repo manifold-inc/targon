@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
-	"github.com/manifold-inc/targon-lib/lib/utils"
+	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"go.uber.org/zap"
 )
 

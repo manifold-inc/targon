@@ -8,7 +8,7 @@ import (
 	"targon/internal/cvm"
 	"targon/internal/targon"
 
-	"github.com/manifold-inc/targon-lib/lib/utils"
+	"github.com/manifold-inc/manifold-sdk/lib/utils"
 )
 
 // Gets all nodes and adds them to the core

@@ -6,7 +6,7 @@ import (
 	"targon/internal/targon"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	"github.com/manifold-inc/targon-lib/lib/utils"
+	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/subtrahend-labs/gobt/runtime"
 )
 

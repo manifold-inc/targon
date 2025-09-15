@@ -14,7 +14,7 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/joho/godotenv"
-	"github.com/manifold-inc/targon-lib/lib/utils"
+	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/subtrahend-labs/gobt/client"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
