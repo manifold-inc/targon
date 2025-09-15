@@ -1,10 +1,13 @@
 package setup
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"go/scanner"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -127,14 +130,25 @@ func (d *Dependencies) UpdateIPs() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.IPs = IPs{}
-	file, err := os.ReadFile("/targon-ips.json")
+	file, err := os.Open("/targon-ips.txt")
 	if err != nil {
 		return fmt.Errorf("failed reading targon-ips: %s", err)
 	}
-	err = json.Unmarshal(file, &d.IPs)
-	if err != nil {
-		return fmt.Errorf("failed unmarshaling targon-ips: %s", err)
+	defer file.Close()
+	d.IPs.Targon = []string{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		l := strings.TrimSpace(scanner.Text())
+		if len(l) == 0 {
+			continue
+		}
+		if strings.HasPrefix(l, "#") {
+			continue
+		}
+		s := strings.Split(l, " ")
+		d.IPs.Targon = append(d.IPs.Targon, s[0])
 	}
+
 	d.IPs.Validators = map[string]string{}
 
 	for _, n := range neurons {
