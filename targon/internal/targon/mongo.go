@@ -64,7 +64,7 @@ func SaveMongoBackup(c *Core) error {
 }
 
 func LoadMongoBackup(c *Core) error {
-	minerCol := c.Deps.Mongo.Database("targon").Collection("miner_info_backup")
+	minerCol := c.Deps.Mongo.Database("targon").Collection("miner_info_backup_v2")
 	opts := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: -1}})
 
 	// Find the record with the max value
