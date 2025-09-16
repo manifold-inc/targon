@@ -41,11 +41,210 @@ Compute to work:
    - Navigate to: `Software Guard Extension`
    - Set to `Enable`
 
+1. **SGX Factory Reset**
+
+  - Navidate to: `SGX Factory Reset`
+  - Set to `Enable`
+
 > ⚠️ **Note**: These BIOS settings are critical for Confidential Compute
 > functionality. Incorrect settings may prevent the system from booting or cause
 > security features to fail.
 
 ## Host OS Preparation (Intel)
+
+**Provisioning Certificate Caching Service (PCCS)**
+
+To setup the PCCS in the next step, you need a subscription key for the Intel PCS. You can obtain this from the [Intel Provisioning Certification Service](https://api.portal.trustedservices.intel.com/provisioning-certification).
+
+1. If you did not request such a subscription key before, [subscribe to Intel PCS](https://api.portal.trustedservices.intel.com/products#product=liv-intel-software-guard-extensions-provisioning-certification-service), which requires to log in (or to create an account). Two subscription keys are generated (for key rotation) and both can be used for the following steps.
+2. If you did request such a subscription key before, [retrieve one of your keys](https://api.portal.trustedservices.intel.com/manage-subscriptions), which requires to log in. You have two subscription keys (for key rotation), and both can be used for the following steps.
+
+If not done during another component installation, set up the appropriate Intel SGX package repository for your distribution of choice:
+
+```bash
+echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+wget https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key
+sudo mkdir -p /etc/apt/keyrings
+cat intel-sgx-deb.key | sudo tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
+sudo apt-get update
+```
+
+Install PCCS with following commands. During installation, answer Y when asked if the PCCS should be installed now, Y when asked if PCCS should be configured now, and enter subscription key generated in step 1 when asked for Intel PCS API key. Answer the remaining questions according to your needs, e.g., your proxy settings, a desired user password, and an admin password. The configuration step will also allow you to create a self-signed SSL certificate for the PCCS.
+
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -yq --no-install-recommends nodejs=20.11.1-1nodesource1
+sudo apt-get install -y cracklib-runtime
+sudo apt install -y --no-install-recommends sgx-dcap-pccs
+```
+
+**How to check successful PCCS setup?**
+
+You can verify PCCS is active and can reach the PCS with the command below:
+
+```bash
+curl -k -G "https://localhost:8081/sgx/certification/v4/rootcacrl"
+```
+
+If successful, the HEX-encoded DER representation of the Intel Root CA CRL will be displayed:
+
+```
+308201213081c8020101300a06082a8648ce3d0403023068311a301806035504030c11496e74656c2053475820526f6f74204341311a3018060355040a0c11496e74656c20436f72706f726174696f6e3114301206035504070c0b53616e746120436c617261310b300906035504080c024341310b3009060355040613025553170d3233303430333130323235315a170d3234303430323130323235315aa02f302d300a0603551d140403020101301f0603551d2304183016801422650cd65a9d3489f383b49552bf501b392706ac300a06082a8648ce3d0403020348003045022051577d47d9fba157b65f1eb5f4657bbc5e56ccaf735a03f1b963d704805ab118022100939015ec1636e7eafa5f426c1e402647c673132b6850cabd68cef6bad7682a03
+```
+
+**How to check service log of the PCCS?**
+
+You can check the service log of the PCCS with the following command:
+
+```bash
+sudo journalctl -u pccs
+```
+
+The PCCS should be running. Example output after PCCS start:
+
+```
+date time localhost systemd[1]: Started pccs.service - Provisioning Certificate Caching Service (PCCS).
+date time localhost node[3305]: date time [info]: HTTPS Server is running on: https://localhost:8081
+```
+
+**How to change the configuration of the PCCS?**
+
+If you need to make changes to the PCCS setup after installation, the default location of the PCCS configuration file is `/opt/intel/sgx-dcap-pccs/config/default.json`. If changes are made to the PCCS configuration file, you will need to restart the PCCS service using the following command:
+
+
+```bash
+sudo systemctl restart pccs
+```
+
+**Platform Registration**
+
+
+On the host OS of platform to register, retrieve the PCKCIDRT:
+
+From the package repository of your distribution of choice:
+
+Set up the appropriate Intel SGX package repository:
+
+```bash
+echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+wget https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key
+sudo mkdir -p /etc/apt/keyrings
+cat intel-sgx-deb.key | sudo tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
+sudo apt-get update
+```
+
+Install PCKCIDRT:
+
+```bash
+sudo apt install -y sgx-pck-id-retrieval-tool
+```
+
+#### Execute the PCKCIDRT
+
+On the host OS of platform to register, execute the PCKCIDRT. This step depends on the method used for PCKCIDRT retrieval in step 1:
+
+If retrieved from a package repository:
+
+```bash
+cd /opt/intel/sgx-pck-id-retrieval-tool
+sudo ./PCKIDRetrievalTool -f host_$(hostnamectl --static).csv
+```
+
+On successful execution of the PCKCIDRT, you'll see output similar to the following:
+
+```
+Intel(R) Software Guard Extensions PCK Cert ID Retrieval Tool Version 1.23.100.0
+
+Registration status has been set to completed status.
+<hostname>.csv has been generated successfully!
+```
+
+#### Extract the Platform Manifest
+
+On the host OS of platform to register, use the following commands to extract the PM from the `<hostname>.csv` and store the result in the file `platformmanifest.bin`:
+
+```bash
+sudo apt-get install -y csvtool
+sudo bash -c "csvtool col 6 host_$(hostnamectl --static).csv | xxd -r -p > host_$(hostnamectl --static)_pm.bin"
+```
+
+#### Register with Intel Registration Service
+
+On the Registration Platform, send the PM to the registration REST API endpoint of the IRS. As shown in the linked API documentation, this can be done with a simple curl command (after adjusting the hostname placeholder):
+
+```bash
+curl -i \
+--data-binary @<hostname>-pm.bin \
+-X POST "https://api.trustedservices.intel.com/sgx/registration/v1/platform" \
+-H "Content-Type: application/octet-stream"
+```
+
+If the registration is successful, the IRS will return a "HTTP/1.1 201 Created" reply, with the PPID of the registered platform as content. Sample response:
+
+```
+HTTP/1.1 201 Created
+Content-Length: 32
+Content-Type: text/plain
+Request-ID: <request id>
+Date: <date>
+
+<PPID>
+```
+
+> **Note**: Platform registration can be done in other ways as well. For more details on alternative registration methods including Direct Registration and Indirect Registration, see the [Intel TDX Enabling Guide - Platform Registration](https://cc-enabling.trustedservices.intel.com/intel-tdx-enabling-guide/02/infrastructure_setup/#platform-registration).
+
+**Quote Generation Service (QGS)**
+
+The Quote Generation Service (QGS) is a service that runs in the host OS (or inside a dedicated VM) to host the TD Quoting Enclave. Note that the QGS cannot run on another machine, because the verification of the TD Report requires that the corresponding TD and the TD Quoting Enclave run on the same machine.
+
+#### Install QGS
+
+If not done during another component installation, set up the appropriate Intel SGX package repository for your distribution of choice:
+
+```bash
+echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu noble main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+wget https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key
+sudo mkdir -p /etc/apt/keyrings
+cat intel-sgx-deb.key | sudo tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
+sudo apt-get update
+```
+
+Install the QGS with the following command, which will also install the necessary prerequisites (the Quote Provider Library (QPL) and the Quoting Library (QL)).
+
+```bash
+sudo apt install -y \
+    tdx-qgs \
+    libsgx-dcap-default-qpl \
+    libsgx-dcap-ql
+```
+
+More detailed information about these instructions can be found in our Intel® SGX Software Installation Guide For Linux* OS.
+
+#### How to check service log of the QGS?
+
+You can check the service log of the QGS with the following command:
+
+```bash
+sudo journalctl -u qgsd -f
+```
+
+#### Configure QCNL
+
+On start, the QGS reads the configuration file `/etc/sgx_default_qcnl.conf`, and uses the contained settings for TD Quote Generation. This file contains various settings that might be important in your environment.
+
+Selected highlights regarding this configuration file:
+
+- If the QGS should use a PCCS in your infrastructure as a collateral caching service, you have to adjust the JSON-key `pccs_url` in the configuration file accordingly.
+- If the QGS should accept insecure HTTPS certificates from the PCCS, set the JSON-key `use_secure_cert` in the configuration file to `false`.
+
+See the comments of the configuration file `/etc/sgx_default_qcnl.conf` for more information on other settings.
+
+After changing settings in the file `/etc/sgx_default_qcnl.conf`, you have to restart the QGS:
+
+```bash
+sudo systemctl restart qgsd.service
+```
 
 **Install Prerequisite Packages**
 
