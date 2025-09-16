@@ -75,7 +75,7 @@ Install PCCS with following commands, the installer will prompt you for the foll
 | Prompt                                 | Example / Notes                                                   |
 | -------------------------------------- | ----------------------------------------------------------------- |
 | **Do you want to configure PCCS now?** | `Y`                                                               |
-| **Set HTTPS listening port**           | `8081` (default) or another port in `1024-65535`                  |
+| **Set HTTPS listening port**           | `8081` (default) |
 | **Accept local connections only?**     | `Y` (recommended if you don’t need remote access)                 |
 | **Intel PCS API key**                  | Paste the key you generated on the Intel portal                   |
 | **Caching fill method**                | `LAZY` is fine for most                                           |
