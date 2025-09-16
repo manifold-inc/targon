@@ -51,6 +51,7 @@ Compute to work:
 > security features to fail.
 
 ## Host OS Preparation (Intel)
+For TD Quote Generation and TD Quote Verification, collateral is needed. Intel provides the necessary collateral through the Intel® Provisioning Certification Service for ECDSA Attestation (PCS). 
 
 **Provisioning Certificate Caching Service (PCCS)**
 
