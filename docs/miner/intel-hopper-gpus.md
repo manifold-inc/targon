@@ -70,7 +70,18 @@ cat intel-sgx-deb.key | sudo tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/
 sudo apt-get update
 ```
 
-Install PCCS with following commands. During installation, answer Y when asked if the PCCS should be installed now, Y when asked if PCCS should be configured now, and enter subscription key generated in step 1 when asked for Intel PCS API key. Answer the remaining questions according to your needs, e.g., your proxy settings, a desired user password, and an admin password. The configuration step will also allow you to create a self-signed SSL certificate for the PCCS.
+Install PCCS with following commands, the installer will prompt you for the following configs. Answer the remaining questions according to your needs, e.g., your proxy settings, a desired user password, and an admin password. The configuration step will also allow you to create a self-signed SSL certificate for the PCCS.
+
+| Prompt                                 | Example / Notes                                                   |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| **Do you want to configure PCCS now?** | `Y`                                                               |
+| **Set HTTPS listening port**           | `8081` (default) or another port in `1024-65535`                  |
+| **Accept local connections only?**     | `Y` (recommended if you don’t need remote access)                 |
+| **Intel PCS API key**                  | Paste the key you generated on the Intel portal                   |
+| **Caching fill method**                | `LAZY` is fine for most                                           |
+| **Administrator password**             | Must meet complexity (uppercase, lowercase, number, special char) |
+| **Server user password**               | Also needs complexity                                             |
+| **Generate insecure HTTPS key/cert**   | `Y` if you want a self-signed certificate                         |
 
 
 ```bash
