@@ -247,8 +247,7 @@ On start, the QGS reads the configuration file `/etc/sgx_default_qcnl.conf`, and
 
 Selected highlights regarding this configuration file:
 
-- If the QGS should use a PCCS in your infrastructure as a collateral caching service, you have to adjust the JSON-key `pccs_url` in the configuration file accordingly.
-- If the QGS should accept insecure HTTPS certificates from the PCCS, set the JSON-key `use_secure_cert` in the configuration file to `false`.
+- If the QGS should accept insecure HTTPS certificates from the PCCS (as configured in previous step), set the JSON-key `use_secure_cert` in the configuration file to `false`.
 
 See the comments of the configuration file `/etc/sgx_default_qcnl.conf` for more information on other settings.
 
