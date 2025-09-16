@@ -57,8 +57,10 @@ For TD Quote Generation and TD Quote Verification, collateral is needed. Intel p
 
 To setup the PCCS in the next step, you need a subscription key for the Intel PCS. You can obtain this from the [Intel Provisioning Certification Service](https://api.portal.trustedservices.intel.com/provisioning-certification).
 
-1. If you did not request such a subscription key before, [subscribe to Intel PCS](https://api.portal.trustedservices.intel.com/products#product=liv-intel-software-guard-extensions-provisioning-certification-service), which requires to log in (or to create an account). Two subscription keys are generated (for key rotation) and both can be used for the following steps.
-2. If you did request such a subscription key before, [retrieve one of your keys](https://api.portal.trustedservices.intel.com/manage-subscriptions), which requires to log in. You have two subscription keys (for key rotation), and both can be used for the following steps.
+1. If you did not request such a subscription key before, [subscribe to Intel PCS](https://api.portal.trustedservices.intel.com/products#product=liv-intel-software-guard-extensions-provisioning-certification-service), which requires to log in (or to create an account). Two subscription keys are generated (for key rotation) and both can be used for the following steps. Click on Subscribe at botton of the page. Then click on show for Primary Key and use that key.
+<img width="3456" height="1984" alt="image" src="https://github.com/user-attachments/assets/2311bc63-ceab-49c7-9ccf-784e096f29a5" />
+
+3. If you did request such a subscription key before, [retrieve one of your keys](https://api.portal.trustedservices.intel.com/manage-subscriptions), which requires to log in. You have two subscription keys (for key rotation), and both can be used for the following steps.
 
 If not done during another component installation, set up the appropriate Intel SGX package repository for your distribution of choice:
 
