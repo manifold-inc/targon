@@ -58,7 +58,16 @@ For TD Quote Generation and TD Quote Verification, collateral is needed. Intel p
 To setup the PCCS in the next step, you need a subscription key for the Intel PCS. You can obtain this from the [Intel Provisioning Certification Service](https://api.portal.trustedservices.intel.com/provisioning-certification).
 
 1. If you did not request such a subscription key before, [subscribe to Intel PCS](https://api.portal.trustedservices.intel.com/products#product=liv-intel-software-guard-extensions-provisioning-certification-service), which requires to log in (or to create an account). Two subscription keys are generated (for key rotation) and both can be used for the following steps. Click on Subscribe at botton of the page. Then click on show for Primary Key and use that key.
-<img width="3456" height="1984" alt="image" src="https://github.com/user-attachments/assets/2311bc63-ceab-49c7-9ccf-784e096f29a5" />
+<div style="display: flex; overflow-x: auto; gap: 10px;">
+  <img src="https://github.com/user-attachments/assets/05daf49a-fe47-4f73-82ba-5ef1bf724f28" width="250"/>
+  <img src="https://github.com/user-attachments/assets/175d34f1-5dac-44cc-8a74-64ef29052124" width="250"/>
+  <img src="https://github.com/user-attachments/assets/a55eb886-2a82-480b-ae42-5643a2795e90" width="250"/>
+  <img src="https://github.com/user-attachments/assets/9296be95-c3d1-43bc-9750-c1ad0bd593a5" width="250"/>
+  <img src="https://github.com/user-attachments/assets/ae8706df-2e20-46ed-92c5-28d6a0db5474" width="250"/>
+  <img src="https://github.com/user-attachments/assets/0b48d18a-daeb-4215-8ed2-a5b1f1d7d1b0" width="250"/>
+  <img src="https://github.com/user-attachments/assets/05351a14-4c08-4cda-9ddd-59346fc8023a" width="250"/>
+</div>
+
 
 3. If you did request such a subscription key before, [retrieve one of your keys](https://api.portal.trustedservices.intel.com/manage-subscriptions), which requires to log in. You have two subscription keys (for key rotation), and both can be used for the following steps.
 
