@@ -121,6 +121,7 @@ var ipsCmd = &cobra.Command{
 			}
 			gpus, err := attester.VerifyAttestation(attestPayload, nonce, ipFlag)
 			if err != nil {
+				fmt.Printf("%+v", *attestPayload)
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
 			}
