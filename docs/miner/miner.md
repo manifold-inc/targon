@@ -100,7 +100,7 @@ hardware configuration according to the guidelines in the previous sections.
 1. **Required Arguments**
 
    - `--hotkey-phrase`: Your miner Hotkey Phrase
-   - `--node-type`: currently, only "nvcc"
+   - `--node-type`: cpu or nvcc
    - `--submit`: Whether to actually submit and download image
    - `--service-url`: http://tvm.targon.com
    - `--vm-download-dir`: location you want to download vm
