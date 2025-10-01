@@ -26,12 +26,12 @@ import (
 )
 
 var (
-	uidFlag                  int
-	ipFlag                   string
-	chainEndpointFlag        string
-	chainNetuidFlag          int
-	nvidiaAttestEndpointFlag string
-	minerHotkeyFlag          string
+	uidFlag           int
+	ipFlag            string
+	chainEndpointFlag string
+	chainNetuidFlag   int
+	minerHotkeyFlag   string
+	verbose           bool
 )
 
 func init() {
@@ -40,7 +40,7 @@ func init() {
 	ipsCmd.Flags().StringVar(&minerHotkeyFlag, "miner-hotkey", "", "Specific miner hotkey")
 	ipsCmd.Flags().StringVar(&chainEndpointFlag, "chain", "wss://entrypoint-finney.opentensor.ai:443", "Set chain endpoint")
 	ipsCmd.Flags().IntVar(&chainNetuidFlag, "netuid", 4, "Set chain netuid")
-	ipsCmd.Flags().StringVar(&nvidiaAttestEndpointFlag, "nvidia", "http://localhost:3344", "Set nvidia attest endpoint")
+	ipsCmd.Flags().BoolVar(&verbose, "v", false, "verbose")
 
 	root.RootCmd.AddCommand(ipsCmd)
 }
@@ -120,8 +120,14 @@ var ipsCmd = &cobra.Command{
 				return
 			}
 			gpus, err := attester.VerifyAttestation(attestPayload, nonce, ipFlag)
+			if err != nil || verbose {
+				fmt.Printf("%+v\n", *attestPayload)
+				if attestPayload.UserData.NVCCResponse != nil {
+					fmt.Printf("GPU Token: %s\n", attestPayload.UserData.NVCCResponse.GPURemote.Token)
+					fmt.Printf("Switch Token: %s\n", attestPayload.UserData.NVCCResponse.SwitchRemote.Token)
+				}
+			}
 			if err != nil {
-				fmt.Printf("%+v", *attestPayload)
 				fmt.Println(utils.Wrap("CVM attest error", err))
 				return
 			}
@@ -148,8 +154,10 @@ var ipsCmd = &cobra.Command{
 		wg := sync.WaitGroup{}
 		wg.Add(len(nodes))
 
+
 		for _, n := range nodes {
 			go func() {
+				var err error
 				defer wg.Done()
 				nonce := targon.NewNonce(kp.Address)
 				cvmIP := strings.TrimPrefix(n.IP, "http://")
