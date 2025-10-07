@@ -10,6 +10,13 @@ services:
       context: ./targon
     env_file: .env
 
+  weights-api:
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: ./weights-api
+    env_file: .env
+
   traefik:
     image: traefik:v2.3
     ports:
