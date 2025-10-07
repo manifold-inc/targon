@@ -19,8 +19,8 @@ func main() {
 	deps.Log.Infof(
 		"Starting validator with key [%s] on chain [%s] version [%d]",
 		deps.Hotkey.Address,
-		deps.Env.CHAIN_ENDPOINT,
-		deps.Env.VERSION,
+		deps.Env.ChainEndpoint,
+		deps.Env.Version,
 	)
 	if deps.Mongo != nil {
 		defer func() {
@@ -32,7 +32,7 @@ func main() {
 
 	core := targon.CreateCore(deps)
 	validator := boilerplate.NewChainSubscriber()
-	deps.Log.Infof("Creating validator on netuid [%d]", deps.Env.NETUID)
+	deps.Log.Infof("Creating validator on netuid [%d]", deps.Env.Netuid)
 
 	callbacks.AddBlockCallbacks(validator, core)
 

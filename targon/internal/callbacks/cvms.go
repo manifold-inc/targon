@@ -17,7 +17,7 @@ func getPassingAttestations(c *targon.Core) {
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
 	c.Deps.Log.Infof("Getting Attestations for %d miners", len(c.Neurons))
-	attester := cvm.NewAttester(c.Deps.Env.TIMEOUT_MULT, c.Deps.Hotkey, c.Deps.Env.TOWER_URL)
+	attester := cvm.NewAttester(c.Deps.Env.TimeoutMult, c.Deps.Hotkey, c.Deps.Env.TowerURL)
 
 	for uid, nodes := range c.MinerNodes {
 		if nodes == nil {

@@ -22,7 +22,7 @@ type minerStats struct {
 	incentive float64
 }
 
-func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U16) error {
+func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) error {
 	stats := make(map[int]*minerStats)
 	totalGPUs := 0
 	totalCPUs := 0
@@ -90,7 +90,7 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 
 	color := "5763719"
 	title := fmt.Sprintf("Daily GPU Summary at block %v", h.Number)
-	if c.Deps.Env.DEBUG {
+	if c.Deps.Env.Debug {
 		title = fmt.Sprintf("[DEBUG] %s", title)
 		color = "15105570"
 	}
@@ -122,7 +122,7 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []types.U1
 			Color:       &color,
 		}},
 	}
-	err := discord.SendDiscordMessage(c.Deps.Env.DISCORD_URL, msg)
+	err := discord.SendDiscordMessage(c.Deps.Env.DiscordURL, msg)
 	c.Deps.Log.Infow("Sent daily GPU summary",
 		"total_gpus", totalGPUs,
 		"total_cpus", totalCPUs,

@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func SyncMongo(c *Core, uids, scores []types.U16, h types.Header) error {
+func SyncMongo(c *Core, uids, scores []uint16, h types.Header) error {
 	incentives := make([]float64, len(scores))
 	for i, score := range scores {
 		incentives[i] = (float64(score) / float64(setup.U16MAX))

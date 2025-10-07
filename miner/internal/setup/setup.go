@@ -78,7 +78,7 @@ func ParseVersion(v string) (*types.U64, error) {
 	if err != nil {
 		return nil, fmt.Errorf("not a valid version string: %v", v)
 	}
-	ver := (major * 100000) + (minor * 1000) + patch
+	ver := (major * 10000) + (minor * 100) + patch
 	typedVer := types.NewU64(uint64(ver))
 	return &typedVer, nil
 }

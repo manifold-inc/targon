@@ -15,12 +15,12 @@ import (
 )
 
 func ServeToChain(d *setup.Dependencies) error {
-	netuid := types.NewU16(uint16(d.Env.NETUID))
+	netuid := types.NewU16(uint16(d.Env.Netuid))
 
 	// Not sure what this is used for, just setting this to targon ver
-	version := types.NewU32(uint32(d.Env.VERSION))
+	version := types.NewU32(uint32(d.Env.Version))
 
-	netip := net.ParseIP(d.Env.VALI_IP)
+	netip := net.ParseIP(d.Env.ValiIP)
 	if netip == nil {
 		return errors.New("could not parse ip")
 	}

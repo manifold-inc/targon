@@ -1,21 +1,28 @@
 package callbacks
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"targon/internal/setup"
 	"targon/internal/targon"
-
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
-	"github.com/subtrahend-labs/gobt/extrinsics"
-	"github.com/subtrahend-labs/gobt/sigtools"
 )
 
-func setWeights(c *targon.Core, uids []types.U16, scores []types.U16) {
+type WeightsAPIBody struct {
+	Uids    []uint16 `json:"uids"`
+	Weights []uint16 `json:"weights"`
+	Version int      `json:"version"`
+}
+
+func setWeights(c *targon.Core, uids []uint16, scores []uint16) {
 	defer func() {
 		resetState(c)
 	}()
@@ -28,48 +35,46 @@ func setWeights(c *targon.Core, uids []types.U16, scores []types.U16) {
 		fmt.Sprintf("%+v", scores),
 	)
 
-	if c.Deps.Env.DEBUG {
+	if c.Deps.Env.Debug {
 		c.Deps.Log.Warn("Skipping weightset due to debug flag")
 		return
 	}
-	// Actually set weights
-	ext, err := extrinsics.SetWeightsExt(
-		c.Deps.Client,
-		types.U16(c.Deps.Env.NETUID),
-		uids,
-		scores,
-		c.Deps.Env.VERSION,
-	)
+	tr := &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+	}
+	client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
+	body, err := json.Marshal(WeightsAPIBody{Uids: uids, Weights: scores, Version: int(c.Deps.Env.Version)})
 	if err != nil {
-		c.Deps.Log.Warnw("Failed creating setweights ext", "error", err)
+		c.Deps.Log.Errorw("failed marshaling weights", "error", err)
 		return
 	}
-	ops, err := sigtools.CreateSigningOptions(c.Deps.Client, c.Deps.Hotkey, nil)
+	req, err := http.NewRequest("POST", "http://weights-api/api/v1/set-weights", bytes.NewBuffer(body))
 	if err != nil {
-		c.Deps.Log.Errorw("Failed creating sigining opts", "error", err)
+		c.Deps.Log.Errorw("failed generating set weights req", "error", err)
 		return
 	}
-	err = ext.Sign(
-		c.Deps.Hotkey,
-		c.Deps.Client.Meta,
-		ops...,
-	)
+	res, err := client.Do(req)
 	if err != nil {
-		c.Deps.Log.Errorw("Error signing setweights", "error", err)
+		c.Deps.Log.Errorw("failed setting weights", "error", err)
 		return
 	}
-
-	hash, err := c.Deps.Client.Api.RPC.Author.SubmitExtrinsic(*ext)
+	b, err := io.ReadAll(res.Body)
 	if err != nil {
-		c.Deps.Log.Errorw("Error submitting extrinsic", "error", err)
+		c.Deps.Log.Errorw("failed reading response from set weights", "error", err)
 		return
 	}
-	c.Deps.Log.Infow("Set weights on chain successfully", "hash", hash.Hex())
+	if res.StatusCode != 200 {
+		c.Deps.Log.Errorw("set-weights failed", "error", string(b))
+		return
+	}
+	c.Deps.Log.Infow("Set weights on chain successfully")
 }
 
 // getWeights returns
 // uid array, weights array, auction results, error
-func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.MinerBid, error) {
+func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerBid, error) {
 	if c.EmissionPool == nil {
 		return nil, nil, nil, errors.New("emission pool is not set")
 	}
@@ -187,8 +192,8 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		}
 	}
 
-	var finalScores []types.U16
-	var finalUids []types.U16
+	var finalScores []uint16
+	var finalUids []uint16
 	sumScores := uint16(0)
 	for uid, payout := range payouts {
 		fw := math.Floor(float64(setup.U16MAX) * payout)
@@ -197,13 +202,13 @@ func getWeights(c *targon.Core) ([]types.U16, []types.U16, map[string][]*targon.
 		}
 		thisScore := uint16(fw)
 		uidInt, _ := strconv.Atoi(uid)
-		finalScores = append(finalScores, types.NewU16(thisScore))
-		finalUids = append(finalUids, types.NewU16(uint16(uidInt)))
+		finalScores = append(finalScores, thisScore)
+		finalUids = append(finalUids, uint16(uidInt))
 		sumScores += thisScore
 	}
 	burnKey := 28
-	finalScores = append(finalScores, types.NewU16(setup.U16MAX-sumScores))
-	finalUids = append(finalUids, types.NewU16(uint16(burnKey)))
+	finalScores = append(finalScores, uint16(setup.U16MAX-sumScores))
+	finalUids = append(finalUids, uint16(burnKey))
 
 	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts), "gpus", fmt.Sprintf("%+v", paidnodes))
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))

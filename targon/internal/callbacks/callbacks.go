@@ -21,7 +21,7 @@ func CheckAlreadyRegistered(core *targon.Core) bool {
 	}
 	var netip net.IP = n.AxonInfo.IP.Bytes()
 	currentIP := fmt.Sprintf("%s:", netip)
-	configIP := core.Deps.Env.VALI_IP
+	configIP := core.Deps.Env.ValiIP
 	return currentIP == configIP
 }
 
@@ -44,7 +44,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 
 	// get neurons and set weights if needed
 	// dont check reg if debug is true
-	hasCheckedReg := c.Deps.Env.DEBUG
+	hasCheckedReg := c.Deps.Env.Debug
 	v.AddBlockCallback(func(h types.Header) {
 		// Run after first block of interval
 		if h.Number%360 != 1 && len(c.Neurons) != 0 {
@@ -80,10 +80,10 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		c.Auctions = auctionData.Auctions
 		c.Deps.Log.Infof("Auctions: %+v", c.Auctions)
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
-		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), &h.ParentHash)
+		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), &h.ParentHash)
 		if err != nil {
 			c.Deps.Log.Errorw("Validator is falling behind current block time")
-			p, err = storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.NETUID)), nil)
+			p, err = storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), nil)
 			if err != nil {
 				c.Deps.Log.Errorw("Failed getting sn tao emissions", "error", err)
 				return
@@ -115,7 +115,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		// Not on specific tempo;
 		// helps reduce stress on cvm nodes from number of pings
 		chance := rand.Float64()
-		if chance < c.Deps.Env.ATTEST_RATE && len(c.VerifiedNodes) != 0 {
+		if chance < c.Deps.Env.AttestRate && len(c.VerifiedNodes) != 0 {
 			return
 		}
 		getPassingAttestations(c)

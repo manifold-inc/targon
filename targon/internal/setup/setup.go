@@ -30,17 +30,17 @@ type Dependencies struct {
 	Tower  *tower.Tower
 }
 type Env struct {
-	TOWER_URL              string
-	HOTKEY_PHRASE          string
-	ATTEST_RATE            float64
-	CHAIN_ENDPOINT         string
-	NVIDIA_ATTEST_ENDPOINT string
-	VERSION                types.U64
-	DEBUG                  bool
-	NETUID                 int
-	DISCORD_URL            string
-	TIMEOUT_MULT           time.Duration
-	VALI_IP                string
+	TowerURL             string
+	HotkeyPhrase         string
+	AttestRate           float64
+	ChainEndpoint        string
+	NvidiaAttestEndpoint string
+	Version              types.U64
+	Debug                bool
+	Netuid               int
+	DiscordURL           string
+	TimeoutMult          time.Duration
+	ValiIP               string
 }
 
 func GetEnv(key, fallback string) string {
@@ -81,31 +81,31 @@ func Init(opts ...any) *Dependencies {
 	if err != nil {
 		sugar.Fatalw("Error loading .env file", err)
 	}
-	DISCORD_URL := GetEnv("DISCORD_URL", "")
-	HOTKEY_PHRASE := GetEnvOrPanic("HOTKEY_PHRASE", sugar)
-	CHAIN_ENDPOINT := GetEnv("CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443")
-	NVIDIA_ATTEST_ENDPOINT := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
-	VERSION := GetEnvOrPanic("VERSION", sugar)
-	VALI_IP := GetEnvOrPanic("VALIDATOR_IP", sugar)
-	DEBUG := GetEnv("DEBUG", "0")
-	TOWER_URL := GetEnv("TOWER_URL", "https://tower.targon.com")
-	TIMEOUT_MULT_STR := GetEnv("TIMEOUT_MULT", "1")
-	TIMEOUT_MULT, err := strconv.Atoi(TIMEOUT_MULT_STR)
+	DiscordURL := GetEnv("DISCORD_URL", "")
+	HotkeyPhrase := GetEnvOrPanic("HOTKEY_PHRASE", sugar)
+	ChainEndpoint := GetEnv("CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443")
+	NvidiaAttestEndpoint := GetEnv("NVIDIA_ATTEST_ENDPOINT", "http://nvidia-attest")
+	Version := GetEnvOrPanic("VERSION", sugar)
+	ValiIP := GetEnvOrPanic("VALIDATOR_IP", sugar)
+	Debug := GetEnv("DEBUG", "0")
+	TowerURL := GetEnv("TOWER_URL", "https://tower.targon.com")
+	TimeoutMultStr := GetEnv("TIMEOUT_MULT", "1")
+	TimeoutMult, err := strconv.Atoi(TimeoutMultStr)
 	if err != nil {
 		sugar.Error("Failed converting env variable TIMEOUT_MULT to int")
-		TIMEOUT_MULT = 1
+		TimeoutMult = 1
 	}
-	sugar.Infof("Running with TIMEOUT_MULT=%d", time.Duration(TIMEOUT_MULT))
+	sugar.Infof("Running with TIMEOUT_MULT=%d", time.Duration(TimeoutMult))
 
-	ATTEST_RATE_STR := GetEnv("ATTEST_RATE", ".95")
-	ATTEST_RATE, err := strconv.ParseFloat(ATTEST_RATE_STR, 64)
+	AttestRateStr := GetEnv("ATTEST_RATE", ".95")
+	AttestRate, err := strconv.ParseFloat(AttestRateStr, 64)
 	if err != nil {
 		sugar.Error("Failed converting env ATTEST_RATE to float")
-		ATTEST_RATE = .95
-		TIMEOUT_MULT = 1
+		AttestRate = .95
+		TimeoutMult = 1
 	}
-	ATTEST_RATE = min(ATTEST_RATE, .95)
-	sugar.Infof("Running with ATTEST_RATE=%f", ATTEST_RATE)
+	AttestRate = min(AttestRate, .95)
+	sugar.Infof("Running with ATTEST_RATE=%f", AttestRate)
 
 	mongoClient, err := InitMongo()
 	if err != nil {
@@ -116,11 +116,11 @@ func Init(opts ...any) *Dependencies {
 	if err != nil {
 		sugar.Fatalw("Invalid netuid", "error", err)
 	}
-	parsedVer, err := ParseVersion(VERSION)
+	parsedVer, err := ParseVersion(Version)
 	if err != nil {
 		sugar.Fatal(err)
 	}
-	debug := DEBUG == "1"
+	debug := Debug == "1"
 	if debug {
 		cfg := zap.NewDevelopmentConfig()
 		cfg.Sampling = nil
@@ -134,12 +134,12 @@ func Init(opts ...any) *Dependencies {
 		sugar = logger.Sugar()
 	}
 
-	client, err := client.NewClient(CHAIN_ENDPOINT)
+	client, err := client.NewClient(ChainEndpoint)
 	if err != nil {
 		sugar.Fatalf("Error creating client: %s", err)
 	}
 
-	kp, err := signature.KeyringPairFromSecret(HOTKEY_PHRASE, client.Network)
+	kp, err := signature.KeyringPairFromSecret(HotkeyPhrase, client.Network)
 	if err != nil {
 		sugar.Fatalw("Failed creating keyring par", err)
 	}
@@ -161,7 +161,7 @@ func Init(opts ...any) *Dependencies {
 						Color:       &color,
 					}},
 				}
-				_ = discord.SendDiscordMessage(DISCORD_URL, msg)
+				_ = discord.SendDiscordMessage(DiscordURL, msg)
 			}()
 
 			return nil
@@ -169,10 +169,10 @@ func Init(opts ...any) *Dependencies {
 	))
 
 	towerClient := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second * time.Duration(TIMEOUT_MULT),
+		TLSHandshakeTimeout: 5 * time.Second * time.Duration(TimeoutMult),
 		DisableKeepAlives:   true,
-	}, Timeout: 1 * time.Minute * time.Duration(TIMEOUT_MULT)}
-	t := tower.NewTower(towerClient, TOWER_URL, &kp, sugar)
+	}, Timeout: 1 * time.Minute * time.Duration(TimeoutMult)}
+	t := tower.NewTower(towerClient, TowerURL, &kp, sugar)
 
 	return &Dependencies{
 		Log:    sugar,
@@ -181,16 +181,16 @@ func Init(opts ...any) *Dependencies {
 		Mongo:  mongoClient,
 		Tower:  t,
 		Env: Env{
-			TOWER_URL:              TOWER_URL,
-			DEBUG:                  debug,
-			CHAIN_ENDPOINT:         CHAIN_ENDPOINT,
-			NVIDIA_ATTEST_ENDPOINT: NVIDIA_ATTEST_ENDPOINT,
-			VERSION:                *parsedVer,
-			NETUID:                 netuid,
-			DISCORD_URL:            DISCORD_URL,
-			TIMEOUT_MULT:           time.Duration(TIMEOUT_MULT),
-			ATTEST_RATE:            ATTEST_RATE,
-			VALI_IP:                VALI_IP,
+			TowerURL:             TowerURL,
+			Debug:                debug,
+			ChainEndpoint:        ChainEndpoint,
+			NvidiaAttestEndpoint: NvidiaAttestEndpoint,
+			Version:              *parsedVer,
+			Netuid:               netuid,
+			DiscordURL:           DiscordURL,
+			TimeoutMult:          time.Duration(TimeoutMult),
+			AttestRate:           AttestRate,
+			ValiIP:               ValiIP,
 		},
 	}
 }
@@ -213,7 +213,7 @@ func ParseVersion(v string) (*types.U64, error) {
 		return nil, fmt.Errorf("not a valid version string: %v", v)
 	}
 	// Needs fixed but need to confirm current min ver
-	ver := (major * 100000) + (minor * 100) + patch
+	ver := (major * 10000) + (minor * 100) + patch
 	typedVer := types.NewU64(uint64(ver))
 	return &typedVer, nil
 }
