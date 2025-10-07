@@ -19,6 +19,7 @@ vllm
 config.json
 *.log
 *.txt
+!requirements.txt
 !gpu_remote_policy.json
 !switch_remote_policy.json
 
