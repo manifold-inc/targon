@@ -211,6 +211,7 @@ func main() {
 func CheckAlreadyRegistered(core *Core) bool {
 	n, found := core.Neurons[core.Deps.Hotkey.Address]
 	if !found {
+		core.Deps.Log.Warn("miner not registered")
 		return false
 	}
 	var netip net.IP = n.AxonInfo.IP.Bytes()
