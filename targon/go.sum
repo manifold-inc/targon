@@ -101,8 +101,6 @@ github.com/magiconair/properties v1.8.7 h1:IeQXZAiQcpL9mgcAe1Nu6cX9LLw6ExEHKjN0V
 github.com/magiconair/properties v1.8.7/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
 github.com/manifold-inc/manifold-sdk v0.0.1 h1:QUbCR/VvsyL9bXmdhr7s9pJ93zsqQEFseHbJR1nVQTg=
 github.com/manifold-inc/manifold-sdk v0.0.1/go.mod h1:N8LYSdOvfOGzfAGzcoxDzGbWMd9bkkbfPDFftrFcSCU=
-github.com/manifold-inc/targon-lib v0.0.2 h1:vmU/OqL6Ng030yuLW/SFST1ka11Qx4h8oqcxovDjOZI=
-github.com/manifold-inc/targon-lib v0.0.2/go.mod h1:qiuBRw/FBF2ivUq3w3NILMN9MAjQ1/IfRwciZ/Rc7BE=
 github.com/mimoo/StrobeGo v0.0.0-20181016162300-f8f6d4d2b643/go.mod h1:43+3pMjjKimDBf5Kr4ZFNGbLql1zKkbImw+fZbw3geM=
 github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b h1:QrHweqAtyJ9EwCaGHBu1fghwxIPiopAHV06JlXrMHjk=
 github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b/go.mod h1:xxLb2ip6sSUts3g1irPVHyk/DGslwQsNOo9I7smJfNU=
@@ -171,8 +169,8 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
-github.com/subtrahend-labs/gobt v0.0.7 h1:Ya4sKH4hQX3/UKjCUC6N8IC73OHpneC1lj2eYxyf+Go=
-github.com/subtrahend-labs/gobt v0.0.7/go.mod h1:DKtTzIWd2gty59HxfuFL7AgO4v5kl1s/AaFHx+JXBMs=
+github.com/subtrahend-labs/gobt v0.0.8 h1:Zw0skPL/6r1mYbmZrux9c9Q2C4X22aoHjwRNkrbnq6M=
+github.com/subtrahend-labs/gobt v0.0.8/go.mod h1:DKtTzIWd2gty59HxfuFL7AgO4v5kl1s/AaFHx+JXBMs=
 github.com/testcontainers/testcontainers-go v0.35.0 h1:uADsZpTKFAtp8SLK+hMwSaa+X+JiERHtd4sQAFmXeMo=
 github.com/testcontainers/testcontainers-go v0.35.0/go.mod h1:oEVBj5zrfJTrgjwONs1SsRbnBtH9OKl+IGl3UMcr2B4=
 github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFAEVmqU=

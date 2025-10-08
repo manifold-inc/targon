@@ -132,6 +132,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// Set Weights
 	v.AddBlockCallback(func(h types.Header) {
 		if h.Number%360 != 0 || len(c.MinerNodes) == 0 {
+			c.Deps.Log.Warn("Skipping weightset from no miner nodes")
 			return
 		}
 		if int(h.Number)-c.StartupBlock < 180 {

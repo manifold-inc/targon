@@ -9,7 +9,7 @@ require (
 	github.com/manifold-inc/manifold-sdk v0.0.1
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
-	github.com/subtrahend-labs/gobt v0.0.7
+	github.com/subtrahend-labs/gobt v0.0.8
 	go.mongodb.org/mongo-driver/v2 v2.2.1
 	go.uber.org/zap v1.27.0
 )
