@@ -13,9 +13,9 @@ import (
 
 	"miner/internal/setup"
 
-	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/labstack/echo/v4"
+	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 	"github.com/subtrahend-labs/gobt/runtime"
 	"github.com/subtrahend-labs/gobt/storage"
@@ -216,5 +216,6 @@ func CheckAlreadyRegistered(core *Core) bool {
 	var netip net.IP = n.AxonInfo.IP.Bytes()
 	currentIP := fmt.Sprintf("http://%s:%d", netip, n.AxonInfo.Port)
 	configIP := fmt.Sprintf("http://%s:%d", core.Deps.Config.IP, core.Deps.Config.Port)
+	core.Deps.Log.Infof("miner netuid: %d", n.UID.Int64())
 	return currentIP == configIP
 }
