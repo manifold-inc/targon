@@ -26,6 +26,12 @@ func CheckAlreadyRegistered(core *targon.Core) bool {
 }
 
 func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
+	// Wrapped for closure
+	getBlocksFrom := func(b types.Header) int {
+		tempo := 360
+		return ((tempo + 1 + c.Deps.Env.Netuid + 1 + int(b.Number)) % (tempo + 1))
+	}
+
 	// block timer for catching hangs
 	t := time.AfterFunc(1*time.Hour, func() {
 		c.Deps.Log.Error("havint seen any blocks in over an hour, am i stuck?")
@@ -46,8 +52,8 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// dont check reg if debug is true
 	hasCheckedReg := c.Deps.Env.Debug
 	v.AddBlockCallback(func(h types.Header) {
-		// Run after first block of interval
-		if h.Number%360 != 1 && len(c.Neurons) != 0 {
+		// Run after second block of interval
+		if getBlocksFrom(h) != 2 && len(c.Neurons) != 0 {
 			return
 		}
 		getNeuronsCallback(c, h)
@@ -97,7 +103,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// get miner nodes
 	// Every 30 blocks off the internval tempo untill 59 left in block
 	v.AddBlockCallback(func(h types.Header) {
-		if (h.Number%30 != 1 || h.Number%360 > 301) && len(c.MinerNodes) != 0 {
+		if (getBlocksFrom(h)%30 != 1 || getBlocksFrom(h) > 301) && len(c.MinerNodes) != 0 {
 			return
 		}
 		getNodesAll(c)
@@ -108,8 +114,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		if c.Neurons == nil {
 			return
 		}
-		blocksTill := 360 - (h.Number % 360)
-		if blocksTill < 20 {
+		if 361-getBlocksFrom(h) < 20 {
 			return
 		}
 		// Not on specific tempo;
@@ -131,7 +136,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 
 	// Set Weights
 	v.AddBlockCallback(func(h types.Header) {
-		if h.Number%360 != 0 {
+		if getBlocksFrom(h) != 1 {
 			return
 		}
 		if len(c.MinerNodes) == 0 {
