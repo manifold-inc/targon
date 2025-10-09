@@ -43,6 +43,7 @@ class WeightRequest(BaseModel):
 @app.post("/api/v1/set-weights")
 async def post_set_weights(req: WeightRequest):
     try:
+        logger.info("setting weights")
         res = await subtensor.set_weights(
             wallet=wallet,
             uids=req.uids,
@@ -50,6 +51,7 @@ async def post_set_weights(req: WeightRequest):
             netuid=NETUID,
             version_key=req.version,
         )
+        logger.info(f"weights set: {res}")
         return {"success": res[0], "msg": res[1]}
     except Exception as e:
         logger.error(f"Error: {str(e)}")
