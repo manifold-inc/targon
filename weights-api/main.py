@@ -9,7 +9,6 @@ from fastapi import FastAPI, HTTPException
 import logging
 
 # Initialize global subtensor connection
-subtensor = bt.async_subtensor("ws://subtensor.sybil.com:9944")
 
 app = FastAPI(
     title="weights-api",
@@ -22,16 +21,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+CHAIN_ENDPOINT = os.getenv(
+    "CHAIN_ENDPOINT", "wss://entrypoint-finney.opentensor.ai:443"
+)
 NETUID = int(os.getenv("NETUID", "4"))
 HOTKEY_PHRASE = os.getenv("HOTKEY_PHRASE", "")
 if len(HOTKEY_PHRASE) == 0:
     logger.error("No hotkey phrase")
     sys.exit(1)
 
+subtensor = bt.async_subtensor(CHAIN_ENDPOINT)
+
 wallet = bittensor_wallet.Wallet().regenerate_hotkey(
     HOTKEY_PHRASE, suppress=True, overwrite=True
 )
-logger.info(f"Starting api with hotkey: {wallet.hotkey.ss58_address} on netuid: {NETUID}")
+logger.info(
+    f"Starting api with hotkey: {wallet.hotkey.ss58_address} on netuid: {NETUID}"
+)
 
 
 class WeightRequest(BaseModel):
