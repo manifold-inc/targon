@@ -31,7 +31,7 @@ if len(HOTKEY_PHRASE) == 0:
 wallet = bittensor_wallet.Wallet().regenerate_hotkey(
     HOTKEY_PHRASE, suppress=True, overwrite=True
 )
-logger.info(f"Starting api with hotkey: {wallet.hotkey.ss58_address}")
+logger.info(f"Starting api with hotkey: {wallet.hotkey.ss58_address} on netuid: {NETUID}")
 
 
 class WeightRequest(BaseModel):
