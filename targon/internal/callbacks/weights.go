@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"net/http"
 	"sort"
 	"strconv"
@@ -206,9 +207,25 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 		finalUids = append(finalUids, uint16(uidInt))
 		sumScores += thisScore
 	}
-	burnKey := 28
-	finalScores = append(finalScores, uint16(setup.U16MAX-sumScores))
-	finalUids = append(finalUids, uint16(burnKey))
+
+	//  final burn keys
+	burnKeys := []int{28}
+
+	// For each burn key, send a random amount
+	forBurn := setup.U16MAX - sumScores
+	for _, k := range burnKeys {
+		if forBurn == 0 {
+			continue
+		}
+		thisBurn := rand.Intn(int(forBurn))
+		forBurn -= uint16(thisBurn)
+
+		finalScores = append(finalScores, uint16(thisBurn))
+		finalUids = append(finalUids, uint16(k))
+	}
+	// Add remaning burn to last burn key
+	// If there was no burn this is a noop
+	finalScores[len(finalScores)-1] += forBurn
 
 	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts), "gpus", fmt.Sprintf("%+v", paidnodes))
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))

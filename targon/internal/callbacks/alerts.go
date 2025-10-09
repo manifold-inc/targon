@@ -107,7 +107,7 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 		totalCPUs,
 		activeNodes,
 		*c.EmissionPool,
-		burned,
+		burned*100,
 		formatGPUBreakdown(gpuTypes),
 		formatCPUBreakdown(cpuTypes),
 		formatMinerBreakdown(statsarr),
