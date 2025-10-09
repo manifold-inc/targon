@@ -70,7 +70,22 @@ func setWeights(c *targon.Core, uids []uint16, scores []uint16) {
 		c.Deps.Log.Errorw("set-weights failed", "error", string(b))
 		return
 	}
-	c.Deps.Log.Infow("Set weights on chain successfully")
+	var msg *SetWeightsRes
+	err = json.Unmarshal(b, &msg)
+	if err != nil {
+		c.Deps.Log.Errorw("failed setting weights", "error", string(b))
+		return
+	}
+	if !msg.Success {
+		c.Deps.Log.Errorw("failed setting weights", "error", msg.Msg)
+		return
+	}
+	c.Deps.Log.Infow("Set weights on chain successfully", "msg", msg.Msg)
+}
+
+type SetWeightsRes struct {
+	Success bool   `json:"success,omitempty"`
+	Msg     string `json:"msg,omitempty"`
 }
 
 // getWeights returns
