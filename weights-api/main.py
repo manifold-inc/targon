@@ -55,5 +55,6 @@ async def post_set_weights(req: WeightRequest):
         logger.error(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=80)

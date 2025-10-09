@@ -45,7 +45,13 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		if c.StartupBlock == 0 {
 			c.StartupBlock = int(h.Number)
 		}
-		logBlockCallback(c, h)
+		c.Deps.Log.Infow(
+			"New block",
+			"block",
+			fmt.Sprintf("%v", h.Number),
+			"left_in_interval",
+			361-getBlocksFrom(h),
+		)
 	})
 
 	// get neurons and set weights if needed
@@ -131,7 +137,14 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		if h.Number%10 != 0 || len(c.MinerNodes) == 0 {
 			return
 		}
-		logWeights(c)
+		uids, scores, _, _ := getWeights(c)
+		c.Deps.Log.Infow(
+			"Current Weights",
+			"uids",
+			fmt.Sprintf("%+v", uids),
+			"scores",
+			fmt.Sprintf("%+v", scores),
+		)
 	})
 
 	// Set Weights
