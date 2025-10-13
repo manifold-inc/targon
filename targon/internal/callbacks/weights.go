@@ -224,8 +224,8 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 		sumScores += thisScore
 	}
 
-	//  final burn keys
-	burnKeys := []int{28}
+	//  final burn keys, randomized across 3 keys for WC combat
+	burnKeys := []int{28, 15, 243}
 
 	// For each burn key, send a random amount
 	forBurn := setup.U16MAX - sumScores
@@ -233,7 +233,8 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 		if forBurn == 0 {
 			continue
 		}
-		thisBurn := rand.Intn(int(forBurn))
+		// Interval (0, forBurn) instead of [0, forBurn)
+		thisBurn := rand.Intn(int(forBurn-1)) + 1
 		forBurn -= uint16(thisBurn)
 
 		finalScores = append(finalScores, uint16(thisBurn))
