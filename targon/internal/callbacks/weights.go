@@ -46,7 +46,7 @@ func setWeights(c *targon.Core, uids []uint16, scores []uint16) {
 		DisableKeepAlives:   true,
 	}
 	// Needs to wait till it finishes setting weights on chain
-	client := &http.Client{Transport: tr, Timeout: 1 * time.Minute}
+	client := &http.Client{Transport: tr, Timeout: 2 * time.Minute}
 	body, err := json.Marshal(WeightsAPIBody{Uids: uids, Weights: scores, Version: int(c.Deps.Env.Version)})
 	if err != nil {
 		c.Deps.Log.Errorw("failed marshaling weights", "error", err)
