@@ -3,6 +3,8 @@ services:
     restart: always
     stop_grace_period: 15m
     depends_on:
+      weights-api:
+        condition: service_started
       mongo:
         condition: service_healthy
     build:
