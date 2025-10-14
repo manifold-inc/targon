@@ -26,15 +26,21 @@ CHAIN_ENDPOINT = os.getenv(
 )
 NETUID = int(os.getenv("NETUID", "4"))
 HOTKEY_PHRASE = os.getenv("HOTKEY_PHRASE", "")
-if len(HOTKEY_PHRASE) == 0:
-    logger.error("No hotkey phrase")
+HOTKEY_PRIVATE_KEY = os.getenv("HOTKEY_PRIVATE_KEY", "")
+
+if len(HOTKEY_PHRASE) == 0 and len(HOTKEY_PRIVATE_KEY) == 0:
+    logger.error("No hotkey phrase or private key provided")
     sys.exit(1)
 
 subtensor = bt.async_subtensor(CHAIN_ENDPOINT)
 
-wallet = bittensor_wallet.Wallet().regenerate_hotkey(
-    HOTKEY_PHRASE, suppress=True, overwrite=True
-)
+wallet = bittensor_wallet.Wallet()
+if len(HOTKEY_PHRASE) > 0:
+    wallet.regenerate_hotkey(HOTKEY_PHRASE, suppress=True, overwrite=True)
+else:
+    keypair = bt.Keypair.create_from_private_key(HOTKEY_PRIVATE_KEY)
+    wallet.set_hotkey(keypair, overwrite=True)
+
 logger.info(
     f"Starting api with hotkey: {wallet.hotkey.ss58_address} on netuid: {NETUID}"
 )
