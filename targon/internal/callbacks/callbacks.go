@@ -2,6 +2,7 @@
 package callbacks
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -14,15 +15,18 @@ import (
 	"github.com/subtrahend-labs/gobt/storage"
 )
 
-func CheckAlreadyRegistered(core *targon.Core) bool {
+func CheckAlreadyRegistered(core *targon.Core) error {
 	n, found := core.Neurons[core.Deps.Hotkey.Address]
 	if !found {
-		return false
+		return errors.New("not registered on sn")
 	}
 	var netip net.IP = n.AxonInfo.IP.Bytes()
-	currentIP := fmt.Sprintf("%s:", netip)
+	currentIP := netip.String()
 	configIP := core.Deps.Env.ValiIP
-	return currentIP == configIP
+	if configIP == currentIP {
+		return nil
+	}
+	return fmt.Errorf("ip %s does not match chain ip %s", configIP, currentIP)
 }
 
 func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
@@ -64,8 +68,8 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		}
 		getNeuronsCallback(c, h)
 		if !hasCheckedReg {
-			if !CheckAlreadyRegistered(c) {
-				c.Deps.Log.Info("Setting validator info, differs from config")
+			if err := CheckAlreadyRegistered(c); err != nil {
+				c.Deps.Log.Infof("Setting validator info, differs from config: %w", err)
 				err := ServeToChain(c.Deps)
 				if err != nil {
 					c.Deps.Log.Errorw("Failed serving extrinsic", "error", err)
