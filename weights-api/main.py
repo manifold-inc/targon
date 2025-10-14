@@ -35,11 +35,11 @@ if len(HOTKEY_PHRASE) == 0 and len(HOTKEY_PRIVATE_KEY) == 0:
 subtensor = bt.async_subtensor(CHAIN_ENDPOINT)
 
 wallet = bittensor_wallet.Wallet()
-if len(HOTKEY_PHRASE) > 0:
-    wallet.regenerate_hotkey(HOTKEY_PHRASE, suppress=True, overwrite=True)
-else:
+if len(HOTKEY_PRIVATE_KEY) > 0:
     keypair = bt.Keypair.create_from_private_key(HOTKEY_PRIVATE_KEY)
     wallet.set_hotkey(keypair, overwrite=True)
+else:
+    wallet.regenerate_hotkey(HOTKEY_PHRASE, suppress=True, overwrite=True)
 
 logger.info(
     f"Starting api with hotkey: {wallet.hotkey.ss58_address} on netuid: {NETUID}"
