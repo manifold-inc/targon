@@ -299,6 +299,10 @@ Intel TME-MT, Intel TDX Settings**
 
    - Navigate to: `Software Guard Extension`
    - Set to `Enable`
+   
+- SGX Factory Reset
+   - Navidate to: `SGX Factory Reset`
+   - Set to `Enable`
 
 After configuring BIOS settings:
 
