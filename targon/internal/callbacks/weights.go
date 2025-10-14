@@ -23,6 +23,9 @@ type WeightsAPIBody struct {
 	Version int      `json:"version"`
 }
 
+//  final burn keys, randomized across 3 keys for WC combat
+var burnKeys = []int{28, 15, 243}
+
 func setWeights(c *targon.Core, uids []uint16, scores []uint16) {
 	defer func() {
 		resetState(c)
@@ -223,9 +226,6 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 		finalUids = append(finalUids, uint16(uidInt))
 		sumScores += thisScore
 	}
-
-	//  final burn keys, randomized across 3 keys for WC combat
-	burnKeys := []int{28, 15, 243}
 
 	// For each burn key, send a random amount
 	forBurn := setup.U16MAX - sumScores

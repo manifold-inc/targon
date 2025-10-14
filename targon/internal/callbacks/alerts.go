@@ -2,6 +2,7 @@ package callbacks
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -83,9 +84,10 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 	})
 
 	burned := 0.0
-	lastuid := uids[len(uids)-1]
-	if int(lastuid) == 28 {
-		burned = float64(scores[len(scores)-1]) / float64(setup.U16MAX)
+	for i, uid := range uids {
+		if slices.Contains(burnKeys, int(uid)) {
+			burned += float64(scores[i]) / float64(setup.U16MAX)
+		}
 	}
 
 	color := "5763719"
