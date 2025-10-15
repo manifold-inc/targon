@@ -19,33 +19,6 @@ services:
       context: ./weights-api
     env_file: .env
 
-  traefik:
-    image: traefik:v2.3
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/traefik.https.toml:/etc/traefik/traefik.toml
-      - traefik-public-certificates:/certificates
-
-  mongo-wrapper:
-    build:
-      context: ./mongo-wrapper
-      dockerfile: Dockerfile
-    environment:
-      - MONGO_USERNAME=${MONGO_USERNAME}
-      - MONGO_PASSWORD=${MONGO_PASSWORD}
-    restart: unless-stopped
-    volumes:
-      - ./targon-ips.txt:/targon-ips.txt
-    labels:
-      - traefik.enable=${ENABLE_MONGO_WRAPPER:-false}
-      - traefik.http.routers.mongowrapper.rule=Host(`${MONGO_WRAPPER_HOST}`)
-      - traefik.http.routers.mongowrapper.tls=true
-      - traefik.http.routers.mongowrapper.tls.certresolver=letsencrypt
-      - traefik.http.services.mongowrapper.loadbalancer.server.port=8080
-
   mongo:
     image: mongo:latest
     ports:
