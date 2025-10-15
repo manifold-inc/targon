@@ -1,7 +1,7 @@
 import os
 import sys
 from typing import List
-from bittensor.core.axon import uvicorn
+from bittensor.core.axon import traceback, uvicorn
 from pydantic import BaseModel
 import bittensor as bt
 import bittensor_wallet
@@ -66,7 +66,7 @@ async def post_set_weights(req: WeightRequest):
         logger.info(f"weights set: {res}")
         return {"success": res[0], "msg": res[1]}
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
+        logger.error(f"Error: {str(e)}: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
