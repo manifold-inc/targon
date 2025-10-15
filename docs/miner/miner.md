@@ -106,7 +106,7 @@ hardware configuration according to the guidelines in the previous sections.
    - `--vm-download-dir`: location you want to download vm
    - `--host-machine-storage`: maximum storage available on host-machine in TB (integer only, no decimals)
 
-> **⚠️ Important Storage Warning**: If you specify the wrong storage size for `--host-machine-storage` and qcow2 cannot grow until the mentioned size, the machine will stop earning emission. Ensure you provide the correct amount of storage available on your host machine in TB. Also, check the minimum storage requirement for storage based on .
+> **⚠️ Important Storage Warning**: If you specify the wrong storage size for `--host-machine-storage` and qcow2 cannot grow until the mentioned size, the machine will stop earning emission. Ensure you provide the correct amount of storage available on your host machine in TB. Also, check the minimum storage requirement for storage based on your platform type.
 
 1. **Accessing Your Keys**
 
