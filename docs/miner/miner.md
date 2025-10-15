@@ -104,6 +104,9 @@ hardware configuration according to the guidelines in the previous sections.
    - `--submit`: Whether to actually submit and download image
    - `--service-url`: http://tvm.targon.com
    - `--vm-download-dir`: location you want to download vm
+   - `--host-machine-storage`: maximum storage available on host-machine in TB (integer only, no decimals)
+
+> **⚠️ Important Storage Warning**: If you specify the wrong storage size for `--host-machine-storage` and qcow2 cannot grow until the mentioned size, the machine will stop earning emission. Ensure you provide the correct amount of storage available on your host machine in TB. Also, check the minimum storage requirement for storage based on .
 
 1. **Accessing Your Keys**
 
@@ -148,6 +151,7 @@ hardware configuration according to the guidelines in the previous sections.
                       --submit \
                       --hotkey-phrase "your phrase" \
                       --node-type cpu \
+                      --host-machine-storage 21TB \
                       --launch-vm
    ```
 
@@ -159,6 +163,7 @@ hardware configuration according to the guidelines in the previous sections.
                       --submit \
                       --hotkey-phrase "your phrase" \
                       --node-type nvcc \
+                      --host-machine-storage 21TB \
                       --launch-vm
    ```
 
@@ -181,6 +186,7 @@ The installer supports several additional flags that allow more control over VM 
 | `--hotkey-phrase <phrase>` | Miner Hotkey Phrase for epistula.                                                                                         |
 | `--vm-download-dir <path>` | Directory to download the VM to (default: `~/manifold-vms`).                                                              |
 | `--node-type <type>`       | Node type; must be one of the supported types [`cpu`, `nvcc`].                                                      |
+| `--host-machine-storage <storage-tb>` | Amount of storage in TB available on the host machine for VM operations. |
 | `--launch-vm`              | Automatically extract the downloaded VM and launch it after installation.                                                 |
 
 ---
