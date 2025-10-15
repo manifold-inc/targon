@@ -1,5 +1,7 @@
 services:
   targon:
+    #TODO upload this
+    image: manifoldlabs/targon:latest
     restart: always
     stop_grace_period: 15m
     depends_on:
@@ -13,6 +15,8 @@ services:
     env_file: .env
 
   weights-api:
+    #TODO upload this
+    image: manifoldlabs/targon-weights-api:latest
     restart: always
     build:
       dockerfile: Dockerfile
@@ -39,4 +43,3 @@ services:
 
 volumes:
   mongo_data:
-  traefik-public-certificates:
