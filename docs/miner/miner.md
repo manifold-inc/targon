@@ -104,7 +104,7 @@ hardware configuration according to the guidelines in the previous sections.
    - `--submit`: Whether to actually submit and download image
    - `--service-url`: http://tvm.targon.com
    - `--vm-download-dir`: location you want to download vm
-   - `--host-machine-storage`: maximum storage available on host-machine in TB (integer only, no decimals)
+   - `--host-machine-storage`: maximum storage available on host-machine in TB (integer only, no decimals - use floor function, e.g., if storage is 5.9 TB, specify 5)
 
 > **⚠️ Important Storage Warning**: If you specify the wrong storage size for `--host-machine-storage` and qcow2 cannot grow until the mentioned size, the machine will stop earning emission. Ensure you provide the correct amount of storage available on your host machine in TB. Also, check the minimum storage requirement for storage based on your platform type.
 
