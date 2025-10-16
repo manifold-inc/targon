@@ -55,7 +55,9 @@ class WeightRequest(BaseModel):
 @app.post("/api/v1/set-weights")
 async def post_set_weights(req: WeightRequest):
     try:
-        logger.info("setting weights")
+        logger.info(
+            f"setting weights\n{req.uids}\n{req.weights}\nversion: {req.version}\nNetuid: {NETUID}"
+        )
         res = await subtensor.set_weights(
             wallet=wallet,
             uids=req.uids,
