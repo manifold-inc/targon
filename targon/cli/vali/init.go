@@ -49,6 +49,7 @@ var initCmd = &cobra.Command{
 			fmt.Printf("Faield sending request to VM: %s", err)
 			os.Exit(1)
 		}
+		req.Header.Set("Content-Type", "text/plain")
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -67,6 +68,6 @@ var initCmd = &cobra.Command{
 			fmt.Printf("Failed sending request to vm. Got status code %d: %s", resp.StatusCode, string(b))
 			os.Exit(1)
 		}
-		fmt.Println(string(f))
+		fmt.Println("Validator started")
 	},
 }
