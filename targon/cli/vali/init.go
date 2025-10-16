@@ -46,14 +46,14 @@ var initCmd = &cobra.Command{
 
 		req, err := http.NewRequest("POST", "http://localhost:8080/api/vali/init", bytes.NewBuffer(f))
 		if err != nil {
-			fmt.Printf("Faield sending request to VM: %s", err)
+			fmt.Printf("Failed sending request to VM: %s", err)
 			os.Exit(1)
 		}
 		req.Header.Set("Content-Type", "text/plain")
 
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Printf("Faield sending request to VM: %s", err)
+			fmt.Printf("Failed sending request to VM: %s", err)
 			os.Exit(1)
 		}
 		defer func() {
@@ -61,7 +61,7 @@ var initCmd = &cobra.Command{
 		}()
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Printf("Faield reading response from VM: %s", err)
+			fmt.Printf("Failed reading response from VM: %s", err)
 			os.Exit(1)
 		}
 		if resp.StatusCode != 200 {
