@@ -1,7 +1,6 @@
 services:
   targon:
-    #TODO upload this
-    image: manifoldlabs/targon:latest
+    image: ghcr.io/manifold-inc/targon:latest
     restart: always
     stop_grace_period: 15m
     depends_on:
@@ -15,8 +14,7 @@ services:
     env_file: .env
 
   weights-api:
-    #TODO upload this
-    image: manifoldlabs/targon-weights-api:latest
+    image: ghcr.io/manifold-inc/targon-weights-api:latest
     restart: always
     build:
       dockerfile: Dockerfile
