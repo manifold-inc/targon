@@ -26,6 +26,11 @@ type WeightsAPIBody struct {
 //  final burn keys, randomized across 3 keys for WC combat
 var burnKeys = []int{28, 15, 243}
 
+// tower should return
+// map of uid -> %
+// % needs to sum to 100
+// TODO @alan move to tower
+
 func setWeights(c *targon.Core, uids []uint16, scores []uint16) {
 	defer func() {
 		resetState(c)

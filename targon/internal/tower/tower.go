@@ -40,6 +40,9 @@ func NewTower(client *http.Client, url string, hotkey *signature.KeyringPair, lo
 }
 
 func (t *Tower) AuctionDetails() (*Auctions, error) {
+	// TODO @alan
+	// This code will now run inside a vm that has an attestation server running
+	// Get an attestation and send it to tower to get auctions
 	res, err := t.client.Get(t.url + "/api/v1/auctions")
 	if err != nil {
 		return nil, utils.Wrap("failed to generate request to tower", err)
