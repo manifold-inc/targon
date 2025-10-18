@@ -32,7 +32,6 @@ if len(HOTKEY_PHRASE) == 0 and len(HOTKEY_PRIVATE_KEY) == 0:
     logger.error("No hotkey phrase or private key provided")
     sys.exit(1)
 
-subtensor = bt.async_subtensor(CHAIN_ENDPOINT)
 
 wallet = bittensor_wallet.Wallet()
 if len(HOTKEY_PRIVATE_KEY) > 0:
@@ -55,6 +54,8 @@ class WeightRequest(BaseModel):
 @app.post("/api/v1/set-weights")
 async def post_set_weights(req: WeightRequest):
     try:
+        # Subtensor is absurdly buggy and will silently fail after a few weight sets
+        subtensor = bt.async_subtensor(CHAIN_ENDPOINT)
         logger.info(
             f"setting weights\n{req.uids}\n{req.weights}\nversion: {req.version}\nNetuid: {NETUID}"
         )
@@ -64,8 +65,11 @@ async def post_set_weights(req: WeightRequest):
             weights=req.weights,
             netuid=NETUID,
             version_key=req.version,
+            wait_for_finalization=True,
+            wait_for_inclusion=True,
         )
         logger.info(f"weights set: {res}")
+        await subtensor.close()
         return {"success": res[0], "msg": res[1]}
     except Exception as e:
         logger.error(f"Error: {str(e)}: {traceback.format_exc()}")
