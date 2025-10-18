@@ -23,7 +23,7 @@ type WeightsAPIBody struct {
 	Version int      `json:"version"`
 }
 
-//  final burn keys, randomized across 3 keys for WC combat
+// final burn keys, randomized across 3 keys for WC combat
 var burnKeys = []int{28, 15, 243}
 
 func setWeights(c *targon.Core, uids []uint16, scores []uint16) {
@@ -128,6 +128,7 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 			// Node does not have enough GPUS. cpus will have zero min cluser size
 			// forces certian number of gpus per node
 			if auc.MinClusterSize != 0 && auc.MinClusterSize > len(*c.VerifiedNodes[uid][n.IP].GPUCards) {
+				c.MinerErrors[uid][n.IP] = fmt.Sprintf("Node reporting %d cards, %d required", len(*c.VerifiedNodes[uid][n.IP].GPUCards), auc.MinClusterSize)
 				continue
 			}
 
