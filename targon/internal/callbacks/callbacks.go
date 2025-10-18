@@ -16,7 +16,11 @@ import (
 )
 
 func CheckAlreadyRegistered(core *targon.Core) error {
-	n, found := core.Neurons[core.Deps.Hotkey.Address]
+	uid, found := core.HotkeyToUID[core.Deps.Hotkey.Address]
+	if !found {
+		return errors.New("not registered on sn")
+	}
+	n, found := core.Neurons[uid]
 	if !found {
 		return errors.New("not registered on sn")
 	}
