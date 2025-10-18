@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import List
+from typing import List, Union
 from bittensor.core.axon import traceback, uvicorn
 from pydantic import BaseModel
 import bittensor as bt
@@ -47,7 +47,7 @@ logger.info(
 
 class WeightRequest(BaseModel):
     uids: List[int]
-    weights: List[int]
+    weights: List[Union[int, float]]
     version: int
 
 
