@@ -235,3 +235,58 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 	}
 	return nodesv2, nil
 }
+
+func (a *Attester) GetLogsFromNode(
+	cvmIP string,
+	containerName string,
+	tail string,
+) (string, error) {
+	client := &http.Client{Transport: &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+		Dial: (&net.Dialer{
+			Timeout: 15 * time.Second * a.timeoutMult,
+		}).Dial,
+	}, Timeout: 5 * time.Minute * a.timeoutMult}
+
+	data := map[string]string{
+		"container_name": containerName,
+		"tail":           tail,
+	}
+	body, _ := json.Marshal(data)
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%s:8080/api/v1/logs", cvmIP),
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return "", utils.Wrap("failed to generate request to cvm", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	req.Close = true
+	res, err := client.Do(req)
+	if err != nil {
+		return "", utils.Wrap("failed sending request to cvm", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode == http.StatusServiceUnavailable {
+		return "", errors.New("server overloaded")
+	}
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return "", fmt.Errorf("bad status code from cvm logs: %d: %s", res.StatusCode, string(body))
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", utils.Wrap("failed reading response from cvm", err)
+	}
+	return string(resBody), nil
+}
