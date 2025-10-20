@@ -11,18 +11,13 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-var (
-	containersIpFlag     string
-	containersHotkeyFlag string
-)
+var containersIpFlag string
 
 func init() {
 	getCmd.AddCommand(containersCMD)
 	containersCMD.Flags().StringVar(&containersIpFlag, "ip", "", "IP address of the vm")
-	containersCMD.Flags().StringVar(&containersHotkeyFlag, "hotkey", "", "Miner hotkey")
 }
 
 var containersCMD = &cobra.Command{
@@ -30,12 +25,18 @@ var containersCMD = &cobra.Command{
 	Short: "Get containers from a vm",
 	Long:  `Get containers from a vm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if containersIpFlag == "" || containersHotkeyFlag == "" {
+		if containersIpFlag == "" {
 			_ = cmd.Help()
 			return
 		}
 
-		kp, err := signature.KeyringPairFromSecret(viper.GetString("validator.hotkey_phrase"), 42)
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("error loading config: " + err.Error())
+			os.Exit(1)
+		}
+		
+		kp, err := signature.KeyringPairFromSecret(config.ValidatorHotkeyPhrase, 42)
 		if err != nil {
 			fmt.Println("error parsing hotkey phrase: " + err.Error())
 			os.Exit(1)
@@ -46,7 +47,7 @@ var containersCMD = &cobra.Command{
 			cvmIP := strings.TrimPrefix(containersIpFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
-			containers, err := attester.GetContainers(containersHotkeyFlag, cvmIP)
+			containers, err := attester.GetContainers(cvmIP)
 			if err != nil {
 				fmt.Println(utils.Wrap("error getting containers from cvm", err))
 				return
