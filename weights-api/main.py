@@ -60,20 +60,20 @@ async def post_set_weights(req: WeightRequest):
         logger.info(
             f"setting weights\n{req.uids}\n{req.weights}\nversion: {req.version}\nNetuid: {NETUID}"
         )
-        res = await subtensor.set_weights(
-            wallet=wallet,
-            uids=req.uids,
-            weights=req.weights,
-            netuid=NETUID,
-            version_key=req.version,
-            wait_for_finalization=True,
-            wait_for_inclusion=True,
-            period=64,
-            max_retries=0,
-            raise_error=True,
-        )
+        async with subtensor as sub:
+            res = await sub.set_weights(
+                wallet=wallet,
+                uids=req.uids,
+                weights=req.weights,
+                netuid=NETUID,
+                version_key=req.version,
+                wait_for_finalization=True,
+                wait_for_inclusion=True,
+                period=64,
+                max_retries=0,
+                raise_error=True,
+            )
         logger.info(f"weights set: {res}")
-        await subtensor.close()
         return {"success": res[0], "msg": res[1]}
     except Exception as e:
         logger.error(f"Error: {str(e)}: {traceback.format_exc()}")
