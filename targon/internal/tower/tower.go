@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"time"
 
+	"targon/internal/nonce"
+
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"go.uber.org/zap"
@@ -46,7 +48,12 @@ func (t *Tower) AuctionDetails() (*Auctions, error) {
 	// TODO @alan
 	// This code will now run inside a vm that has an attestation server running
 	// Get an attestation and send it to tower to get auctions
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v1/auctions", t.url), bytes.NewBuffer([]byte{}))
+	attest, err := GetAttestation(t.log, nonce.NewNonce(t.hotkey.Address))
+	if err != nil {
+		return nil, utils.Wrap("failed getting attestation", err)
+	}
+	postBody, _ := json.Marshal(attest)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v1/auctions", t.url), bytes.NewBuffer(postBody))
 	if err != nil {
 		return nil, utils.Wrap("failed to generate request to tower", err)
 	}
@@ -158,6 +165,5 @@ type NVCCResponse struct {
 type Cards []string
 
 type AttestBody struct {
-	Nonce         string `json:"nonce"`
-	AtlasDiskSize string `json:"atlas_disk_size"`
+	Nonce string `json:"nonce"`
 }

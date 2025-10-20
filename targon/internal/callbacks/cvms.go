@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"targon/internal/cvm"
+	"targon/internal/nonce"
 	"targon/internal/targon"
 
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
@@ -50,7 +51,7 @@ func getPassingAttestations(c *targon.Core) {
 
 				// Get attestation
 				n := c.Neurons[uid]
-				nonce := targon.NewNonce(attester.Hotkey.Address)
+				nonce := nonce.NewNonce(attester.Hotkey.Address)
 				cvmIP := strings.TrimPrefix(node.IP, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(n.Hotkey), cvmIP, nonce)
