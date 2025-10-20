@@ -23,7 +23,7 @@ type WeightsAPIBody struct {
 	Version int      `json:"version"`
 }
 
-//  final burn keys, randomized across 3 keys for WC combat
+// final burn keys, randomized across 3 keys for WC combat
 var burnKeys = []int{28, 15, 243}
 
 // tower should return

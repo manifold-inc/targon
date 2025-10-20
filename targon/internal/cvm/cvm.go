@@ -244,6 +244,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 }
 
 func (a *Attester) GetLogsFromNode(
+	hotkey string,
 	cvmIP string,
 	containerName string,
 	tail string,
@@ -272,7 +273,15 @@ func (a *Attester) GetLogsFromNode(
 		return "", utils.Wrap("failed to generate request to cvm", err)
 	}
 
+	headers, err := boilerplate.GetEpistulaHeaders(a.Hotkey, hotkey, body)
+	if err != nil {
+		return "", utils.Wrap("failed generating epistula headers", err)
+	}
+
 	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 
 	req.Close = true
 	res, err := client.Do(req)
@@ -299,6 +308,7 @@ func (a *Attester) GetLogsFromNode(
 }
 
 func (a *Attester) GetContainers(
+	hotkey string,
 	cvmIP string,
 ) ([]container.Summary, error) {
 	client := &http.Client{Transport: &http.Transport{
@@ -319,7 +329,15 @@ func (a *Attester) GetContainers(
 		return nil, utils.Wrap("failed to generate request to cvm", err)
 	}
 
+	headers, err := boilerplate.GetEpistulaHeaders(a.Hotkey, hotkey, []byte{})
+	if err != nil {
+		return nil, utils.Wrap("failed generating epistula headers", err)
+	}
+
 	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 
 	req.Close = true
 	res, err := client.Do(req)

@@ -15,12 +15,14 @@ import (
 )
 
 var (
-	containersIpFlag string
+	containersIpFlag     string
+	containersHotkeyFlag string
 )
 
 func init() {
 	getCmd.AddCommand(containersCMD)
 	containersCMD.Flags().StringVar(&containersIpFlag, "ip", "", "IP address of the vm")
+	containersCMD.Flags().StringVar(&containersHotkeyFlag, "hotkey", "", "Miner hotkey")
 }
 
 var containersCMD = &cobra.Command{
@@ -28,7 +30,7 @@ var containersCMD = &cobra.Command{
 	Short: "Get containers from a vm",
 	Long:  `Get containers from a vm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if containersIpFlag == "" {
+		if containersIpFlag == "" || containersHotkeyFlag == "" {
 			_ = cmd.Help()
 			return
 		}
@@ -44,7 +46,7 @@ var containersCMD = &cobra.Command{
 			cvmIP := strings.TrimPrefix(containersIpFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
-			containers, err := attester.GetContainers(cvmIP)
+			containers, err := attester.GetContainers(containersHotkeyFlag, cvmIP)
 			if err != nil {
 				fmt.Println(utils.Wrap("error getting containers from cvm", err))
 				return

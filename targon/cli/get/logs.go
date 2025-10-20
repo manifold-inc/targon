@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	logsIpFlag            string
+	logsHotkeyFlag    string
+	logsIpFlag        string
 	containerNameFlag string
 	tailFlag          string
 )
@@ -25,6 +26,7 @@ func init() {
 	logsCMD.Flags().StringVar(&logsIpFlag, "ip", "", "IP address of the vm")
 	logsCMD.Flags().StringVar(&containerNameFlag, "container", "", "Name of the container to get logs from")
 	logsCMD.Flags().StringVar(&tailFlag, "tail", "all", "Number of lines to show from the end of the logs")
+	logsCMD.Flags().StringVar(&logsHotkeyFlag, "hotkey", "", "Miner hotkey")
 }
 
 var logsCMD = &cobra.Command{
@@ -32,7 +34,7 @@ var logsCMD = &cobra.Command{
 	Short: "View logs for a vm",
 	Long:  `View logs for a vm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logsIpFlag == "" {
+		if logsIpFlag == "" || logsHotkeyFlag == "" {
 			_ = cmd.Help()
 			return
 		}
@@ -48,7 +50,7 @@ var logsCMD = &cobra.Command{
 			cvmIP := strings.TrimPrefix(logsIpFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
-			logs, err := attester.GetLogsFromNode(cvmIP, containerNameFlag, tailFlag)
+			logs, err := attester.GetLogsFromNode(logsHotkeyFlag, cvmIP, containerNameFlag, tailFlag)
 			if err != nil {
 				fmt.Println(utils.Wrap("error getting logs from cvm", err))
 				return
