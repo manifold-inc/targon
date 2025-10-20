@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import List
+from typing import List, Union
 from bittensor.core.axon import traceback, uvicorn
 from pydantic import BaseModel
 import bittensor as bt
@@ -47,15 +47,16 @@ logger.info(
 
 class WeightRequest(BaseModel):
     uids: List[int]
-    weights: List[int]
+    weights: List[Union[int, float]]
     version: int
+
+
+subtensor = bt.AsyncSubtensor(CHAIN_ENDPOINT)
 
 
 @app.post("/api/v1/set-weights")
 async def post_set_weights(req: WeightRequest):
     try:
-        # Subtensor is absurdly buggy and will silently fail after a few weight sets
-        subtensor = bt.async_subtensor(CHAIN_ENDPOINT)
         logger.info(
             f"setting weights\n{req.uids}\n{req.weights}\nversion: {req.version}\nNetuid: {NETUID}"
         )
