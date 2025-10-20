@@ -67,6 +67,7 @@ async def post_set_weights(req: WeightRequest):
             version_key=req.version,
             wait_for_finalization=True,
             wait_for_inclusion=True,
+            period=64
         )
         logger.info(f"weights set: {res}")
         await subtensor.close()
