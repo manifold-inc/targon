@@ -70,7 +70,7 @@ async def post_set_weights(req: WeightRequest):
                 wait_for_finalization=True,
                 wait_for_inclusion=True,
                 period=64,
-                max_retries=0,
+                max_retries=1,
                 raise_error=True,
             )
         logger.info(f"weights set: {res}")
