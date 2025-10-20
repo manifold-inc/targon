@@ -15,15 +15,15 @@ import (
 )
 
 var (
-	ipFlag            string
+	logsIpFlag            string
 	containerNameFlag string
 	tailFlag          string
 )
 
 func init() {
 	getCmd.AddCommand(logsCMD)
-	logsCMD.Flags().StringVar(&ipFlag, "ip", "", "Specific ip address for off chain testing")
-	logsCMD.Flags().StringVar(&containerNameFlag, "container-name", "", "Name of the container to get logs from")
+	logsCMD.Flags().StringVar(&logsIpFlag, "ip", "", "IP address of the vm")
+	logsCMD.Flags().StringVar(&containerNameFlag, "container", "", "Name of the container to get logs from")
 	logsCMD.Flags().StringVar(&tailFlag, "tail", "all", "Number of lines to show from the end of the logs")
 }
 
@@ -32,7 +32,7 @@ var logsCMD = &cobra.Command{
 	Short: "View logs for a vm",
 	Long:  `View logs for a vm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if ipFlag == "" {
+		if logsIpFlag == "" {
 			_ = cmd.Help()
 			return
 		}
@@ -44,8 +44,8 @@ var logsCMD = &cobra.Command{
 		}
 
 		attester := cvm.NewAttester(1, kp, "https://tower.targon.com")
-		if len(ipFlag) != 0 {
-			cvmIP := strings.TrimPrefix(ipFlag, "http://")
+		if len(logsIpFlag) != 0 {
+			cvmIP := strings.TrimPrefix(logsIpFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
 			logs, err := attester.GetLogsFromNode(cvmIP, containerNameFlag, tailFlag)

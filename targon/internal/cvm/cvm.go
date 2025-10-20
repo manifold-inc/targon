@@ -29,6 +29,11 @@ type Attester struct {
 	towerURL    string
 }
 
+type LogsBody struct {
+	ContainerName string `json:"container_name"`
+	Tail          string `json:"tail"`
+}
+
 // NewAttester Creates a new Attester
 // client is used for hitting tower (reuseable)
 // timeoutMult is used to scale all client timeouts
@@ -250,9 +255,9 @@ func (a *Attester) GetLogsFromNode(
 		}).Dial,
 	}, Timeout: 5 * time.Minute * a.timeoutMult}
 
-	data := map[string]string{
-		"container_name": containerName,
-		"tail":           tail,
+	data := LogsBody{
+		ContainerName: containerName,
+		Tail:          tail,
 	}
 	body, _ := json.Marshal(data)
 
@@ -282,6 +287,53 @@ func (a *Attester) GetLogsFromNode(
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
 		return "", fmt.Errorf("bad status code from cvm logs: %d: %s", res.StatusCode, string(body))
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", utils.Wrap("failed reading response from cvm", err)
+	}
+	return string(resBody), nil
+}
+
+func (a *Attester) GetContainers(
+	cvmIP string,
+) (string, error) {
+	client := &http.Client{Transport: &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+		Dial: (&net.Dialer{
+			Timeout: 15 * time.Second * a.timeoutMult,
+		}).Dial,
+	}, Timeout: 5 * time.Minute * a.timeoutMult}
+
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("http://%s:8080/api/v1/containers", cvmIP),
+		nil,
+	)
+	if err != nil {
+		return "", utils.Wrap("failed to generate request to cvm", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	req.Close = true
+	res, err := client.Do(req)
+	if err != nil {
+		return "", utils.Wrap("failed sending request to cvm", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode == http.StatusServiceUnavailable {
+		return "", errors.New("server overloaded")
+	}
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return "", fmt.Errorf("bad status code from cvm containers: %d: %s", res.StatusCode, string(body))
 	}
 
 	resBody, err := io.ReadAll(res.Body)
