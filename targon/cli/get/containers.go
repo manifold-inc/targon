@@ -1,6 +1,7 @@
 package get
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -48,7 +49,12 @@ var containersCMD = &cobra.Command{
 				fmt.Println(utils.Wrap("error getting containers from cvm", err))
 				return
 			}
-			fmt.Printf("Containers:\n%s\n", containers)
+			json, err := json.MarshalIndent(containers, "", "  ")
+			if err != nil {
+				fmt.Println(utils.Wrap("error marshalling containers response", err))
+				return
+			}
+			fmt.Printf("Containers:\n%s\n", string(json))
 			return
 		}
 	},

@@ -13,6 +13,8 @@ import (
 
 	"targon/internal/targon"
 
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/subtrahend-labs/gobt/boilerplate"
@@ -298,7 +300,7 @@ func (a *Attester) GetLogsFromNode(
 
 func (a *Attester) GetContainers(
 	cvmIP string,
-) (string, error) {
+) ([]container.Summary, error) {
 	client := &http.Client{Transport: &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
 		MaxConnsPerHost:     1,
@@ -314,7 +316,7 @@ func (a *Attester) GetContainers(
 		nil,
 	)
 	if err != nil {
-		return "", utils.Wrap("failed to generate request to cvm", err)
+		return nil, utils.Wrap("failed to generate request to cvm", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -322,23 +324,29 @@ func (a *Attester) GetContainers(
 	req.Close = true
 	res, err := client.Do(req)
 	if err != nil {
-		return "", utils.Wrap("failed sending request to cvm", err)
+		return nil, utils.Wrap("failed sending request to cvm", err)
 	}
 	defer func() {
 		_ = res.Body.Close()
 	}()
 
 	if res.StatusCode == http.StatusServiceUnavailable {
-		return "", errors.New("server overloaded")
+		return nil, errors.New("server overloaded")
 	}
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
-		return "", fmt.Errorf("bad status code from cvm containers: %d: %s", res.StatusCode, string(body))
+		return nil, fmt.Errorf("bad status code from cvm containers: %d: %s", res.StatusCode, string(body))
 	}
 
 	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		return "", utils.Wrap("failed reading response from cvm", err)
+		return nil, utils.Wrap("failed reading response from cvm", err)
 	}
-	return string(resBody), nil
+
+	var containers []container.Summary
+	err = json.Unmarshal(resBody, &containers)
+	if err != nil {
+		return nil, utils.Wrap("failed to unmarshal containers", err)
+	}
+	return containers, nil
 }
