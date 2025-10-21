@@ -16,7 +16,11 @@ import (
 )
 
 func CheckAlreadyRegistered(core *targon.Core) error {
-	n, found := core.Neurons[core.Deps.Hotkey.Address]
+	uid, found := core.HotkeyToUID[core.Deps.Hotkey.Address]
+	if !found {
+		return errors.New("not registered on sn")
+	}
+	n, found := core.Neurons[uid]
 	if !found {
 		return errors.New("not registered on sn")
 	}
@@ -32,7 +36,7 @@ func CheckAlreadyRegistered(core *targon.Core) error {
 func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// Wrapped for closure
 	getBlocksFrom := func(b types.Header) int {
-		tempo := 360
+		tempo := 361
 		return ((tempo + 1 + c.Deps.Env.Netuid + 1 + int(b.Number)) % (tempo + 1))
 	}
 

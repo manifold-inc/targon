@@ -96,5 +96,6 @@ func LoadMongoBackup(c *Core) error {
 		c.Auctions = r.Core.Auctions
 	}
 	c.TaoPrice = r.Core.TaoPrice
+	c.StartupBlock = r.Core.StartupBlock
 	return nil
 }

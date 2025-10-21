@@ -45,10 +45,7 @@ func getPassingAttestations(c *targon.Core) {
 			}
 			mu.Unlock()
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
+			wg.Go(func() {
 				// Get attestation
 				n := c.Neurons[uid]
 				nonce := nonce.NewNonce(attester.Hotkey.Address)
@@ -90,7 +87,7 @@ func getPassingAttestations(c *targon.Core) {
 				c.Deps.Log.Infof("%s passed attestation: %s", uid, userData.AuctionName)
 				c.VerifiedNodes[uid][node.IP] = userData
 				delete(c.MinerErrors[uid], node.IP)
-			}()
+			})
 		}
 	}
 	wg.Wait()
