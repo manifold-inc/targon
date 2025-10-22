@@ -35,7 +35,7 @@ var containersCMD = &cobra.Command{
 			fmt.Println("error loading config: " + err.Error())
 			os.Exit(1)
 		}
-		
+
 		kp, err := signature.KeyringPairFromSecret(config.ValidatorHotkeyPhrase, 42)
 		if err != nil {
 			fmt.Println("error parsing hotkey phrase: " + err.Error())
@@ -52,12 +52,10 @@ var containersCMD = &cobra.Command{
 				fmt.Println(utils.Wrap("error getting containers from cvm", err))
 				return
 			}
-			json, err := json.MarshalIndent(containers, "", "  ")
-			if err != nil {
-				fmt.Println(utils.Wrap("error marshalling containers response", err))
-				return
+			for _, con := range containers {
+				name := strings.TrimSuffix(con.Names[0], "/")
+				fmt.Println(name)
 			}
-			fmt.Printf("Containers:\n%s\n", string(json))
 			return
 		}
 	},
