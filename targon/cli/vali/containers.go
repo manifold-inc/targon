@@ -52,7 +52,7 @@ var containersCMD = &cobra.Command{
 				return
 			}
 			for _, con := range containers {
-				name := strings.TrimSuffix(con.Names[0], "/")
+				name := strings.TrimPrefix(con.Names[0], "/")
 				fmt.Println(name)
 			}
 			return
