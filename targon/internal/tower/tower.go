@@ -14,6 +14,7 @@ import (
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
+	"github.com/subtrahend-labs/gobt/boilerplate"
 	"go.uber.org/zap"
 )
 
@@ -46,7 +47,7 @@ func NewTower(client *http.Client, url string, hotkey *signature.KeyringPair, lo
 }
 
 func (t *Tower) AuctionDetails() (*Auctions, error) {
-	attest, err := GetAttestation(t.log, nonce.NewNonce(t.hotkey.Address))
+	attest, err := GetAttestation(t.log, nonce.NewNonce(t.hotkey.Address), t.hotkey)
 	if err != nil {
 		return nil, utils.Wrap("failed getting attestation", err)
 	}
@@ -77,7 +78,7 @@ func (t *Tower) AuctionDetails() (*Auctions, error) {
 	return &aucDetails, nil
 }
 
-func GetAttestation(log *zap.SugaredLogger, nonce string) (*AttestResponse, error) {
+func GetAttestation(log *zap.SugaredLogger, nonce string, kp *signature.KeyringPair) (*AttestResponse, error) {
 	tr := &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second,
 		MaxConnsPerHost:     1,
@@ -88,7 +89,7 @@ func GetAttestation(log *zap.SugaredLogger, nonce string) (*AttestResponse, erro
 	body, _ := json.Marshal(data)
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8080/api/v1/evidence",
+		"http://host.docker.internal:8080/api/v1/evidence",
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
@@ -96,7 +97,11 @@ func GetAttestation(log *zap.SugaredLogger, nonce string) (*AttestResponse, erro
 		return nil, err
 	}
 
+	headers, _ := boilerplate.GetEpistulaHeaders(*kp, kp.Address, body)
 	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
