@@ -1,4 +1,4 @@
-package get
+package vali
 
 import (
 	"encoding/json"
@@ -13,11 +13,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var containersIpFlag string
+var containersIPFlag string
 
 func init() {
-	getCmd.AddCommand(containersCMD)
-	containersCMD.Flags().StringVar(&containersIpFlag, "ip", "", "IP address of the vm")
+	valiCmd.AddCommand(containersCMD)
+	containersCMD.Flags().StringVar(&containersIPFlag, "ip", "", "IP address of the vm")
 }
 
 var containersCMD = &cobra.Command{
@@ -25,7 +25,7 @@ var containersCMD = &cobra.Command{
 	Short: "Get containers from a vm",
 	Long:  `Get containers from a vm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if containersIpFlag == "" {
+		if containersIPFlag == "" {
 			_ = cmd.Help()
 			return
 		}
@@ -43,8 +43,8 @@ var containersCMD = &cobra.Command{
 		}
 
 		attester := cvm.NewAttester(1, kp, "https://tower.targon.com")
-		if len(containersIpFlag) != 0 {
-			cvmIP := strings.TrimPrefix(containersIpFlag, "http://")
+		if len(containersIPFlag) != 0 {
+			cvmIP := strings.TrimPrefix(containersIPFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
 			containers, err := attester.GetContainers(cvmIP)
