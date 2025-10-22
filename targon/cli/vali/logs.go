@@ -1,27 +1,29 @@
-package get
+package vali
 
 import (
 	"fmt"
 	"os"
 	"strings"
 
+	"targon/cli/shared"
 	"targon/internal/cvm"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
-	logsIpFlag        string
+	logsIPFlag        string
 	logsContainerFlag string
 	logsTailFlag      string
 )
 
 func init() {
-	getCmd.AddCommand(logsCMD)
-	logsCMD.Flags().StringVar(&logsIpFlag, "ip", "", "IP address of the vm")
+	valiCmd.AddCommand(logsCMD)
+	logsCMD.Flags().StringVar(&logsIPFlag, "ip", "", "IP address of the vm")
 	logsCMD.Flags().StringVar(&logsContainerFlag, "container", "", "Name of the container to get logs from")
 	logsCMD.Flags().StringVar(&logsTailFlag, "tail", "all", "Number of lines to show from the end of the logs")
 }
@@ -31,7 +33,7 @@ var logsCMD = &cobra.Command{
 	Short: "View logs for a vm",
 	Long:  `View logs for a vm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logsIpFlag == "" {
+		if logsIPFlag == "" {
 			_ = cmd.Help()
 			return
 		}
@@ -49,8 +51,8 @@ var logsCMD = &cobra.Command{
 		}
 
 		attester := cvm.NewAttester(1, kp, "https://tower.targon.com")
-		if len(logsIpFlag) != 0 {
-			cvmIP := strings.TrimPrefix(logsIpFlag, "http://")
+		if len(logsIPFlag) != 0 {
+			cvmIP := strings.TrimPrefix(logsIPFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
 			logs, err := attester.GetLogsFromNode(cvmIP, logsContainerFlag, logsTailFlag)
@@ -62,4 +64,25 @@ var logsCMD = &cobra.Command{
 			return
 		}
 	},
+}
+
+type GetConfig struct {
+	ValidatorHotkeyPhrase string
+}
+
+func loadConfig() (*GetConfig, error) {
+	config := &GetConfig{}
+
+	configStrings := map[string]*string{
+		"validator.hotkey_phrase": &config.ValidatorHotkeyPhrase,
+	}
+
+	for key, value := range configStrings {
+		if viper.GetString(key) == "" {
+			shared.PromptConfigString(key)
+		}
+		*value = viper.GetString(key)
+	}
+
+	return config, nil
 }
