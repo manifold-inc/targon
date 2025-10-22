@@ -25,8 +25,9 @@ type Tower struct {
 }
 
 type Auctions struct {
-	Auctions map[string]Auction `json:"auctions" bson:"auctions"`
-	TaoPrice float64            `json:"tao_price" bson:"tao_price"`
+	Auctions         map[string]Auction `json:"auctions" bson:"auctions"`
+	TaoPrice         float64            `json:"tao_price" bson:"tao_price"`
+	BurnDistribution map[int]int        `json:"burn_distribution" bson:"burn_distribution"`
 }
 
 type Auction struct {
@@ -45,9 +46,6 @@ func NewTower(client *http.Client, url string, hotkey *signature.KeyringPair, lo
 }
 
 func (t *Tower) AuctionDetails() (*Auctions, error) {
-	// TODO @alan
-	// This code will now run inside a vm that has an attestation server running
-	// Get an attestation and send it to tower to get auctions
 	attest, err := GetAttestation(t.log, nonce.NewNonce(t.hotkey.Address))
 	if err != nil {
 		return nil, utils.Wrap("failed getting attestation", err)
