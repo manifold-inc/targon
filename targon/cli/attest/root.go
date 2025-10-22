@@ -155,7 +155,6 @@ var ipsCmd = &cobra.Command{
 		wg := sync.WaitGroup{}
 		wg.Add(len(nodes))
 
-
 		for _, n := range nodes {
 			go func() {
 				var err error
