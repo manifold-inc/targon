@@ -23,7 +23,7 @@ var (
 
 func init() {
 	valiCmd.AddCommand(logsCMD)
-	logsCMD.Flags().StringVar(&logsIPFlag, "ip", "", "IP address of the vm")
+	logsCMD.Flags().StringVar(&logsIPFlag, "ip", "localhost", "IP address of the vm")
 	logsCMD.Flags().StringVar(&logsContainerFlag, "container", "", "Name of the container to get logs from")
 	logsCMD.Flags().StringVar(&logsTailFlag, "tail", "all", "Number of lines to show from the end of the logs")
 }

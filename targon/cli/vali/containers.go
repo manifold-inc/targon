@@ -16,7 +16,7 @@ var containersIPFlag string
 
 func init() {
 	valiCmd.AddCommand(containersCMD)
-	containersCMD.Flags().StringVar(&containersIPFlag, "ip", "", "IP address of the vm")
+	containersCMD.Flags().StringVar(&containersIPFlag, "ip", "localhost", "IP address of the vm")
 }
 
 var containersCMD = &cobra.Command{

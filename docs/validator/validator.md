@@ -7,12 +7,10 @@
 
 ## Validator Installation
 
-**1. Clone Repository**
+**1. Setup Validator CPU Server**
 
-```bash
-git clone https://github.com/manifold-inc/targon.git
-cd targon
-```
+Follow the steps in amd-cpus.md to setup your hardware for the validator virtual
+machine.
 
 **2. Environment Setup**
 
@@ -48,44 +46,41 @@ TIMEOUT_MULT=1
 > the password and one as the username. These **do not** need to be double
 > quoted in the .env file
 
-**3. Build and Run Services**
+**3. Pull validator VM**
 
-```bash
-docker compose up -d --force-recreate --build
-```
+Use `tvm/install` binary on the CPU server with the following arguments
+
+- `--hotkey-phrase`: Your validator Hotkey Phrase
+- `--node-type`: vali-cpu
+- `--submit`: Actually submit and download image
+- `--service-url`: http://tvm.targon.com
+- `--vm-download-dir`: location you want to download vm (i.e /vms/manifold)
+
+**4. Start the VM**
+
+Go to the vm-download-dir, and into the unzipped folder that is newly created.
+Run `sudo launch.sh` to start the vm.
+
+To stop the vim, use `ps -aux | grep qemu` followed by `sudo kill -9 [puid]`,
+where puid is the second column of the output row prefixed by `root`.
+
+**5. Start the validator**
+
+To initalize the validator, first install targon-cli (see cli docs for
+installation) **on the server hosting the vm** and run
+`targon-cli vali init [path to .env file]`. This will prompt the user to confirm
+the passed environment file. This must be done on the server where the VM is
+running. This will start the validator with the environment variables passed.
 
 ## Validator Monitoring and Maintenance
 
 **Logs**
 
-```bash
-# View all logs
-docker compose logs -f
-
-# View specific service logs
-docker compose logs -f targon
-```
+To get logs, first you must get a list of the running containers using
+`targon-cli vali containers`. Then, you can view the logs of any of the
+containers using `targon-cli vali logs --container [container name]`.
 
 **Updates**
 
-```bash
-# Pull latest code
-git pull
-
-# Rebuild and restart services
-docker compose pull
-docker compose up -d --build --force-recreate
-```
-
-**Troubleshooting**
-
-```bash
-# Check service status
-docker compose ps
-
-# View detailed logs
-docker compose logs -f --tail=100
-
-# Restart services
-docker compose restart
-```
+To update the validator running in the VM, either repull and re-init the VM, or
+run `targon-cli vali update`.
