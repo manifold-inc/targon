@@ -70,7 +70,8 @@ To initalize the validator, first install targon-cli (see cli docs for
 installation) **on the server hosting the vm** and run
 `targon-cli vali init [path to .env file]`. This will prompt the user to confirm
 the passed environment file. This must be done on the server where the VM is
-running. This will start the validator with the environment variables passed.
+running, or you must pass --ip with the ip of the server. This will start the
+validator with the environment variables passed.
 
 ## Validator Monitoring and Maintenance
 

@@ -51,18 +51,15 @@ var logsCMD = &cobra.Command{
 		}
 
 		attester := cvm.NewAttester(1, kp, "https://tower.targon.com")
-		if len(logsIPFlag) != 0 {
-			cvmIP := strings.TrimPrefix(logsIPFlag, "http://")
-			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+		cvmIP := strings.TrimPrefix(logsIPFlag, "http://")
+		cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
-			logs, err := attester.GetLogsFromNode(cvmIP, logsContainerFlag, logsTailFlag)
-			if err != nil {
-				fmt.Println(utils.Wrap("error getting logs from cvm", err))
-				return
-			}
-			fmt.Printf("Logs:\n%s\n", logs)
+		logs, err := attester.GetLogsFromNode(cvmIP, logsContainerFlag, logsTailFlag)
+		if err != nil {
+			fmt.Println(utils.Wrap("error getting logs from cvm", err))
 			return
 		}
+		fmt.Printf("Logs:\n%s\n", logs)
 	},
 }
 

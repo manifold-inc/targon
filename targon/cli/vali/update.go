@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"targon/cli/shared"
@@ -15,8 +16,11 @@ import (
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
+var updateIPFlag string
+
 func init() {
 	valiCmd.AddCommand(updateCmd)
+	updateCmd.Flags().StringVar(&updateIPFlag, "ip", "localhost", "IP address of the vm")
 }
 
 var updateCmd = &cobra.Command{
@@ -25,6 +29,10 @@ var updateCmd = &cobra.Command{
 	Long:  `Update validator`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		if updateIPFlag == "" {
+			_ = cmd.Help()
+			return
+		}
 		client := &http.Client{
 			Timeout: 10 * time.Second,
 		}
@@ -42,7 +50,9 @@ var updateCmd = &cobra.Command{
 			fmt.Println("Failed generating epistula headers")
 			os.Exit(1)
 		}
-		req, err := http.NewRequest("POST", "http://localhost:8080/api/vali/update", nil)
+		cvmIP := strings.TrimPrefix(updateIPFlag, "http://")
+		cvmIP = strings.TrimSuffix(cvmIP, ":8080/api/vali/update")
+		req, err := http.NewRequest("POST", cvmIP, nil)
 		if err != nil {
 			fmt.Printf("Faield sending request to VM: %s", err)
 			os.Exit(1)

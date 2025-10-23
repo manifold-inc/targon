@@ -17,8 +17,11 @@ import (
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
+var initIPFlag string
+
 func init() {
 	valiCmd.AddCommand(initCmd)
+	initCmd.Flags().StringVar(&initIPFlag, "ip", "localhost", "IP address of the vm")
 }
 
 var initCmd = &cobra.Command{
@@ -30,6 +33,10 @@ var initCmd = &cobra.Command{
 		if len(args) == 0 {
 			_ = cmd.Help()
 			os.Exit(0)
+		}
+		if initIPFlag == "" {
+			_ = cmd.Help()
+			return
 		}
 		f, err := os.ReadFile(args[0])
 		if err != nil {
@@ -63,7 +70,10 @@ var initCmd = &cobra.Command{
 			fmt.Println("Failed generating epistula headers")
 			os.Exit(1)
 		}
-		req, err := http.NewRequest("POST", "http://localhost:8080/api/vali/init", bytes.NewBuffer(f))
+
+		cvmIP := strings.TrimPrefix(initIPFlag, "http://")
+		cvmIP = strings.TrimSuffix(cvmIP, ":8080/api/vali/init")
+		req, err := http.NewRequest("POST", cvmIP, bytes.NewBuffer(f))
 		if err != nil {
 			fmt.Printf("Failed sending request to VM: %s", err)
 			os.Exit(1)
