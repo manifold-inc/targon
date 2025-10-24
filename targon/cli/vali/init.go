@@ -53,7 +53,7 @@ var initCmd = &cobra.Command{
 			os.Exit(0)
 		}
 		client := &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 5 * time.Minute,
 		}
 
 		hotkeyPhrase := viper.GetString("miner.hotkey_phrase")
