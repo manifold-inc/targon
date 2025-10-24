@@ -36,7 +36,7 @@ func CheckAlreadyRegistered(core *targon.Core) error {
 func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	// Wrapped for closure
 	getBlocksFrom := func(b types.Header) int {
-		tempo := 361
+		tempo := 360
 		return ((tempo + 1 + c.Deps.Env.Netuid + 1 + int(b.Number)) % (tempo + 1))
 	}
 
@@ -98,6 +98,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		}
 		c.TaoPrice = &auctionData.TaoPrice
 		c.Auctions = auctionData.Auctions
+		c.BurnDistribution = auctionData.BurnDistribution
 		c.Deps.Log.Infof("Auctions: %+v", c.Auctions)
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
 		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), &h.ParentHash)

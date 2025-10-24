@@ -1,4 +1,4 @@
-package targon
+package nonce
 
 import (
 	"crypto/sha256"

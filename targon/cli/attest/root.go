@@ -14,6 +14,7 @@ import (
 	"targon/cli/root"
 	"targon/cli/shared"
 	"targon/internal/cvm"
+	"targon/internal/nonce"
 	"targon/internal/targon"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
@@ -105,7 +106,7 @@ var ipsCmd = &cobra.Command{
 		if len(ipFlag) != 0 {
 
 			// Mock Neuron, use self hotkey
-			nonce := targon.NewNonce(kp.Address)
+			nonce := nonce.NewNonce(kp.Address)
 			cvmIP := strings.TrimPrefix(ipFlag, "http://")
 			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
@@ -154,12 +155,11 @@ var ipsCmd = &cobra.Command{
 		wg := sync.WaitGroup{}
 		wg.Add(len(nodes))
 
-
 		for _, n := range nodes {
 			go func() {
 				var err error
 				defer wg.Done()
-				nonce := targon.NewNonce(kp.Address)
+				nonce := nonce.NewNonce(kp.Address)
 				cvmIP := strings.TrimPrefix(n.IP, "http://")
 				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)

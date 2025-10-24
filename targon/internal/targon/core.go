@@ -14,9 +14,10 @@ type MinerNode struct {
 }
 
 type Core struct {
-	Neurons     map[string]runtime.NeuronInfo `bson:"-"`
-	Deps        *setup.Dependencies           `bson:"-"`
-	HotkeyToUID map[string]string             `bson:"hotkey_to_uid"`
+	Neurons          map[string]runtime.NeuronInfo `bson:"-"`
+	Deps             *setup.Dependencies           `bson:"-"`
+	HotkeyToUID      map[string]string             `bson:"hotkey_to_uid"`
+	BurnDistribution map[int]int                   `bson:"burn_distribution"`
 
 	// uid -> nodes
 	MinerNodes map[string][]*MinerNode `bson:"miner_nodes"`

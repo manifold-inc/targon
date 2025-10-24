@@ -13,6 +13,8 @@ import (
 
 	"targon/internal/targon"
 
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/subtrahend-labs/gobt/boilerplate"
@@ -27,6 +29,11 @@ type Attester struct {
 	timeoutMult time.Duration
 	Hotkey      signature.KeyringPair
 	towerURL    string
+}
+
+type LogsBody struct {
+	ContainerName string `json:"container_name"`
+	Tail          string `json:"tail"`
 }
 
 // NewAttester Creates a new Attester
@@ -234,4 +241,128 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		}
 	}
 	return nodesv2, nil
+}
+
+func (a *Attester) GetLogsFromNode(
+	cvmIP string,
+	containerName string,
+	tail string,
+) (string, error) {
+	client := &http.Client{Transport: &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+		Dial: (&net.Dialer{
+			Timeout: 15 * time.Second * a.timeoutMult,
+		}).Dial,
+	}, Timeout: 5 * time.Minute * a.timeoutMult}
+
+	data := LogsBody{
+		ContainerName: containerName,
+		Tail:          tail,
+	}
+	body, _ := json.Marshal(data)
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%s:8080/api/v1/logs", cvmIP),
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return "", utils.Wrap("failed to generate request to cvm", err)
+	}
+
+	headers, err := boilerplate.GetEpistulaHeaders(a.Hotkey, a.Hotkey.Address, body)
+	if err != nil {
+		return "", utils.Wrap("failed generating epistula headers", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	req.Close = true
+	res, err := client.Do(req)
+	if err != nil {
+		return "", utils.Wrap("failed sending request to cvm", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode == http.StatusServiceUnavailable {
+		return "", errors.New("server overloaded")
+	}
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return "", fmt.Errorf("bad status code from cvm logs: %d: %s", res.StatusCode, string(body))
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", utils.Wrap("failed reading response from cvm", err)
+	}
+	return string(resBody), nil
+}
+
+func (a *Attester) GetContainers(
+	cvmIP string,
+) ([]container.Summary, error) {
+	client := &http.Client{Transport: &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+		Dial: (&net.Dialer{
+			Timeout: 15 * time.Second * a.timeoutMult,
+		}).Dial,
+	}, Timeout: 5 * time.Minute * a.timeoutMult}
+
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("http://%s:8080/api/v1/containers", cvmIP),
+		nil,
+	)
+	if err != nil {
+		return nil, utils.Wrap("failed to generate request to cvm", err)
+	}
+
+	headers, err := boilerplate.GetEpistulaHeaders(a.Hotkey, a.Hotkey.Address, []byte{})
+	if err != nil {
+		return nil, utils.Wrap("failed generating epistula headers", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	req.Close = true
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, utils.Wrap("failed sending request to cvm", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode == http.StatusServiceUnavailable {
+		return nil, errors.New("server overloaded")
+	}
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("bad status code from cvm containers: %d: %s", res.StatusCode, string(body))
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, utils.Wrap("failed reading response from cvm", err)
+	}
+
+	var containers []container.Summary
+	err = json.Unmarshal(resBody, &containers)
+	if err != nil {
+		return nil, utils.Wrap("failed to unmarshal containers", err)
+	}
+	return containers, nil
 }

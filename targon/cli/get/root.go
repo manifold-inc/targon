@@ -1,7 +1,9 @@
+// Package get
 package get
 
 import (
 	"os"
+
 	"targon/cli/root"
 
 	"github.com/spf13/cobra"
@@ -17,7 +19,7 @@ var getCmd = &cobra.Command{
 	Long:  `Fetch data from mongo or chain and display it in various formats`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			cmd.Help()
+			_ = cmd.Help()
 			os.Exit(0)
 		}
 	},
