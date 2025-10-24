@@ -16,6 +16,8 @@ services:
           - linux/amd64
           - linux/arm64
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   weights-api:
     image: ghcr.io/manifold-inc/targon-weights-api:latest
