@@ -1,6 +1,7 @@
 package vali
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,11 +17,15 @@ import (
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
-var updateIPFlag string
+var (
+	updateIPFlag  string
+	updateEnvFlag string
+)
 
 func init() {
 	valiCmd.AddCommand(updateCmd)
 	updateCmd.Flags().StringVar(&updateIPFlag, "ip", "localhost", "IP address of the vm")
+	updateCmd.Flags().StringVar(&updateEnvFlag, "env", "", "path to .env file")
 }
 
 var updateCmd = &cobra.Command{
@@ -33,8 +38,28 @@ var updateCmd = &cobra.Command{
 			_ = cmd.Help()
 			return
 		}
+
+		var env []byte
+		if updateEnvFlag != "" {
+			f, err := os.ReadFile(args[0])
+			if err != nil {
+				fmt.Printf("Failed reading environment file: %s", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Initialize validator with the following environment variables:\n%s\n", string(f))
+			var confirm string
+			fmt.Print("Confirm [Y/n]: ")
+			_, err = fmt.Scanln(&confirm)
+			confirm = strings.ToLower(confirm)
+			if len(confirm) != 1 || confirm != "y" || err != nil {
+				fmt.Println("Operation cancelled.")
+				os.Exit(0)
+			}
+			env = f
+		}
+
 		client := &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 5 * time.Minute,
 		}
 		hotkeyPhrase := viper.GetString("miner.hotkey_phrase")
 		if len(hotkeyPhrase) == 0 {
@@ -45,14 +70,14 @@ var updateCmd = &cobra.Command{
 			fmt.Println("Failed loading miner hotkey")
 			return
 		}
-		headers, err := boilerplate.GetEpistulaHeaders(kp, kp.Address, []byte{})
+		headers, err := boilerplate.GetEpistulaHeaders(kp, kp.Address, env)
 		if err != nil {
 			fmt.Println("Failed generating epistula headers")
 			os.Exit(1)
 		}
 		cvmIP := strings.TrimPrefix(updateIPFlag, "http://")
 		cvmIP = strings.TrimSuffix(cvmIP, ":8080/api/vali/update")
-		req, err := http.NewRequest("POST", cvmIP, nil)
+		req, err := http.NewRequest("POST", cvmIP, bytes.NewBuffer(env))
 		if err != nil {
 			fmt.Printf("Faield sending request to VM: %s", err)
 			os.Exit(1)
