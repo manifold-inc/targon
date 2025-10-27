@@ -41,7 +41,7 @@ var updateCmd = &cobra.Command{
 
 		var env []byte
 		if updateEnvFlag != "" {
-			f, err := os.ReadFile(args[0])
+			f, err := os.ReadFile(updateEnvFlag)
 			if err != nil {
 				fmt.Printf("Failed reading environment file: %s", err)
 				os.Exit(1)
