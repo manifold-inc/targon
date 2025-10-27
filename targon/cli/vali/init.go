@@ -72,8 +72,7 @@ var initCmd = &cobra.Command{
 		}
 
 		cvmIP := strings.TrimPrefix(initIPFlag, "http://")
-		cvmIP = strings.TrimSuffix(cvmIP, ":8080/api/vali/init")
-		req, err := http.NewRequest("POST", cvmIP, bytes.NewBuffer(f))
+		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8080/api/vali/init", cvmIP), bytes.NewBuffer(f))
 		if err != nil {
 			fmt.Printf("Failed sending request to VM: %s", err)
 			os.Exit(1)

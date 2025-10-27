@@ -1,15 +1,22 @@
 package vali
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"targon/cli/shared"
-	"targon/internal/cvm"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
+	"github.com/subtrahend-labs/gobt/boilerplate"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,11 +57,10 @@ var logsCMD = &cobra.Command{
 			os.Exit(1)
 		}
 
-		attester := cvm.NewAttester(1, kp, "https://tower.targon.com")
 		cvmIP := strings.TrimPrefix(logsIPFlag, "http://")
 		cvmIP = strings.TrimSuffix(cvmIP, ":8080")
 
-		logs, err := attester.GetLogsFromNode(cvmIP, logsContainerFlag, logsTailFlag)
+		logs, err := GetLogsFromNode(cvmIP, logsContainerFlag, logsTailFlag, kp)
 		if err != nil {
 			fmt.Println(utils.Wrap("error getting logs from cvm", err))
 			return
@@ -82,4 +88,73 @@ func loadConfig() (*GetConfig, error) {
 	}
 
 	return config, nil
+}
+
+func GetLogsFromNode(
+	cvmIP string,
+	containerName string,
+	tail string,
+	kp signature.KeyringPair,
+) (string, error) {
+	client := &http.Client{Transport: &http.Transport{
+		TLSHandshakeTimeout: 5 * time.Second,
+		MaxConnsPerHost:     1,
+		DisableKeepAlives:   true,
+		Dial: (&net.Dialer{
+			Timeout: 15 * time.Second,
+		}).Dial,
+	}, Timeout: 5 * time.Minute}
+
+	data := LogsBody{
+		ContainerName: containerName,
+		Tail:          tail,
+	}
+	body, _ := json.Marshal(data)
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%s:8080/api/v1/logs", cvmIP),
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return "", utils.Wrap("failed to generate request to cvm", err)
+	}
+
+	headers, err := boilerplate.GetEpistulaHeaders(kp, kp.Address, body)
+	if err != nil {
+		return "", utils.Wrap("failed generating epistula headers", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	req.Close = true
+	res, err := client.Do(req)
+	if err != nil {
+		return "", utils.Wrap("failed sending request to cvm", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode == http.StatusServiceUnavailable {
+		return "", errors.New("server overloaded")
+	}
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return "", fmt.Errorf("bad status code from cvm logs: %d: %s", res.StatusCode, string(body))
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", utils.Wrap("failed reading response from cvm", err)
+	}
+	return string(resBody), nil
+}
+
+type LogsBody struct {
+	ContainerName string `json:"container_name"`
+	Tail          string `json:"tail"`
 }
