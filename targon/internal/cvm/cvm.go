@@ -235,3 +235,4 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 	}
 	return nodesv2, nil
 }
+
