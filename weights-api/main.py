@@ -51,7 +51,6 @@ class WeightRequest(BaseModel):
     version: int
 
 
-global subtensor
 subtensor = bt.AsyncSubtensor(CHAIN_ENDPOINT)
 
 
@@ -77,14 +76,9 @@ async def post_set_weights(req: WeightRequest):
         logger.info(f"weights set: {res}")
         return {"success": res[0], "msg": res[1]}
     except Exception as e:
-        try:
-            global subtensor
-            await subtensor.close()
-            subtensor = bt.AsyncSubtensor(CHAIN_ENDPOINT)
-        except:
-            pass
         logger.error(f"Error: {str(e)}: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Only way to actually reconnect subtensor easily is to blow it up
+        sys.exit()
 
 
 if __name__ == "__main__":
