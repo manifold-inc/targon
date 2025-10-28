@@ -51,6 +51,7 @@ class WeightRequest(BaseModel):
     version: int
 
 
+global subtensor
 subtensor = bt.AsyncSubtensor(CHAIN_ENDPOINT)
 
 
