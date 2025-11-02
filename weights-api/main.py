@@ -78,7 +78,7 @@ async def post_set_weights(req: WeightRequest):
     except Exception as e:
         logger.error(f"Error: {str(e)}: {traceback.format_exc()}")
         # Only way to actually reconnect subtensor easily is to blow it up
-        sys.exit()
+        os._exit(1)
 
 
 if __name__ == "__main__":
