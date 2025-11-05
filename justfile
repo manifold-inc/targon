@@ -24,3 +24,6 @@ update:
 
 install-cli:
   cd targon && go install ./cmd/targon-cli
+
+build:
+  echo "nothing to build"
