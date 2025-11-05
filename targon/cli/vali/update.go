@@ -32,7 +32,6 @@ var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update validator",
 	Long:  `Update validator`,
-	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if updateIPFlag == "" {
 			_ = cmd.Help()
