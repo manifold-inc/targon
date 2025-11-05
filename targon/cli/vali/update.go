@@ -75,8 +75,7 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		cvmIP := strings.TrimPrefix(updateIPFlag, "http://")
-		cvmIP = strings.TrimSuffix(cvmIP, ":8080/api/vali/update")
-		req, err := http.NewRequest("POST", cvmIP, bytes.NewBuffer(env))
+		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8080/api/vali/update", cvmIP), bytes.NewBuffer(env))
 		if err != nil {
 			fmt.Printf("Faield sending request to VM: %s", err)
 			os.Exit(1)
