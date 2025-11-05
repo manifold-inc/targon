@@ -111,6 +111,10 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 			}
 		}
 		emi := (float64(*p) / 1e9) * .41 * 360 * *c.TaoPrice
+		// Protect against zero emi
+		if emi < 1 {
+			emi = 1
+		}
 		c.EmissionPool = &emi
 		c.Deps.Log.Infof("Current sn miner emission pool in $ %f", *c.EmissionPool)
 	})
