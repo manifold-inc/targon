@@ -101,16 +101,25 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 		c.BurnDistribution = auctionData.BurnDistribution
 		c.Deps.Log.Infof("Auctions: %+v", c.Auctions)
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
-		p, err := storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), &h.ParentHash)
+		alphaOut, err := storage.GetSubnetAlphaOutEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), &h.ParentHash)
 		if err != nil {
 			c.Deps.Log.Errorw("Validator is falling behind current block time")
-			p, err = storage.GetSubnetTaoInEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), nil)
+			alphaOut, err = storage.GetSubnetAlphaOutEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), nil)
 			if err != nil {
 				c.Deps.Log.Errorw("Failed getting sn tao emissions", "error", err)
 				return
 			}
 		}
-		emi := (float64(*p) / 1e9) * .41 * 360 * *c.TaoPrice
+		price, err := storage.GetSubnetMovingPrice(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), &h.ParentHash)
+		if err != nil {
+			c.Deps.Log.Errorw("Validator is falling behind current block time")
+			price, err = storage.GetSubnetMovingPrice(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), nil)
+			if err != nil {
+				c.Deps.Log.Errorw("Failed getting sn tao emissions", "error", err)
+				return
+			}
+		}
+		emi := (float64(*alphaOut) / 1e9) * .41 * 360 * *c.TaoPrice * price.Float64()
 		// Protect against zero emi
 		if emi < 1 {
 			emi = 1
