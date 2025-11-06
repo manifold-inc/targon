@@ -67,6 +67,22 @@ Release:        25.04
 Codename:       plucky
 ```
 
+> If you're currently on Ubuntu 24.04 LTS, upgrade to 25.04 with:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y update-manager-core
+sudo sed -i 's/^Prompt=.*/Prompt=normal/' /etc/update-manager/release-upgrades
+sudo do-release-upgrade
+# Reboot when prompted
+```
+
+After the upgrade, verify you're on 25.04:
+
+```bash
+lsb_release -a
+```
+
 **2. Update package lists and upgrade the system**
 <!-- For the host, this will update packages and install QEMU along with required virtualization components. -->
 
