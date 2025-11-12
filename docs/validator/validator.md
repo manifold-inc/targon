@@ -60,7 +60,7 @@ Use `tvm/install` binary on the CPU server with the following arguments
 **4. Start the VM**
 
 Go to the vm-download-dir, and into the unzipped folder that is newly created.
-Run `sudo launch.sh` to start the vm.
+Run `sudo launch_vm.sh` to start the vm.
 
 To stop the vim, use `ps -aux | grep qemu` followed by `sudo kill -9 [puid]`,
 where puid is the second column of the output row prefixed by `root`.
