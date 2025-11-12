@@ -10,7 +10,7 @@
 **1. Setup Validator CPU Server**
 
 Follow the steps in amd-cpus.md to setup your hardware for the validator virtual
-machine. We reccomend [latitude](https://www.latitude.sh/) m4.metal.small boxes
+machine. We reccomend [latitude](https://www.latitude.sh/) m4.metal.medium boxes
 that you can easily upgrade from 24.04 to 25.04 ubuntu
 
 **2. Environment Setup**
