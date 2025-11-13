@@ -13,8 +13,8 @@ var minerHotkeyPhraseFlag string
 var validatorHotkeyPhraseFlag string
 
 func init() {
-	configCmd.Flags().StringVar(&minerHotkeyPhraseFlag, "miner.hotkey_phrase", "", "Miner hotkey phrase to update to")
-	configCmd.Flags().StringVar(&validatorHotkeyPhraseFlag, "validator.hotkey_phrase", "", "Validator hotkey phrase to update to")
+	configCmd.Flags().StringVar(&minerHotkeyPhraseFlag, "miner.hotkey-phrase", "", "Miner hotkey phrase to update to")
+	configCmd.Flags().StringVar(&validatorHotkeyPhraseFlag, "validator.hotkey-phrase", "", "Validator hotkey phrase to update to")
 	root.RootCmd.AddCommand(configCmd)
 }
 

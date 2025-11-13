@@ -60,13 +60,13 @@ var updateCmd = &cobra.Command{
 		client := &http.Client{
 			Timeout: 5 * time.Minute,
 		}
-		hotkeyPhrase := viper.GetString("miner.hotkey_phrase")
+		hotkeyPhrase := viper.GetString("validator.hotkey_phrase")
 		if len(hotkeyPhrase) == 0 {
-			hotkeyPhrase = shared.PromptConfigString("miner.hotkey_phrase")
+			hotkeyPhrase = shared.PromptConfigString("validator.hotkey_phrase")
 		}
 		kp, err := signature.KeyringPairFromSecret(hotkeyPhrase, 42)
 		if err != nil {
-			fmt.Println("Failed loading miner hotkey")
+			fmt.Println("Failed loading validator hotkey")
 			return
 		}
 		headers, err := boilerplate.GetEpistulaHeaders(kp, kp.Address, env)

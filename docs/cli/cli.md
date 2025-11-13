@@ -71,13 +71,14 @@ targon-cli config [flags]
 
 **Flags:**
 
-- `--hotkey string` - Hotkey phrase to update to
+- `--miner.hotkey-phrase string` - Miner Hotkey phrase to update to
+- `--validator.hotkey-phrase string` - Validator Hotkey phrase to update to
 
 **Examples:**
 
 ```bash
 # Update hotkey phrase
-targon-cli config --hotkey "your-hotkey-phrase-here"
+targon-cli config --hotkey-phrase "your-hotkey-phrase-here"
 ```
 
 ### `targon-cli get`
