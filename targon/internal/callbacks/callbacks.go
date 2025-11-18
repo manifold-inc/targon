@@ -129,7 +129,7 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *targon.Core) {
 	})
 
 	// get miner nodes
-	// Every 30 blocks off the internval tempo untill 59 left in block
+	// Every 30 blocks off the internval tempo until 59 left in block
 	v.AddBlockCallback(func(h types.Header) {
 		if (getBlocksFrom(h)%30 != 1 || getBlocksFrom(h) > 301) && len(c.MinerNodes) != 0 {
 			return
