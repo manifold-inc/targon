@@ -1,7 +1,9 @@
 package setup
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -171,6 +173,10 @@ func Init(opts ...any) *Dependencies {
 	towerClient := &http.Client{Transport: &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * time.Duration(TimeoutMult),
 		DisableKeepAlives:   true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial := &net.Dialer{}
+			return dial.DialContext(ctx, "tcp4", addr)
+		},
 	}, Timeout: 1 * time.Minute * time.Duration(TimeoutMult)}
 	t := tower.NewTower(towerClient, TowerURL, &kp, sugar)
 

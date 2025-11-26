@@ -2,11 +2,13 @@ package callbacks
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"sort"
 	"strconv"
@@ -46,6 +48,10 @@ func setWeights(c *targon.Core, uids []uint16, scores []uint16) {
 		TLSHandshakeTimeout: 5 * time.Second,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial := &net.Dialer{}
+			return dial.DialContext(ctx, "tcp4", addr)
+		},
 	}
 	// Needs to wait till it finishes setting weights on chain
 	client := &http.Client{Transport: tr, Timeout: 2 * time.Minute}

@@ -2,6 +2,7 @@ package vali
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,9 +101,12 @@ func GetLogsFromNode(
 		TLSHandshakeTimeout: 5 * time.Second,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
-		Dial: (&net.Dialer{
-			Timeout: 15 * time.Second,
-		}).Dial,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial := &net.Dialer{
+				Timeout: 15 * time.Second,
+			}
+			return dial.DialContext(ctx, "tcp4", addr)
+		},
 	}, Timeout: 5 * time.Minute}
 
 	data := LogsBody{

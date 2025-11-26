@@ -1,9 +1,11 @@
 package get
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"time"
 
@@ -68,6 +70,10 @@ var errsCMD = &cobra.Command{
 			TLSHandshakeTimeout: 5 * time.Second,
 			MaxConnsPerHost:     1,
 			DisableKeepAlives:   true,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				dial := &net.Dialer{}
+				return dial.DialContext(ctx, "tcp4", addr)
+			},
 		}
 		client := &http.Client{Transport: tr, Timeout: 10 * time.Second}
 		resp, err := client.Do(req)

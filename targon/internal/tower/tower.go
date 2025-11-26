@@ -3,10 +3,12 @@ package tower
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"time"
 
@@ -83,6 +85,10 @@ func GetAttestation(log *zap.SugaredLogger, nonce string, kp *signature.KeyringP
 		TLSHandshakeTimeout: 5 * time.Second,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial := &net.Dialer{}
+			return dial.DialContext(ctx, "tcp4", addr)
+		},
 	}
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Minute}
 	data := AttestBody{Nonce: nonce}

@@ -3,6 +3,7 @@ package cvm
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,6 +42,10 @@ func NewAttester(
 	client := &http.Client{Transport: &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second * timeoutMult,
 		DisableKeepAlives:   true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial := &net.Dialer{}
+			return dial.DialContext(ctx, "tcp4", addr)
+		},
 	}, Timeout: 1 * time.Minute * timeoutMult}
 	return &Attester{client: client, towerURL: towerURL, timeoutMult: timeoutMult, Hotkey: hotkey}
 }
@@ -54,9 +59,12 @@ func (a *Attester) GetAttestFromNode(
 		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
-		Dial: (&net.Dialer{
-			Timeout: 15 * time.Second * a.timeoutMult,
-		}).Dial,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial := &net.Dialer{
+				Timeout: 15 * time.Second,
+			}
+			return dial.DialContext(ctx, "tcp4", addr)
+		},
 	}, Timeout: 5 * time.Minute * a.timeoutMult}
 	data := AttestBody{Nonce: nonce}
 	body, _ := json.Marshal(data)
@@ -177,6 +185,10 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		TLSHandshakeTimeout: 5 * time.Second * a.timeoutMult,
 		MaxConnsPerHost:     1,
 		DisableKeepAlives:   true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial := &net.Dialer{}
+			return dial.DialContext(ctx, "tcp4", addr)
+		},
 	}
 	client := &http.Client{Transport: tr, Timeout: 5 * time.Second * a.timeoutMult}
 	req, err := http.NewRequest(
@@ -235,4 +247,3 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 	}
 	return nodesv2, nil
 }
-

@@ -2,8 +2,10 @@ package vali
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -54,6 +56,12 @@ var initCmd = &cobra.Command{
 		}
 		client := &http.Client{
 			Timeout: 5 * time.Minute,
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					dial := &net.Dialer{}
+					return dial.DialContext(ctx, "tcp4", addr)
+				},
+			},
 		}
 
 		hotkeyPhrase := viper.GetString("validator.hotkey_phrase")
