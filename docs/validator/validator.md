@@ -2,7 +2,6 @@
 
 **Validator Prerequisites**
 
-- Docker installed (see docs/docker.md)
 - Basic compute resources (any cpu server)
 
 ## Validator Installation
