@@ -63,10 +63,10 @@ func (t *Tower) AuctionDetails() (*Auctions, error) {
 	defer func() {
 		_ = res.Body.Close()
 	}()
-	if res.StatusCode != 200 {
-		return nil, utils.Wrap("non 200 status code", fmt.Errorf("%d", res.StatusCode))
-	}
 	body, err := io.ReadAll(res.Body)
+	if res.StatusCode != 200 {
+		return nil, utils.Wrap("non 200 status code", fmt.Errorf("%d: %s", res.StatusCode, string(body)))
+	}
 	if err != nil {
 		return nil, utils.Wrap("failed reading body", err)
 	}
