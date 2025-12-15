@@ -17,6 +17,7 @@ type Core struct {
 	Neurons          map[string]runtime.NeuronInfo `bson:"-"`
 	Deps             *setup.Dependencies           `bson:"-"`
 	HotkeyToUID      map[string]string             `bson:"hotkey_to_uid"`
+	ColdkeyToUID     map[string]string             `bson:"coldkey_to_uid"`
 	BurnDistribution map[int]int                   `bson:"burn_distribution"`
 
 	// uid -> nodes

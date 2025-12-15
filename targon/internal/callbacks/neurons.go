@@ -26,10 +26,12 @@ func getNeuronsCallback(c *targon.Core, h types.Header) {
 		}
 	}
 	c.HotkeyToUID = make(map[string]string)
+	c.ColdkeyToUID = make(map[string]string)
 	for _, n := range neurons {
 		uid := fmt.Sprintf("%d", n.UID.Int64())
 		c.Neurons[uid] = n
 		c.HotkeyToUID[utils.AccountIDToSS58(n.Hotkey)] = uid
+		c.ColdkeyToUID[utils.AccountIDToSS58(n.Coldkey)] = uid
 	}
 	c.Deps.Log.Info("Neurons Updated")
 }
