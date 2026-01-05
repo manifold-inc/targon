@@ -13,11 +13,16 @@ type MinerNode struct {
 	Price int    `json:"price"`
 }
 
+type AccountInfo struct {
+	UID   string `bson:"uid"`
+	Alpha int64  `bson:"alpha"`
+}
+
 type Core struct {
 	Neurons          map[string]runtime.NeuronInfo `bson:"-"`
 	Deps             *setup.Dependencies           `bson:"-"`
 	HotkeyToUID      map[string]string             `bson:"hotkey_to_uid"`
-	ColdkeyToUID     map[string]string             `bson:"coldkey_to_uid"`
+	ColdkeyToUID     map[string]AccountInfo        `bson:"coldkey_to_account_info"`
 	BurnDistribution map[int]int                   `bson:"burn_distribution"`
 
 	// uid -> nodes
