@@ -11,7 +11,8 @@ This doc provides setup scripts and instructions for running miners in **confide
 
 ## Table of Contents
 
-* [Supported Platforms](#-supported-platforms)
+* [Auctions](#auctions)
+* [Supported Platforms](#supported-platforms)
 * [AMD EPYC 4th Gen 9xx4 Series SEV-SNP Setup](amd-cpus.md)
 
     1. [Hardware Requirements (AMD)](amd-cpus.md#hardware-requirements-amd)
@@ -32,7 +33,37 @@ This doc provides setup scripts and instructions for running miners in **confide
 
 * [Updating or Running Miner](#updating-or-running-miner)
 
+# Auctions
 
+Miner emissions are currently split proportionally to public demand. To view the current split of miner emissions, query the auctions API:
+
+```bash
+curl -X GET https://tower.targon.com/api/v1/auctions | jq
+```
+
+**Example Response:**
+
+```json
+{
+  "auctions": {
+    "SEV-CPU-AMD-EPYC-V4": {
+      "max_bid": 100,
+      "emission": 5,
+      "min_cluster_size": 0,
+      "node_type": ""
+    },
+    "TDX-NVCC-NVIDIA-H200": {
+      "max_bid": 300,
+      "emission": 60,
+      "min_cluster_size": 8,
+      "node_type": ""
+    }
+  },
+  "tao_price": 272.31050874
+}
+```
+
+> ⚠️ **Important:** The remainder of emissions not allocated to auctions is burned.
 
 # Supported Platforms
 
