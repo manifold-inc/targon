@@ -32,7 +32,6 @@ type Auctions struct {
 }
 
 type Auction struct {
-	MaxBid         int `json:"max_bid" bson:"max_bid"`
 	TargetNodes    int `json:"target_nodes" bson:"target_nodes"`
 	TargetPrice    int `json:"target_price" bson:"target_price"`
 	MaxPrice       int `json:"max_price" bson:"max_price"`
