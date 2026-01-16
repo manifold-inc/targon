@@ -33,7 +33,9 @@ type Auctions struct {
 
 type Auction struct {
 	MaxBid         int `json:"max_bid" bson:"max_bid"`
-	Emission       int `json:"emission" bson:"emission"`
+	TargetNodes    int `json:"target_nodes" bson:"target_nodes"`
+	TargetPrice    int `json:"target_price" bson:"target_price"`
+	MaxPrice       int `json:"max_price" bson:"max_price"`
 	MinClusterSize int `json:"min_cluster_size" bson:"min_cluster_size"`
 }
 

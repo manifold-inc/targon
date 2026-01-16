@@ -228,11 +228,9 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		}
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, &targon.MinerNode{
-				IP:    node,
-				Price: 0,
+				IP: node,
 			})
 		}
 	}
 	return nodesv2, nil
 }
-

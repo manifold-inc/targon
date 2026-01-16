@@ -7,10 +7,8 @@ import (
 
 type MinerBid struct {
 	IP      string  `bson:"ip"`
-	Price   int     `bson:"price"`
 	UID     string  `bson:"uid"`
 	Payout  float64 `bson:"payout"`
-	Diluted bool    `bson:"diluted"`
 	Count   int     `bson:"count"`
 }
 
