@@ -148,6 +148,9 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 		for _, bid := range auction[auctiontype] {
 			nodes += bid.Count
 		}
+		if nodes == 0 {
+			continue
+		}
 		perMiner := min(pool/nodes, aucInfo.MaxPrice)
 
 		// Miner incentive is the % of emission pool they should get
