@@ -187,7 +187,7 @@ func GetNodesFromStdin(cmd *cobra.Command) []*targon.MinerNode {
 	nodes := []*targon.MinerNode{}
 	for scanner.Scan() {
 		line := scanner.Text()
-		nodes = append(nodes, &targon.MinerNode{IP: line, Price: 300})
+		nodes = append(nodes, &targon.MinerNode{IP: line})
 	}
 	return nodes
 }

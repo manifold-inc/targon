@@ -39,9 +39,9 @@ func NewAttester(
 	towerURL string,
 ) *Attester {
 	client := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second * timeoutMult,
-		DisableKeepAlives:   true,
-	}, Timeout: 1 * time.Minute * timeoutMult}
+		TLSHandshakeTimeout: 20 * time.Second * timeoutMult,
+		DisableKeepAlives:   false,
+	}, Timeout: 90 * time.Second * timeoutMult}
 	return &Attester{client: client, towerURL: towerURL, timeoutMult: timeoutMult, Hotkey: hotkey}
 }
 
@@ -228,11 +228,9 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 		}
 		for _, node := range nodesv1 {
 			nodesv2 = append(nodesv2, &targon.MinerNode{
-				IP:    node,
-				Price: 0,
+				IP: node,
 			})
 		}
 	}
 	return nodesv2, nil
 }
-

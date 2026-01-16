@@ -1,6 +1,6 @@
 services:
   targon:
-    image: ghcr.io/manifold-inc/targon:latest
+    image: ghcr.io/manifold-inc/targon:test
     restart: always
     stop_grace_period: 15m
     depends_on:
