@@ -39,9 +39,9 @@ func NewAttester(
 	towerURL string,
 ) *Attester {
 	client := &http.Client{Transport: &http.Transport{
-		TLSHandshakeTimeout: 5 * time.Second * timeoutMult,
-		DisableKeepAlives:   true,
-	}, Timeout: 1 * time.Minute * timeoutMult}
+		TLSHandshakeTimeout: 20 * time.Second * timeoutMult,
+		DisableKeepAlives:   false,
+	}, Timeout: 90 * time.Second * timeoutMult}
 	return &Attester{client: client, towerURL: towerURL, timeoutMult: timeoutMult, Hotkey: hotkey}
 }
 
