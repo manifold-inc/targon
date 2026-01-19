@@ -53,7 +53,7 @@ func (t *Tower) AuctionDetails() (*Auctions, error) {
 		return nil, utils.Wrap("failed getting attestation", err)
 	}
 	postBody, _ := json.Marshal(attest)
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v1/auctions", t.url), bytes.NewBuffer(postBody))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v2/auctions", t.url), bytes.NewBuffer(postBody))
 	if err != nil {
 		return nil, utils.Wrap("failed to generate request to tower", err)
 	}
