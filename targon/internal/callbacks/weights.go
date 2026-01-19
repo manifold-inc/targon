@@ -153,12 +153,11 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 		}
 		perMiner := min(pool/nodes, aucInfo.MaxPrice)
 
-		// Miner incentive is the % of emission pool they should get
-		minerIncentive := (float64(perMiner) * 1.2) / (*c.EmissionPool * 100)
-
 		for _, bid := range auction[auctiontype] {
+			// Miner incentive is the % of emission pool they should get
+			minerIncentive := (float64(perMiner) * 1.2 * float64(bid.Count)) / (*c.EmissionPool * 100)
 			payouts[bid.UID] += minerIncentive
-			bid.Payout = float64(perMiner) / 100
+			bid.Payout = (float64(perMiner) * float64(bid.Count)) / 100
 		}
 	}
 
