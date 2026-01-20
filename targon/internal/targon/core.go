@@ -10,7 +10,6 @@ import (
 
 type MinerNode struct {
 	IP    string `json:"ip"`
-	Price int    `json:"price"`
 }
 
 type AccountInfo struct {

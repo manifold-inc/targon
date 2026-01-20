@@ -8,7 +8,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"sort"
 	"strconv"
 	"time"
 
@@ -101,12 +100,6 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 	// auction => miner nodes
 	auction := map[string][]*targon.MinerBid{}
 
-	// auction -> bid -> total gpus
-	bidcounts := map[string]map[int]int{}
-	for a := range c.Auctions {
-		bidcounts[a] = map[int]int{}
-	}
-
 	// For each uid, for each node, add any passing nodes to the auction map
 	// under the respective auction
 
@@ -131,104 +124,67 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 				continue
 			}
 
-			// ensure price is between 1 and max bid
-			// price is cents per hour per gpu
-			price := max(min(n.Price, auc.MaxBid), 1)
-
-			bidCount := 1
+			cards := 1
 			if auc.MinClusterSize != 0 {
-				bidCount = len(*c.VerifiedNodes[uid][n.IP].GPUCards)
+				cards = len(*c.VerifiedNodes[uid][n.IP].GPUCards)
 			}
 
 			auction[auctionName] = append(auction[auctionName], &targon.MinerBid{
 				IP:    n.IP,
-				Price: price,
 				UID:   uid,
-				Count: bidCount,
+				Count: cards,
 			})
-
-			// This is used to calcualte each ring in the next steps
-			bidcounts[auctionName][price] += bidCount
 		}
 	}
 
 	// uid -> % of emission
 	payouts := map[string]float64{}
 
-	// auction -> bid count (i.e gpus are counted per gpu in a node)
-	paidnodes := map[string]int{}
-
-	// For each auction, sort the bids in ascending order and accept bids untill
-	// we have hit the cap for this auction
-	for auctiontype, pool := range c.Auctions {
-		lastPrice := 0
-		tiedPayouts := map[string]int{}
-		sort.Slice(auction[auctiontype], func(i, j int) bool {
-			return auction[auctiontype][i].Price < auction[auctiontype][j].Price
-		})
-		// max % of the pool for this auction
-		maxEmission := float64(pool.Emission) / 100
-		emissionSum := 0.0
-		tiedBids := 0
-		isRingOverMax := false
+	// For each auction pay up to max per node,
+	// and target price for target gpus
+	for auctiontype, aucInfo := range c.Auctions {
+		pool := aucInfo.TargetPrice * aucInfo.TargetNodes
+		var nodes int
 		for _, bid := range auction[auctiontype] {
-			// GPUs * the bid price/h * interval duration approx / emission pool
-			// 	== percent of emission pool for this node for this interval
-			thisEmission := (float64(bid.Count) * ((float64(bid.Price) / 100) * 1.2)) / *c.EmissionPool
-			paidnodes[auctiontype] += bid.Count
-
-			// On each bid increase, check if ring is over max
-			if bid.Price != lastPrice && !isRingOverMax {
-				isRingOverMax = ((thisEmission/float64(bid.Count))*float64(bidcounts[auctiontype][bid.Price]))+emissionSum > maxEmission
-			}
-			if isRingOverMax {
-				tiedPayouts[bid.UID] += bid.Count
-				tiedBids += bid.Count
-				bid.Diluted = true
-				continue
-			}
-			bid.Diluted = false
-			emissionSum += thisEmission
-			payouts[bid.UID] += thisEmission
-			lastPrice = bid.Price
-			bid.Payout = (float64(bid.Price) / 100.0) * float64(bid.Count)
+			nodes += bid.Count
 		}
-
-		// Just skip if there is not much emission left to split
-		if maxEmission-emissionSum < .01 {
+		if nodes == 0 {
 			continue
 		}
-		// If not all rings get paid their bids, normalize all other rings to the remaning emission
-		// and add that to the payouts. This greatly increases downward price pressure
-		// by highly rewarding people that underbid the last paid ring if it ties.
-		maxTiedEmissionBidPool := (float64(tiedBids) * (float64(pool.MaxBid) / 100)) / *c.EmissionPool
-		remainingEmission := maxEmission - emissionSum
-		dilutedPayoutPerGPU := (min(remainingEmission, maxTiedEmissionBidPool) * *c.EmissionPool) / float64(tiedBids)
+		perMiner := min(pool/nodes, aucInfo.MaxPrice)
+
 		for _, bid := range auction[auctiontype] {
-			if bid.Diluted {
-				bid.Payout = (dilutedPayoutPerGPU * float64(bid.Count)) / 1.2
-				payouts[bid.UID] += (dilutedPayoutPerGPU * float64(bid.Count)) / *c.EmissionPool
-			}
+			// Miner incentive is the % of emission pool they should get
+			minerIncentive := (float64(perMiner) * 1.2 * float64(bid.Count)) / (*c.EmissionPool * 100)
+			payouts[bid.UID] += minerIncentive
+			bid.Payout = (float64(perMiner) * float64(bid.Count)) / 100
 		}
 	}
 
 	var finalScores []uint16
 	var finalUids []uint16
-	sumScores := uint16(0)
+	sumScores := 0
+	// NOTE we dont actually need to normalize here in the case that
+	// our pool sum > emission pool. This is because we are sending
+	// weights via the bittensor sdk which is going to normalize anyways,
+	// so no use doing it here.
 	for uid, payout := range payouts {
-		fw := math.Floor(float64(setup.U16MAX) * payout)
+		fw := int(math.Floor(float64(setup.U16MAX) * payout))
 		if fw == 0 {
 			continue
 		}
+		sumScores += fw
 		thisScore := uint16(fw)
 		uidInt, _ := strconv.Atoi(uid)
 		finalScores = append(finalScores, thisScore)
 		finalUids = append(finalUids, uint16(uidInt))
-		sumScores += thisScore
 	}
 
+	// This is the only part that needs taken care of if sum of pools is greater
+	// than emission pool
+	forBurn := max(setup.U16MAX-sumScores, 0)
+
 	// For each burn key, send a random amount
-	forBurn := setup.U16MAX - int(sumScores)
 	for uid, percent := range c.BurnDistribution {
 		if forBurn == 0 {
 			continue
@@ -246,7 +202,7 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 	// If there was no burn this is a noop
 	finalScores[len(finalScores)-1] += uint16(forBurn)
 
-	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts), "gpus", fmt.Sprintf("%+v", paidnodes))
+	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts))
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))
 
 	return finalUids, finalScores, auction, nil
