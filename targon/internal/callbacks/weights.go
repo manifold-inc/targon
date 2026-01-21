@@ -143,7 +143,7 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 	// For each auction pay up to max per node,
 	// and target price for target gpus
 	for auctiontype, aucInfo := range c.Auctions {
-		pool := aucInfo.TargetPrice * aucInfo.TargetNodes
+		pool := aucInfo.TargetPrice * aucInfo.TargetCards
 		var nodes int
 		for _, bid := range auction[auctiontype] {
 			nodes += bid.Count
