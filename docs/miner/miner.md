@@ -26,6 +26,12 @@ This doc provides setup scripts and instructions for running miners in **confide
     3. [BIOS Configuration (Intel TDX)](intel-hopper-gpus#bios-configuration-intel-tdx)
     4. [Host OS Preparation (Intel)](intel-hopper-gpus#host-os-preparation-intel)
 
+* [Intel TDX + Blackwell GPU Setup](intel-blackwell-gpus.md)
+    1. [Hardware Requirements (Intel)](intel-blackwell-gpus#hardware-requirements-intel)
+    2. [Software Requirements (Intel)](intel-blackwell-gpus#software-requirements-intel)
+    3. [BIOS Configuration (Intel TDX)](intel-blackwell-gpus#bios-configuration-intel-tdx)
+    4. [Host OS Preparation (Intel)](intel-blackwell-gpus#host-os-preparation-intel)
+
 
 * [Launching TVM](#launching-tvm)
     1. [TVM Configuration](#tvm-configuration)
@@ -97,6 +103,21 @@ curl -X GET https://tower.targon.com/api/v1/auctions | jq
 * **Host OS:** Ubuntu 22.04 LTS or later
 * **HGX Firmware Bundle:** Version 1.7 (a.k.a. Vulcan 1.7)
 
+### 3. Intel TDX + NVIDIA Blackwell GPUs (B200)
+
+>Supports **GPU passthrough** inside TDX confidential VMs.
+
+**Hardware Requirements**
+
+* **CPU:** 5th Gen Intel® Xeon® Scalable Processors (Intel® Xeon® 6 Processors)
+* **GPU:** NVIDIA B200 (multi-GPU configuration)
+* **Storage:** 3 TB minimum
+
+**Software Requirements**
+
+* **Host OS:** Ubuntu 25.10
+* **Guest OS:** Ubuntu 24.04 LTS
+
 ---
 
 >⚠️ **Important:** Ensure firmware and drivers are up-to-date to leverage SEV-SNP or TDX capabilities and confirm system compatibility before provisioning confidential workloads.
@@ -113,6 +134,9 @@ Choose your platform to view detailed setup instructions:
 
 * [Intel TDX + Hopper GPU Setup](intel-hopper-gpus)
   Includes hardware, software, BIOS configuration, and host OS preparation for Intel TDX with NVIDIA GPUs.
+
+* [Intel TDX + Blackwell GPU Setup](intel-blackwell-gpus)
+  Includes hardware, software, BIOS configuration, and host OS preparation for Intel TDX with NVIDIA Blackwell GPUs.
 
 
 # Launching TVM
@@ -197,6 +221,18 @@ hardware configuration according to the guidelines in the previous sections.
                       --host-machine-storage 21TB \
                       --launch-vm
    ```
+    **For Intel TDX + Blackwell GPUs:**
+
+   ```bash
+   sudo ./tvm/install --service-url http://tvm.targon.com \
+                      --vm-download-dir ./ \
+                      --submit \
+                      --hotkey-phrase "your phrase" \
+                      --node-type blackwell \
+                      --host-machine-storage 21TB \
+                      --launch-vm
+   ```
+
 
    > ✅ **Tip:** To test without submitting to the network, remove the `--submit --service-url` flags.
 
