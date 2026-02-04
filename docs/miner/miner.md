@@ -214,10 +214,11 @@ hardware configuration according to the guidelines in the previous sections.
 
    ```bash
    sudo ./tvm/install --service-url http://tvm.targon.com \
+   sudo ./tvm/install --service-url http://tvm.targon.com \
                       --vm-download-dir ./ \
                       --submit \
                       --hotkey-phrase "your phrase" \
-                      --node-type nvcc \
+                      --node-type hopper \
                       --host-machine-storage 21TB \
                       --launch-vm
    ```
@@ -252,7 +253,7 @@ The installer supports several additional flags that allow more control over VM 
 | `--service-url <url>`      | URL of the attestation service.                                                                                           |
 | `--hotkey-phrase <phrase>` | Miner Hotkey Phrase for epistula.                                                                                         |
 | `--vm-download-dir <path>` | Directory to download the VM to (default: `~/manifold-vms`).                                                              |
-| `--node-type <type>`       | Node type; must be one of the supported types [`cpu`, `nvcc`].                                                      |
+| `--node-type <type>`       | Node type; must be one of the supported types [`cpu`, `hopper`, `blackwell`].                                                      |
 | `--host-machine-storage <storage-tb>` | Amount of storage in TB available on the host machine for VM operations. |
 | `--launch-vm`              | Automatically extract the downloaded VM and launch it after installation.                                                 |
 
