@@ -223,7 +223,58 @@ Install PCCS with following commands. The installer will prompt you for the foll
 configs. Answer the remaining questions according to your needs, e.g., your proxy
 settings, a desired user password, and an admin password. The configuration step will
 also allow you to create a self-signed SSL certificate for the PCCS.
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -yq --no-install-recommends nodejs=20.11.1-1nodesource1
+sudo apt-get install -y cracklib-runtime
+sudo apt install -y --no-install-recommends sgx-dcap-pccs
+```
 
+⚠️ **ONLY Execute If PCCS Installation Fails**:
+Known Issue PCCS Installation Fails Due to npm audit
+On Ubuntu 25.10.
+
+
+**First, attempt the standard installation above.** If PCCS installation succeeds, **skip this entire section** and proceed to the configuration prompts below.
+
+**If you encounter installation errors such as:**
+- ``npm audit`` reporting high severity vulnerabilities
+- ``dpkg: error processing package sgx-dcap-pccs (--configure)``
+- ``post-installation script subprocess returned error exit status 1``
+
+**Then apply this workaround:**
+
+**Root Cause:** The PCCS installer runs npm audit during installation. With newer npm versions (common on Ubuntu 25.10), npm audit returns a non-zero exit code, which incorrectly causes the PCCS installation to fail, even though the vulnerabilities are in install-time tooling and do not affect PCCS runtime security.
+
+**Fix Steps (Only If Installation Failed):**
+
+**Edit the PCCS install script:**
+
+```bash
+sudo nano /opt/intel/sgx-dcap-pccs/install.sh
+```
+
+Find the line that runs:
+
+```bash
+npm audit
+```
+
+**Change it to:**
+
+```bash
+npm audit || true
+```
+
+This prevents npm audit from aborting the installation.
+
+**Re-run package configuration:**
+
+```bash
+sudo dpkg --configure -a
+```
+
+PCCS should now configure successfully. After this, continue with the configuration prompts below.
 | Prompt                                 | Example / Notes                                                   |
 | -------------------------------------- | ----------------------------------------------------------------- |
 | **Do you want to configure PCCS now?** | `Y`                                                               |
@@ -235,12 +286,6 @@ also allow you to create a self-signed SSL certificate for the PCCS.
 | **Server user password**               | Also needs complexity                                             |
 | **Generate insecure HTTPS key/cert**   | `Y` if you want a self-signed certificate                         |
 
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -yq --no-install-recommends nodejs=20.11.1-1nodesource1
-sudo apt-get install -y cracklib-runtime
-sudo apt install -y --no-install-recommends sgx-dcap-pccs
-```
 
 #### How to check successful PCCS setup?
 
