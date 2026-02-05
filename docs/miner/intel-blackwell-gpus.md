@@ -63,9 +63,12 @@ sudo apt install ./nvlsm_2025.06.10-1_amd64.deb
 
 ## Configuring the Host
 
+Add nohibernate to grub in ``/etc/default/grub``
 ```bash
-# Add nohibernate to grub in /etc/default/grub:
 GRUB_CMDLINE_LINUX="nohibernate kvm_intel.tdx=1"
+```
+
+```bash
 sudo update-grub
 sudo grub-install --no-nvram
 
