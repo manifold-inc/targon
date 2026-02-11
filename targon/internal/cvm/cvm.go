@@ -80,6 +80,10 @@ func (a *Attester) GetAttestFromNode(
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
+	// Epistula headers include `Connection: keep-alive`
+	// keep-alives and sets req.Close=true creates conflict
+	// hence delete Connection Epistula headers
+	req.Header.Del("Connection")
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
@@ -141,6 +145,7 @@ func (a *Attester) VerifyAttestation(
 		req.Header.Set(k, v)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Del("Connection")
 	req.Close = true
 	resp, err := a.client.Do(req)
 	if err != nil {
@@ -198,6 +203,7 @@ func (a *Attester) GetNodes(hotkey string, ip string) ([]*targon.MinerNode, erro
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
+	req.Header.Del("Connection")
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {

@@ -15,7 +15,7 @@ RUN GOOS=linux go build -v ./cmd/targon/targon.go
 
 FROM alpine:3.22.1 
 # TODO better way of doing this
-ENV VERSION=7.2.0
+ENV VERSION=7.3.0
 WORKDIR /app
 RUN touch .env
 RUN apk add ca-certificates

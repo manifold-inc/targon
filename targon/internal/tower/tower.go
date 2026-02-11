@@ -103,6 +103,9 @@ func GetAttestation(log *zap.SugaredLogger, nonce string, kp *signature.KeyringP
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
+	// Epistula headers include `Connection: keep-alive`, but this client disables keep-alives
+	// and sets req.Close=true. Avoid conflicting/duplicate Connection semantics.
+	req.Header.Del("Connection")
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {

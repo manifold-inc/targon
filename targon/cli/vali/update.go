@@ -83,6 +83,7 @@ var updateCmd = &cobra.Command{
 		for key, value := range headers {
 			req.Header.Set(key, value)
 		}
+		req.Header.Del("Connection")
 		req.Close = true
 
 		resp, err := client.Do(req)

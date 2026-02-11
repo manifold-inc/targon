@@ -129,6 +129,7 @@ func GetLogsFromNode(
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
+	req.Header.Del("Connection")
 
 	req.Close = true
 	res, err := client.Do(req)
