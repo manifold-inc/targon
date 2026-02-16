@@ -1,12 +1,18 @@
 import os
 import sys
+import math
+import traceback
 from typing import List, Union
-from bittensor.core.axon import traceback, uvicorn
-from pydantic import BaseModel
+
+import uvicorn
+from pydantic import BaseModel, field_validator, model_validator
 import bittensor as bt
 import bittensor_wallet
 from fastapi import FastAPI, HTTPException
 import logging
+
+# Maximum number of UIDs allowed in a single request
+MAX_UIDS = 256
 
 # Initialize global subtensor connection
 
@@ -45,20 +51,75 @@ logger.info(
 )
 
 
+def validate_weight_value(value: Union[int, float]) -> Union[int, float]:
+    """Validate that a weight value is finite and non-negative."""
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        raise ValueError(f"Weight value must be finite, got {value}")
+    if value < 0:
+        raise ValueError(f"Weight value must be non-negative, got {value}")
+    return value
+
+
 class WeightRequest(BaseModel):
     uids: List[int]
     weights: List[Union[int, float]]
     version: int
 
+    @field_validator("uids")
+    @classmethod
+    def validate_uids(cls, v: List[int]) -> List[int]:
+        if len(v) == 0:
+            raise ValueError("uids list must not be empty")
+        if len(v) > MAX_UIDS:
+            raise ValueError(f"uids list exceeds maximum length of {MAX_UIDS}")
+        if len(v) != len(set(v)):
+            raise ValueError("uids list contains duplicate values")
+        for uid in v:
+            if uid < 0:
+                raise ValueError(f"uid must be non-negative, got {uid}")
+        return v
+
+    @field_validator("weights")
+    @classmethod
+    def validate_weights(cls, v: List[Union[int, float]]) -> List[Union[int, float]]:
+        if len(v) == 0:
+            raise ValueError("weights list must not be empty")
+        for w in v:
+            validate_weight_value(w)
+        return v
+
+    @field_validator("version")
+    @classmethod
+    def validate_version(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("version must be non-negative")
+        return v
+
+    @model_validator(mode="after")
+    def validate_lengths_match(self) -> "WeightRequest":
+        if len(self.uids) != len(self.weights):
+            raise ValueError(
+                f"uids and weights must have the same length, "
+                f"got {len(self.uids)} uids and {len(self.weights)} weights"
+            )
+        return self
+
 
 subtensor = bt.AsyncSubtensor(CHAIN_ENDPOINT)
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration."""
+    return {"status": "healthy", "netuid": NETUID}
 
 
 @app.post("/api/v1/set-weights")
 async def post_set_weights(req: WeightRequest):
     try:
         logger.info(
-            f"setting weights\n{req.uids}\n{req.weights}\nversion: {req.version}\nNetuid: {NETUID}"
+            f"setting weights for {len(req.uids)} uids, "
+            f"version: {req.version}, netuid: {NETUID}"
         )
         async with subtensor as sub:
             res = await sub.set_weights(
