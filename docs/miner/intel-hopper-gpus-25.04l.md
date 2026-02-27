@@ -219,7 +219,7 @@ On Ubuntu 25.10.
 **Edit the PCCS install script:**
 
 ```bash
-sudo nano /opt/intel/sgx-dcap-pccs/install.sh
+sudo vim /opt/intel/sgx-dcap-pccs/install.sh
 ```
 
 Find the line that runs:
