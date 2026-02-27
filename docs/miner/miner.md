@@ -20,11 +20,17 @@ This doc provides setup scripts and instructions for running miners in **confide
     3. [BIOS Configuration (AMD SEV-SNP)](amd-cpus.md#bios-configuration-amd-sev-snp)
     4. [Host OS Preparation (AMD)](amd-cpus.md#host-os-preparation-amd)
 
-* [Intel TDX + Hopper GPU Setup](intel-hopper-gpus.md)
-    1. [Hardware Requirements (Intel)](intel-hopper-gpus#hardware-requirements-intel)
-    2. [Software Requirements (Intel)](intel-hopper-gpus#software-requirements-intel)
-    3. [BIOS Configuration (Intel TDX)](intel-hopper-gpus#bios-configuration-intel-tdx)
-    4. [Host OS Preparation (Intel)](intel-hopper-gpus#host-os-preparation-intel)
+* [Intel TDX + Hopper GPU Setup (Ubuntu 22.04 LTS)](intel-hopper-gpus-22.04l.md)
+    1. [Hardware Requirements (Intel)](intel-hopper-gpus-22.04l.md#hardware-requirements-intel)
+    2. [Software Requirements (Intel)](intel-hopper-gpus-22.04l.md#software-requirements-intel)
+    3. [BIOS Configuration (Intel TDX)](intel-hopper-gpus-22.04l.md#bios-configuration-intel-tdx)
+    4. [Host OS Preparation (Intel)](intel-hopper-gpus-22.04l.md#host-os-preparation-intel)
+
+* [Intel TDX + Hopper GPU Setup — PCIe (Ubuntu 25.04+)](intel-hopper-gpus-25.04l.md)
+    1. [Hardware Requirements (Intel)](intel-hopper-gpus-25.04l.md#hardware-requirements-intel)
+    2. [Software Requirements (Intel)](intel-hopper-gpus-25.04l.md#software-requirements-intel)
+    3. [BIOS Configuration (Intel TDX)](intel-hopper-gpus-25.04l.md#bios-configuration-intel-tdx)
+    4. [Host OS Preparation (Intel)](intel-hopper-gpus-25.04l.md#host-os-preparation-intel)
 
 * [Intel TDX + Blackwell GPU Setup](intel-blackwell-gpus.md)
     1. [Hardware Requirements (Intel)](intel-blackwell-gpus#hardware-requirements-intel)
