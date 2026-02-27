@@ -2,7 +2,7 @@
 
 ### Hardware Requirements (Intel)
 
-- NVIDIA H200/H100 GPUs (multi-GPU configuration)
+- NVIDIA H200/H100 GPUs (PPCIe)
 - 3 TB Storage
 - Intel CPU Requirements:
   - 5th Gen Intel® Xeon® Scalable Processor
@@ -53,12 +53,7 @@ sudo apt update
 sudo apt install qemu-system-x86 \
     ovmf \
     libvirt-daemon-system \
-    libvirt-clients \
-    infiniband-diags
-
-# Install NVLSM package
-wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/nvlsm_2025.06.10-1_amd64.deb
-sudo apt install ./nvlsm_2025.06.10-1_amd64.deb
+    libvirt-clients 
 ```
 
 ## Configuring the Host
@@ -126,9 +121,7 @@ sudo reboot
 ## Autoload VFIO & IB UMAD
 
 Linux Virtual Function I/O (VFIO) is a passthrough driver meant to bind the GPU on the
-host to a guest virtual machine. IB UMAD is the module used to control NVSwitches for
-multi-GPU Blackwell deployments. Creating the file below ensures the driver is ready to
-be bound to the NVIDIA GPUs and/or NVLink Switch interconnects in future steps.
+host to a guest virtual machine. 
 
 Create and open a new file: 
 ```bash
@@ -137,7 +130,6 @@ vim /etc/modules-load.d/vfio.conf
 ```bash
 vfio
 vfio_pci
-ib_umad
 ```
 
 ## Prevent NVIDIA Drivers from Loading on the Host
