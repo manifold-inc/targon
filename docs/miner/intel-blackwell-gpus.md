@@ -1,8 +1,8 @@
-# Intel TDX + Blackwell GPU Setup (Multi-GPU B200)
+# Intel TDX + Blackwell GPU Setup (Multi-GPU B200) or (Single-GPU RTX PRO 6000 Blackwell)
 
 ### Hardware Requirements (Intel)
 
-- NVIDIA B200 GPUs (multi-GPU configuration)
+- NVIDIA B200 GPUs (multi-GPU configuration) or RTX PRO 6000 Blackwell Server Edition (Single GPU configuration)
 - 3 TB Storage
 - Intel CPU Requirements:
   - 5th Gen Intel® Xeon® Scalable Processor
