@@ -6,10 +6,10 @@ import (
 )
 
 type MinerBid struct {
-	IP      string  `bson:"ip"`
-	UID     string  `bson:"uid"`
-	Payout  float64 `bson:"payout"`
-	Count   int     `bson:"count"`
+	IP     string  `bson:"ip"`
+	UID    string  `bson:"uid"`
+	Payout float64 `bson:"payout"`
+	Count  int     `bson:"count"`
 }
 
 type MinerInfo struct {

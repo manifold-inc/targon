@@ -2,7 +2,6 @@ package callbacks
 
 import (
 	"errors"
-	"strings"
 	"sync"
 
 	"targon/internal/cvm"
@@ -49,8 +48,7 @@ func getPassingAttestations(c *targon.Core) {
 				// Get attestation
 				n := c.Neurons[uid]
 				nonce := nonce.NewNonce(attester.Hotkey.Address)
-				cvmIP := strings.TrimPrefix(node.IP, "http://")
-				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+				cvmIP := cvm.NormalizeHost(node.IP)
 				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(n.Hotkey), cvmIP, nonce)
 
 				// Verify attestation

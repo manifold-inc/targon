@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"strings"
 	"sync"
 
 	"targon/cli/root"
@@ -107,8 +106,7 @@ var ipsCmd = &cobra.Command{
 
 			// Mock Neuron, use self hotkey
 			nonce := nonce.NewNonce(kp.Address)
-			cvmIP := strings.TrimPrefix(ipFlag, "http://")
-			cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+			cvmIP := cvm.NormalizeHost(ipFlag)
 
 			key := utils.AccountIDToSS58(neuron.Hotkey)
 			if minerHotkeyFlag != "" {
@@ -160,8 +158,7 @@ var ipsCmd = &cobra.Command{
 				var err error
 				defer wg.Done()
 				nonce := nonce.NewNonce(kp.Address)
-				cvmIP := strings.TrimPrefix(n.IP, "http://")
-				cvmIP = strings.TrimSuffix(cvmIP, ":8080")
+				cvmIP := cvm.NormalizeHost(n.IP)
 				attestPayload, err := attester.GetAttestFromNode(utils.AccountIDToSS58(neuron.Hotkey), cvmIP, nonce)
 				if err != nil {
 					fmt.Printf("%s: %s\n", n.IP, err.Error())

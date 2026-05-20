@@ -9,7 +9,7 @@ import (
 )
 
 type MinerNode struct {
-	IP    string `json:"ip"`
+	IP string `json:"ip"`
 }
 
 type AccountInfo struct {

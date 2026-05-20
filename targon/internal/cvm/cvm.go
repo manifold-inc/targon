@@ -9,6 +9,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
+	"syscall"
 	"time"
 
 	"targon/internal/targon"
@@ -17,6 +19,10 @@ import (
 	"github.com/manifold-inc/manifold-sdk/lib/utils"
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
+
+var attestPorts = []int{8080, 8980}
+
+var errNoAttester = errors.New("no attester")
 
 type AttestBody struct {
 	Nonce string `json:"nonce"`
@@ -27,6 +33,29 @@ type Attester struct {
 	timeoutMult time.Duration
 	Hotkey      signature.KeyringPair
 	towerURL    string
+}
+
+func NormalizeHost(s string) string {
+	s = strings.TrimPrefix(s, "http://")
+	s = strings.TrimPrefix(s, "https://")
+	if host, _, err := net.SplitHostPort(s); err == nil {
+		return host
+	}
+	return s
+}
+
+func isPortUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.ECONNREFUSED) {
+		return true
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) && opErr.Op == "dial" {
+		return true
+	}
+	return false
 }
 
 // NewAttester Creates a new Attester
@@ -45,9 +74,10 @@ func NewAttester(
 	return &Attester{client: client, towerURL: towerURL, timeoutMult: timeoutMult, Hotkey: hotkey}
 }
 
-func (a *Attester) GetAttestFromNode(
+func (a *Attester) AttestFromNode(
 	minerHotkey string,
 	cvmIP string,
+	port int,
 	nonce string,
 ) (*targon.AttestationResponse, error) {
 	client := &http.Client{Transport: &http.Transport{
@@ -62,7 +92,7 @@ func (a *Attester) GetAttestFromNode(
 	body, _ := json.Marshal(data)
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("http://%s:8080/api/v1/evidence", cvmIP),
+		fmt.Sprintf("http://%s:%d/api/v1/evidence", cvmIP, port),
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
@@ -87,11 +117,17 @@ func (a *Attester) GetAttestFromNode(
 	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
+		if isPortUnavailable(err) {
+			return nil, fmt.Errorf("%w: %v", errNoAttester, err)
+		}
 		return nil, utils.Wrap("failed sending request to miner", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("%w: %s", errNoAttester, resp.Status)
+	}
 	if resp.StatusCode == http.StatusServiceUnavailable {
 		return nil, errors.New("server overloaded")
 	}
@@ -109,6 +145,26 @@ func (a *Attester) GetAttestFromNode(
 		return nil, utils.Wrap("failed unmarshaling response", err)
 	}
 	return &attestRes, nil
+}
+
+func (a *Attester) GetAttestFromNode(
+	minerHotkey string,
+	cvmIP string,
+	nonce string,
+) (*targon.AttestationResponse, error) {
+	cvmIP = NormalizeHost(cvmIP)
+	var lastErr error
+	for _, p := range attestPorts {
+		resp, err := a.AttestFromNode(minerHotkey, cvmIP, p, nonce)
+		if err == nil {
+			return resp, nil
+		}
+		if !errors.Is(err, errNoAttester) {
+			return nil, err
+		}
+		lastErr = err
+	}
+	return nil, utils.Wrap("failed sending request to miner", lastErr)
 }
 
 func (a *Attester) VerifyAttestation(
