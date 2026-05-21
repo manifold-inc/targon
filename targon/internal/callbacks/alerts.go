@@ -18,6 +18,7 @@ type minerStats struct {
 	gpuCount  int
 	gpuTypes  map[string]int
 	cpuTypes  map[string]int
+	nodeTypes map[string]int
 	cpuCount  int
 	uid       int
 	incentive float64
@@ -27,15 +28,16 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 	stats := make(map[int]*minerStats)
 	totalGPUs := 0
 	totalCPUs := 0
-	activeNodes := 0
+	totalNodes := 0
 
 	for uidstr, nodes := range c.VerifiedNodes {
 		uid, _ := strconv.Atoi(uidstr)
 		if stats[uid] == nil {
 			stats[uid] = &minerStats{
-				gpuTypes: make(map[string]int),
-				cpuTypes: make(map[string]int),
-				uid:      uid,
+				gpuTypes:  make(map[string]int),
+				cpuTypes:  make(map[string]int),
+				nodeTypes: make(map[string]int),
+				uid:       uid,
 			}
 		}
 
@@ -43,7 +45,12 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 			if node == nil {
 				continue
 			}
-			activeNodes++
+			totalNodes++
+			nodeType := strings.ToLower(strings.TrimSpace(node.NodeType))
+			if nodeType == "" {
+				nodeType = "unknown"
+			}
+			stats[uid].nodeTypes[nodeType]++
 			for _, gpu := range *node.GPUCards {
 				gpuLower := strings.ToLower(gpu)
 				totalGPUs++
@@ -65,18 +72,16 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 		}
 	}
 
-	// Aggregate GPU types across all miners
-	gpuTypes := make(map[string]int)
-	cpuTypes := make(map[string]int)
+	// Aggregate type -> uid -> count across all miners.
+	gpuTypeMiners := make(map[string]map[int]int)
+	cpuTypeMiners := make(map[string]map[int]int)
+	nodeTypeMiners := make(map[string]map[int]int)
 	statsarr := []*minerStats{}
 	for _, miner := range stats {
 		statsarr = append(statsarr, miner)
-		for gpu, count := range miner.gpuTypes {
-			gpuTypes[gpu] += count
-		}
-		for cpu, count := range miner.cpuTypes {
-			cpuTypes[cpu] += count
-		}
+		accumulate(gpuTypeMiners, miner.uid, miner.gpuTypes)
+		accumulate(cpuTypeMiners, miner.uid, miner.cpuTypes)
+		accumulate(nodeTypeMiners, miner.uid, miner.nodeTypes)
 	}
 
 	sort.Slice(statsarr, func(i, j int) bool {
@@ -91,7 +96,7 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 	}
 
 	color := "5763719"
-	title := fmt.Sprintf("Daily GPU Summary at block %v", h.Number)
+	title := fmt.Sprintf("Daily Summary at block %v", h.Number)
 	if c.Deps.Env.Debug {
 		title = fmt.Sprintf("[DEBUG] %s", title)
 		color = "15105570"
@@ -99,19 +104,22 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 	desc := fmt.Sprintf(
 		"Total Attested GPUs: %d\n"+
 			"Total Attested CPUs: %d\n"+
-			"Active CVM Nodes: %d\n"+
+			"Total CVM Nodes: %d\n"+
 			"Emission Pool: $%.2f\n"+
 			"Burned: %.2f%%\n"+
+			"\n"+
+			"Node Type Breakdown:\n%s\n"+
 			"GPU Type Breakdown:\n%s\n"+
 			"CPU Type Breakdown:\n%s\n"+
 			"Per Miner Breakdown:\n%s",
 		totalGPUs,
 		totalCPUs,
-		activeNodes,
+		totalNodes,
 		*c.EmissionPool,
 		burned*100,
-		formatGPUBreakdown(gpuTypes),
-		formatCPUBreakdown(cpuTypes),
+		formatTypeBreakdown(nodeTypeMiners),
+		formatTypeBreakdown(gpuTypeMiners),
+		formatTypeBreakdown(cpuTypeMiners),
 		formatMinerBreakdown(statsarr),
 	)
 
@@ -128,25 +136,63 @@ func sendIntervalSummary(c *targon.Core, h types.Header, uids, scores []uint16) 
 	c.Deps.Log.Infow("Sent daily GPU summary",
 		"total_gpus", totalGPUs,
 		"total_cpus", totalCPUs,
-		"active_nodes", activeNodes,
-		"gpu_types", gpuTypes,
-		"cpu_types", cpuTypes,
+		"total_nodes", totalNodes,
+		"gpu_types", gpuTypeMiners,
+		"cpu_types", cpuTypeMiners,
+		"node_types", nodeTypeMiners,
 	)
 	return err
 }
 
-func formatGPUBreakdown(gpuTypes map[string]int) string {
-	var sb strings.Builder
-	for gpu, count := range gpuTypes {
-		sb.WriteString(fmt.Sprintf("- %s: %d\n", gpu, count))
+func accumulate(dst map[string]map[int]int, uid int, src map[string]int) {
+	for name, count := range src {
+		if dst[name] == nil {
+			dst[name] = make(map[int]int)
+		}
+		dst[name][uid] += count
 	}
-	return sb.String()
 }
 
-func formatCPUBreakdown(cpuTypes map[string]int) string {
+// formatTypeBreakdown renders entries of the form:
+// - name · total → M{uid}={count} • M{uid}={count}
+// sorted by total desc (name asc as tiebreaker), with miners sorted by uid asc.
+func formatTypeBreakdown(typeMiners map[string]map[int]int) string {
+	if len(typeMiners) == 0 {
+		return ""
+	}
+	type entry struct {
+		name   string
+		total  int
+		miners map[int]int
+	}
+	entries := make([]entry, 0, len(typeMiners))
+	for name, miners := range typeMiners {
+		total := 0
+		for _, c := range miners {
+			total += c
+		}
+		entries = append(entries, entry{name: name, total: total, miners: miners})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].total != entries[j].total {
+			return entries[i].total > entries[j].total
+		}
+		return entries[i].name < entries[j].name
+	})
+
 	var sb strings.Builder
-	for cpu, count := range cpuTypes {
-		sb.WriteString(fmt.Sprintf("- %s: %d\n", cpu, count))
+	for _, e := range entries {
+		uids := make([]int, 0, len(e.miners))
+		for uid := range e.miners {
+			uids = append(uids, uid)
+		}
+		sort.Ints(uids)
+
+		parts := make([]string, 0, len(uids))
+		for _, uid := range uids {
+			parts = append(parts, fmt.Sprintf("M%d=%d", uid, e.miners[uid]))
+		}
+		sb.WriteString(fmt.Sprintf("- %s · %d → %s\n", e.name, e.total, strings.Join(parts, " • ")))
 	}
 	return sb.String()
 }
@@ -157,15 +203,15 @@ func formatMinerBreakdown(stats []*minerStats) string {
 		if miner.gpuCount == 0 && miner.cpuCount == 0 {
 			continue
 		}
-		var parts []string
+		parts := []string{}
 		if miner.gpuCount > 0 {
 			parts = append(parts, fmt.Sprintf("%d GPUs", miner.gpuCount))
 		}
 		if miner.cpuCount > 0 {
 			parts = append(parts, fmt.Sprintf("%d CPUs", miner.cpuCount))
 		}
-		details := strings.Join(parts, ", ")
-		sb.WriteString(fmt.Sprintf("- Miner %d: %s, %.2f%%\n", miner.uid, details, miner.incentive*100))
+		parts = append(parts, fmt.Sprintf("%.2f%%", miner.incentive*100))
+		sb.WriteString(fmt.Sprintf("- Miner-%d → %s\n", miner.uid, strings.Join(parts, " • ")))
 	}
 	return sb.String()
 }
