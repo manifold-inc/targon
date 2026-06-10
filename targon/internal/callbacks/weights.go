@@ -161,13 +161,30 @@ func getWeights(c *targon.Core) ([]uint16, []uint16, map[string][]*targon.MinerB
 		}
 	}
 
+	// NOTE: If the sum of payouts > the emission pool, the chain
+	// scales every weight down pro-rata when normalizing anyways.
+	// Applying the same scale here so stored scores, incentives,
+	// and payouts reflect miners actually get paid. When payouts
+	// fit in the pool, scale stays 1 and the remainder is burned.
+	totalFraction := 0.0
+	for _, payout := range payouts {
+		totalFraction += payout
+	}
+	if totalFraction > 1 {
+		scale := 1 / totalFraction
+		for uid := range payouts {
+			payouts[uid] *= scale
+		}
+		for _, bids := range auction {
+			for _, bid := range bids {
+				bid.Payout *= scale
+			}
+		}
+	}
+
 	var finalScores []uint16
 	var finalUids []uint16
 	sumScores := 0
-	// NOTE we dont actually need to normalize here in the case that
-	// our pool sum > emission pool. This is because we are sending
-	// weights via the bittensor sdk which is going to normalize anyways,
-	// so no use doing it here.
 	for uid, payout := range payouts {
 		fw := int(math.Floor(float64(setup.U16MAX) * payout))
 		if fw == 0 {
