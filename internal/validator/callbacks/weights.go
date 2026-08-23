@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -212,9 +213,14 @@ func getWeights(c *validator.Core) ([]uint16, []uint16, map[string][]*validator.
 		finalScores = append(finalScores, uint16(thisBurn))
 		finalUids = append(finalUids, uint16(uid))
 	}
-	// Add remaning burn to last burn key
-	// If there was no burn this is a noop
-	finalScores[len(finalScores)-1] += uint16(forBurn)
+	if forBurn > 0 {
+		if i := slices.Index(finalUids, uint16(28)); i >= 0 {
+			finalScores[i] += uint16(forBurn)
+		} else {
+			finalUids = append(finalUids, uint16(28))
+			finalScores = append(finalScores, uint16(forBurn))
+		}
+	}
 
 	c.Deps.Log.Infow("Payouts", "percentages", fmt.Sprintf("%+v", payouts))
 	c.Deps.Log.Infow("Miner scores", "uids", fmt.Sprintf("%v", finalUids), "scores", fmt.Sprintf("%v", finalScores))

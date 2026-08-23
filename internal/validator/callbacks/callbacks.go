@@ -87,7 +87,9 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *validator.Core) {
 
 	// get emission and auction data for this interval
 	v.AddBlockCallback(func(h types.Header) {
-		if c.EmissionPool != nil {
+		// after a restart that restored the pool from backup we still
+		// need to fetch BurnDistribution from tower
+		if c.EmissionPool != nil && len(c.BurnDistribution) != 0 {
 			return
 		}
 		// Get tower pyth price and emission slice along with min burn
@@ -101,6 +103,9 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *validator.Core) {
 		c.BurnDistribution = auctionData.BurnDistribution
 		c.Deps.Log.Infof("Auctions: %+v", c.Auctions)
 		c.Deps.Log.Infof("Current tao price $%f", *c.TaoPrice)
+		if c.EmissionPool != nil {
+			return
+		}
 		alphaOut, err := storage.GetSubnetAlphaOutEmission(c.Deps.Client, types.NewU16(uint16(c.Deps.Env.Netuid)), &h.ParentHash)
 		if err != nil {
 			c.Deps.Log.Errorw("Validator is falling behind current block time")
