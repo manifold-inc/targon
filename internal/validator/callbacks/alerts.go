@@ -100,7 +100,7 @@ func sendIntervalSummary(c *validator.Core, h types.Header, uids, scores []uint1
 	minerPayout := 0.0
 	for _, bids := range c.AuctionResults {
 		for _, bid := range bids {
-			minerPayout += bid.Payout
+			minerPayout += bid.Payout * 1.2
 		}
 	}
 
