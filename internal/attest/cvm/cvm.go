@@ -19,7 +19,7 @@ import (
 	"github.com/subtrahend-labs/gobt/boilerplate"
 )
 
-var attestPorts = []int{8080, 8980}
+var attestPorts = []int{8980, 8080}
 
 var errNoAttester = errors.New("no attester")
 
