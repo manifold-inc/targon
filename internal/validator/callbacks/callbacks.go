@@ -42,7 +42,8 @@ func AddBlockCallbacks(v *boilerplate.BaseChainSubscriber, c *validator.Core) {
 
 	// block timer for catching hangs
 	t := time.AfterFunc(1*time.Hour, func() {
-		c.Deps.Log.Error("havint seen any blocks in over an hour, am i stuck?")
+		c.Deps.Log.Error("haven't seen any blocks in over an hour, restarting chain subscription")
+		v.Restart()
 	})
 	v.AddBlockCallback(func(h types.Header) {
 		t.Reset(1 * time.Hour)
