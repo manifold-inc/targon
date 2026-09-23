@@ -49,6 +49,25 @@ All prices are in USD per hour per card, reported in cents — e.g. a `max_price
 
 > ⚠️ **Important:** Any emissions not allocated to auctions are burned.
 
+## Supported Hardware Configurations
+
+TargonOS only installs on machines that match one of the hardware profiles below. During install, the hardware verification step checks the node against `tower.targon.com` and refuses to proceed if the machine does not meet a profile's minimums.
+
+| Profile | CPU Vendor | GPU | GPU Count | Min RAM | Min CPU Threads | Min Combined Storage |
+| --- | --- | --- | --- | --- | --- | --- |
+| `h100-8x` | Intel | H100 SXM | 8 | 1.5 TiB (1,649,267,441,664 bytes) | 128 | 3 TB (3,000,000,000,000 bytes) |
+| `h200-8x` | Intel | H200 | 8 | 1.9 TiB (2,089,072,092,774 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
+| `b200-8x` | Intel | B200 | 8 | 1.9 TiB (2,089,072,092,774 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
+| `b300-8x` | Intel | B300 | 8 | 1.9 TiB (2,089,072,092,774 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
+| `rtx-pro-6000-blackwell-8x` | Intel | RTX PRO 6000 Blackwell | 8 | 1,000 GiB (1,073,741,824,000 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
+
+Notes:
+
+- **CPU vendor:** Intel TDX is required, since TargonOS relies on Intel TDX for the TEE (see [BIOS configuration](installing-targonos.md#bios-configuration)).
+- **GPU count:** Each profile requires exactly 8 GPUs of the listed SKU.
+- **RAM / CPU threads:** These are minimums; machines with more RAM or threads are accepted.
+- **Encrypted storage:** The installer wipes every eligible disk and builds encrypted (LUKS) storage on top of them. The combined eligible disk capacity must meet the profile's minimum.
+
 ## Installing TargonOS
 
 Follow the [TargonOS installation guide](installing-targonos.md). It covers the BIOS settings the installer requires, and both install paths:
