@@ -8,7 +8,7 @@ Releases live at [https://releases.targon.com](https://releases.targon.com), org
 
 ## What you need
 
-- A UEFI machine with the TEE (Intel TDX) enabled in BIOS (see
+- A UEFI machine with the TEE (Intel TDX or AMD SEV-SNP) enabled in BIOS (see
 [BIOS configuration](#bios-configuration)), a TPM 2.0, and GPUs. The machine must match one of
 the [supported hardware configurations](miner.md#supported-hardware-configurations) — the
 installer's hardware verification step rejects anything that doesn't.
@@ -22,6 +22,7 @@ Only the derived SS58 public address is ever stored.
 
 Set these before booting the installer — it refuses to install with the TEE disabled. Menu
 names vary slightly between vendors; the settings below follow the common Supermicro/AMI layout.
+Follow the section that matches your CPU vendor.
 
 ### Intel TDX
 
@@ -42,6 +43,21 @@ Intel TME, Intel TME-MT, Intel TDX
 SGX
   Software Guard Extension                         → Enabled
   SGX Factory Reset                                → Enabled
+```
+
+### AMD SEV-SNP
+
+```
+Advanced → CPU Configuration
+  SMEE                                             → Enabled
+  SEV ASID Count                                   → 509 ASIDs
+  SEV-ES ASID Space Limit Control                  → Manual
+  SEV-ES ASID Space Limit                          → 100
+  SNP Memory Coverage                              → Enabled
+
+Advanced → NB Configuration
+  IOMMU                                            → Enabled
+  SEV-SNP support                                  → Enabled
 ```
 
 ## Option 1 — iPXE netboot (unattended)

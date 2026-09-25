@@ -63,7 +63,7 @@ TargonOS only installs on machines that match one of the hardware profiles below
 
 Notes:
 
-- **CPU vendor:** Intel TDX is required, since TargonOS relies on Intel TDX for the TEE (see [BIOS configuration](installing-targonos.md#bios-configuration)).
+- **CPU vendor:** Intel (TDX) and AMD (SEV-SNP) CPUs are supported. The TEE must be enabled in BIOS for the installer to proceed — see the vendor-specific settings under [BIOS configuration](installing-targonos.md#bios-configuration). The profiles listed above are the currently enabled Intel profiles; AMD profiles will be listed here as they are enabled.
 - **GPU count:** Each profile requires exactly 8 GPUs of the listed SKU.
 - **RAM / CPU threads:** These are minimums; machines with more RAM or threads are accepted.
 - **Encrypted storage:** The installer wipes every eligible disk and builds encrypted (LUKS) storage on top of them. The combined eligible disk capacity must meet the profile's minimum.
