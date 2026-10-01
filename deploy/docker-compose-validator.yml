@@ -32,7 +32,7 @@ services:
     env_file: ../.env
 
   mongo:
-    image: mongo:latest
+    image: mongo:8.2
     ports:
       - "27017:27017"
     volumes:
