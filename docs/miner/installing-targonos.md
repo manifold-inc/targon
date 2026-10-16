@@ -9,7 +9,8 @@ Releases live at [https://releases.targon.com](https://releases.targon.com), org
 ## What you need
 
 - A UEFI machine with the TEE (Intel TDX or AMD SEV-SNP) enabled in BIOS (see
-[BIOS configuration](#bios-configuration)), a TPM 2.0, and GPUs. The machine must match one of
+[BIOS configuration](#bios-configuration)), a TPM 2.0, and GPUs (unless targeting the CPU-only
+profile). The machine must match one of
 the [supported hardware configurations](miner.md#supported-hardware-configurations) — the
 installer's hardware verification step rejects anything that doesn't.
 - Network with DHCP and outbound HTTPS — the installer fetches the signed OS payload from

@@ -38,35 +38,56 @@ or visit [stats.targon.com/targets](https://stats.targon.com/targets) to see the
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `target_cards` | Maximum number of cards targeted for the auction. |
-| `target_price` | Targeted price per card. |
-| `max_price` | Payment cap per card — never paid more than this. |
-| `min_cluster_size` | Minimum cluster size required to participate. |
+
+| Field              | Meaning                                           |
+| ------------------ | ------------------------------------------------- |
+| `target_cards`     | Maximum number of cards targeted for the auction. |
+| `target_price`     | Targeted price per card.                          |
+| `max_price`        | Payment cap per card — never paid more than this. |
+| `min_cluster_size` | Minimum cluster size required to participate.     |
+
 
 All prices are in USD per hour per card, reported in cents — e.g. a `max_price` of `350` means $3.50/hour.
 
 > ⚠️ **Important:** Any emissions not allocated to auctions are burned.
 
+
+
 ## Supported Hardware Configurations
 
 TargonOS only installs on machines that match one of the hardware profiles below. During install, the hardware verification step checks the node against `tower.targon.com` and refuses to proceed if the machine does not meet a profile's minimums.
 
-| Profile | CPU Vendor | GPU | GPU Count | Min RAM | Min CPU Threads | Min Combined Storage |
-| --- | --- | --- | --- | --- | --- | --- |
-| `h100-8x` | Intel | H100 SXM | 8 | 1.5 TiB (1,649,267,441,664 bytes) | 128 | 3 TB (3,000,000,000,000 bytes) |
-| `h200-8x` | Intel | H200 | 8 | 1.9 TiB (2,089,072,092,774 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
-| `b200-8x` | Intel | B200 | 8 | 1.9 TiB (2,089,072,092,774 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
-| `b300-8x` | Intel | B300 | 8 | 1.9 TiB (2,089,072,092,774 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
-| `rtx-pro-6000-blackwell-8x` | Intel | RTX PRO 6000 Blackwell | 8 | 1,000 GiB (1,073,741,824,000 bytes) | 192 | 3 TB (3,000,000,000,000 bytes) |
+### Intel (TDX)
+
+
+| Profile         | GPU          | GPU Count | Min RAM                           | Min CPU Threads | Min Combined Storage           |
+| --------------- | ------------ | --------- | --------------------------------- | --------------- | ------------------------------ |
+| `h100-8x-intel` | H100 SXM     | 8         | 1.5 TiB (1,649,267,441,664 bytes) | 128             | 3 TB (3,000,000,000,000 bytes) |
+| `h200-8x-intel` | H200         | 8         | 1.9 TiB (2,089,072,092,774 bytes) | 192             | 3 TB (3,000,000,000,000 bytes) |
+| `b200-8x-intel` | B200         | 8         | 1.9 TiB (2,089,072,092,774 bytes) | 192             | 3 TB (3,000,000,000,000 bytes) |
+| `b300-8x-intel` | B300         | 8         | 1.9 TiB (2,089,072,092,774 bytes) | 192             | 3 TB (3,000,000,000,000 bytes) |
+| `cpu-intel`     | — (CPU only) | 0         | 512 GB (512,000,000,000 bytes)    | 48              | 3 TB (3,000,000,000,000 bytes) |
+
+
+
+
+### AMD (SEV-SNP)
+
+
+| Profile       | GPU          | GPU Count | Min RAM                           | Min CPU Threads | Min Combined Storage           |
+| ------------- | ------------ | --------- | --------------------------------- | --------------- | ------------------------------ |
+| `b300-8x-amd` | B300         | 8         | 1.9 TiB (2,089,072,092,774 bytes) | 128             | 3 TB (3,000,000,000,000 bytes) |
+| `cpu-amd`     | — (CPU only) | 0         | 512 GB (512,000,000,000 bytes)    | 48              | 3 TB (3,000,000,000,000 bytes) |
+
 
 Notes:
 
-- **CPU vendor:** Intel (TDX) and AMD (SEV-SNP) CPUs are supported. The TEE must be enabled in BIOS for the installer to proceed — see the vendor-specific settings under [BIOS configuration](installing-targonos.md#bios-configuration). The profiles listed above are the currently enabled Intel profiles; AMD profiles will be listed here as they are enabled.
-- **GPU count:** Each profile requires exactly 8 GPUs of the listed SKU.
+- **CPU vendor:** Intel (TDX) and AMD (SEV-SNP) CPUs are supported. The TEE must be enabled in BIOS for the installer to proceed — see the vendor-specific settings under [BIOS configuration](installing-targonos.md#bios-configuration).
+- **GPU count:** GPU profiles require exactly 8 GPUs of the listed SKU. The `cpu-intel` and `cpu-amd` profiles are CPU-only and have no GPU requirement.
 - **RAM / CPU threads:** These are minimums; machines with more RAM or threads are accepted.
 - **Encrypted storage:** The installer wipes every eligible disk and builds encrypted (LUKS) storage on top of them. The combined eligible disk capacity must meet the profile's minimum.
+
+
 
 ## Installing TargonOS
 
@@ -83,7 +104,7 @@ After the install, the machine reboots into TargonOS and takes care of itself �
 
 Once your TargonOS nodes are up, update your miner configuration to report the IP address of each node you are running.
 
-1.  **Update or create the configuration file**
+1. **Update or create the configuration file**
 
 Edit `config.json` to include the IP addresses of your TargonOS nodes. Add them to the list of endpoints your miner reports to the network, along with any other desired parameters.
 
@@ -112,7 +133,7 @@ Example `config.json` (comments are for reference — remove them from the actua
 
 > **Note:** Keep your node IPs up to date. If you add or remove TargonOS nodes, update this configuration accordingly.
 
-2.  **Start the miner**
+1. **Start the miner**
 
 ```bash
 docker compose -f deploy/docker-compose-miner.yml up -d --build
@@ -123,3 +144,4 @@ or:
 ```bash
 make up-miner
 ```
+
