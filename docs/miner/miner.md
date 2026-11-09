@@ -89,7 +89,7 @@ Notes:
 
 Follow the [TargonOS installation guide](installing-targonos.md). It covers the BIOS settings the installer requires, and both install paths:
 
-- **iPXE netboot (unattended)** — best for fleets; pass your hotkey on the kernel command line and the install runs with no console interaction.
+- **iPXE netboot (unattended)** — best for fleets; pass your hotkey on the kernel command line and the install runs with no console interaction. Static addressing, bonds, and VLANs can be declared with `targon.net.*` arguments and are persisted to the installed system.
 - **ISO (interactive)** — best for one-off installs; boot from USB or BMC virtual media and the installer walks you through network setup, disk selection, hardware verification, and hotkey entry.
 
 > ⚠️ **Warning:** The installer **wipes every eligible disk** on the machine. Only run it on hardware you intend to dedicate to TargonOS.
